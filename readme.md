@@ -20,10 +20,12 @@ Start with `import fs2.kafka._` and use `consumerStream` and `producerStream` to
 import cats.data.NonEmptyList
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
+import cats.syntax.traverse._
 import fs2.kafka._
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.clients.producer.{ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import scala.concurrent.duration._
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
@@ -67,10 +69,12 @@ object Main extends IOApp {
                   ProducerMessage.single(record, message.committableOffset)
             })
             .evalMap(producer.produceWithBatching)
-            .bufferAll // Let all records in batch be sent to the producer before committing
-            .evalMap(_.map(_.passthrough))
-            .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
-            .evalMap(_.commit)
+            .groupWithin(500, 15.seconds)
+            .evalMap {
+              _.traverse(_.map(_.passthrough))
+               .map(_.foldLeft(CommittableOffsetBatch.empty[IO])(_ updated _))
+               .flatMap(_.commit)
+            }
         }
       } yield ()
 

@@ -237,7 +237,8 @@ object KafkaConsumer {
                     requests.enqueue1(Fetch(deferred)) *> deferred.get
                   }
               }
-              .flatMap(sink)
+              .flatten
+              .to(sink)
           }
 
         override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
