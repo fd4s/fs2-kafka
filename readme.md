@@ -25,11 +25,13 @@ import fs2.kafka._
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.clients.producer.{ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
-    val consumerSettings =
+    val consumerSettings = (executionContext: ExecutionContext) =>
       ConsumerSettings(
         keyDeserializer = new StringDeserializer,
         valueDeserializer = new StringDeserializer,
@@ -37,7 +39,8 @@ object Main extends IOApp {
           ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
           ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> "localhost",
           ConsumerConfig.GROUP_ID_CONFIG -> "group"
-        )
+        ),
+        executionContext = executionContext
       )
 
     val producerSettings =
@@ -57,7 +60,8 @@ object Main extends IOApp {
 
     val stream =
       for {
-        consumer <- consumerStream[IO].using(consumerSettings)
+        executionContext <- consumerExecutionContext[IO]
+        consumer <- consumerStream[IO].using(consumerSettings(executionContext))
         producer <- producerStream[IO].using(producerSettings)
         _ <- consumer.subscribe(topics)
         _ <- consumer.stream {
@@ -67,13 +71,13 @@ object Main extends IOApp {
                 case (key, value) =>
                   val record = new ProducerRecord("topic", key, value)
                   ProducerMessage.single(record, message.committableOffset)
-            })
+              })
             .evalMap(producer.produceWithBatching)
             .groupWithin(500, 15.seconds)
             .evalMap {
               _.traverse(_.map(_.passthrough))
-               .map(_.foldLeft(CommittableOffsetBatch.empty[IO])(_ updated _))
-               .flatMap(_.commit)
+                .map(_.foldLeft(CommittableOffsetBatch.empty[IO])(_ updated _))
+                .flatMap(_.commit)
             }
         }
       } yield ()

@@ -2,6 +2,7 @@ package fs2.kafka
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.Deserializer
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 sealed abstract class ConsumerSettings[K, V] {
@@ -10,6 +11,8 @@ sealed abstract class ConsumerSettings[K, V] {
   def valueDeserializer: Deserializer[V]
 
   def nativeSettings: Map[String, AnyRef]
+
+  def executionContext: ExecutionContext
 
   def closeTimeout: FiniteDuration
 
@@ -25,6 +28,7 @@ object ConsumerSettings {
     override val keyDeserializer: Deserializer[K],
     override val valueDeserializer: Deserializer[V],
     override val nativeSettings: Map[String, AnyRef],
+    override val executionContext: ExecutionContext,
     override val closeTimeout: FiniteDuration,
     override val commitTimeout: FiniteDuration,
     override val pollInterval: FiniteDuration,
@@ -44,12 +48,17 @@ object ConsumerSettings {
     * ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "true"
     * }}}
     *
-    * in the `nativeSettings` argument to this function.
+    * in the `nativeSettings` argument to this function.<br>
+    * <br>
+    * Since some Kafka operations are blocking, we should shift these
+    * operations to a dedicated `ExecutionContext.` A sensible option
+    * is provided by the [[consumerExecutionContext]] function.
     */
   def apply[K, V](
     keyDeserializer: Deserializer[K],
     valueDeserializer: Deserializer[V],
     nativeSettings: Map[String, AnyRef],
+    executionContext: ExecutionContext,
     closeTimeout: FiniteDuration = 20.seconds,
     commitTimeout: FiniteDuration = 15.seconds,
     pollInterval: FiniteDuration = 50.millis,
@@ -58,6 +67,7 @@ object ConsumerSettings {
     keyDeserializer = keyDeserializer,
     valueDeserializer = valueDeserializer,
     nativeSettings = defaultNativeSettings ++ nativeSettings,
+    executionContext = executionContext,
     closeTimeout = closeTimeout,
     commitTimeout = commitTimeout,
     pollInterval = pollInterval,

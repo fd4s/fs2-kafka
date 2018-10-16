@@ -81,9 +81,15 @@ object KafkaConsumer {
     ref: Ref[F, State[F, K, V]],
     requests: Queue[F, Request[F, K, V]],
     consumer: Consumer[K, V]
-  )(implicit F: ConcurrentEffect[F], timer: Timer[F]) {
+  )(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F],
+    timer: Timer[F]
+  ) {
     private def subscribe(topics: NonEmptyList[String]): F[Unit] =
-      F.delay(consumer.subscribe(topics.toList.asJava)) *> ref.update(_.asSubscribed)
+      context.evalOn(settings.executionContext) {
+        F.delay(consumer.subscribe(topics.toList.asJava))
+      } *> ref.update(_.asSubscribed)
 
     private def fetch(deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]]): F[Unit] =
       ref.update(_.withFetch(deferred))
@@ -92,33 +98,38 @@ object KafkaConsumer {
       offsets: Map[TopicPartition, OffsetAndMetadata],
       deferred: Deferred[F, Either[Throwable, Unit]]
     ): F[Unit] =
-      F.delay {
-        consumer.commitAsync(
-          offsets.asJava,
-          new OffsetCommitCallback {
-            override def onComplete(
-              offsets: util.Map[TopicPartition, OffsetAndMetadata],
-              exception: Exception
-            ): Unit = {
-              val result = Option(exception).toLeft(())
-              val complete = deferred.complete(result)
-              F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+      context.evalOn(settings.executionContext) {
+        F.delay {
+          consumer.commitAsync(
+            offsets.asJava,
+            new OffsetCommitCallback {
+              override def onComplete(
+                offsets: util.Map[TopicPartition, OffsetAndMetadata],
+                exception: Exception
+              ): Unit = {
+                val result = Option(exception).toLeft(())
+                val complete = deferred.complete(result)
+                F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+              }
             }
-          }
-        )
+          )
+        }
       }
 
     private val poll: F[Unit] = {
       ref.get.flatMap { state =>
         if (state.subscribed) {
-          F.delay {
-              val assignment = consumer.assignment()
-              if (state.fetches.isEmpty || state.records.nonEmpty) {
-                consumer.pause(assignment)
-                consumer.poll(Duration.ZERO)
-              } else {
-                consumer.resume(assignment)
-                consumer.poll(settings.pollTimeout.asJava)
+          context
+            .evalOn(settings.executionContext) {
+              F.delay {
+                val assignment = consumer.assignment()
+                if (state.fetches.isEmpty || state.records.nonEmpty) {
+                  consumer.pause(assignment)
+                  consumer.poll(Duration.ZERO)
+                } else {
+                  consumer.resume(assignment)
+                  consumer.poll(settings.pollTimeout.asJava)
+                }
               }
             }
             .flatMap { batch =>
@@ -182,7 +193,10 @@ object KafkaConsumer {
 
   private[this] def createConsumer[F[_], K, V](
     settings: ConsumerSettings[K, V]
-  )(implicit F: Sync[F]): Stream[F, Consumer[K, V]] =
+  )(
+    implicit F: Sync[F],
+    context: ContextShift[F]
+  ): Stream[F, Consumer[K, V]] =
     Stream.bracket {
       F.delay {
         new KConsumer(
@@ -192,8 +206,8 @@ object KafkaConsumer {
         )
       }
     } { consumer =>
-      F.delay {
-        consumer.close(settings.closeTimeout.asJava)
+      context.evalOn(settings.executionContext) {
+        F.delay(consumer.close(settings.closeTimeout.asJava))
       }
     }
 
