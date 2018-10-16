@@ -167,14 +167,12 @@ object KafkaConsumer {
           context
             .evalOn(settings.executionContext) {
               F.delay {
-                val assignment = consumer.assignment()
-                if (state.fetches.isEmpty || state.records.nonEmpty) {
-                  consumer.pause(assignment)
-                  consumer.poll(Duration.ZERO)
-                } else {
-                  consumer.resume(assignment)
-                  consumer.poll(settings.pollTimeout.asJava)
-                }
+                val assignment = consumer.assignment
+                val fetchRecords = state.fetches.nonEmpty && state.records.isEmpty
+                if (fetchRecords) consumer.resume(assignment)
+                else consumer.pause(assignment)
+
+                consumer.poll(settings.pollTimeout.asJava)
               }
             }
             .flatMap { batch =>
