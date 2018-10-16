@@ -1,6 +1,5 @@
 package fs2.kafka
 
-import java.time.Duration
 import java.util
 
 import cats.data.{Chain, NonEmptyList}
@@ -8,8 +7,10 @@ import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.syntax.concurrent._
 import cats.effect.{ConcurrentEffect, Fiber, Timer, _}
 import cats.instances.unit._
+import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
+import cats.syntax.functor._
 import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
@@ -248,17 +249,20 @@ object KafkaConsumer {
     } yield {
       new KafkaConsumer[F, K, V] {
         override def stream(sink: Sink[F, CommittableMessage[F, K, V]]): Stream[F, Unit] =
-          Stream.eval(fiber.join).concurrently {
-            Stream
-              .repeatEval {
-                Deferred[F, Stream[F, CommittableMessage[F, K, V]]]
-                  .flatMap { deferred =>
-                    requests.enqueue1(Fetch(deferred)) *> deferred.get
+          Stream
+            .repeatEval {
+              Deferred[F, Stream[F, CommittableMessage[F, K, V]]]
+                .flatMap { deferred =>
+                  val fetch = requests.enqueue1(Fetch(deferred)) *> deferred.get
+                  F.race(fiber.join, fetch).map {
+                    case Left(())      => Stream.empty
+                    case Right(stream) => stream
                   }
-              }
-              .flatten
-              .to(sink)
-          }
+                }
+            }
+            .flatten
+            .to(sink)
+            .interruptWhen(fiber.join.attempt)
 
         override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
           Stream.eval(requests.enqueue1(Subscribe(topics)))
