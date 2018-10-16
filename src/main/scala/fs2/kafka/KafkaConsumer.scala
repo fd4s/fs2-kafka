@@ -90,7 +90,7 @@ object KafkaConsumer {
     ref: Ref[F, State[F, K, V]],
     requests: Queue[F, Request[F, K, V]],
     consumer: Consumer[K, V]
-  )(implicit F: ConcurrentEffect[F]) {
+  )(implicit F: ConcurrentEffect[F], timer: Timer[F]) {
     private def subscribe(topics: NonEmptyList[String]): F[Unit] =
       F.delay(consumer.subscribe(topics.toList.asJava)) *> ref.update(_.asSubscribed)
 
@@ -148,7 +148,17 @@ object KafkaConsumer {
                             commit = offsets => {
                               Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
                                 requests.enqueue1(Commit(offsets, deferred)) *>
-                                  deferred.get.rethrow
+                                  F.race(timer.sleep(settings.commitTimeout), deferred.get.rethrow)
+                                    .flatMap {
+                                      case Right(_) => F.unit
+                                      case Left(_) =>
+                                        F.raiseError[Unit] {
+                                          new CommitTimeoutException(
+                                            settings.commitTimeout,
+                                            offsets
+                                          )
+                                        }
+                                    }
                               }
                             }
                           )

@@ -13,6 +13,8 @@ sealed abstract class ConsumerSettings[K, V] {
 
   def closeTimeout: FiniteDuration
 
+  def commitTimeout: FiniteDuration
+
   def pollInterval: FiniteDuration
 
   def pollTimeout: FiniteDuration
@@ -24,6 +26,7 @@ object ConsumerSettings {
     override val valueDeserializer: Deserializer[V],
     override val nativeSettings: Map[String, AnyRef],
     override val closeTimeout: FiniteDuration,
+    override val commitTimeout: FiniteDuration,
     override val pollInterval: FiniteDuration,
     override val pollTimeout: FiniteDuration
   ) extends ConsumerSettings[K, V]
@@ -48,6 +51,7 @@ object ConsumerSettings {
     valueDeserializer: Deserializer[V],
     nativeSettings: Map[String, AnyRef],
     closeTimeout: FiniteDuration = 20.seconds,
+    commitTimeout: FiniteDuration = 15.seconds,
     pollInterval: FiniteDuration = 50.millis,
     pollTimeout: FiniteDuration = 50.millis
   ): ConsumerSettings[K, V] = new ConsumerSettingsImpl(
@@ -55,6 +59,7 @@ object ConsumerSettings {
     valueDeserializer = valueDeserializer,
     nativeSettings = defaultNativeSettings ++ nativeSettings,
     closeTimeout = closeTimeout,
+    commitTimeout = commitTimeout,
     pollInterval = pollInterval,
     pollTimeout = pollTimeout
   )
