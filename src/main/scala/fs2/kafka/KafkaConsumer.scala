@@ -10,8 +10,6 @@ import cats.effect.{ConcurrentEffect, Fiber, Timer, _}
 import cats.instances.unit._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
-import cats.syntax.functor._
-import cats.syntax.monad._
 import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
@@ -35,8 +33,7 @@ object KafkaConsumer {
   private[this] final case class State[F[_], K, V](
     fetches: Chain[Deferred[F, Stream[F, CommittableMessage[F, K, V]]]],
     records: Chain[CommittableMessage[F, K, V]],
-    subscribed: Boolean,
-    running: Boolean
+    subscribed: Boolean
   ) {
     def withFetch(fetch: Deferred[F, Stream[F, CommittableMessage[F, K, V]]]): State[F, K, V] =
       copy(fetches = fetches append fetch)
@@ -52,9 +49,6 @@ object KafkaConsumer {
 
     def asSubscribed: State[F, K, V] =
       copy(subscribed = true)
-
-    def asShutdown: State[F, K, V] =
-      copy(running = false)
   }
 
   private[this] object State {
@@ -62,8 +56,7 @@ object KafkaConsumer {
       State(
         fetches = Chain.empty,
         records = Chain.empty,
-        subscribed = false,
-        running = true
+        subscribed = false
       )
   }
 
@@ -77,8 +70,6 @@ object KafkaConsumer {
   private[this] final case class Fetch[F[_], K, V](
     deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]]
   ) extends Request[F, K, V]
-
-  private[this] final case class Shutdown[F[_], K, V]() extends Request[F, K, V]
 
   private[this] final case class Commit[F[_], K, V](
     offsets: Map[TopicPartition, OffsetAndMetadata],
@@ -96,9 +87,6 @@ object KafkaConsumer {
 
     private def fetch(deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]]): F[Unit] =
       ref.update(_.withFetch(deferred))
-
-    private val shutdown: F[Unit] =
-      ref.update(_.asShutdown)
 
     private def commit(
       offsets: Map[TopicPartition, OffsetAndMetadata],
@@ -188,7 +176,6 @@ object KafkaConsumer {
         case Poll()                    => poll
         case Subscribe(topics)         => subscribe(topics)
         case Fetch(deferred)           => fetch(deferred)
-        case Shutdown()                => shutdown
         case Commit(offsets, deferred) => commit(offsets, deferred)
       }
   }
@@ -212,6 +199,7 @@ object KafkaConsumer {
 
   private[kafka] def consumerStream[F[_], K, V](settings: ConsumerSettings[K, V])(
     implicit F: ConcurrentEffect[F],
+    context: ContextShift[F],
     timer: Timer[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =
     for {
@@ -219,22 +207,17 @@ object KafkaConsumer {
       ref <- Stream.eval(Ref.of[F, State[F, K, V]](State.empty))
       consumer <- createConsumer(settings)
       actor = ConsumerActor(settings, ref, requests, consumer)
-      running = ref.get.map(_.running)
       handler <- Stream.bracket {
         requests.dequeue1
-          .flatMap(actor.handle)
-          .whileM_(running)
-          .void
+          .flatMap(actor.handle(_) *> context.shift)
+          .foreverM[Unit]
           .start
-          .map { fiber =>
-            Fiber(fiber.join, requests.enqueue1(Shutdown()) *> fiber.cancel)
-          }
       }(_.cancel)
       polls <- Stream.bracket {
         {
           requests.enqueue1(Poll()) *>
             timer.sleep(settings.pollInterval)
-        }.whileM_(running).void.start
+        }.foreverM[Unit].start
       }(_.cancel)
     } yield {
       new KafkaConsumer[F, K, V] {

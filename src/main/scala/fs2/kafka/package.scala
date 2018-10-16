@@ -1,10 +1,11 @@
 package fs2
 
-import cats.effect.{ConcurrentEffect, Timer}
+import cats.effect.{ConcurrentEffect, ContextShift, Timer}
 
 package object kafka {
   def consumerStream[F[_], K, V](settings: ConsumerSettings[K, V])(
     implicit F: ConcurrentEffect[F],
+    context: ContextShift[F],
     timer: Timer[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =
     KafkaConsumer.consumerStream(settings)
