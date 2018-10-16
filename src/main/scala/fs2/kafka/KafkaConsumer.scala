@@ -109,7 +109,7 @@ object KafkaConsumer {
               ): Unit = {
                 val result = Option(exception).toLeft(())
                 val complete = deferred.complete(result)
-                F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+                F.runAsync(complete)(_ => IO.unit).unsafeRunSync
               }
             }
           )
@@ -150,11 +150,11 @@ object KafkaConsumer {
         val partitions = batch.partitions.iterator
 
         while (partitions.hasNext) {
-          val partition = partitions.next()
+          val partition = partitions.next
           val records = batch.records(partition).iterator
 
           while (records.hasNext) {
-            messages = messages append message(records.next(), partition)
+            messages = messages append message(records.next, partition)
           }
         }
 
