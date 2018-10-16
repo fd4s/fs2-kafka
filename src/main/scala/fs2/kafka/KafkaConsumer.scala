@@ -210,19 +210,22 @@ object KafkaConsumer {
       consumer <- createConsumer(settings)
       actor = ConsumerActor(settings, ref, requests, consumer)
       running = ref.get.map(_.running)
-      handler <- Stream.eval {
+      handler <- Stream.bracket {
         requests.dequeue1
           .flatMap(actor.handle)
           .whileM_(running)
           .void
           .start
-      }
-      polls <- Stream.eval {
+          .map { fiber =>
+            Fiber(fiber.join, requests.enqueue1(Shutdown()) *> fiber.cancel)
+          }
+      }(_.cancel)
+      polls <- Stream.bracket {
         {
           requests.enqueue1(Poll()) *>
             timer.sleep(settings.pollInterval)
         }.whileM_(running).void.start
-      }
+      }(_.cancel)
     } yield {
       new KafkaConsumer[F, K, V] {
         override def stream(sink: Sink[F, CommittableMessage[F, K, V]]): Stream[F, Unit] =
@@ -240,10 +243,8 @@ object KafkaConsumer {
         override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
           Stream.eval(requests.enqueue1(Subscribe(topics)))
 
-        override val fiber: Fiber[F, Unit] = {
-          val join = (handler combine polls).join
-          Fiber(join, requests.enqueue1(Shutdown()) *> join)
-        }
+        override val fiber: Fiber[F, Unit] =
+          handler combine polls
       }
     }
 }
