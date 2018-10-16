@@ -116,6 +116,51 @@ object KafkaConsumer {
         }
       }
 
+    private def message(
+      record: ConsumerRecord[K, V],
+      partition: TopicPartition
+    ): CommittableMessage[F, K, V] =
+      CommittableMessage(
+        record = record,
+        committableOffset = CommittableOffset(
+          topicPartition = partition,
+          offsetAndMetadata = new OffsetAndMetadata(record.offset + 1L),
+          commit = offsets =>
+            Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
+              requests.enqueue1(Commit(offsets, deferred)) *>
+                F.race(timer.sleep(settings.commitTimeout), deferred.get.rethrow)
+                  .flatMap {
+                    case Right(_) => F.unit
+                    case Left(_) =>
+                      F.raiseError[Unit] {
+                        new CommitTimeoutException(
+                          settings.commitTimeout,
+                          offsets
+                        )
+                      }
+                  }
+          }
+        )
+      )
+
+    private def records(batch: ConsumerRecords[K, V]): Chain[CommittableMessage[F, K, V]] =
+      if (batch.isEmpty) Chain.empty
+      else {
+        var messages = Chain.empty[CommittableMessage[F, K, V]]
+        val partitions = batch.partitions.iterator
+
+        while (partitions.hasNext) {
+          val partition = partitions.next()
+          val records = batch.records(partition).iterator
+
+          while (records.hasNext) {
+            messages = messages append message(records.next(), partition)
+          }
+        }
+
+        messages
+      }
+
     private val poll: F[Unit] = {
       ref.get.flatMap { state =>
         if (state.subscribed) {
@@ -133,38 +178,7 @@ object KafkaConsumer {
               }
             }
             .flatMap { batch =>
-              def newRecords =
-                if (batch.isEmpty) Chain.empty
-                else
-                  Chain.fromSeq {
-                    batch.partitions.asScala.toList.flatMap { partition =>
-                      batch.records(partition).asScala.map { record =>
-                        CommittableMessage(
-                          record = record,
-                          committableOffset = CommittableOffset(
-                            topicPartition = partition,
-                            offsetAndMetadata = new OffsetAndMetadata(record.offset() + 1L),
-                            commit = offsets => {
-                              Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-                                requests.enqueue1(Commit(offsets, deferred)) *>
-                                  F.race(timer.sleep(settings.commitTimeout), deferred.get.rethrow)
-                                    .flatMap {
-                                      case Right(_) => F.unit
-                                      case Left(_) =>
-                                        F.raiseError[Unit] {
-                                          new CommitTimeoutException(
-                                            settings.commitTimeout,
-                                            offsets
-                                          )
-                                        }
-                                    }
-                              }
-                            }
-                          )
-                        )
-                      }
-                    }
-                  }
+              def newRecords = records(batch)
 
               if (state.fetches.isEmpty) {
                 if (batch.isEmpty) F.unit
