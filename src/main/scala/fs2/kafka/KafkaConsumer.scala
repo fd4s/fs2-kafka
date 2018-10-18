@@ -267,37 +267,39 @@ object KafkaConsumer {
               }
             }
             .flatMap { batch =>
-              def newRecords = records(batch)
-
               if (state.fetches.isEmpty) {
                 if (batch.isEmpty) F.unit
-                else ref.update(_.withRecords(newRecords))
+                else ref.update(_.withRecords(records(batch)))
               } else {
+                val newRecords = records(batch)
                 val allRecords = state.records combine newRecords
 
                 if (allRecords.nonEmpty) {
                   val requested = state.fetches.keySet
                   val available = allRecords.keySet
 
-                  val complete = available intersect requested
-                  val notComplete = available diff complete
+                  val canBeCompleted = available intersect requested
+                  val canBeStored = available diff canBeCompleted
 
-                  val completeFetches =
-                    if (complete.nonEmpty) {
-                      state.fetches.filterKeys(complete).toList.traverse {
+                  val complete =
+                    if (canBeCompleted.nonEmpty) {
+                      state.fetches.filterKeys(canBeCompleted).toList.traverse {
                         case (partition, fetches) =>
                           val records = allRecords(partition)
                           val stream = Stream.fromIterator(records.iterator)
                           fetches.traverse(_.complete(stream))
-                      } *> ref.update(_.withoutFetches(complete).withoutRecords(complete))
+                      } *> ref.update {
+                        _.withoutFetches(canBeCompleted)
+                          .withoutRecords(canBeCompleted)
+                      }
                     } else F.unit
 
-                  val notCompleteStored =
-                    if (notComplete.nonEmpty) {
-                      ref.update(_.withRecords(allRecords.filterKeys(notComplete)))
+                  val store =
+                    if (canBeStored.nonEmpty) {
+                      ref.update(_.withRecords(newRecords.filterKeys(canBeStored)))
                     } else F.unit
 
-                  completeFetches *> notCompleteStored
+                  complete *> store
                 } else F.unit
               }
             }
