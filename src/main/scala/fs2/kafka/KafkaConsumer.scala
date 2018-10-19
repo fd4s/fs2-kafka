@@ -378,20 +378,29 @@ object KafkaConsumer {
                   }
 
               assignment.flatMap { assigned =>
-                assigned.toList
-                  .traverse { partition =>
-                    Deferred[F, Stream[F, CommittableMessage[F, K, V]]]
-                      .flatMap { deferred =>
-                        val fetch = requests.enqueue1(Fetch(partition, deferred)) *> deferred.get
-                        F.race(fiber.join, fetch).map {
-                          case Left(())      => Stream.empty
-                          case Right(stream) => stream
+                if (assigned.isEmpty)
+                  F.pure(Stream.empty.covaryAll[F, CommittableMessage[F, K, V]])
+                else {
+                  Queue
+                    .bounded[F, Option[Stream[F, CommittableMessage[F, K, V]]]](assigned.size)
+                    .flatMap { queue =>
+                      assigned.toList
+                        .traverse { partition =>
+                          Deferred[F, Stream[F, CommittableMessage[F, K, V]]].flatMap { deferred =>
+                            val fetch = requests.enqueue1(Fetch(partition, deferred)) *> deferred.get
+                            F.race(fiber.join, fetch).flatMap {
+                              case Left(())      => F.unit
+                              case Right(stream) => queue.enqueue1(Some(stream))
+                            }
+                          }.start
                         }
-                      }
-                      .start
-                  }
-                  .map(_.combineAll)
-                  .flatMap(_.join)
+                        .map(_.combineAll)
+                        .flatMap(_.join)
+                        .flatMap(_ => queue.enqueue1(None))
+                        .start
+                        .as(queue.dequeue.unNoneTerminate.flatten)
+                    }
+                }
               }
             }
             .flatten
