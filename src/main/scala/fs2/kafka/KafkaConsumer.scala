@@ -254,14 +254,15 @@ object KafkaConsumer {
         while (partitions.hasNext) {
           val partition = partitions.next
           val records = batch.records(partition).iterator
-          var partitionMessages = Chain.empty[CommittableMessage[F, K, V]]
+          val partitionMessages = List.newBuilder[CommittableMessage[F, K, V]]
 
           while (records.hasNext) {
             val partitionMessage = message(records.next, partition)
-            partitionMessages = partitionMessages append partitionMessage
+            partitionMessages += partitionMessage
           }
 
-          messages += partition -> NonEmptyChain.fromChainUnsafe(partitionMessages)
+          val partitionMessagesResult = Chain.fromSeq(partitionMessages.result)
+          messages += partition -> NonEmptyChain.fromChainUnsafe(partitionMessagesResult)
         }
 
         messages.result
