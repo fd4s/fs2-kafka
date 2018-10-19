@@ -18,6 +18,8 @@ sealed abstract class ConsumerSettings[K, V] {
 
   def commitTimeout: FiniteDuration
 
+  def fetchTimeout: FiniteDuration
+
   def pollInterval: FiniteDuration
 
   def pollTimeout: FiniteDuration
@@ -31,6 +33,7 @@ object ConsumerSettings {
     override val executionContext: ExecutionContext,
     override val closeTimeout: FiniteDuration,
     override val commitTimeout: FiniteDuration,
+    override val fetchTimeout: FiniteDuration,
     override val pollInterval: FiniteDuration,
     override val pollTimeout: FiniteDuration
   ) extends ConsumerSettings[K, V]
@@ -61,6 +64,7 @@ object ConsumerSettings {
     executionContext: ExecutionContext,
     closeTimeout: FiniteDuration = 20.seconds,
     commitTimeout: FiniteDuration = 15.seconds,
+    fetchTimeout: FiniteDuration = 500.millis,
     pollInterval: FiniteDuration = 50.millis,
     pollTimeout: FiniteDuration = 50.millis
   ): ConsumerSettings[K, V] = new ConsumerSettingsImpl(
@@ -70,6 +74,7 @@ object ConsumerSettings {
     executionContext = executionContext,
     closeTimeout = closeTimeout,
     commitTimeout = commitTimeout,
+    fetchTimeout = fetchTimeout,
     pollInterval = pollInterval,
     pollTimeout = pollTimeout
   )

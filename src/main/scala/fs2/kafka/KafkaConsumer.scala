@@ -34,16 +34,30 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 }
 
 object KafkaConsumer {
+  private[this] final class ExpiringFetch[F[_], K, V](
+    deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]],
+    expiresAt: Long
+  ) {
+    def complete(stream: Stream[F, CommittableMessage[F, K, V]]): F[Unit] =
+      deferred.complete(stream)
+
+    def hasExpired(now: Long): Boolean =
+      now >= expiresAt
+  }
+
   private[this] final case class State[F[_], K, V](
-    fetches: Map[TopicPartition, NonEmptyChain[Deferred[F, Stream[F, CommittableMessage[F, K, V]]]]],
+    fetches: Map[TopicPartition, NonEmptyChain[ExpiringFetch[F, K, V]]],
     records: Map[TopicPartition, NonEmptyChain[CommittableMessage[F, K, V]]],
     subscribed: Boolean
   ) {
     def withFetch(
       partition: TopicPartition,
-      fetch: Deferred[F, Stream[F, CommittableMessage[F, K, V]]]
-    ): State[F, K, V] =
-      copy(fetches = fetches combine Map(partition -> NonEmptyChain.one(fetch)))
+      deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]],
+      expiresAt: Long
+    ): State[F, K, V] = {
+      val fetch = NonEmptyChain.one(new ExpiringFetch(deferred, expiresAt))
+      copy(fetches = fetches combine Map(partition -> fetch))
+    }
 
     def withoutFetches(partitions: Set[TopicPartition]): State[F, K, V] =
       copy(fetches = fetches.filterKeys(!partitions.contains(_)))
@@ -123,11 +137,16 @@ object KafkaConsumer {
           ))
       } *> ref.update(_.asSubscribed)
 
+    private val nowExpiryTime: F[Long] =
+      timer.clock.monotonic(settings.fetchTimeout.unit)
+
     private def fetch(
       partition: TopicPartition,
       deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]]
-    ): F[Unit] =
-      ref.update(_.withFetch(partition, deferred))
+    ): F[Unit] = nowExpiryTime.flatMap { now =>
+      val expiresAt = now + settings.fetchTimeout.length
+      ref.update(_.withFetch(partition, deferred, expiresAt))
+    }
 
     private def commit(
       offsets: Map[TopicPartition, OffsetAndMetadata],
@@ -301,6 +320,37 @@ object KafkaConsumer {
 
                   complete *> store
                 } else F.unit
+              }
+            }
+            .flatMap { _ =>
+              ref.get.flatMap { state =>
+                nowExpiryTime.flatMap { now =>
+                  val anyExpired =
+                    state.fetches.values.exists(_.exists(_.hasExpired(now)))
+
+                  if (anyExpired) {
+                    val completeExpired =
+                      state.fetches.values
+                        .flatMap(_.filter_(_.hasExpired(now)))
+                        .foldLeft(F.unit)(_ *> _.complete(Stream.empty))
+
+                    val newFetches =
+                      Map.newBuilder[TopicPartition, NonEmptyChain[ExpiringFetch[F, K, V]]]
+
+                    state.fetches.foreach {
+                      case (partition, fetches) =>
+                        if (!fetches.forall(_.hasExpired(now))) {
+                          val nonExpiredFetches = fetches.filterNot(_.hasExpired(now))
+                          newFetches += partition -> NonEmptyChain.fromChainUnsafe(nonExpiredFetches)
+                        }
+                    }
+
+                    val removeExpired =
+                      ref.update(_.copy(fetches = newFetches.result))
+
+                    completeExpired *> removeExpired
+                  } else F.unit
+                }
               }
             }
         } else F.unit
