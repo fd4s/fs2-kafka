@@ -24,7 +24,7 @@ package object kafka {
           Executors.newSingleThreadExecutor(new ThreadFactory {
             override def newThread(runnable: Runnable): Thread = {
               val thread = new Thread(runnable)
-              thread.setName("kafka-consumer")
+              thread.setName(s"fs2-kafka-consumer-${thread.getId}")
               thread.setDaemon(true)
               thread
             }
