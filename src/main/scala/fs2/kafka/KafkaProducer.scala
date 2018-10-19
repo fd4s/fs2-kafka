@@ -1,7 +1,5 @@
 package fs2.kafka
 
-import java.util.concurrent.TimeUnit
-
 import cats.Applicative
 import cats.effect.concurrent.Deferred
 import cats.effect.{ConcurrentEffect, IO, Sync}
@@ -36,8 +34,8 @@ object KafkaProducer {
     } { producer =>
       F.delay {
         producer.close(
-          settings.closeTimeout.toMillis,
-          TimeUnit.MILLISECONDS
+          settings.closeTimeout.length,
+          settings.closeTimeout.unit
         )
       }
     }
