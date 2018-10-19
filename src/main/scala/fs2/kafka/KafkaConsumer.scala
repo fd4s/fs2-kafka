@@ -345,18 +345,20 @@ object KafkaConsumer {
   ): Stream[F, KafkaConsumer[F, K, V]] =
     for {
       requests <- Stream.eval(Queue.unbounded[F, Request[F, K, V]])
+      polls <- Stream.eval(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Stream.eval(Ref.of[F, State[F, K, V]](State.empty))
       consumer <- createConsumer(settings)
       actor = ConsumerActor(settings, ref, requests, consumer)
       handler <- Stream.bracket {
-        requests.dequeue1
+        requests.tryDequeue1
+          .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
           .flatMap(actor.handle(_) *> context.shift)
           .foreverM[Unit]
           .start
       }(_.cancel)
       polls <- Stream.bracket {
         {
-          requests.enqueue1(Poll()) *>
+          polls.enqueue1(Poll()) *>
             timer.sleep(settings.pollInterval)
         }.foreverM[Unit].start
       }(_.cancel)
