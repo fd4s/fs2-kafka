@@ -8,4 +8,7 @@ final class ProducerStream[F[_]] private[kafka] {
     implicit F: ConcurrentEffect[F]
   ): Stream[F, KafkaProducer[F, K, V]] =
     producerStream(settings)
+
+  override def toString: String =
+    "ProducerStream$" + System.identityHashCode(this)
 }

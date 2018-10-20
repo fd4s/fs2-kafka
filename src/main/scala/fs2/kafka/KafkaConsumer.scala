@@ -222,7 +222,7 @@ object KafkaConsumer {
                 case Right(_) => F.unit
                 case Left(_) =>
                   F.raiseError[Unit] {
-                    new CommitTimeoutException(
+                    CommitTimeoutException(
                       settings.commitTimeout,
                       offsets
                     )
@@ -463,6 +463,9 @@ object KafkaConsumer {
 
         override val fiber: Fiber[F, Unit] =
           handler combine polls
+
+        override def toString: String =
+          "KafkaConsumer$" + System.identityHashCode(this)
       }
     }
 }

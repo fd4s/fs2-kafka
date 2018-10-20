@@ -1,4 +1,5 @@
 package fs2.kafka
+import cats.Show
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.Deserializer
 
@@ -36,7 +37,10 @@ object ConsumerSettings {
     override val fetchTimeout: FiniteDuration,
     override val pollInterval: FiniteDuration,
     override val pollTimeout: FiniteDuration
-  ) extends ConsumerSettings[K, V]
+  ) extends ConsumerSettings[K, V] {
+    override def toString: String =
+      Show[ConsumerSettings[K, V]].show(this)
+  }
 
   private[this] val defaultNativeSettings: Map[String, AnyRef] =
     Map(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false")
@@ -78,4 +82,7 @@ object ConsumerSettings {
     pollInterval = pollInterval,
     pollTimeout = pollTimeout
   )
+
+  implicit def consumerSettingsShow[K, V]: Show[ConsumerSettings[K, V]] =
+    Show.show(s => s"ConsumerSettings(closeTimeout = ${s.closeTimeout}, commitTimeout = ${s.commitTimeout}, fetchTimeout = ${s.fetchTimeout}, pollInterval = ${s.pollInterval}, pollTimeout = ${s.pollTimeout})")
 }

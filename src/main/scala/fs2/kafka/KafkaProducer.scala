@@ -131,6 +131,9 @@ object KafkaProducer {
           case ProducerMessage.Passthrough(passthrough) =>
             producePassthrough(passthrough)
         }
+
+        override def toString: String =
+          "KafkaProducer$" + System.identityHashCode(this)
       }
     }
 }

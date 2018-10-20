@@ -10,4 +10,7 @@ final class ConsumerStream[F[_]] private[kafka] {
     timer: Timer[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =
     consumerStream(settings)
+
+  override def toString: String =
+    "ConsumerStream$" + System.identityHashCode(this)
 }

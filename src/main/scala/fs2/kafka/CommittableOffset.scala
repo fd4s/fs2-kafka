@@ -1,5 +1,8 @@
 package fs2.kafka
 
+import cats.Show
+import cats.syntax.show._
+import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
@@ -40,6 +43,12 @@ object CommittableOffset {
 
       override def commit: F[Unit] =
         _commit(offsets)
+
+      override def toString: String =
+        Show[CommittableOffset[F]].show(this)
     }
   }
+
+  implicit def committableOffsetShow[F[_]]: Show[CommittableOffset[F]] =
+    Show.show(co => show"CommittableOffset(${co.topicPartition} -> ${co.offsetAndMetadata})")
 }

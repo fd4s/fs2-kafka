@@ -1,6 +1,8 @@
 package fs2.kafka
 
-import cats.Applicative
+import cats.syntax.show._
+import cats.{Applicative, Show}
+import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
@@ -29,6 +31,9 @@ object CommittableOffsetBatch {
 
       override def commit: F[Unit] =
         _commit(offsets)
+
+      override def toString: String =
+        Show[CommittableOffsetBatch[F]].show(this)
     }
   }
 
@@ -42,5 +47,28 @@ object CommittableOffsetBatch {
 
       override val commit: F[Unit] =
         F.unit
+
+      override def toString: String =
+        Show[CommittableOffsetBatch[F]].show(this)
+    }
+
+  implicit def committableOffsetBatchShow[F[_]]: Show[CommittableOffsetBatch[F]] =
+    Show.show { cob =>
+      if (cob.offsets.isEmpty) "CommittableOffsetBatch(<empty>)"
+      else {
+        val builder = new StringBuilder("CommittableOffsetBatch(")
+        val offsets = cob.offsets.toList.sorted
+        var first = true
+
+        offsets.foreach {
+          case (tp, oam) =>
+            if (first) first = false
+            else builder.append(", ")
+
+            builder.append(tp.show).append(" -> ").append(oam.show)
+        }
+
+        builder.append(')').toString
+      }
     }
 }

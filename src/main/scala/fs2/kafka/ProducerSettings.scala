@@ -1,5 +1,6 @@
 package fs2.kafka
 
+import cats.Show
 import org.apache.kafka.common.serialization.Serializer
 
 import scala.concurrent.duration._
@@ -20,7 +21,10 @@ object ProducerSettings {
     override val valueSerializer: Serializer[V],
     override val nativeSettings: Map[String, AnyRef],
     override val closeTimeout: FiniteDuration
-  ) extends ProducerSettings[K, V]
+  ) extends ProducerSettings[K, V] {
+    override def toString: String =
+      Show[ProducerSettings[K, V]].show(this)
+  }
 
   def apply[K, V](
     keySerializer: Serializer[K],
@@ -34,4 +38,7 @@ object ProducerSettings {
       nativeSettings = nativeSettings,
       closeTimeout = closeTimeout
     )
+
+  implicit def producerSettingsShow[K, V]: Show[ProducerSettings[K, V]] =
+    Show.show(s => s"ProducerSettings(closeTimeout = ${s.closeTimeout})")
 }
