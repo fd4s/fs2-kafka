@@ -17,7 +17,7 @@ import cats.syntax.functor._
 import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
-import fs2.Stream
+import fs2.{Chunk, Stream}
 import fs2.concurrent.Queue
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer, _}
@@ -35,10 +35,10 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 
 object KafkaConsumer {
   private[this] final class ExpiringFetch[F[_], K, V](
-    deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]],
+    deferred: Deferred[F, Chunk[CommittableMessage[F, K, V]]],
     expiresAt: Long
   ) {
-    def complete(stream: Stream[F, CommittableMessage[F, K, V]]): F[Unit] =
+    def complete(stream: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
       deferred.complete(stream)
 
     def hasExpired(now: Long): Boolean =
@@ -52,7 +52,7 @@ object KafkaConsumer {
   ) {
     def withFetch(
       partition: TopicPartition,
-      deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]],
+      deferred: Deferred[F, Chunk[CommittableMessage[F, K, V]]],
       expiresAt: Long
     ): State[F, K, V] = {
       val fetch = NonEmptyChain.one(new ExpiringFetch(deferred, expiresAt))
@@ -100,7 +100,7 @@ object KafkaConsumer {
 
   private[this] final case class Fetch[F[_], K, V](
     partition: TopicPartition,
-    deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]]
+    deferred: Deferred[F, Chunk[CommittableMessage[F, K, V]]]
   ) extends Request[F, K, V]
 
   private[this] final case class Commit[F[_], K, V](
@@ -142,7 +142,7 @@ object KafkaConsumer {
 
     private def fetch(
       partition: TopicPartition,
-      deferred: Deferred[F, Stream[F, CommittableMessage[F, K, V]]]
+      deferred: Deferred[F, Chunk[CommittableMessage[F, K, V]]]
     ): F[Unit] = nowExpiryTime.flatMap { now =>
       val expiresAt = now + settings.fetchTimeout.length
       ref.update(_.withFetch(partition, deferred, expiresAt))
@@ -182,10 +182,9 @@ object KafkaConsumer {
           if (withRecords.nonEmpty) {
             state.fetches.filterKeys(withRecords).toList.traverse {
               case (partition, partitionFetches) =>
-                val records = state.records(partition)
-                val stream = Stream.fromIterator(records.iterator)
-                partitionFetches.traverse(_.complete(stream))
-            } *> ref.update(_.withoutFetches(withRecords).withoutRecords(withRecords))
+                val records = Chunk.chain(state.records(partition).toChain)
+                partitionFetches.traverse(_.complete(records))
+            } >> ref.update(_.withoutFetches(withRecords).withoutRecords(withRecords))
           } else F.unit
 
         val completeWithoutRecords =
@@ -194,11 +193,11 @@ object KafkaConsumer {
               .filterKeys(withoutRecords)
               .values
               .toList
-              .traverse(_.traverse(_.complete(Stream.empty))) *>
+              .traverse(_.traverse(_.complete(Chunk.empty))) >>
               ref.update(_.withoutFetches(withoutRecords))
           } else F.unit
 
-        completeWithRecords *> completeWithoutRecords
+        completeWithRecords >> completeWithoutRecords
       }
 
     private def assignment(deferred: Deferred[F, Set[TopicPartition]]): F[Unit] =
@@ -216,7 +215,7 @@ object KafkaConsumer {
     private val messageCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
       offsets =>
         Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-          requests.enqueue1(Commit(offsets, deferred)) *>
+          requests.enqueue1(Commit(offsets, deferred)) >>
             F.race(timer.sleep(settings.commitTimeout), deferred.get.rethrow)
               .flatMap {
                 case Right(_) => F.unit
@@ -305,10 +304,9 @@ object KafkaConsumer {
                     if (canBeCompleted.nonEmpty) {
                       state.fetches.filterKeys(canBeCompleted).toList.traverse {
                         case (partition, fetches) =>
-                          val records = allRecords(partition)
-                          val stream = Stream.fromIterator(records.iterator)
-                          fetches.traverse(_.complete(stream))
-                      } *> ref.update {
+                          val records = Chunk.chain(allRecords(partition).toChain)
+                          fetches.traverse(_.complete(records))
+                      } >> ref.update {
                         _.withoutFetches(canBeCompleted)
                           .withoutRecords(canBeCompleted)
                       }
@@ -319,7 +317,7 @@ object KafkaConsumer {
                       ref.update(_.withRecords(newRecords.filterKeys(canBeStored)))
                     } else F.unit
 
-                  complete *> store
+                  complete >> store
                 } else F.unit
               }
             }
@@ -333,7 +331,7 @@ object KafkaConsumer {
                     val completeExpired =
                       state.fetches.values
                         .flatMap(_.filter_(_.hasExpired(now)))
-                        .foldLeft(F.unit)(_ *> _.complete(Stream.empty))
+                        .foldLeft(F.unit)(_ >> _.complete(Chunk.empty))
 
                     val newFetches =
                       Map.newBuilder[TopicPartition, NonEmptyChain[ExpiringFetch[F, K, V]]]
@@ -349,7 +347,7 @@ object KafkaConsumer {
                     val removeExpired =
                       ref.update(_.copy(fetches = newFetches.result))
 
-                    completeExpired *> removeExpired
+                    completeExpired >> removeExpired
                   } else F.unit
                 }
               }
@@ -403,13 +401,13 @@ object KafkaConsumer {
       handler <- Stream.bracket {
         requests.tryDequeue1
           .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
-          .flatMap(actor.handle(_) *> context.shift)
+          .flatMap(actor.handle(_) >> context.shift)
           .foreverM[Unit]
           .start
       }(_.cancel)
       polls <- Stream.bracket {
         {
-          polls.enqueue1(Poll()) *>
+          polls.enqueue1(Poll()) >>
             timer.sleep(settings.pollInterval)
         }.foreverM[Unit].start
       }(_.cancel)
@@ -421,7 +419,7 @@ object KafkaConsumer {
               val assignment: F[Set[TopicPartition]] =
                 Deferred[F, Set[TopicPartition]]
                   .flatMap { deferred =>
-                    val assignment = requests.enqueue1(Assignment(deferred)) *> deferred.get
+                    val assignment = requests.enqueue1(Assignment(deferred)) >> deferred.get
                     F.race(fiber.join, assignment).map {
                       case Left(())        => Set.empty
                       case Right(assigned) => assigned
@@ -433,15 +431,15 @@ object KafkaConsumer {
                   F.pure(Stream.empty.covaryAll[F, CommittableMessage[F, K, V]])
                 else {
                   Queue
-                    .bounded[F, Option[Stream[F, CommittableMessage[F, K, V]]]](assigned.size)
+                    .bounded[F, Option[Chunk[CommittableMessage[F, K, V]]]](assigned.size)
                     .flatMap { queue =>
                       assigned.toList
                         .traverse { partition =>
-                          Deferred[F, Stream[F, CommittableMessage[F, K, V]]].flatMap { deferred =>
-                            val fetch = requests.enqueue1(Fetch(partition, deferred)) *> deferred.get
+                          Deferred[F, Chunk[CommittableMessage[F, K, V]]].flatMap { deferred =>
+                            val fetch = requests.enqueue1(Fetch(partition, deferred)) >> deferred.get
                             F.race(fiber.join, fetch).flatMap {
-                              case Left(())      => F.unit
-                              case Right(stream) => queue.enqueue1(Some(stream))
+                              case Left(())     => F.unit
+                              case Right(chunk) => queue.enqueue1(Some(chunk))
                             }
                           }.start
                         }
@@ -449,7 +447,11 @@ object KafkaConsumer {
                         .flatMap(_.join)
                         .flatMap(_ => queue.enqueue1(None))
                         .start
-                        .as(queue.dequeue.unNoneTerminate.flatten)
+                        .as {
+                          queue.dequeue.unNoneTerminate
+                            .flatMap(Stream.chunk)
+                            .covary[F]
+                        }
                     }
                 }
               }
