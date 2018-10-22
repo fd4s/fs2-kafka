@@ -10,16 +10,15 @@ import cats.instances.list._
 import cats.instances.map._
 import cats.instances.unit._
 import cats.syntax.applicativeError._
-import cats.syntax.apply._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
-import fs2.{Chunk, Stream}
 import fs2.concurrent.Queue
 import fs2.kafka.internal.syntax._
+import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer, _}
 import org.apache.kafka.common.TopicPartition
 
@@ -38,8 +37,8 @@ object KafkaConsumer {
     deferred: Deferred[F, Chunk[CommittableMessage[F, K, V]]],
     expiresAt: Long
   ) {
-    def complete(stream: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
-      deferred.complete(stream)
+    def complete(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
+      deferred.complete(chunk)
 
     def hasExpired(now: Long): Boolean =
       now >= expiresAt
@@ -108,7 +107,7 @@ object KafkaConsumer {
     deferred: Deferred[F, Either[Throwable, Unit]]
   ) extends Request[F, K, V]
 
-  private[this] final case class ConsumerActor[F[_], K, V](
+  private[this] final class ConsumerActor[F[_], K, V](
     settings: ConsumerSettings[K, V],
     ref: Ref[F, State[F, K, V]],
     requests: Queue[F, Request[F, K, V]],
@@ -135,7 +134,7 @@ object KafkaConsumer {
                 ()
             }
           ))
-      } *> ref.update(_.asSubscribed)
+      } >> ref.update(_.asSubscribed)
 
     private val nowExpiryTime: F[Long] =
       timer.clock.monotonic(settings.fetchTimeout.unit)
@@ -175,8 +174,9 @@ object KafkaConsumer {
         val fetches = state.fetches.keySet
         val records = state.records.keySet
 
-        val withRecords = (partitions intersect fetches) intersect records
-        val withoutRecords = (partitions intersect fetches) diff records
+        val revokedFetches = partitions intersect fetches
+        val withRecords = revokedFetches intersect records
+        val withoutRecords = revokedFetches diff records
 
         val completeWithRecords =
           if (withRecords.nonEmpty) {
@@ -295,10 +295,9 @@ object KafkaConsumer {
 
                 if (allRecords.nonEmpty) {
                   val requested = state.fetches.keySet
-                  val available = allRecords.keySet
 
-                  val canBeCompleted = available intersect requested
-                  val canBeStored = available diff canBeCompleted
+                  val canBeCompleted = allRecords.keySet intersect requested
+                  val canBeStored = newRecords.keySet diff canBeCompleted
 
                   val complete =
                     if (canBeCompleted.nonEmpty) {
@@ -397,7 +396,7 @@ object KafkaConsumer {
       polls <- Stream.eval(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Stream.eval(Ref.of[F, State[F, K, V]](State.empty))
       consumer <- createConsumer(settings)
-      actor = ConsumerActor(settings, ref, requests, consumer)
+      actor = new ConsumerActor(settings, ref, requests, consumer)
       handler <- Stream.bracket {
         requests.tryDequeue1
           .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
@@ -443,8 +442,7 @@ object KafkaConsumer {
                             }
                           }.start
                         }
-                        .map(_.combineAll)
-                        .flatMap(_.join)
+                        .flatMap(_.combineAll.join)
                         .flatMap(_ => queue.enqueue1(None))
                         .start
                         .as {
