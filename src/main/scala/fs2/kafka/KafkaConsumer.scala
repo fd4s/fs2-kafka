@@ -6,27 +6,27 @@ import cats.data.{Chain, NonEmptyChain, NonEmptyList}
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.syntax.concurrent._
 import cats.effect.{ConcurrentEffect, Fiber, Timer, _}
-import cats.instances.unit._
 import cats.instances.list._
 import cats.instances.map._
+import cats.instances.unit._
 import cats.syntax.applicativeError._
 import cats.syntax.apply._
 import cats.syntax.flatMap._
+import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.monadError._
-import cats.syntax.foldable._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
+import fs2.Stream
 import fs2.concurrent.Queue
 import fs2.kafka.internal.syntax._
-import fs2.{Sink, Stream}
 import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer, _}
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
 
 sealed abstract class KafkaConsumer[F[_], K, V] {
-  def stream(sink: Sink[F, CommittableMessage[F, K, V]]): Stream[F, Unit]
+  def stream: Stream[F, CommittableMessage[F, K, V]]
 
   def subscribe(topics: NonEmptyList[String]): Stream[F, Unit]
 
@@ -415,7 +415,7 @@ object KafkaConsumer {
       }(_.cancel)
     } yield {
       new KafkaConsumer[F, K, V] {
-        override def stream(sink: Sink[F, CommittableMessage[F, K, V]]): Stream[F, Unit] =
+        override def stream: Stream[F, CommittableMessage[F, K, V]] =
           Stream
             .repeatEval {
               val assignment: F[Set[TopicPartition]] =
@@ -455,7 +455,6 @@ object KafkaConsumer {
               }
             }
             .flatten
-            .to(sink)
             .interruptWhen(fiber.join.attempt)
 
         override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =

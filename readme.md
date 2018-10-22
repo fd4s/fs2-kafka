@@ -64,8 +64,8 @@ object Main extends IOApp {
         consumer <- consumerStream[IO].using(consumerSettings(executionContext))
         producer <- producerStream[IO].using(producerSettings)
         _ <- consumer.subscribe(topics)
-        _ <- consumer.stream {
-          _.mapAsync(25)(message =>
+        _ <- consumer.stream
+          .mapAsync(25)(message =>
             processRecord(message.record)
               .map {
                 case (key, value) =>
@@ -79,7 +79,6 @@ object Main extends IOApp {
                 .map(_.foldLeft(CommittableOffsetBatch.empty[IO])(_ updated _))
                 .flatMap(_.commit)
             }
-        }
       } yield ()
 
     stream.compile.drain.as(ExitCode.Success)
