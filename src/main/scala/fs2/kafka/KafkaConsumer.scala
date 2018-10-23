@@ -27,6 +27,8 @@ import scala.collection.JavaConverters._
 sealed abstract class KafkaConsumer[F[_], K, V] {
   def stream: Stream[F, CommittableMessage[F, K, V]]
 
+  def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]]
+
   def subscribe(topics: NonEmptyList[String]): Stream[F, Unit]
 
   def fiber: Fiber[F, Unit]
@@ -413,6 +415,9 @@ object KafkaConsumer {
     } yield {
       new KafkaConsumer[F, K, V] {
         override def stream: Stream[F, CommittableMessage[F, K, V]] =
+          partitionedStream.flatten
+
+        override def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]] =
           Stream
             .repeatEval {
               val assignment: F[Set[TopicPartition]] =
@@ -454,7 +459,6 @@ object KafkaConsumer {
                 }
               }
             }
-            .flatten
             .interruptWhen(fiber.join.attempt)
 
         override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
