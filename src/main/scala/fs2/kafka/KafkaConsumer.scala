@@ -24,7 +24,7 @@ import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
 
-sealed abstract class KafkaConsumer[F[_], K, V] {
+abstract class KafkaConsumer[F[_], K, V] {
   def stream: Stream[F, CommittableMessage[F, K, V]]
 
   def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]]

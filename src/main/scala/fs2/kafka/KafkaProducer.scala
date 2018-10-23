@@ -13,7 +13,7 @@ import org.apache.kafka.clients.producer.{KafkaProducer => KProducer, _}
 
 import scala.collection.JavaConverters._
 
-sealed abstract class KafkaProducer[F[_], K, V] {
+abstract class KafkaProducer[F[_], K, V] {
   def produceWithBatching[P](
     message: ProducerMessage[K, V, P]
   ): F[F[ProducerResult[K, V, P]]]
