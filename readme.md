@@ -8,7 +8,7 @@ To get started with [sbt][sbt], simply add the following lines to your `build.sb
 ```scala
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 
-libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.11"
+libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.12"
 ```
 
 The library is published for Scala 2.11 and 2.12.
