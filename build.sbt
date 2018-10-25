@@ -29,3 +29,13 @@ libraryDependencies ++= Seq(
   "co.fs2" %% "fs2-core" % "1.0.0",
   "org.apache.kafka" % "kafka-clients" % "2.0.0"
 )
+
+libraryDependencies ++= Seq(
+  "org.scalatest" %% "scalatest" % "3.0.5",
+  "org.scalacheck" %% "scalacheck" % "1.14.0",
+  "net.manub" %% "scalatest-embedded-kafka" % "2.0.0"
+).map(_ % Test)
+
+logBuffered in Test := false
+parallelExecution in Test := false
+testOptions in Test += Tests.Argument("-oDF")
