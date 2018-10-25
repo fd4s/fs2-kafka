@@ -13,6 +13,7 @@ import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
+import cats.syntax.monad._
 import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
@@ -49,7 +50,8 @@ object KafkaConsumer {
   private[this] final case class State[F[_], K, V](
     fetches: Map[TopicPartition, NonEmptyChain[ExpiringFetch[F, K, V]]],
     records: Map[TopicPartition, NonEmptyChain[CommittableMessage[F, K, V]]],
-    subscribed: Boolean
+    subscribed: Boolean,
+    running: Boolean
   ) {
     def withFetch(
       partition: TopicPartition,
@@ -73,6 +75,9 @@ object KafkaConsumer {
 
     def asSubscribed: State[F, K, V] =
       copy(subscribed = true)
+
+    def asShutdown: State[F, K, V] =
+      copy(running = false)
   }
 
   private[this] object State {
@@ -80,7 +85,8 @@ object KafkaConsumer {
       State(
         fetches = Map.empty,
         records = Map.empty,
-        subscribed = false
+        subscribed = false,
+        running = true
       )
   }
 
@@ -108,6 +114,8 @@ object KafkaConsumer {
     offsets: Map[TopicPartition, OffsetAndMetadata],
     deferred: Deferred[F, Either[Throwable, Unit]]
   ) extends Request[F, K, V]
+
+  private[this] final case class Shutdown[F[_], K, V]() extends Request[F, K, V]
 
   private[this] final class ConsumerActor[F[_], K, V](
     settings: ConsumerSettings[K, V],
@@ -357,6 +365,9 @@ object KafkaConsumer {
       }
     }
 
+    private val shutdown: F[Unit] =
+      ref.update(_.asShutdown)
+
     def handle(request: Request[F, K, V]): F[Unit] =
       request match {
         case Assignment(deferred)       => assignment(deferred)
@@ -365,6 +376,7 @@ object KafkaConsumer {
         case Fetch(partition, deferred) => fetch(partition, deferred)
         case Commit(offsets, deferred)  => commit(offsets, deferred)
         case Revoked(partitions)        => revoked(partitions)
+        case Shutdown()                 => shutdown
       }
   }
 
@@ -397,20 +409,21 @@ object KafkaConsumer {
       requests <- Stream.eval(Queue.unbounded[F, Request[F, K, V]])
       polls <- Stream.eval(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Stream.eval(Ref.of[F, State[F, K, V]](State.empty))
+      running = ref.get.map(_.running)
       consumer <- createConsumer(settings)
       actor = new ConsumerActor(settings, ref, requests, consumer)
       handler <- Stream.bracket {
         requests.tryDequeue1
           .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
           .flatMap(actor.handle(_) >> context.shift)
-          .foreverM[Unit]
+          .whileM_(running)
           .start
       }(_.cancel)
       polls <- Stream.bracket {
         {
           polls.enqueue1(Poll()) >>
             timer.sleep(settings.pollInterval)
-        }.foreverM[Unit].start
+        }.whileM_(running).start
       }(_.cancel)
     } yield {
       new KafkaConsumer[F, K, V] {
@@ -464,8 +477,11 @@ object KafkaConsumer {
         override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
           Stream.eval(requests.enqueue1(Subscribe(topics)))
 
-        override val fiber: Fiber[F, Unit] =
-          handler combine polls
+        override val fiber: Fiber[F, Unit] = {
+          val join = (handler combine polls).join
+          val cancel = requests.enqueue1(Shutdown())
+          Fiber(join, cancel)
+        }
 
         override def toString: String =
           "KafkaConsumer$" + System.identityHashCode(this)
