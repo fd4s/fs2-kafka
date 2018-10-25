@@ -478,9 +478,16 @@ object KafkaConsumer {
           Stream.eval(requests.enqueue1(Subscribe(topics)))
 
         override val fiber: Fiber[F, Unit] = {
-          val join = (handler combine polls).join
-          val cancel = requests.enqueue1(Shutdown())
-          Fiber(join, cancel)
+          val requestShutdown = requests.enqueue1(Shutdown())
+          val forceShutdown = ref.update(_.asShutdown)
+
+          val join = {
+            val handlerFiber = Fiber(handler.join, requestShutdown)
+            val pollsFiber = Fiber(polls.join, forceShutdown)
+            (handlerFiber combine pollsFiber).join
+          }
+
+          Fiber(join, requestShutdown)
         }
 
         override def toString: String =
