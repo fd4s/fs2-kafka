@@ -24,6 +24,7 @@ import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer, _}
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
+import scala.concurrent.duration.FiniteDuration
 
 abstract class KafkaConsumer[F[_], K, V] {
   def stream: Stream[F, CommittableMessage[F, K, V]]
@@ -400,98 +401,136 @@ object KafkaConsumer {
       }
     }
 
-  private[kafka] def consumerStream[F[_], K, V](settings: ConsumerSettings[K, V])(
+  private[this] def createConsumerActor[F[_], K, V](
+    requests: Queue[F, Request[F, K, V]],
+    polls: Queue[F, Request[F, K, V]],
+    actor: ConsumerActor[F, K, V],
+    running: F[Boolean]
+  )(
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
+  ): Stream[F, Fiber[F, Unit]] =
+    Stream.bracket {
+      requests.tryDequeue1
+        .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
+        .flatMap(actor.handle(_) >> context.shift)
+        .whileM_(running)
+        .start
+    }(_.cancel)
+
+  private[this] def createPollScheduler[F[_], K, V](
+    polls: Queue[F, Request[F, K, V]],
+    pollInterval: FiniteDuration,
+    running: F[Boolean]
+  )(
+    implicit F: Concurrent[F],
+    timer: Timer[F]
+  ): Stream[F, Fiber[F, Unit]] =
+    Stream.bracket {
+      {
+        polls.enqueue1(Poll()) >>
+          timer.sleep(pollInterval)
+      }.whileM_(running).start
+    }(_.cancel)
+
+  private[this] def createKafkaConsumer[F[_], K, V](
+    requests: Queue[F, Request[F, K, V]],
+    ref: Ref[F, State[F, K, V]],
+    handler: Fiber[F, Unit],
+    polls: Fiber[F, Unit]
+  )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
+    new KafkaConsumer[F, K, V] {
+      override val fiber: Fiber[F, Unit] = {
+        val requestShutdown = requests.enqueue1(Shutdown())
+        val forceShutdown = ref.update(_.asShutdown)
+
+        val join = {
+          val handlerFiber = Fiber(handler.join, requestShutdown)
+          val pollsFiber = Fiber(polls.join, forceShutdown)
+          (handlerFiber combine pollsFiber).join
+        }
+
+        Fiber(join, requestShutdown)
+      }
+
+      private val assignment: F[Set[TopicPartition]] =
+        Deferred[F, Set[TopicPartition]].flatMap { deferred =>
+          val assignment = requests.enqueue1(Assignment(deferred)) >> deferred.get
+          F.race(fiber.join, assignment).map {
+            case Left(())        => Set.empty
+            case Right(assigned) => assigned
+          }
+        }
+
+      private def requestPartitions(
+        assigned: Set[TopicPartition]
+      ): F[Stream[F, CommittableMessage[F, K, V]]] =
+        Queue
+          .bounded[F, Option[Chunk[CommittableMessage[F, K, V]]]](assigned.size)
+          .flatMap { queue =>
+            assigned.toList
+              .traverse { partition =>
+                Deferred[F, Chunk[CommittableMessage[F, K, V]]].flatMap { deferred =>
+                  val fetch = requests.enqueue1(Fetch(partition, deferred)) >> deferred.get
+                  F.race(fiber.join, fetch).flatMap {
+                    case Left(())     => F.unit
+                    case Right(chunk) => queue.enqueue1(Some(chunk))
+                  }
+                }.start
+              }
+              .flatMap(_.combineAll.join)
+              .flatMap(_ => queue.enqueue1(None))
+              .start
+              .as {
+                queue.dequeue.unNoneTerminate
+                  .flatMap(Stream.chunk)
+                  .covary[F]
+              }
+          }
+
+      private val empty: F[Stream[F, CommittableMessage[F, K, V]]] =
+        F.pure(Stream.empty.covaryAll[F, CommittableMessage[F, K, V]])
+
+      override val partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]] =
+        Stream
+          .repeatEval {
+            assignment.flatMap { assigned =>
+              if (assigned.isEmpty) empty
+              else requestPartitions(assigned)
+            }
+          }
+          .interruptWhen(fiber.join.attempt)
+
+      override val stream: Stream[F, CommittableMessage[F, K, V]] =
+        partitionedStream.flatten
+
+      override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
+        Stream.eval(requests.enqueue1(Subscribe(topics)))
+
+      override def toString: String =
+        "KafkaConsumer$" + System.identityHashCode(this)
+    }
+
+  private[kafka] def consumerStream[F[_], K, V](
+    settings: ConsumerSettings[K, V]
+  )(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
     timer: Timer[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =
-    for {
-      requests <- Stream.eval(Queue.unbounded[F, Request[F, K, V]])
-      polls <- Stream.eval(Queue.bounded[F, Request[F, K, V]](1))
-      ref <- Stream.eval(Ref.of[F, State[F, K, V]](State.empty))
-      running = ref.get.map(_.running)
-      consumer <- createConsumer(settings)
-      actor = new ConsumerActor(settings, ref, requests, consumer)
-      handler <- Stream.bracket {
-        requests.tryDequeue1
-          .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
-          .flatMap(actor.handle(_) >> context.shift)
-          .whileM_(running)
-          .start
-      }(_.cancel)
-      polls <- Stream.bracket {
-        {
-          polls.enqueue1(Poll()) >>
-            timer.sleep(settings.pollInterval)
-        }.whileM_(running).start
-      }(_.cancel)
-    } yield {
-      new KafkaConsumer[F, K, V] {
-        override def stream: Stream[F, CommittableMessage[F, K, V]] =
-          partitionedStream.flatten
-
-        override def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]] =
-          Stream
-            .repeatEval {
-              val assignment: F[Set[TopicPartition]] =
-                Deferred[F, Set[TopicPartition]]
-                  .flatMap { deferred =>
-                    val assignment = requests.enqueue1(Assignment(deferred)) >> deferred.get
-                    F.race(fiber.join, assignment).map {
-                      case Left(())        => Set.empty
-                      case Right(assigned) => assigned
-                    }
-                  }
-
-              assignment.flatMap { assigned =>
-                if (assigned.isEmpty)
-                  F.pure(Stream.empty.covaryAll[F, CommittableMessage[F, K, V]])
-                else {
-                  Queue
-                    .bounded[F, Option[Chunk[CommittableMessage[F, K, V]]]](assigned.size)
-                    .flatMap { queue =>
-                      assigned.toList
-                        .traverse { partition =>
-                          Deferred[F, Chunk[CommittableMessage[F, K, V]]].flatMap { deferred =>
-                            val fetch = requests.enqueue1(Fetch(partition, deferred)) >> deferred.get
-                            F.race(fiber.join, fetch).flatMap {
-                              case Left(())     => F.unit
-                              case Right(chunk) => queue.enqueue1(Some(chunk))
-                            }
-                          }.start
-                        }
-                        .flatMap(_.combineAll.join)
-                        .flatMap(_ => queue.enqueue1(None))
-                        .start
-                        .as {
-                          queue.dequeue.unNoneTerminate
-                            .flatMap(Stream.chunk)
-                            .covary[F]
-                        }
-                    }
-                }
+    Stream.eval(Queue.unbounded[F, Request[F, K, V]]).flatMap { requests =>
+      Stream.eval(Queue.bounded[F, Request[F, K, V]](1)).flatMap { polls =>
+        Stream.eval(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
+          createConsumer(settings).flatMap { consumer =>
+            val running = ref.get.map(_.running)
+            val actor = new ConsumerActor(settings, ref, requests, consumer)
+            createConsumerActor(requests, polls, actor, running).flatMap { handler =>
+              createPollScheduler(polls, settings.pollInterval, running).map { polls =>
+                createKafkaConsumer(requests, ref, handler, polls)
               }
             }
-            .interruptWhen(fiber.join.attempt)
-
-        override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
-          Stream.eval(requests.enqueue1(Subscribe(topics)))
-
-        override val fiber: Fiber[F, Unit] = {
-          val requestShutdown = requests.enqueue1(Shutdown())
-          val forceShutdown = ref.update(_.asShutdown)
-
-          val join = {
-            val handlerFiber = Fiber(handler.join, requestShutdown)
-            val pollsFiber = Fiber(polls.join, forceShutdown)
-            (handlerFiber combine pollsFiber).join
           }
-
-          Fiber(join, requestShutdown)
         }
-
-        override def toString: String =
-          "KafkaConsumer$" + System.identityHashCode(this)
       }
     }
 }
