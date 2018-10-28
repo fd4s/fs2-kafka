@@ -14,9 +14,9 @@ import org.apache.kafka.clients.producer.{KafkaProducer => KProducer, _}
 import scala.collection.JavaConverters._
 
 abstract class KafkaProducer[F[_], K, V] {
-  def produceWithBatching[P](
-    message: ProducerMessage[K, V, P]
-  ): F[F[ProducerResult[K, V, P]]]
+  def produceBatched[P](message: ProducerMessage[K, V, P]): F[F[ProducerResult[K, V, P]]]
+
+  def produce[P](message: ProducerMessage[K, V, P]): F[ProducerResult[K, V, P]]
 }
 
 object KafkaProducer {
@@ -119,7 +119,7 @@ object KafkaProducer {
   ): Stream[F, KafkaProducer[F, K, V]] =
     createProducer(settings).map { producer =>
       new KafkaProducer[F, K, V] {
-        override def produceWithBatching[P](
+        override def produceBatched[P](
           message: ProducerMessage[K, V, P]
         ): F[F[ProducerResult[K, V, P]]] = message match {
           case ProducerMessage.Single(record, passthrough) =>
@@ -131,6 +131,11 @@ object KafkaProducer {
           case ProducerMessage.Passthrough(passthrough) =>
             producePassthrough(passthrough)
         }
+
+        override def produce[P](
+          message: ProducerMessage[K, V, P]
+        ): F[ProducerResult[K, V, P]] =
+          produceBatched(message).flatten
 
         override def toString: String =
           "KafkaProducer$" + System.identityHashCode(this)
