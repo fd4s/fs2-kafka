@@ -473,8 +473,11 @@ object KafkaConsumer {
                 Deferred[F, Chunk[CommittableMessage[F, K, V]]].flatMap { deferred =>
                   val fetch = requests.enqueue1(Fetch(partition, deferred)) >> deferred.get
                   F.race(fiber.join, fetch).flatMap {
-                    case Left(())     => F.unit
-                    case Right(chunk) => queue.enqueue1(Some(chunk))
+                    case Left(()) => F.unit
+                    case Right(chunk) =>
+                      if (chunk.nonEmpty)
+                        queue.enqueue1(Some(chunk))
+                      else F.unit
                   }
                 }.start
               }
