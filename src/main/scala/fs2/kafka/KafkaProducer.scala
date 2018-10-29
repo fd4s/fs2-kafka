@@ -19,7 +19,7 @@ abstract class KafkaProducer[F[_], K, V] {
   def produce[P](message: ProducerMessage[K, V, P]): F[ProducerResult[K, V, P]]
 }
 
-object KafkaProducer {
+private[kafka] object KafkaProducer {
   private[this] def createProducer[F[_], K, V](
     settings: ProducerSettings[K, V]
   )(implicit F: Sync[F]): Stream[F, Producer[K, V]] = {
@@ -114,7 +114,7 @@ object KafkaProducer {
         f(metadata, exception)
     }
 
-  private[kafka] def producerStream[F[_], K, V](settings: ProducerSettings[K, V])(
+  def producerStream[F[_], K, V](settings: ProducerSettings[K, V])(
     implicit F: ConcurrentEffect[F]
   ): Stream[F, KafkaProducer[F, K, V]] =
     createProducer(settings).map { producer =>
