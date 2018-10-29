@@ -11,6 +11,7 @@ import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.monad._
+import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import fs2.concurrent.Queue
@@ -108,8 +109,8 @@ private[kafka] object KafkaConsumer {
       }
 
       private val assignment: F[Set[TopicPartition]] =
-        Deferred[F, Set[TopicPartition]].flatMap { deferred =>
-          val assignment = requests.enqueue1(Assignment(deferred)) >> deferred.get
+        Deferred[F, Either[Throwable, Set[TopicPartition]]].flatMap { deferred =>
+          val assignment = requests.enqueue1(Assignment(deferred)) >> deferred.get.rethrow
           F.race(fiber.join, assignment).map {
             case Left(())        => Set.empty
             case Right(assigned) => assigned

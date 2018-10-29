@@ -116,14 +116,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       completeWithRecords >> completeWithoutRecords
     }
 
-  private def assignment(deferred: Deferred[F, Set[TopicPartition]]): F[Unit] =
+  private def assignment(deferred: Deferred[F, Either[Throwable, Set[TopicPartition]]]): F[Unit] =
     ref.get.flatMap { state =>
-      val assigned =
+      val assigned: F[Either[Throwable, Set[TopicPartition]]] =
         if (state.subscribed) {
           context.evalOn(settings.executionContext) {
-            F.delay(consumer.assignment.asScala.toSet)
+            F.delay(Right(consumer.assignment.asScala.toSet))
           }
-        } else F.pure(Set.empty[TopicPartition])
+        } else F.pure(Left(NotSubscribedException))
 
       assigned.flatMap(deferred.complete)
     }
@@ -347,7 +347,7 @@ private[kafka] object KafkaConsumerActor {
 
   object Request {
     final case class Assignment[F[_], K, V](
-      deferred: Deferred[F, Set[TopicPartition]]
+      deferred: Deferred[F, Either[Throwable, Set[TopicPartition]]]
     ) extends Request[F, K, V]
 
     final case class Revoked[F[_], K, V](

@@ -70,4 +70,19 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       assert(consumed.isEmpty)
     }
   }
+
+  it("should fail with an error if not subscribed") {
+    withKafka { (config, topic) =>
+      createCustomTopic(topic, partitions = 3)
+
+      val consumed =
+        (for {
+          consumerSettings <- consumerSettings(config)
+          consumer <- consumerStream[IO].using(consumerSettings)
+          _ <- consumer.stream
+        } yield ()).compile.lastOrError.attempt.unsafeRunSync
+
+      assert(consumed.left.toOption.contains(NotSubscribedException))
+    }
+  }
 }
