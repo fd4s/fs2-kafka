@@ -1,7 +1,6 @@
 package fs2.kafka
 
 import cats.Show
-import cats.instances.string._
 import cats.syntax.show._
 import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -24,7 +23,7 @@ object ProducerMessage {
     override val passthrough: P
   ) extends ProducerMessage[K, V, P] {
     override def toString: String =
-      s"Multiple(${records.mkString(", ")}, $passthrough)"
+      records.mkString("Multiple(", ", ", s", $passthrough)")
   }
 
   sealed abstract case class Passthrough[K, V, P](
@@ -60,7 +59,7 @@ object ProducerMessage {
     case Single(record, passthrough) =>
       show"Single($record, $passthrough)"
     case Multiple(records, passthrough) =>
-      show"Multiple(${records.map(_.show).mkString(", ")}, $passthrough)"
+      records.map(_.show).mkString("Multiple(", ", ", s", $passthrough)")
     case Passthrough(passthrough) =>
       show"Passthrough($passthrough)"
   }
