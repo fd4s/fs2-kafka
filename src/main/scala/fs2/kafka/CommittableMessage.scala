@@ -20,7 +20,7 @@ object CommittableMessage {
       s"CommittableMessage($record, $committableOffset)"
   }
 
-  private[kafka] def apply[F[_], K, V](
+  def apply[F[_], K, V](
     record: ConsumerRecord[K, V],
     committableOffset: CommittableOffset[F]
   ): CommittableMessage[F, K, V] =
