@@ -53,26 +53,26 @@ object ProducerResult {
       s"Passthrough($passthrough)"
   }
 
-  private[kafka] def single[K, V, P](
+  def single[K, V, P](
     metadata: RecordMetadata,
     record: ProducerRecord[K, V],
     passthrough: P
   ): ProducerResult[K, V, P] =
     new Single(metadata, record, passthrough) {}
 
-  private[kafka] def multiple[K, V, P](
+  def multiple[K, V, P](
     parts: List[MultiplePart[K, V]],
     passthrough: P
   ): ProducerResult[K, V, P] =
     new Multiple(parts, passthrough) {}
 
-  private[kafka] def multiplePart[K, V](
+  def multiplePart[K, V](
     metadata: RecordMetadata,
     record: ProducerRecord[K, V]
   ): MultiplePart[K, V] =
     new MultiplePart(metadata, record) {}
 
-  private[kafka] def passthrough[K, V, P](
+  def passthrough[K, V, P](
     passthrough: P
   ): ProducerResult[K, V, P] =
     new Passthrough[K, V, P](passthrough) {}
