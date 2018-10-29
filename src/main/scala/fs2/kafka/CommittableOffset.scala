@@ -19,7 +19,7 @@ sealed abstract class CommittableOffset[F[_]] {
 }
 
 object CommittableOffset {
-  private[kafka] def apply[F[_]](
+  def apply[F[_]](
     topicPartition: TopicPartition,
     offsetAndMetadata: OffsetAndMetadata,
     commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
