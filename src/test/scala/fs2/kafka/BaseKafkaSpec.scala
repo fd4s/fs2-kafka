@@ -1,9 +1,12 @@
 package fs2.kafka
 
+import java.util.UUID
+
 import cats.effect.IO
 import fs2.Stream
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer => KConsumer}
+import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization._
 
 import scala.collection.JavaConverters._
@@ -15,26 +18,38 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
   implicit final val stringDeserializer: Deserializer[String] =
     new StringDeserializer
 
-  final def consumerSettingsWith(
+  final def consumerSettings(
     config: EmbeddedKafkaConfig
   ): Stream[IO, ConsumerSettings[String, String]] =
     consumerExecutionContext[IO].map { executionContext =>
       ConsumerSettings(
         keyDeserializer = new StringDeserializer,
         valueDeserializer = new StringDeserializer,
-        nativeSettings = nativeSettingsWith(config),
+        nativeSettings = consumerNativeSettings(config),
         executionContext = executionContext
       )
     }
 
-  final def nativeSettingsWith(config: EmbeddedKafkaConfig): Map[String, AnyRef] =
+  final def producerSettings(
+    config: EmbeddedKafkaConfig
+  ): ProducerSettings[String, String] =
+    ProducerSettings(
+      keySerializer = new StringSerializer,
+      valueSerializer = new StringSerializer,
+      nativeSettings = producerNativeSettings(config)
+    )
+
+  final def consumerNativeSettings(config: EmbeddedKafkaConfig): Map[String, AnyRef] =
     Map(
       ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}",
       ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
       ConsumerConfig.GROUP_ID_CONFIG -> "group"
     )
 
-  final def withKafka[A](f: (EmbeddedKafkaConfig, TopicName) => A): A =
+  final def producerNativeSettings(config: EmbeddedKafkaConfig): Map[String, AnyRef] =
+    Map(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}")
+
+  final def withKafka[A](f: (EmbeddedKafkaConfig, String) => A): A =
     withRunningKafkaOnFoundPort(EmbeddedKafkaConfig())(f(_, nextTopicName()))
 
   final def withKafkaConsumer[K, V](
@@ -61,13 +76,6 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
     }
   }
 
-  type TopicName = String
-
-  private[this] var nextTopicNum: Int = 1
-
-  private[this] def nextTopicName(): TopicName = {
-    val n = nextTopicNum
-    nextTopicNum += 1
-    s"topic-$n"
-  }
+  private[this] def nextTopicName(): String =
+    s"topic-${UUID.randomUUID()}"
 }

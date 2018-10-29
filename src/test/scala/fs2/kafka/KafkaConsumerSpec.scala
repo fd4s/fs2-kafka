@@ -6,7 +6,7 @@ import cats.implicits._
 import fs2.Stream
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
-  it("should consume all produced messages") {
+  it("should consume all messages") {
     withKafka { (config, topic) =>
       createCustomTopic(topic, partitions = 3)
       val produced = (0 until 1000).map(n => s"key-$n" -> s"value->$n")
@@ -14,7 +14,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
       val consumed =
         (for {
-          consumerSettings <- consumerSettingsWith(config)
+          consumerSettings <- consumerSettings(config)
           consumer <- consumerStream[IO].using(consumerSettings)
           _ <- consumer.subscribe(NonEmptyList.of(topic))
           consumed <- consumer.stream.take(produced.size.toLong)
@@ -33,7 +33,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
       val committed =
         (for {
-          consumerSettings <- consumerSettingsWith(config)
+          consumerSettings <- consumerSettings(config)
           consumer <- consumerStream[IO].using(consumerSettings)
           _ <- consumer.subscribe(NonEmptyList.of(topic))
           offsets <- consumer.stream
@@ -45,7 +45,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
       assert {
         committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
-        withKafkaConsumer[String, String](nativeSettingsWith(config)) { consumer =>
+        withKafkaConsumer[String, String](consumerNativeSettings(config)) { consumer =>
           committed.foldLeft(true) {
             case (result, (topicPartition, offsetAndMetadata)) =>
               result && offsetAndMetadata == consumer.committed(topicPartition)
@@ -59,7 +59,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     withKafka { (config, topic) =>
       val consumed =
         (for {
-          consumerSettings <- consumerSettingsWith(config)
+          consumerSettings <- consumerSettings(config)
           consumer <- consumerStream[IO].using(consumerSettings)
           _ <- consumer.subscribe(NonEmptyList.of(topic))
           _ <- Stream.eval(consumer.fiber.cancel)
