@@ -11,7 +11,7 @@ sealed abstract class ProducerMessage[K, V, P] {
 }
 
 object ProducerMessage {
-  private[kafka] final case class Single[K, V, P](
+  sealed abstract case class Single[K, V, P](
     record: ProducerRecord[K, V],
     override val passthrough: P
   ) extends ProducerMessage[K, V, P] {
@@ -19,7 +19,7 @@ object ProducerMessage {
       s"Single($record, $passthrough)"
   }
 
-  private[kafka] final case class Multiple[K, V, P](
+  sealed abstract case class Multiple[K, V, P](
     records: List[ProducerRecord[K, V]],
     override val passthrough: P
   ) extends ProducerMessage[K, V, P] {
@@ -27,7 +27,7 @@ object ProducerMessage {
       s"Multiple(${records.mkString(", ")}, $passthrough)"
   }
 
-  private[kafka] final case class Passthrough[K, V, P](
+  sealed abstract case class Passthrough[K, V, P](
     override val passthrough: P
   ) extends ProducerMessage[K, V, P] {
     override def toString: String =
@@ -38,18 +38,18 @@ object ProducerMessage {
     record: ProducerRecord[K, V],
     passthrough: P
   ): ProducerMessage[K, V, P] =
-    Single(record, passthrough)
+    new Single(record, passthrough) {}
 
   def multiple[K, V, P](
     records: List[ProducerRecord[K, V]],
     passthrough: P
   ): ProducerMessage[K, V, P] =
-    Multiple(records, passthrough)
+    new Multiple(records, passthrough) {}
 
   def passthrough[K, V, P](
     passthrough: P
   ): ProducerMessage[K, V, P] =
-    Passthrough(passthrough)
+    new Passthrough[K, V, P](passthrough) {}
 
   implicit def producerMessageShow[K, V, P](
     implicit
