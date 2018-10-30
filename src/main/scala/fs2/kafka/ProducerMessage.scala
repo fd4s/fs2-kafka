@@ -10,27 +10,54 @@ sealed abstract class ProducerMessage[K, V, P] {
 }
 
 object ProducerMessage {
-  sealed abstract case class Single[K, V, P](
-    record: ProducerRecord[K, V],
+  sealed abstract class Single[K, V, P](
+    val record: ProducerRecord[K, V],
     override val passthrough: P
   ) extends ProducerMessage[K, V, P] {
     override def toString: String =
       s"Single($record, $passthrough)"
   }
 
-  sealed abstract case class Multiple[K, V, P](
-    records: List[ProducerRecord[K, V]],
+  object Single {
+    def unapply[K, V, P](
+      message: ProducerMessage[K, V, P]
+    ): Option[(ProducerRecord[K, V], P)] = message match {
+      case single: Single[K, V, P] => Some((single.record, single.passthrough))
+      case _                       => None
+    }
+  }
+
+  sealed abstract class Multiple[K, V, P](
+    val records: List[ProducerRecord[K, V]],
     override val passthrough: P
   ) extends ProducerMessage[K, V, P] {
     override def toString: String =
       records.mkString("Multiple(", ", ", s", $passthrough)")
   }
 
-  sealed abstract case class Passthrough[K, V, P](
+  object Multiple {
+    def unapply[K, V, P](
+      message: ProducerMessage[K, V, P]
+    ): Option[(List[ProducerRecord[K, V]], P)] = message match {
+      case multiple: Multiple[K, V, P] => Some((multiple.records, multiple.passthrough))
+      case _                           => None
+    }
+  }
+
+  sealed abstract class Passthrough[K, V, P](
     override val passthrough: P
   ) extends ProducerMessage[K, V, P] {
     override def toString: String =
       s"Passthrough($passthrough)"
+  }
+
+  object Passthrough {
+    def unapply[K, V, P](
+      message: ProducerMessage[K, V, P]
+    ): Option[P] = message match {
+      case passthrough: Passthrough[K, V, P] => Some(passthrough.passthrough)
+      case _                                 => None
+    }
   }
 
   def single[K, V, P](
