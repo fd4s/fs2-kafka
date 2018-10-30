@@ -8,7 +8,7 @@ import org.apache.kafka.common.{KafkaException, TopicPartition}
 
 import scala.concurrent.duration.FiniteDuration
 
-sealed abstract case class CommitTimeoutException(
+sealed abstract class CommitTimeoutException(
   timeout: FiniteDuration,
   offsets: Map[TopicPartition, OffsetAndMetadata]
 ) extends KafkaException({
