@@ -2,13 +2,12 @@ package fs2.kafka
 
 import cats.Applicative
 import cats.effect.concurrent.Deferred
-import cats.effect.{ConcurrentEffect, IO, Sync}
+import cats.effect.{ConcurrentEffect, IO, Resource, Sync}
 import cats.instances.list._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
 import cats.syntax.traverse._
-import fs2.Stream
 import org.apache.kafka.clients.producer.{KafkaProducer => KProducer, _}
 
 import scala.collection.JavaConverters._
@@ -22,8 +21,8 @@ abstract class KafkaProducer[F[_], K, V] {
 private[kafka] object KafkaProducer {
   private[this] def createProducer[F[_], K, V](
     settings: ProducerSettings[K, V]
-  )(implicit F: Sync[F]): Stream[F, Producer[K, V]] = {
-    Stream.bracket {
+  )(implicit F: Sync[F]): Resource[F, Producer[K, V]] = {
+    Resource.make[F, Producer[K, V]] {
       F.delay {
         new KProducer(
           settings.nativeSettings.asJava,
@@ -114,9 +113,9 @@ private[kafka] object KafkaProducer {
         f(metadata, exception)
     }
 
-  def producerStream[F[_], K, V](settings: ProducerSettings[K, V])(
+  def producerResource[F[_], K, V](settings: ProducerSettings[K, V])(
     implicit F: ConcurrentEffect[F]
-  ): Stream[F, KafkaProducer[F, K, V]] =
+  ): Resource[F, KafkaProducer[F, K, V]] =
     createProducer(settings).map { producer =>
       new KafkaProducer[F, K, V] {
         override def produceBatched[P](

@@ -2,7 +2,7 @@ package fs2
 
 import java.util.concurrent.{Executors, ThreadFactory}
 
-import cats.effect.{ConcurrentEffect, ContextShift, Sync, Timer}
+import cats.effect._
 
 import scala.concurrent.ExecutionContext
 
@@ -33,10 +33,18 @@ package object kafka {
       }(executor => F.delay(executor.shutdown()))
       .map(ExecutionContext.fromExecutor)
 
+  def producerResource[F[_], K, V](settings: ProducerSettings[K, V])(
+    implicit F: ConcurrentEffect[F]
+  ): Resource[F, KafkaProducer[F, K, V]] =
+    KafkaProducer.producerResource(settings)
+
+  def producerResource[F[_]]: ProducerResource[F] =
+    new ProducerResource[F]
+
   def producerStream[F[_], K, V](settings: ProducerSettings[K, V])(
     implicit F: ConcurrentEffect[F]
   ): Stream[F, KafkaProducer[F, K, V]] =
-    KafkaProducer.producerStream(settings)
+    Stream.resource(producerResource(settings))
 
   def producerStream[F[_]]: ProducerStream[F] =
     new ProducerStream[F]
