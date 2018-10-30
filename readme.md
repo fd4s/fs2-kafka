@@ -60,7 +60,7 @@ object Main extends IOApp {
 
     val stream =
       for {
-        executionContext <- consumerExecutionContext[IO]
+        executionContext <- consumerExecutionContextStream[IO]
         consumer <- consumerStream[IO].using(consumerSettings(executionContext))
         producer <- producerStream[IO].using(producerSettings)
         _ <- consumer.subscribe(topics)

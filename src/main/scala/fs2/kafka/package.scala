@@ -3,6 +3,7 @@ package fs2
 import java.util.concurrent.{Executors, ThreadFactory}
 
 import cats.effect._
+import cats.syntax.functor._
 
 import scala.concurrent.ExecutionContext
 
@@ -27,9 +28,9 @@ package object kafka {
   def consumerStream[F[_]]: ConsumerStream[F] =
     new ConsumerStream[F]
 
-  def consumerExecutionContext[F[_]](implicit F: Sync[F]): Stream[F, ExecutionContext] =
-    Stream
-      .bracket {
+  def consumerExecutionContextResource[F[_]](implicit F: Sync[F]): Resource[F, ExecutionContext] =
+    Resource
+      .make {
         F.delay {
           Executors.newSingleThreadExecutor(new ThreadFactory {
             override def newThread(runnable: Runnable): Thread = {
@@ -42,6 +43,9 @@ package object kafka {
         }
       }(executor => F.delay(executor.shutdown()))
       .map(ExecutionContext.fromExecutor)
+
+  def consumerExecutionContextStream[F[_]](implicit F: Sync[F]): Stream[F, ExecutionContext] =
+    Stream.resource(consumerExecutionContextResource[F])
 
   def producerResource[F[_], K, V](settings: ProducerSettings[K, V])(
     implicit F: ConcurrentEffect[F]

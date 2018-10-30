@@ -59,7 +59,7 @@ object ConsumerSettings {
     * <br>
     * Since some Kafka operations are blocking, we should shift these
     * operations to a dedicated `ExecutionContext.` A sensible option
-    * is provided by the [[consumerExecutionContext]] function.
+    * is provided by the [[consumerExecutionContextStream]] function.
     */
   def apply[K, V](
     keyDeserializer: Deserializer[K],

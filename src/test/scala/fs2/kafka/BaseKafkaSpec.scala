@@ -21,7 +21,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
   final def consumerSettings(
     config: EmbeddedKafkaConfig
   ): Stream[IO, ConsumerSettings[String, String]] =
-    consumerExecutionContext[IO].map { executionContext =>
+    consumerExecutionContextStream[IO].map { executionContext =>
       ConsumerSettings(
         keyDeserializer = new StringDeserializer,
         valueDeserializer = new StringDeserializer,
