@@ -41,8 +41,8 @@ private[kafka] object KafkaConsumer {
   )(
     implicit F: Sync[F],
     context: ContextShift[F]
-  ): Stream[F, Consumer[K, V]] =
-    Stream.bracket {
+  ): Resource[F, Consumer[K, V]] =
+    Resource.make[F, Consumer[K, V]] {
       F.delay {
         new KConsumer(
           settings.nativeSettings.asJava,
@@ -64,8 +64,8 @@ private[kafka] object KafkaConsumer {
   )(
     implicit F: Concurrent[F],
     context: ContextShift[F]
-  ): Stream[F, Fiber[F, Unit]] =
-    Stream.bracket {
+  ): Resource[F, Fiber[F, Unit]] =
+    Resource.make {
       requests.tryDequeue1
         .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
         .flatMap(actor.handle(_) >> context.shift)
@@ -80,8 +80,8 @@ private[kafka] object KafkaConsumer {
   )(
     implicit F: Concurrent[F],
     timer: Timer[F]
-  ): Stream[F, Fiber[F, Unit]] =
-    Stream.bracket {
+  ): Resource[F, Fiber[F, Unit]] =
+    Resource.make {
       {
         polls.enqueue1(Poll()) >>
           timer.sleep(pollInterval)
@@ -169,16 +169,16 @@ private[kafka] object KafkaConsumer {
         "KafkaConsumer$" + System.identityHashCode(this)
     }
 
-  def consumerStream[F[_], K, V](
+  def consumerResource[F[_], K, V](
     settings: ConsumerSettings[K, V]
   )(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
     timer: Timer[F]
-  ): Stream[F, KafkaConsumer[F, K, V]] =
-    Stream.eval(Queue.unbounded[F, Request[F, K, V]]).flatMap { requests =>
-      Stream.eval(Queue.bounded[F, Request[F, K, V]](1)).flatMap { polls =>
-        Stream.eval(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
+  ): Resource[F, KafkaConsumer[F, K, V]] =
+    Resource.liftF(Queue.unbounded[F, Request[F, K, V]]).flatMap { requests =>
+      Resource.liftF(Queue.bounded[F, Request[F, K, V]](1)).flatMap { polls =>
+        Resource.liftF(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
           createConsumer(settings).flatMap { consumer =>
             val running = ref.get.map(_.running)
             val actor = new KafkaConsumerActor(settings, ref, requests, consumer)

@@ -7,12 +7,22 @@ import cats.effect._
 import scala.concurrent.ExecutionContext
 
 package object kafka {
+  def consumerResource[F[_], K, V](settings: ConsumerSettings[K, V])(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F],
+    timer: Timer[F]
+  ): Resource[F, KafkaConsumer[F, K, V]] =
+    KafkaConsumer.consumerResource(settings)
+
+  def consumerResource[F[_]]: ConsumerResource[F] =
+    new ConsumerResource[F]
+
   def consumerStream[F[_], K, V](settings: ConsumerSettings[K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
     timer: Timer[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =
-    KafkaConsumer.consumerStream(settings)
+    Stream.resource(consumerResource(settings))
 
   def consumerStream[F[_]]: ConsumerStream[F] =
     new ConsumerStream[F]
