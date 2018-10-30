@@ -10,24 +10,38 @@ sealed abstract class ProducerResult[K, V, P] {
 }
 
 object ProducerResult {
-  sealed abstract case class Single[K, V, P](
-    metadata: RecordMetadata,
-    record: ProducerRecord[K, V],
+  sealed abstract class Single[K, V, P](
+    val metadata: RecordMetadata,
+    val record: ProducerRecord[K, V],
     override val passthrough: P
   ) extends ProducerResult[K, V, P] {
     override def toString: String =
       s"Single($metadata -> $record, $passthrough)"
   }
 
-  sealed abstract case class MultiplePart[K, V](
-    metadata: RecordMetadata,
-    record: ProducerRecord[K, V]
+  object Single {
+    def unapply[K, V, P](
+      result: ProducerResult[K, V, P]
+    ): Option[(RecordMetadata, ProducerRecord[K, V], P)] = result match {
+      case single: Single[K, V, P] => Some((single.metadata, single.record, single.passthrough))
+      case _                       => None
+    }
+  }
+
+  sealed abstract class MultiplePart[K, V](
+    val metadata: RecordMetadata,
+    val record: ProducerRecord[K, V]
   ) {
     override def toString: String =
       s"$metadata -> $record"
   }
 
   object MultiplePart {
+    def unapply[K, V](
+      part: MultiplePart[K, V]
+    ): Option[(RecordMetadata, ProducerRecord[K, V])] =
+      Some((part.metadata, part.record))
+
     implicit def multiplePartShow[K, V](
       implicit
       K: Show[K],
@@ -37,19 +51,37 @@ object ProducerResult {
     }
   }
 
-  sealed abstract case class Multiple[K, V, P](
-    parts: List[MultiplePart[K, V]],
+  sealed abstract class Multiple[K, V, P](
+    val parts: List[MultiplePart[K, V]],
     override val passthrough: P
   ) extends ProducerResult[K, V, P] {
     override def toString: String =
       parts.mkString("Multiple(", ", ", s", $passthrough)")
   }
 
-  sealed abstract case class Passthrough[K, V, P](
+  object Multiple {
+    def unapply[K, V, P](
+      result: ProducerResult[K, V, P]
+    ): Option[(List[MultiplePart[K, V]], P)] = result match {
+      case multiple: Multiple[K, V, P] => Some((multiple.parts, multiple.passthrough))
+      case _                           => None
+    }
+  }
+
+  sealed abstract class Passthrough[K, V, P](
     override val passthrough: P
   ) extends ProducerResult[K, V, P] {
     override def toString: String =
       s"Passthrough($passthrough)"
+  }
+
+  object Passthrough {
+    def unapply[K, V, P](
+      result: ProducerResult[K, V, P]
+    ): Option[P] = result match {
+      case passthrough: Passthrough[K, V, P] => Some(passthrough.passthrough)
+      case _                                 => None
+    }
   }
 
   def single[K, V, P](
