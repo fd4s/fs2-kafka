@@ -1,3 +1,5 @@
+[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka)
+
 ## FS2 Kafka
 Tiny library providing an [FS2][fs2] wrapper around the official Kafka Java client.  
 The API is inspired by [Alpakka Kafka][alpakka-kafka], and migration should be relatively easy.
