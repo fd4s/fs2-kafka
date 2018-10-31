@@ -34,7 +34,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
   ): ProducerSettings[String, String] =
     ProducerSettings(
       keySerializer = new StringSerializer,
-      valueSerializer = new StringSerializer,
+      valueSerializer = new StringSerializer
     ).withProperties(producerProperties(config))
 
   final def consumerProperties(config: EmbeddedKafkaConfig): Map[String, String] =
