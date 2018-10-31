@@ -35,13 +35,11 @@ object Main extends IOApp {
       ConsumerSettings(
         keyDeserializer = new StringDeserializer,
         valueDeserializer = new StringDeserializer,
-        nativeSettings = Map(
-          ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
-          ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> "localhost",
-          ConsumerConfig.GROUP_ID_CONFIG -> "group"
-        ),
         executionContext = executionContext
       )
+      .withAutoOffsetReset(AutoOffsetReset.Earliest)
+      .withBootstrapServers("localhost")
+      .withGroupId("group")
 
     val producerSettings =
       ProducerSettings(

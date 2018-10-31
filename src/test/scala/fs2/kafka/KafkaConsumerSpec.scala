@@ -45,7 +45,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
       assert {
         committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
-        withKafkaConsumer[String, String](consumerNativeSettings(config)) { consumer =>
+        withKafkaConsumer[String, String](consumerProperties(config)) { consumer =>
           committed.foldLeft(true) {
             case (result, (topicPartition, offsetAndMetadata)) =>
               result && offsetAndMetadata == consumer.committed(topicPartition)

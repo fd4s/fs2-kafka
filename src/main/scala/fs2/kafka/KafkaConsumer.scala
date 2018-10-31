@@ -45,7 +45,7 @@ private[kafka] object KafkaConsumer {
     Resource.make[F, Consumer[K, V]] {
       F.delay {
         new KConsumer(
-          settings.nativeSettings.asJava,
+          (settings.properties: Map[String, AnyRef]).asJava,
           settings.keyDeserializer,
           settings.valueDeserializer
         )

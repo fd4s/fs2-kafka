@@ -25,9 +25,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
       ConsumerSettings(
         keyDeserializer = new StringDeserializer,
         valueDeserializer = new StringDeserializer,
-        nativeSettings = consumerNativeSettings(config),
         executionContext = executionContext
-      )
+      ).withProperties(consumerProperties(config))
     }
 
   final def producerSettings(
@@ -39,7 +38,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
       nativeSettings = producerNativeSettings(config)
     )
 
-  final def consumerNativeSettings(config: EmbeddedKafkaConfig): Map[String, AnyRef] =
+  final def consumerProperties(config: EmbeddedKafkaConfig): Map[String, String] =
     Map(
       ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}",
       ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
