@@ -70,9 +70,11 @@ lazy val noPublishSettings = Seq(
 )
 
 lazy val releaseSettings = Seq(
+  useGpg := false,
   releaseCrossBuild := true,
   releaseUseGlobalVersion := true,
   releaseTagName := s"v${(version in ThisBuild).value}",
+  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
   releaseTagComment := s"Release version ${(version in ThisBuild).value}",
   releaseCommitMessage := s"Set version to ${(version in ThisBuild).value}",
   releaseProcess := Seq[ReleaseStep](
@@ -148,13 +150,7 @@ updateReadme in ThisBuild := {
   (generateReadme in ThisBuild).value
   sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
     vcs.add("readme.md").!
-    vcs
-      .commit(
-        message = "Update readme to latest version",
-        signOff = false,
-        sign = true
-      )
-      .!
+    vcs.commit("Update readme to latest version", sign = true).!
   }
 }
 
