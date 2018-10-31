@@ -14,10 +14,10 @@ lazy val `fs2-kafka` = project
 lazy val docs = project
   .in(file("docs"))
   .settings(
-    mdocSettings,
     metadataSettings,
     noPublishSettings,
-    scalaSettings
+    scalaSettings,
+    mdocSettings
   )
   .dependsOn(`fs2-kafka`)
 
@@ -34,7 +34,9 @@ lazy val dependencySettings = Seq(
 )
 
 lazy val mdocSettings = Seq(
-  libraryDependencies += "com.geirsson" % "mdoc" % "0.5.3" cross CrossVersion.full,
+  scalaVersion := "2.12.7",
+  crossScalaVersions := Seq(scalaVersion.value),
+  libraryDependencies += "com.geirsson" % "mdoc" % "0.5.3" cross CrossVersion.full
 )
 
 lazy val metadataSettings = Seq(
@@ -125,8 +127,13 @@ def runMdoc(args: String*) = Def.taskDyn {
   val out = (baseDirectory in `fs2-kafka`).value
   val scalacOptionsString = (scalacOptions in Compile).value.mkString(" ")
   val argsString = args.mkString(" ")
-  val siteVariables = List(
-    "LATEST_VERSION" -> (latestVersion in ThisBuild).value
+  val siteVariables = List[(String, String)](
+    "LATEST_VERSION" -> (latestVersion in ThisBuild).value.toString,
+    "LATEST_MINOR_VERSION" -> {
+      val latestVersionString = (latestVersion in ThisBuild).value.toString
+      val (major, minor) = CrossVersion.partialVersion(latestVersionString).get
+      s"$major.$minor." // Add trailing dot to workaround: https://github.com/olafurpg/mdoc/issues/102
+    }
   ).map { case (k, v) => s"""--site.$k "$v"""" }.mkString(" ")
   (runMain in (docs, Compile)).toTask {
     s""" mdoc.Main --in "$in" --out "$out" --exclude "target" --scalac-options "$scalacOptionsString" $siteVariables $argsString"""
@@ -163,7 +170,13 @@ addCommandsAlias(
     "mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
-    "generateReadme",
     "headerCheck"
+  )
+)
+
+addCommandsAlias(
+  "validateDocs",
+  List(
+    "generateReadme"
   )
 )

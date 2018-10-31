@@ -5,6 +5,8 @@
 Tiny library providing an [FS2][fs2] wrapper around the official Kafka Java client.  
 The API is inspired by [Alpakka Kafka][alpakka-kafka], and migration should be relatively easy.
 
+This is a new project under active development. Feedback and contributions are welcome.
+
 ### Getting Started
 
 To get started with [sbt][sbt], simply add the following lines to your `build.sbt` file.
@@ -16,6 +18,9 @@ libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.15.0"
 ```
 
 The library is published for Scala 2.11 and 2.12.
+
+Backwards binary compatibility for the library is guaranteed between patch versions.  
+For example, `0.15.x` is backwards binary compatible with `0.15.y` for any `x > y`.
 
 ### Usage
 
