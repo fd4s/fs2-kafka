@@ -39,8 +39,10 @@ lazy val mdocSettings = Seq(
 
 lazy val metadataSettings = Seq(
   organization := "com.ovoenergy",
+  organizationName := "OVO Energy Ltd",
   bintrayOrganization := Some("ovotech"),
-  licenses += ("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0.txt"))
+  licenses += ("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
+  startYear := Some(2018)
 )
 
 lazy val mimaSettings = Seq(
@@ -161,6 +163,7 @@ addCommandsAlias(
     "mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
-    "generateReadme"
+    "generateReadme",
+    "headerCheck"
   )
 )
