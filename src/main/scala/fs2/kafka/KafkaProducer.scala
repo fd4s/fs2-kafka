@@ -25,7 +25,7 @@ private[kafka] object KafkaProducer {
     Resource.make[F, Producer[K, V]] {
       F.delay {
         new KProducer(
-          settings.nativeSettings.asJava,
+          (settings.properties: Map[String, AnyRef]).asJava,
           settings.keySerializer,
           settings.valueSerializer
         )

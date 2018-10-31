@@ -45,10 +45,8 @@ object Main extends IOApp {
       ProducerSettings(
         keySerializer = new StringSerializer,
         valueSerializer = new StringSerializer,
-        nativeSettings = Map(
-          ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> "localhost"
-        )
       )
+      .withBootstrapServers("localhost")
 
     val topics =
       NonEmptyList.one("topic")

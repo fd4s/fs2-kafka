@@ -35,8 +35,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
     ProducerSettings(
       keySerializer = new StringSerializer,
       valueSerializer = new StringSerializer,
-      nativeSettings = producerNativeSettings(config)
-    )
+    ).withProperties(producerProperties(config))
 
   final def consumerProperties(config: EmbeddedKafkaConfig): Map[String, String] =
     Map(
@@ -45,7 +44,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
       ConsumerConfig.GROUP_ID_CONFIG -> "group"
     )
 
-  final def producerNativeSettings(config: EmbeddedKafkaConfig): Map[String, AnyRef] =
+  final def producerProperties(config: EmbeddedKafkaConfig): Map[String, String] =
     Map(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}")
 
   final def withKafka[A](f: (EmbeddedKafkaConfig, String) => A): A =
