@@ -1,4 +1,5 @@
 package fs2.kafka
+
 import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
 
 final class ConsumerResource[F[_]] private[kafka] {
