@@ -95,7 +95,7 @@ object ProducerSettings {
 
   def apply[K, V](
     keySerializer: Serializer[K],
-    valueSerializer: Serializer[V],
+    valueSerializer: Serializer[V]
   ): ProducerSettings[K, V] =
     ProducerSettingsImpl(
       keySerializer = keySerializer,

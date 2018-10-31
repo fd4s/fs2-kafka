@@ -158,7 +158,7 @@ object ConsumerSettings {
   def apply[K, V](
     keyDeserializer: Deserializer[K],
     valueDeserializer: Deserializer[V],
-    executionContext: ExecutionContext,
+    executionContext: ExecutionContext
   ): ConsumerSettings[K, V] = ConsumerSettingsImpl(
     keyDeserializer = keyDeserializer,
     valueDeserializer = valueDeserializer,
