@@ -9,6 +9,6 @@ cache:
     - $HOME/.ivy2/cache
     - $HOME/.sbt
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION test
+  - sbt ++$TRAVIS_SCALA_VERSION validate
 after_success:
   - bash <(curl -s https://codecov.io/bash)

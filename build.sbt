@@ -39,3 +39,8 @@ libraryDependencies ++= Seq(
 logBuffered in Test := false
 parallelExecution in Test := false
 testOptions in Test += Tests.Argument("-oDF")
+
+def addCommandsAlias(name: String, values: List[String]) =
+  addCommandAlias(name, values.mkString(";", ";", ""))
+
+addCommandsAlias("validate", List("coverage", "test", "coverageReport"))
