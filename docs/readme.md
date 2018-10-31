@@ -1,24 +1,21 @@
-[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.15.0-orange.svg)](https://bintray.com/ovotech/maven/fs2-kafka/0.15.0)
+[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v@LATEST_VERSION@-orange.svg)](https://bintray.com/ovotech/maven/fs2-kafka/@LATEST_VERSION@)
 
 ## FS2 Kafka
-
 Tiny library providing an [FS2][fs2] wrapper around the official Kafka Java client.  
 The API is inspired by [Alpakka Kafka][alpakka-kafka], and migration should be relatively easy.
 
 ### Getting Started
-
 To get started with [sbt][sbt], simply add the following lines to your `build.sbt` file.
 
 ```scala
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 
-libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.15.0"
+libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "@LATEST_VERSION@"
 ```
 
 The library is published for Scala 2.11 and 2.12.
 
 ### Usage
-
 Start with `import fs2.kafka._` and use `consumerStream` and `producerStream` to create a consumer and producer, by providing a `ConsumerSettings` and `ProducerSettings`, respectively. The consumer is similar to `committableSource` in Alpakka Kafka, wrapping records in `CommittableMessage`. The producer accepts records wrapped in `ProducerMessage`, allowing offsets, and other elements, as passthrough values.
 
 ```scala
@@ -90,4 +87,3 @@ object Main extends IOApp {
 [alpakka-kafka]: https://github.com/akka/alpakka-kafka
 [fs2]: http://fs2.io/
 [sbt]: https://www.scala-sbt.org
-
