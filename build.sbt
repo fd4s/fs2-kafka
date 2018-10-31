@@ -93,7 +93,8 @@ lazy val scalaSettings = Seq(
   crossScalaVersions := Seq(scalaVersion.value, "2.11.12"),
   scalacOptions ++= Seq(
     "-deprecation",
-    "-encoding", "UTF-8",
+    "-encoding",
+    "UTF-8",
     "-feature",
     "-language:existentials",
     "-language:higherKinds",
@@ -121,10 +122,13 @@ def runMdoc(args: String*) = Def.taskDyn {
   val in = (baseDirectory in `fs2-kafka`).value / "docs"
   val out = (baseDirectory in `fs2-kafka`).value
   val scalacOptionsString = (scalacOptions in Compile).value.mkString(" ")
+  val argsString = args.mkString(" ")
   val siteVariables = List(
     "LATEST_VERSION" -> (latestVersion in ThisBuild).value
   ).map { case (k, v) => s"""--site.$k "$v"""" }.mkString(" ")
-  (runMain in (docs, Compile)).toTask(s""" mdoc.Main --in "$in" --out "$out" --exclude "target" --scalac-options "$scalacOptionsString" $siteVariables ${args.mkString(" ")}""")
+  (runMain in (docs, Compile)).toTask {
+    s""" mdoc.Main --in "$in" --out "$out" --exclude "target" --scalac-options "$scalacOptionsString" $siteVariables $argsString"""
+  }
 }
 
 val generateReadme = taskKey[Unit]("Generates the readme using mdoc")
@@ -135,21 +139,28 @@ updateReadme in ThisBuild := {
   (generateReadme in ThisBuild).value
   sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
     vcs.add("readme.md").!
-    vcs.commit(
-      message = "Update readme to latest version",
-      signOff = false,
-      sign = true
-    ).!
+    vcs
+      .commit(
+        message = "Update readme to latest version",
+        signOff = false,
+        sign = true
+      )
+      .!
   }
 }
 
 def addCommandsAlias(name: String, values: List[String]) =
   addCommandAlias(name, values.mkString(";", ";", ""))
 
-addCommandsAlias("validate", List(
-  "coverage",
-  "test",
-  "coverageReport",
-  "mimaReportBinaryIssues",
-  "generateReadme"
-))
+addCommandsAlias(
+  "validate",
+  List(
+    "coverage",
+    "test",
+    "coverageReport",
+    "mimaReportBinaryIssues",
+    "scalafmtCheck",
+    "scalafmtSbtCheck",
+    "generateReadme"
+  )
+)
