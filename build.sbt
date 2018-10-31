@@ -7,6 +7,7 @@ lazy val `fs2-kafka` = project
     metadataSettings,
     mimaSettings,
     releaseSettings,
+    resolverSettings,
     scalaSettings,
     testSettings
   )
@@ -92,6 +93,10 @@ lazy val releaseSettings = Seq(
     commitNextVersion,
     pushChanges
   )
+)
+
+lazy val resolverSettings = Seq(
+  resolvers += Resolver.bintrayRepo("ovotech", "maven")
 )
 
 lazy val scalaSettings = Seq(
