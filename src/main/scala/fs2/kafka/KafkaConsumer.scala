@@ -17,7 +17,7 @@
 package fs2.kafka
 
 import cats.data.NonEmptyList
-import cats.effect.concurrent.{Deferred, Ref}
+import cats.effect.concurrent.{Deferred, MVar, Ref}
 import cats.effect.syntax.concurrent._
 import cats.effect.{ConcurrentEffect, Fiber, Timer, _}
 import cats.instances.list._
@@ -55,20 +55,23 @@ private[kafka] object KafkaConsumer {
   private[this] def createConsumer[F[_], K, V](
     settings: ConsumerSettings[K, V]
   )(
-    implicit F: Sync[F],
+    implicit F: Concurrent[F],
     context: ContextShift[F]
-  ): Resource[F, Consumer[K, V]] =
-    Resource.make[F, Consumer[K, V]] {
+  ): Resource[F, MVar[F, Consumer[K, V]]] =
+    Resource.make[F, MVar[F, Consumer[K, V]]] {
       F.delay {
-        new KConsumer(
-          (settings.properties: Map[String, AnyRef]).asJava,
-          settings.keyDeserializer,
-          settings.valueDeserializer
-        )
-      }
-    } { consumer =>
-      context.evalOn(settings.executionContext) {
-        F.delay(consumer.close(settings.closeTimeout.asJava))
+          new KConsumer(
+            (settings.properties: Map[String, AnyRef]).asJava,
+            settings.keyDeserializer,
+            settings.valueDeserializer
+          )
+        }
+        .flatMap(MVar[F].of)
+    } { mVar =>
+      mVar.lease { consumer =>
+        context.evalOn(settings.executionContext) {
+          F.delay(consumer.close(settings.closeTimeout.asJava))
+        }
       }
     }
 
@@ -195,9 +198,9 @@ private[kafka] object KafkaConsumer {
     Resource.liftF(Queue.unbounded[F, Request[F, K, V]]).flatMap { requests =>
       Resource.liftF(Queue.bounded[F, Request[F, K, V]](1)).flatMap { polls =>
         Resource.liftF(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
-          createConsumer(settings).flatMap { consumer =>
+          createConsumer(settings).flatMap { mVar =>
             val running = ref.get.map(_.running)
-            val actor = new KafkaConsumerActor(settings, ref, requests, consumer)
+            val actor = new KafkaConsumerActor(settings, ref, requests, mVar)
             startConsumerActor(requests, polls, actor, running).flatMap { actor =>
               startPollScheduler(polls, settings.pollInterval, running).map { polls =>
                 createKafkaConsumer(requests, ref, actor, polls)
