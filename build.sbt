@@ -132,7 +132,11 @@ lazy val testSettings = Seq(
 def runMdoc(args: String*) = Def.taskDyn {
   val in = (baseDirectory in `fs2-kafka`).value / "docs"
   val out = (baseDirectory in `fs2-kafka`).value
-  val scalacOptionsString = (scalacOptions in Compile).value.mkString(" ")
+  val scalacOptionsString = {
+    val scalacOptionsValue = (scalacOptions in Compile).value
+    val excludedOptions = Seq("-Xfatal-warnings")
+    (scalacOptionsValue diff excludedOptions).mkString(" ")
+  }
   val argsString = args.mkString(" ")
   val siteVariables = List[(String, String)](
     "LATEST_VERSION" -> (latestVersion in ThisBuild).value.toString,

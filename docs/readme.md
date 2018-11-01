@@ -23,7 +23,7 @@ For example, `@LATEST_MINOR_VERSION@x` is backwards binary compatible with `@LAT
 ### Usage
 Start with `import fs2.kafka._` and use `consumerStream` and `producerStream` to create a consumer and producer, by providing a `ConsumerSettings` and `ProducerSettings`, respectively. The consumer is similar to `committableSource` in Alpakka Kafka, wrapping records in `CommittableMessage`. The producer accepts records wrapped in `ProducerMessage`, allowing offsets, and other elements, as passthrough values.
 
-```scala
+```scala mdoc
 import cats.data.NonEmptyList
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
