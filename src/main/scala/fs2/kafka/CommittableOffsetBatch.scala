@@ -16,8 +16,9 @@
 
 package fs2.kafka
 
+import cats.syntax.foldable._
 import cats.syntax.show._
-import cats.{Applicative, Show}
+import cats.{Applicative, Foldable, Show}
 import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
@@ -52,6 +53,12 @@ object CommittableOffsetBatch {
         Show[CommittableOffsetBatch[F]].show(this)
     }
   }
+
+  def fromFoldable[F[_], G[_]](offsets: G[CommittableOffset[F]])(
+    implicit F: Applicative[F],
+    G: Foldable[G]
+  ): CommittableOffsetBatch[F] =
+    offsets.foldLeft(empty[F])(_ updated _)
 
   def empty[F[_]](implicit F: Applicative[F]): CommittableOffsetBatch[F] =
     new CommittableOffsetBatch[F] {
