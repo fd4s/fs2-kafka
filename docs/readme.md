@@ -76,12 +76,8 @@ object Main extends IOApp {
                   ProducerMessage.single(record, message.committableOffset)
               })
             .evalMap(producer.produceBatched)
-            .groupWithin(500, 15.seconds)
-            .evalMap {
-              _.traverse(_.map(_.passthrough))
-                .map(_.foldLeft(CommittableOffsetBatch.empty[IO])(_ updated _))
-                .flatMap(_.commit)
-            }
+            .map(_.map(_.passthrough))
+            .to(commitBatchWithinF(500, 15.seconds))
       } yield ()
 
     stream.compile.drain.as(ExitCode.Success)
