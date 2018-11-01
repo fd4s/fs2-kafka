@@ -61,7 +61,9 @@ lazy val mimaSettings = Seq(
   },
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
-    Seq()
+    Seq(
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaConsumerActor.this")
+    )
   }
 )
 

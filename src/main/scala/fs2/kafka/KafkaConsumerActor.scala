@@ -19,7 +19,7 @@ package fs2.kafka
 import java.util
 
 import cats.data.{Chain, NonEmptyChain, NonEmptyList}
-import cats.effect.concurrent.{Deferred, Ref}
+import cats.effect.concurrent.{Deferred, MVar, Ref}
 import cats.effect.{ConcurrentEffect, ContextShift, IO, Timer}
 import cats.instances.list._
 import cats.instances.map._
@@ -42,14 +42,21 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[K, V],
   ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
-  consumer: Consumer[K, V]
+  mVar: MVar[F, Consumer[K, V]]
 )(
   implicit F: ConcurrentEffect[F],
   context: ContextShift[F],
   timer: Timer[F]
 ) {
+  private def withConsumer[A](f: Consumer[K, V] => F[A]): F[A] =
+    mVar.lease { consumer =>
+      context.evalOn(settings.executionContext) {
+        f(consumer)
+      }
+    }
+
   private def subscribe(topics: NonEmptyList[String]): F[Unit] =
-    context.evalOn(settings.executionContext) {
+    withConsumer { consumer =>
       F.delay {
         consumer.subscribe(
           topics.toList.asJava,
@@ -83,7 +90,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     offsets: Map[TopicPartition, OffsetAndMetadata],
     deferred: Deferred[F, Either[Throwable, Unit]]
   ): F[Unit] =
-    context.evalOn(settings.executionContext) {
+    withConsumer { consumer =>
       F.delay {
         consumer.commitAsync(
           offsets.asJava,
@@ -135,10 +142,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private def assignment(deferred: Deferred[F, Either[Throwable, Set[TopicPartition]]]): F[Unit] =
     ref.get.flatMap { state =>
       val assigned: F[Either[Throwable, Set[TopicPartition]]] =
-        if (state.subscribed) {
-          context.evalOn(settings.executionContext) {
-            F.delay(Right(consumer.assignment.asScala.toSet))
-          }
+        if (state.subscribed) withConsumer { consumer =>
+          F.delay(Right(consumer.assignment.asScala.toSet))
         } else F.pure(Left(NotSubscribedException))
 
       assigned.flatMap(deferred.complete)
@@ -201,7 +206,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private val poll: F[Unit] = {
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords[K, V]] =
-      context.evalOn(settings.executionContext) {
+      withConsumer { consumer =>
         F.delay {
           val assigned = consumer.assignment.asScala.toSet
           val requested = state.fetches.keySet
