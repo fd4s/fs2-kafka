@@ -48,7 +48,8 @@ object ProducerMessage {
     override val passthrough: P
   ) extends ProducerMessage[K, V, P] {
     override def toString: String =
-      records.mkString("Multiple(", ", ", s", $passthrough)")
+      if (records.isEmpty) s"Multiple(<empty>, $passthrough)"
+      else records.mkString("Multiple(", ", ", s", $passthrough)")
   }
 
   object Multiple {
@@ -102,7 +103,8 @@ object ProducerMessage {
     case Single(record, passthrough) =>
       show"Single($record, $passthrough)"
     case Multiple(records, passthrough) =>
-      records.map(_.show).mkString("Multiple(", ", ", s", $passthrough)")
+      if (records.isEmpty) show"Multiple(<empty>, $passthrough)"
+      else records.map(_.show).mkString("Multiple(", ", ", s", $passthrough)")
     case Passthrough(passthrough) =>
       show"Passthrough($passthrough)"
   }
