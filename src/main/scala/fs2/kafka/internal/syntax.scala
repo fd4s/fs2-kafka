@@ -20,9 +20,6 @@ import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
-import cats.effect.Bracket
-import cats.effect.concurrent.MVar
-
 import scala.concurrent.duration.FiniteDuration
 
 private[kafka] object syntax {
@@ -39,10 +36,5 @@ private[kafka] object syntax {
           case TimeUnit.MICROSECONDS => Duration.of(duration.length, ChronoUnit.MICROS)
           case TimeUnit.NANOSECONDS  => Duration.ofNanos(duration.length)
         }
-  }
-
-  implicit final class MVarSyntax[F[_], A](val mVar: MVar[F, A]) extends AnyVal {
-    def lease[B](f: A => F[B])(implicit F: Bracket[F, Throwable]): F[B] =
-      F.bracket(mVar.take)(f)(mVar.put)
   }
 }

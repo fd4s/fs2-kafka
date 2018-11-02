@@ -19,7 +19,7 @@ package fs2.kafka
 import java.util
 
 import cats.data.{Chain, NonEmptyChain, NonEmptyList}
-import cats.effect.concurrent.{Deferred, MVar, Ref}
+import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ConcurrentEffect, ContextShift, IO, Timer}
 import cats.instances.list._
 import cats.instances.map._
@@ -32,6 +32,7 @@ import fs2.Chunk
 import fs2.concurrent.Queue
 import fs2.kafka.KafkaConsumerActor.Request._
 import fs2.kafka.KafkaConsumerActor._
+import fs2.kafka.internal.Synchronized
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.TopicPartition
@@ -42,14 +43,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[K, V],
   ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
-  mVar: MVar[F, Consumer[K, V]]
+  synchronized: Synchronized[F, Consumer[K, V]]
 )(
   implicit F: ConcurrentEffect[F],
   context: ContextShift[F],
   timer: Timer[F]
 ) {
   private def withConsumer[A](f: Consumer[K, V] => F[A]): F[A] =
-    mVar.lease { consumer =>
+    synchronized.use { consumer =>
       context.evalOn(settings.executionContext) {
         f(consumer)
       }
