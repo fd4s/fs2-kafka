@@ -12,6 +12,7 @@
 ### Miscellaneous
 - Add more test cases for producing messages. ([#7][#7])
 - Change to ensure readme example is compiled. ([#2][#2])
+- Change to run `packageDoc` as part of `validate`. ([#8][#8])
 
 Released on 2018-11-02.
 
@@ -22,3 +23,4 @@ Released on 2018-11-02.
 [#5]: https://github.com/ovotech/fs2-kafka/pull/5
 [#6]: https://github.com/ovotech/fs2-kafka/pull/6
 [#7]: https://github.com/ovotech/fs2-kafka/pull/7
+[#8]: https://github.com/ovotech/fs2-kafka/pull/8
