@@ -29,8 +29,8 @@ import scala.concurrent.duration.FiniteDuration
 package object kafka {
 
   /**
-    * Commits offsets in batches determined by the [[Chunk]]s of the
-    * underlying [[Stream]]. If you want more explicit control over
+    * Commits offsets in batches determined by the `Chunk`s of the
+    * underlying `Stream`. If you want more explicit control over
     * how batches are created, instead use [[commitBatchChunk]].<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F`,
@@ -46,8 +46,8 @@ package object kafka {
     _.chunks.to(commitBatchChunk)
 
   /**
-    * Commits offsets in batches determined by the [[Chunk]]s of the
-    * underlying [[Stream]]. If you want more explicit control over
+    * Commits offsets in batches determined by the `Chunk`s of the
+    * underlying `Stream`. If you want more explicit control over
     * how batches are created, instead use [[commitBatchChunkF]].<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
@@ -67,9 +67,9 @@ package object kafka {
     _.chunks.to(commitBatchChunkF)
 
   /**
-    * Commits offsets in batches determined by [[Chunk]]s. This allows
+    * Commits offsets in batches determined by `Chunk`s. This allows
     * you to explicitly control how offset batches are created. If you
-    * want to use the underlying [[Chunk]]s of the [[Stream]], simply
+    * want to use the underlying `Chunk`s of the `Stream`, simply
     * use [[commitBatch]] instead.<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F`,
@@ -85,9 +85,9 @@ package object kafka {
     _.evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 
   /**
-    * Commits offsets in batches determined by [[Chunk]]s. This allows
+    * Commits offsets in batches determined by `Chunk`s. This allows
     * you to explicitly control how offset batches are created. If you
-    * want to use the underlying [[Chunk]]s of the [[Stream]], simply
+    * want to use the underlying `Chunk`s of the `Stream`, simply
     * use [[commitBatchF]] instead.<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
@@ -116,8 +116,8 @@ package object kafka {
     * like the produce effect from [[KafkaProducer.produceBatched]],
     * then there is a [[commitBatchWithinF]] function for that instead.
     *
-    * @see [[commitBatch]] for using the underlying [[Chunk]]s of
-    *      the [[Stream]] as offset commit batches
+    * @see [[commitBatch]] for using the underlying `Chunk`s of
+    *      the `Stream` as offset commit batches
     * @see [[commitBatchChunk]] for committing offset batches with
     *      explicit control over how offset batches are determined
     */
@@ -141,8 +141,8 @@ package object kafka {
     * like the produce effect from `produceBatched`, then there is a
     * [[commitBatchWithin]] function for that instead.
     *
-    * @see [[commitBatchF]] for using the underlying [[Chunk]]s of
-    *      the [[Stream]] as offset commit batches
+    * @see [[commitBatchF]] for using the underlying `Chunk`s of
+    *      the `Stream` as offset commit batches
     * @see [[commitBatchChunkF]] for committing offset batches with
     *      explicit control over how offset batches are determined
     */
