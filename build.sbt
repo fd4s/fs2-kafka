@@ -178,7 +178,8 @@ addCommandsAlias(
     "mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
-    "headerCheck"
+    "headerCheck",
+    "packageDoc"
   )
 )
 
