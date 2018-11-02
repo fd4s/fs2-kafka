@@ -1,4 +1,4 @@
-[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.16.0-orange.svg)](https://bintray.com/ovotech/maven/fs2-kafka/0.16.0)
+[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.16.1-orange.svg)](https://bintray.com/ovotech/maven/fs2-kafka/0.16.1)
 
 ## FS2 Kafka
 
@@ -14,7 +14,7 @@ To get started with [sbt][sbt], simply add the following lines to your `build.sb
 ```scala
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 
-libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.16.0"
+libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.16.1"
 ```
 
 The library is published for Scala 2.11 and 2.12.
@@ -79,12 +79,8 @@ object Main extends IOApp {
                   ProducerMessage.single(record, message.committableOffset)
               })
             .evalMap(producer.produceBatched)
-            .groupWithin(500, 15.seconds)
-            .evalMap {
-              _.traverse(_.map(_.passthrough))
-                .map(_.foldLeft(CommittableOffsetBatch.empty[IO])(_ updated _))
-                .flatMap(_.commit)
-            }
+            .map(_.map(_.passthrough))
+            .to(commitBatchWithinF(500, 15.seconds))
       } yield ()
 
     stream.compile.drain.as(ExitCode.Success)
