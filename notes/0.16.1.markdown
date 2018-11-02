@@ -1,0 +1,24 @@
+### Changes
+- Add `CommittableOffsetBatch#fromFoldable`.  ([#3][#3])
+- Add sinks for comitting messages: ([#4][#4])
+  - when only consuming messages: `commitBatch`, `commitBatchChunk`, and `commitBatchWithin`, and
+  - when also producing messages: `commitBatchF`, `commitBatchChunkF`, `commitBatchWithinF`.
+- Fix to avoid `ConcurrentModificationException` when using a `ExecutionContext` with more than one thread in `ConsumerSettings`. If you're using `consumerExecutionContextStream`, you're not affected, as it uses a single thread. ([#5][#5], [#6][#6])
+- Fix `Show` and `toString` for empty `ProducerMessage` and `ProducerResult`. ([#1][#1])
+
+### Updates
+- Update cats-effect to 1.1.0-M1. ([#6][#6])
+
+### Miscellaneous
+- Add more test cases for producing messages. ([#7][#7])
+- Change to ensure readme example is compiled. ([#2][#2])
+
+Released on 2018-11-02.
+
+[#1]: https://github.com/ovotech/fs2-kafka/pull/1
+[#2]: https://github.com/ovotech/fs2-kafka/pull/2
+[#3]: https://github.com/ovotech/fs2-kafka/pull/3
+[#4]: https://github.com/ovotech/fs2-kafka/pull/4
+[#5]: https://github.com/ovotech/fs2-kafka/pull/5
+[#6]: https://github.com/ovotech/fs2-kafka/pull/6
+[#7]: https://github.com/ovotech/fs2-kafka/pull/7
