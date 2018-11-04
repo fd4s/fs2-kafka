@@ -63,7 +63,18 @@ lazy val mimaSettings = Seq(
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
     Seq(
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaConsumerActor.this")
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaConsumerActor.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.apply"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+        "fs2.kafka.ConsumerSettings.commitRecovery"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+        "fs2.kafka.ConsumerSettings.withCommitRecovery"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.copy"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this")
     )
   }
 )

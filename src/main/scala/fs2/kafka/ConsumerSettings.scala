@@ -77,6 +77,10 @@ sealed abstract class ConsumerSettings[K, V] {
   def pollTimeout: FiniteDuration
 
   def withPollTimeout(pollTimeout: FiniteDuration): ConsumerSettings[K, V]
+
+  def commitRecovery: CommitRecovery
+
+  def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[K, V]
 }
 
 object ConsumerSettings {
@@ -89,7 +93,8 @@ object ConsumerSettings {
     override val commitTimeout: FiniteDuration,
     override val fetchTimeout: FiniteDuration,
     override val pollInterval: FiniteDuration,
-    override val pollTimeout: FiniteDuration
+    override val pollTimeout: FiniteDuration,
+    override val commitRecovery: CommitRecovery
   ) extends ConsumerSettings[K, V] {
     override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[K, V] =
       withProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -157,6 +162,9 @@ object ConsumerSettings {
     override def withPollTimeout(pollTimeout: FiniteDuration): ConsumerSettings[K, V] =
       copy(pollTimeout = pollTimeout)
 
+    override def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[K, V] =
+      copy(commitRecovery = commitRecovery)
+
     override def toString: String =
       Show[ConsumerSettings[K, V]].show(this)
   }
@@ -184,11 +192,12 @@ object ConsumerSettings {
     commitTimeout = 15.seconds,
     fetchTimeout = 500.millis,
     pollInterval = 50.millis,
-    pollTimeout = 50.millis
+    pollTimeout = 50.millis,
+    commitRecovery = CommitRecovery.Default
   )
 
   implicit def consumerSettingsShow[K, V]: Show[ConsumerSettings[K, V]] =
     Show.show { s =>
-      s"ConsumerSettings(closeTimeout = ${s.closeTimeout}, commitTimeout = ${s.commitTimeout}, fetchTimeout = ${s.fetchTimeout}, pollInterval = ${s.pollInterval}, pollTimeout = ${s.pollTimeout})"
+      s"ConsumerSettings(closeTimeout = ${s.closeTimeout}, commitTimeout = ${s.commitTimeout}, fetchTimeout = ${s.fetchTimeout}, pollInterval = ${s.pollInterval}, pollTimeout = ${s.pollTimeout}, commitRecovery = ${s.commitRecovery})"
     }
 }

@@ -23,6 +23,7 @@ import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ConcurrentEffect, ContextShift, IO, Timer}
 import cats.instances.list._
 import cats.instances.map._
+import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.monadError._
@@ -47,6 +48,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 )(
   implicit F: ConcurrentEffect[F],
   context: ContextShift[F],
+  jitter: Jitter[F],
   timer: Timer[F]
 ) {
   private def withConsumer[A](f: Consumer[K, V] => F[A]): F[A] =
@@ -151,20 +153,25 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     }
 
   private val messageCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
-    offsets =>
-      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        requests.enqueue1(Commit(offsets, deferred)) >>
-          F.race(timer.sleep(settings.commitTimeout), deferred.get.rethrow)
-            .flatMap {
-              case Right(_) => F.unit
-              case Left(_) =>
-                F.raiseError[Unit] {
-                  CommitTimeoutException(
-                    settings.commitTimeout,
-                    offsets
-                  )
-                }
-            }
+    offsets => {
+      val commit =
+        Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
+          requests.enqueue1(Commit(offsets, deferred)) >>
+            F.race(timer.sleep(settings.commitTimeout), deferred.get.rethrow)
+              .flatMap {
+                case Right(_) => F.unit
+                case Left(_) =>
+                  F.raiseError[Unit] {
+                    CommitTimeoutException(
+                      settings.commitTimeout,
+                      offsets
+                    )
+                  }
+              }
+        }
+
+      val recovery = settings.commitRecovery.recoverCommitWith(offsets, commit)
+      commit.handleErrorWith(recovery)
     }
 
   private def message(
