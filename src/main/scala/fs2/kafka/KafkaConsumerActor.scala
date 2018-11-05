@@ -302,9 +302,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     }
   }
 
-  private val shutdown: F[Unit] =
-    ref.update(_.asShutdown)
-
   def handle(request: Request[F, K, V]): F[Unit] =
     request match {
       case Assignment(deferred)       => assignment(deferred)
@@ -313,7 +310,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Fetch(partition, deferred) => fetch(partition, deferred)
       case Commit(offsets, deferred)  => commit(offsets, deferred)
       case Revoked(partitions)        => revoked(partitions)
-      case Shutdown()                 => shutdown
     }
 }
 
@@ -332,8 +328,7 @@ private[kafka] object KafkaConsumerActor {
   final case class State[F[_], K, V](
     fetches: Map[TopicPartition, NonEmptyChain[ExpiringFetch[F, K, V]]],
     records: Map[TopicPartition, NonEmptyChain[CommittableMessage[F, K, V]]],
-    subscribed: Boolean,
-    running: Boolean
+    subscribed: Boolean
   ) {
     def withFetch(
       partition: TopicPartition,
@@ -357,9 +352,6 @@ private[kafka] object KafkaConsumerActor {
 
     def asSubscribed: State[F, K, V] =
       copy(subscribed = true)
-
-    def asShutdown: State[F, K, V] =
-      copy(running = false)
   }
 
   object State {
@@ -367,8 +359,7 @@ private[kafka] object KafkaConsumerActor {
       State(
         fetches = Map.empty,
         records = Map.empty,
-        subscribed = false,
-        running = true
+        subscribed = false
       )
   }
 
@@ -396,7 +387,5 @@ private[kafka] object KafkaConsumerActor {
       offsets: Map[TopicPartition, OffsetAndMetadata],
       deferred: Deferred[F, Either[Throwable, Unit]]
     ) extends Request[F, K, V]
-
-    final case class Shutdown[F[_], K, V]() extends Request[F, K, V]
   }
 }
