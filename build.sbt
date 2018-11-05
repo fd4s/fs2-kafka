@@ -179,7 +179,7 @@ addCommandsAlias(
     "scalafmtCheck",
     "scalafmtSbtCheck",
     "headerCheck",
-    "packageDoc"
+    "doc"
   )
 )
 
