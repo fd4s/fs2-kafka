@@ -74,7 +74,18 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[DirectMissingMethodProblem](
         "fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.copy"),
       ProblemFilters.exclude[DirectMissingMethodProblem](
-        "fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this")
+        "fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this"),
+      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.KafkaConsumerActor$Request$Shutdown"),
+      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.KafkaConsumerActor$Request$Shutdown$"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "fs2.kafka.KafkaConsumerActor#State.asShutdown"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "fs2.kafka.KafkaConsumerActor#State.running"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.copy"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+        "fs2.kafka.KafkaConsumerActor#State.copy$default$4"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.apply")
     )
   }
 )

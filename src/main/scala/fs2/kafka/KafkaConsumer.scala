@@ -26,7 +26,6 @@ import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
-import cats.syntax.monad._
 import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
@@ -49,6 +48,18 @@ abstract class KafkaConsumer[F[_], K, V] {
 
   def subscribe(topics: NonEmptyList[String]): Stream[F, Unit]
 
+  /**
+    * A `Fiber` that can be used to cancel the underlying consumer,
+    * or wait for it to complete. If you're using [[stream]] or other
+    * provided streams, like [[partitionedStream]], these streams are
+    * automatically interrupted when the underlying consumer has been
+    * cancelled or when it finishes with an exception.<br>
+    * <br>
+    * When `cancel` is invoked, an attempt will be made to stop the
+    * underlying consumer. Note that `cancel` does not wait for the
+    * consumer to stop. If you also want to wait for the consumer
+    * to stop, you can use `join`.
+    */
   def fiber: Fiber[F, Unit]
 }
 
@@ -79,53 +90,64 @@ private[kafka] object KafkaConsumer {
   private[this] def startConsumerActor[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     polls: Queue[F, Request[F, K, V]],
-    actor: KafkaConsumerActor[F, K, V],
-    running: F[Boolean]
+    actor: KafkaConsumerActor[F, K, V]
   )(
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, Fiber[F, Unit]] =
     Resource.make {
-      requests.tryDequeue1
-        .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
-        .flatMap(actor.handle(_) >> context.shift)
-        .whileM_(running)
-        .start
+      Deferred[F, Unit].flatMap { deferred =>
+        F.guarantee {
+            requests.tryDequeue1
+              .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
+              .flatMap(actor.handle(_) >> context.shift)
+              .foreverM[Unit]
+          }(deferred.complete(()))
+          .start
+          .map(fiber => Fiber[F, Unit](deferred.get, fiber.cancel.start.void))
+      }
     }(_.cancel)
 
   private[this] def startPollScheduler[F[_], K, V](
     polls: Queue[F, Request[F, K, V]],
-    pollInterval: FiniteDuration,
-    running: F[Boolean]
+    pollInterval: FiniteDuration
   )(
     implicit F: Concurrent[F],
     timer: Timer[F]
   ): Resource[F, Fiber[F, Unit]] =
     Resource.make {
-      {
-        polls.enqueue1(Poll()) >>
-          timer.sleep(pollInterval)
-      }.whileM_(running).start
+      Deferred[F, Unit].flatMap { deferred =>
+        F.guarantee {
+            {
+              polls.enqueue1(Poll()) >>
+                timer.sleep(pollInterval)
+            }.foreverM[Unit]
+          }(deferred.complete(()))
+          .start
+          .map(fiber => Fiber[F, Unit](deferred.get, fiber.cancel.start.void))
+      }
     }(_.cancel)
 
   private[this] def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
-    ref: Ref[F, State[F, K, V]],
     actor: Fiber[F, Unit],
     polls: Fiber[F, Unit]
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
       override val fiber: Fiber[F, Unit] = {
-        val requestShutdown = requests.enqueue1(Shutdown())
-        val forceShutdown = ref.update(_.asShutdown)
+        val actorFiber =
+          Fiber[F, Unit](F.guaranteeCase(actor.join) {
+            case ExitCase.Completed => polls.cancel
+            case _                  => F.unit
+          }, actor.cancel)
 
-        val join = {
-          val actorFiber = Fiber(actor.join, requestShutdown)
-          val pollsFiber = Fiber(polls.join, forceShutdown)
-          (actorFiber combine pollsFiber).join
-        }
+        val pollsFiber =
+          Fiber[F, Unit](F.guaranteeCase(polls.join) {
+            case ExitCase.Completed => actor.cancel
+            case _                  => F.unit
+          }, polls.cancel)
 
-        Fiber(join, requestShutdown)
+        actorFiber combine pollsFiber
       }
 
       private val assignment: F[Set[TopicPartition]] =
@@ -201,11 +223,10 @@ private[kafka] object KafkaConsumer {
         Resource.liftF(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
           Resource.liftF(Jitter.default[F]).flatMap { implicit jitter =>
             createConsumer(settings).flatMap { synchronized =>
-              val running = ref.get.map(_.running)
               val actor = new KafkaConsumerActor(settings, ref, requests, synchronized)
-              startConsumerActor(requests, polls, actor, running).flatMap { actor =>
-                startPollScheduler(polls, settings.pollInterval, running).map { polls =>
-                  createKafkaConsumer(requests, ref, actor, polls)
+              startConsumerActor(requests, polls, actor).flatMap { actor =>
+                startPollScheduler(polls, settings.pollInterval).map { polls =>
+                  createKafkaConsumer(requests, actor, polls)
                 }
               }
             }
