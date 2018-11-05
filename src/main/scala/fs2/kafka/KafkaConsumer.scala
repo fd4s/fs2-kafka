@@ -199,12 +199,14 @@ private[kafka] object KafkaConsumer {
     Resource.liftF(Queue.unbounded[F, Request[F, K, V]]).flatMap { requests =>
       Resource.liftF(Queue.bounded[F, Request[F, K, V]](1)).flatMap { polls =>
         Resource.liftF(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
-          createConsumer(settings).flatMap { synchronized =>
-            val running = ref.get.map(_.running)
-            val actor = new KafkaConsumerActor(settings, ref, requests, synchronized)
-            startConsumerActor(requests, polls, actor, running).flatMap { actor =>
-              startPollScheduler(polls, settings.pollInterval, running).map { polls =>
-                createKafkaConsumer(requests, ref, actor, polls)
+          Resource.liftF(Jitter.default[F]).flatMap { implicit jitter =>
+            createConsumer(settings).flatMap { synchronized =>
+              val running = ref.get.map(_.running)
+              val actor = new KafkaConsumerActor(settings, ref, requests, synchronized)
+              startConsumerActor(requests, polls, actor, running).flatMap { actor =>
+                startPollScheduler(polls, settings.pollInterval, running).map { polls =>
+                  createKafkaConsumer(requests, ref, actor, polls)
+                }
               }
             }
           }
