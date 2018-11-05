@@ -1,4 +1,4 @@
-[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.16.1-orange.svg)](https://bintray.com/ovotech/maven/fs2-kafka/0.16.1)
+[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.16.2-orange.svg)](https://bintray.com/ovotech/maven/fs2-kafka/0.16.2)
 
 ## FS2 Kafka
 
@@ -14,7 +14,7 @@ To get started with [sbt][sbt], simply add the following lines to your `build.sb
 ```scala
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 
-libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.16.1"
+libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.16.2"
 ```
 
 The library is published for Scala 2.11 and 2.12.
