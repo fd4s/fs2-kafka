@@ -46,6 +46,43 @@ final class KafkaSpec extends BaseAsyncSpec {
     }
   }
 
+  describe("commitBatchOption") {
+    it("should batch commit each chunk") {
+      val committed =
+        (for {
+          ref <- Stream.eval(Ref[IO].of(Option.empty[Map[TopicPartition, OffsetAndMetadata]]))
+          commit = (offsets: Map[TopicPartition, OffsetAndMetadata]) => ref.set(Some(offsets))
+          offsets = Chunk.seq(exampleOffsetsOption(commit))
+          _ <- Stream
+            .chunk(offsets)
+            .covary[IO]
+            .to(commitBatchOption)
+          result <- Stream.eval(ref.get)
+        } yield result).compile.lastOrError.unsafeRunSync
+
+      assert(committed.contains(exampleOffsetsCommitted))
+    }
+  }
+
+  describe("commitBatchOptionF") {
+    it("should batch commit each chunk") {
+      val committed =
+        (for {
+          ref <- Stream.eval(Ref[IO].of(Option.empty[Map[TopicPartition, OffsetAndMetadata]]))
+          commit = (offsets: Map[TopicPartition, OffsetAndMetadata]) => ref.set(Some(offsets))
+          offsets = Chunk.seq(exampleOffsetsOption(commit))
+          _ <- Stream
+            .chunk(offsets)
+            .covary[IO]
+            .map(IO.pure)
+            .to(commitBatchOptionF)
+          result <- Stream.eval(ref.get)
+        } yield result).compile.lastOrError.unsafeRunSync
+
+      assert(committed.contains(exampleOffsetsCommitted))
+    }
+  }
+
   describe("commitBatchWithin") {
     it("should batch commit according specified arguments") {
       val committed =
@@ -81,6 +118,50 @@ final class KafkaSpec extends BaseAsyncSpec {
 
       assert(committed.contains(exampleOffsetsCommitted))
     }
+  }
+
+  describe("commitBatchOptionWithin") {
+    it("should batch commit according specified arguments") {
+      val committed =
+        (for {
+          ref <- Stream.eval(Ref[IO].of(Option.empty[Map[TopicPartition, OffsetAndMetadata]]))
+          commit = (offsets: Map[TopicPartition, OffsetAndMetadata]) => ref.set(Some(offsets))
+          offsets = Chunk.seq(exampleOffsetsOption(commit))
+          _ <- Stream
+            .chunk(offsets)
+            .covary[IO]
+            .to(commitBatchOptionWithin(offsets.size, 10.seconds))
+          result <- Stream.eval(ref.get)
+        } yield result).compile.lastOrError.unsafeRunSync
+
+      assert(committed.contains(exampleOffsetsCommitted))
+    }
+  }
+
+  describe("commitBatchOptionWithinF") {
+    it("should batch commit according specified arguments") {
+      val committed =
+        (for {
+          ref <- Stream.eval(Ref[IO].of(Option.empty[Map[TopicPartition, OffsetAndMetadata]]))
+          commit = (offsets: Map[TopicPartition, OffsetAndMetadata]) => ref.set(Some(offsets))
+          offsets = Chunk.seq(exampleOffsetsOption(commit))
+          _ <- Stream
+            .chunk(offsets)
+            .covary[IO]
+            .map(IO.pure)
+            .to(commitBatchOptionWithinF(offsets.size, 10.seconds))
+          result <- Stream.eval(ref.get)
+        } yield result).compile.lastOrError.unsafeRunSync
+
+      assert(committed.contains(exampleOffsetsCommitted))
+    }
+  }
+
+  def exampleOffsetsOption[F[_]](
+    commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
+  ): List[Option[CommittableOffset[F]]] = {
+    val (first, rest) = exampleOffsets(commit).map(Some(_)).splitAt(2)
+    List(None) ++ first ++ List(None) ++ rest ++ List(None)
   }
 
   def exampleOffsets[F[_]](
