@@ -152,7 +152,8 @@ private[kafka] object KafkaConsumer {
 
       private val assignment: F[Set[TopicPartition]] =
         Deferred[F, Either[Throwable, Set[TopicPartition]]].flatMap { deferred =>
-          val assignment = requests.enqueue1(Assignment(deferred)) >> deferred.get.rethrow
+          val request = Request.Assignment[F, K, V](deferred, onRebalance = None)
+          val assignment = requests.enqueue1(request) >> deferred.get.rethrow
           F.race(fiber.join, assignment).map {
             case Left(())        => Set.empty
             case Right(assigned) => assigned
