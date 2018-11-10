@@ -167,9 +167,10 @@ private[kafka] object KafkaConsumer {
           .flatMap { queue =>
             assigned.toList
               .traverse { partition =>
-                Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)].flatMap {
+                Deferred[F, (Chunk[CommittableMessage[F, K, V]], ExpiringFetchCompletedReason)].flatMap {
                   deferred =>
-                    val fetch = requests.enqueue1(Fetch(partition, deferred)) >> deferred.get
+                    val request = Request.ExpiringFetch(partition, deferred)
+                    val fetch = requests.enqueue1(request) >> deferred.get
                     F.race(fiber.join, fetch).flatMap {
                       case Left(()) => F.unit
                       case Right((chunk, _)) =>
