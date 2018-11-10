@@ -83,7 +83,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private def fetch(
     partition: TopicPartition,
-    deferred: Deferred[F, Chunk[CommittableMessage[F, K, V]]]
+    deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
   ): F[Unit] = nowExpiryTime.flatMap { now =>
     val expiresAt = now + settings.fetchTimeout.length
     ref.update(_.withFetch(partition, deferred, expiresAt))
@@ -125,7 +125,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           state.fetches.filterKeys(withRecords).toList.traverse {
             case (partition, partitionFetches) =>
               val records = Chunk.chain(state.records(partition).toChain)
-              partitionFetches.traverse(_.complete(records))
+              partitionFetches.traverse(_.completeRevoked(records))
           } >> ref.update(_.withoutFetches(withRecords).withoutRecords(withRecords))
         } else F.unit
 
@@ -135,7 +135,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .filterKeys(withoutRecords)
             .values
             .toList
-            .traverse(_.traverse(_.complete(Chunk.empty))) >>
+            .traverse(_.traverse(_.completeRevoked(Chunk.empty))) >>
             ref.update(_.withoutFetches(withoutRecords))
         } else F.unit
 
@@ -248,7 +248,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               state.fetches.filterKeys(canBeCompleted).toList.traverse {
                 case (partition, fetches) =>
                   val records = Chunk.chain(allRecords(partition).toChain)
-                  fetches.traverse(_.complete(records))
+                  fetches.traverse(_.completeRecords(records))
               } >> ref.update {
                 _.withoutFetches(canBeCompleted)
                   .withoutRecords(canBeCompleted)
@@ -274,7 +274,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             val completeExpired =
               state.fetches.values
                 .flatMap(_.filter_(_.hasExpired(now)))
-                .foldLeft(F.unit)(_ >> _.complete(Chunk.empty))
+                .foldLeft(F.unit)(_ >> _.completeExpired)
 
             val newFetches =
               Map.newBuilder[TopicPartition, NonEmptyChain[ExpiringFetch[F, K, V]]]
@@ -315,11 +315,17 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
 private[kafka] object KafkaConsumerActor {
   final class ExpiringFetch[F[_], K, V](
-    deferred: Deferred[F, Chunk[CommittableMessage[F, K, V]]],
+    deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)],
     expiresAt: Long
   ) {
-    def complete(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
-      deferred.complete(chunk)
+    def completeRevoked(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
+      deferred.complete((chunk, TopicPartitionRevoked))
+
+    def completeRecords(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
+      deferred.complete((chunk, FetchedRecords))
+
+    def completeExpired: F[Unit] =
+      deferred.complete((Chunk.empty, FetchExpired))
 
     def hasExpired(now: Long): Boolean =
       now >= expiresAt
@@ -332,7 +338,7 @@ private[kafka] object KafkaConsumerActor {
   ) {
     def withFetch(
       partition: TopicPartition,
-      deferred: Deferred[F, Chunk[CommittableMessage[F, K, V]]],
+      deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)],
       expiresAt: Long
     ): State[F, K, V] = {
       val fetch = NonEmptyChain.one(new ExpiringFetch(deferred, expiresAt))
@@ -363,6 +369,14 @@ private[kafka] object KafkaConsumerActor {
       )
   }
 
+  sealed abstract class FetchCompletedReason
+
+  case object TopicPartitionRevoked extends FetchCompletedReason
+
+  case object FetchedRecords extends FetchCompletedReason
+
+  case object FetchExpired extends FetchCompletedReason
+
   sealed abstract class Request[F[_], K, V]
 
   object Request {
@@ -380,7 +394,7 @@ private[kafka] object KafkaConsumerActor {
 
     final case class Fetch[F[_], K, V](
       partition: TopicPartition,
-      deferred: Deferred[F, Chunk[CommittableMessage[F, K, V]]]
+      deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
     ) extends Request[F, K, V]
 
     final case class Commit[F[_], K, V](
