@@ -17,9 +17,9 @@
 package fs2.kafka
 
 import cats.data.{NonEmptyList, NonEmptySet}
+import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.syntax.concurrent._
-import cats.effect.{ConcurrentEffect, Fiber, Timer, _}
 import cats.instances.list._
 import cats.instances.unit._
 import cats.syntax.applicativeError._
@@ -30,7 +30,6 @@ import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import fs2.concurrent.Queue
-import fs2.kafka.KafkaConsumerActor.Request._
 import fs2.kafka.KafkaConsumerActor._
 import fs2.kafka.internal.Synchronized
 import fs2.kafka.internal.instances._
@@ -123,7 +122,7 @@ private[kafka] object KafkaConsumer {
       Deferred[F, Unit].flatMap { deferred =>
         F.guarantee {
             {
-              polls.enqueue1(Poll()) >>
+              polls.enqueue1(Request.Poll()) >>
                 timer.sleep(pollInterval)
             }.foreverM[Unit]
           }(deferred.complete(()))
@@ -311,7 +310,7 @@ private[kafka] object KafkaConsumer {
         partitionedStream.flatten
 
       override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
-        Stream.eval(requests.enqueue1(Subscribe(topics)))
+        Stream.eval(requests.enqueue1(Request.Subscribe(topics)))
 
       override def toString: String =
         "KafkaConsumer$" + System.identityHashCode(this)
