@@ -62,31 +62,37 @@ lazy val mimaSettings = Seq(
   },
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
+    // format: off
     Seq(
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaConsumerActor.this"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.apply"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem](
-        "fs2.kafka.ConsumerSettings.commitRecovery"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem](
-        "fs2.kafka.ConsumerSettings.withCommitRecovery"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.copy"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.apply"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.commitRecovery"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withCommitRecovery"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.copy"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this"),
       ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.KafkaConsumerActor$Request$Shutdown"),
       ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.KafkaConsumerActor$Request$Shutdown$"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "fs2.kafka.KafkaConsumerActor#State.asShutdown"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "fs2.kafka.KafkaConsumerActor#State.running"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.asShutdown"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.running"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.copy"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-        "fs2.kafka.KafkaConsumerActor#State.copy$default$4"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.copy$default$4"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.apply")
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.apply"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#Request#Assignment.apply"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("fs2.kafka.KafkaConsumerActor#Request#Revoked.partitions"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaConsumerActor#Request#Revoked.copy"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("fs2.kafka.KafkaConsumerActor#Request#Revoked.copy$default$1"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaConsumerActor#Request#Revoked.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#ExpiringFetch.complete"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaConsumerActor#Request#Revoked.apply"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#Request#Assignment.copy"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#Request#Assignment.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.withFetch"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("fs2.kafka.KafkaConsumerActor#State.copy$default$3"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.parallelPartitionedStream")
     )
+    // format: on
   }
 )
 
