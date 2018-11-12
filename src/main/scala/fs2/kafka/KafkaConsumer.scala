@@ -42,26 +42,118 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
+/**
+  * [[KafkaConsumer]] represents a consumer of Kafka messages, with the
+  * ability to subscribe to topics, and start a single top-level stream
+  * which can optionally be controlled via a provided `Fiber` instance.
+  * Kafka records are wrapped in [[CommittableMessage]]s which provide
+  * [[CommittableOffset]]s with the ability to commit record offsets
+  * to Kafka. For performance reasons, offsets are usually committed in
+  * batches using [[CommittableOffsetBatch]]. Provided `Sink`s, like
+  * [[commitBatch]] or [[commitBatchWithin]] are available for batch
+  * committing offsets. If you are not committing offsets to Kafka,
+  * you can simply discard the [[CommittableOffset]], and only make
+  * use of the record.
+  *
+  * @note while it's technically possible to start more than one stream
+  *       from a single [[KafkaConsumer]], it is generally not recommended
+  *       as there is no guarantee which stream will receive which records,
+  *       and there might be an overlap, in terms of duplicate messages,
+  *       between the two streams. If a first stream completes, possibly
+  *       with error, there's no guarantee the stream has processed all
+  *       of the messages, and a second stream from the same [[KafkaConsumer]]
+  *       might not be able to pick up where the first one left off. Therefore,
+  *       only create a single top-level stream per [[KafkaConsumer]], and if
+  *       you want to start a new stream if the first one finishes, let the
+  *       [[KafkaConsumer]] shutdown and create a new one instead.
+  */
 abstract class KafkaConsumer[F[_], K, V] {
+
+  /**
+    * A flattened version of [[partitionedStream]], which is guaranteed
+    * to be equivalent to:
+    *
+    * {{{
+    * partitionedStream.flatten
+    * }}}
+    *
+    * useful when you're not interested in processing the inner `Stream`s
+    * from [[partitionedStream]] in parallel. For more information about
+    * the `Stream`, refer to [[partitionedStream]].
+    *
+    * @note you have to first use [[subscribe]] to subscribe the consumer
+    *       before using this `Stream`. If you forgot to subscribe, there
+    *       will be a [[NotSubscribedException]] raised in the `Stream`.
+    */
   def stream: Stream[F, CommittableMessage[F, K, V]]
 
+  /**
+    * A `Stream` where the elements themselves are `Stream`s with messages
+    * for a single partition. This works by continually making requests for
+    * records on every assigned partition, waiting for records to come back
+    * on all partitions, or up to [[ConsumerSettings#fetchTimeout]]. Records
+    * can be processed as soon as they are fetched, without waiting on other
+    * partition requests, but a second request for the same partition will
+    * wait for outstanding fetches to complete or timeout before sent.<br>
+    * <br>
+    * If you're not interested in processing the inner `Stream`s in parallel,
+    * a flattened version is available as [[stream]]. If you want to process
+    * every partition in parallel, instead use [[parallelPartitionedStream]].
+    *
+    * @note you have to first use [[subscribe]] to subscribe the consumer
+    *       before using this `Stream`. If you forgot to subscribe, there
+    *       will be a [[NotSubscribedException]] raised in the `Stream`.
+    */
   def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]]
 
+  /**
+    * A `Stream` where the elements themselves are `Stream`s that continually
+    * request records for a single partition. These `Stream`s will have to be
+    * processed in parallel, using `parJoin` or `parJoinUnbounded`. Note that
+    * when using `parJoin(n)` and `n` is smaller than the number of currently
+    * assigned partitions, then there will be assigned partitions which won't
+    * be processed. For that reason, prefer `parJoinUnbounded` and the actual
+    * limit will be the number of assigned partitions.<br>
+    * <br>
+    * If you don't want to process all partitions in parallel, then you can
+    * use [[partitionedStream]] for some parallelism, or [[stream]] if you
+    * only want records from all partitions in a single `Stream`.
+    *
+    * @note you have to first use [[subscribe]] to subscribe the consumer
+    *       before using this `Stream`. If you forgot to subscribe, there
+    *       will be a [[NotSubscribedException]] raised in the `Stream`.
+    */
   def parallelPartitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]]
 
+  /**
+    * Subscribes the consumer to the specified topics. Note that you have to
+    * use this function to subscribe to one or more topics before using any
+    * of the provided `Stream`s, or a [[NotSubscribedException]] will be
+    * raised in the `Stream`s.
+    *
+    * @param topics the topics to which the consumer should subscribe
+    */
   def subscribe(topics: NonEmptyList[String]): Stream[F, Unit]
 
   /**
-    * A `Fiber` that can be used to cancel the underlying consumer,
-    * or wait for it to complete. If you're using [[stream]] or other
-    * provided streams, like [[partitionedStream]], these streams are
-    * automatically interrupted when the underlying consumer has been
-    * cancelled or when it finishes with an exception.<br>
+    * A `Fiber` that can be used to cancel the underlying consumer, or
+    * wait for it to complete. If you're using [[stream]], or any other
+    * provided stream in [[KafkaConsumer]], these will be automatically
+    * interrupted when the underlying consumer has been cancelled or
+    * when it finishes with an exception.<br>
     * <br>
-    * When `cancel` is invoked, an attempt will be made to stop the
-    * underlying consumer. Note that `cancel` does not wait for the
-    * consumer to stop. If you also want to wait for the consumer
-    * to stop, you can use `join`.
+    * Whenever `cancel` is invoked, an attempt will be made to stop the
+    * underlying consumer. The `cancel` operation will not wait for the
+    * consumer to shutdown. If you also want to wait for the shutdown
+    * to complete, you can use `join`. Note that `join` is guaranteed
+    * to complete after consumer shutdown, even when the consumer is
+    * cancelled with `cancel`.<br>
+    * <br>
+    * This `Fiber` instance is usually only required if the consumer
+    * needs to be cancelled due to some external condition, or when an
+    * external process needs to be cancelled whenever the consumer has
+    * shutdown. Most of the time, when you're only using the streams
+    * provided by [[KafkaConsumer]], there is no need to use this.
     */
   def fiber: Fiber[F, Unit]
 }
