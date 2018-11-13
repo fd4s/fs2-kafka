@@ -162,7 +162,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       val records = state.records.toKeySet
 
       val revokedFetches = revoked.partitions.toSortedSet intersect fetches
-      val withRecords = revokedFetches intersect records
+      val withRecords = records intersect revokedFetches
       val withoutRecords = revokedFetches diff records
 
       val completeWithRecords =
@@ -276,7 +276,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           val requested = state.fetches.toKeySet
           val available = state.records.toKeySet
 
-          val resume = (assigned intersect requested) diff available
+          val resume = (requested intersect assigned) diff available
           val pause = assigned diff resume
 
           consumer.pause(pause.asJava)

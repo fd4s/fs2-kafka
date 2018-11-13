@@ -54,7 +54,7 @@ private[kafka] object syntax {
     def toSet: Set[A] = {
       val builder = Set.newBuilder[A]
       val it = collection.iterator()
-      while(it.hasNext) builder += it.next()
+      while (it.hasNext) builder += it.next()
       builder.result()
     }
 
