@@ -1,0 +1,10 @@
+### Changes
+- Add `parallelPartitionedStream` for parallel processing per partition. ([#13][#13])
+- Add batch commit sinks for when offsets are wrapped in `Option`. ([#12][#12])
+- Fix `StackOverflowError` by explicitly creating new `Set`s. ([#15][#15])
+
+Released on 2018-11-13.
+
+[#12]: https://github.com/ovotech/fs2-kafka/pull/12
+[#13]: https://github.com/ovotech/fs2-kafka/pull/13
+[#15]: https://github.com/ovotech/fs2-kafka/pull/15
