@@ -59,15 +59,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     }
 
-  private def partitionSet(
-    partitions: util.Collection[TopicPartition]
-  ): SortedSet[TopicPartition] = {
-    val builder = SortedSet.newBuilder[TopicPartition]
-    val it = partitions.iterator()
-    while (it.hasNext) { builder += it.next() }
-    builder.result()
-  }
-
   private def subscribe(topics: NonEmptyList[String]): F[Unit] =
     withConsumer { consumer =>
       F.delay {
@@ -77,7 +68,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
               if (partitions.isEmpty) ()
               else {
-                val nonEmpty = NonEmptySet.fromSetUnsafe(partitionSet(partitions))
+                val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
                 val revoked = requests.enqueue1(Request.Revoked(nonEmpty))
                 F.runAsync(revoked)(_ => IO.unit).unsafeRunSync
               }
@@ -85,7 +76,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
               if (partitions.isEmpty) ()
               else {
-                val nonEmpty = NonEmptySet.fromSetUnsafe(partitionSet(partitions))
+                val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
                 val assigned = requests.enqueue1(Request.Assigned(nonEmpty))
                 F.runAsync(assigned)(_ => IO.unit).unsafeRunSync
               }
@@ -167,11 +158,11 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private def revoked(revoked: Request.Revoked[F, K, V]): F[Unit] =
     ref.get.flatMap { state =>
-      val fetches = state.fetches.keySet
-      val records = state.records.keySet
+      val fetches = state.fetches.toKeySet
+      val records = state.records.toKeySet
 
       val revokedFetches = revoked.partitions.toSortedSet intersect fetches
-      val withRecords = revokedFetches intersect records
+      val withRecords = records intersect revokedFetches
       val withoutRecords = revokedFetches diff records
 
       val completeWithRecords =
@@ -206,7 +197,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     ref.get.flatMap { state =>
       val assigned: F[Either[Throwable, SortedSet[TopicPartition]]] =
         if (state.subscribed) withConsumer { consumer =>
-          F.delay(Right(partitionSet(consumer.assignment)))
+          F.delay(Right(consumer.assignment.toSortedSet))
         } else F.pure(Left(NotSubscribedException))
 
       val withOnRebalance =
@@ -281,11 +272,11 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords[K, V]] =
       withConsumer { consumer =>
         F.delay {
-          val assigned = partitionSet(consumer.assignment)
-          val requested = state.fetches.keySet
-          val available = state.records.keySet
+          val assigned = consumer.assignment.toSet
+          val requested = state.fetches.toKeySet
+          val available = state.records.toKeySet
 
-          val resume = (assigned intersect requested) diff available
+          val resume = (requested intersect assigned) diff available
           val pause = assigned diff resume
 
           consumer.pause(pause.asJava)
@@ -303,10 +294,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         val allRecords = state.records combine newRecords
 
         if (allRecords.nonEmpty) {
-          val requested = state.fetches.keySet
+          val requested = state.fetches.toKeySet
 
-          val canBeCompleted = allRecords.keySet intersect requested
-          val canBeStored = newRecords.keySet diff canBeCompleted
+          val canBeCompleted = allRecords.toKeySet intersect requested
+          val canBeStored = newRecords.toKeySet diff canBeCompleted
 
           val complete =
             if (canBeCompleted.nonEmpty) {
