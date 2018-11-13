@@ -59,15 +59,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     }
 
-  private def partitionSet(
-    partitions: util.Collection[TopicPartition]
-  ): SortedSet[TopicPartition] = {
-    val builder = SortedSet.newBuilder[TopicPartition]
-    val it = partitions.iterator()
-    while (it.hasNext) { builder += it.next() }
-    builder.result()
-  }
-
   private def subscribe(topics: NonEmptyList[String]): F[Unit] =
     withConsumer { consumer =>
       F.delay {
@@ -77,7 +68,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
               if (partitions.isEmpty) ()
               else {
-                val nonEmpty = NonEmptySet.fromSetUnsafe(partitionSet(partitions))
+                val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
                 val revoked = requests.enqueue1(Request.Revoked(nonEmpty))
                 F.runAsync(revoked)(_ => IO.unit).unsafeRunSync
               }
@@ -85,7 +76,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
               if (partitions.isEmpty) ()
               else {
-                val nonEmpty = NonEmptySet.fromSetUnsafe(partitionSet(partitions))
+                val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
                 val assigned = requests.enqueue1(Request.Assigned(nonEmpty))
                 F.runAsync(assigned)(_ => IO.unit).unsafeRunSync
               }
@@ -206,7 +197,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     ref.get.flatMap { state =>
       val assigned: F[Either[Throwable, SortedSet[TopicPartition]]] =
         if (state.subscribed) withConsumer { consumer =>
-          F.delay(Right(partitionSet(consumer.assignment)))
+          F.delay(Right(consumer.assignment.toSortedSet))
         } else F.pure(Left(NotSubscribedException))
 
       val withOnRebalance =
@@ -281,7 +272,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords[K, V]] =
       withConsumer { consumer =>
         F.delay {
-          val assigned = partitionSet(consumer.assignment)
+          val assigned = consumer.assignment.toSortedSet
           val requested = state.fetches.keySet
           val available = state.records.keySet
 

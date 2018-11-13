@@ -18,8 +18,10 @@ package fs2.kafka.internal
 
 import java.time.Duration
 import java.time.temporal.ChronoUnit
+import java.util
 import java.util.concurrent.TimeUnit
 
+import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
 private[kafka] object syntax {
@@ -36,5 +38,16 @@ private[kafka] object syntax {
           case TimeUnit.MICROSECONDS => Duration.of(duration.length, ChronoUnit.MICROS)
           case TimeUnit.NANOSECONDS  => Duration.ofNanos(duration.length)
         }
+  }
+
+  implicit final class JavaUtilCollectionSyntax[A](val collection: util.Collection[A])
+      extends AnyVal {
+
+    def toSortedSet(implicit ordering: Ordering[A]): SortedSet[A] = {
+      val builder = SortedSet.newBuilder[A]
+      val it = collection.iterator()
+      while (it.hasNext) builder += it.next()
+      builder.result()
+    }
   }
 }
