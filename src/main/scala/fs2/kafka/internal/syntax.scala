@@ -40,8 +40,23 @@ private[kafka] object syntax {
         }
   }
 
+  implicit final class MapSyntax[K, V](val map: Map[K, V]) extends AnyVal {
+    def toKeySet: Set[K] = {
+      val builder = Set.newBuilder[K]
+      map.foreach(builder += _._1)
+      builder.result()
+    }
+  }
+
   implicit final class JavaUtilCollectionSyntax[A](val collection: util.Collection[A])
       extends AnyVal {
+
+    def toSet: Set[A] = {
+      val builder = Set.newBuilder[A]
+      val it = collection.iterator()
+      while(it.hasNext) builder += it.next()
+      builder.result()
+    }
 
     def toSortedSet(implicit ordering: Ordering[A]): SortedSet[A] = {
       val builder = SortedSet.newBuilder[A]
