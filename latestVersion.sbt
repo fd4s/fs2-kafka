@@ -1,2 +1,2 @@
-latestVersion in ThisBuild := "0.16.3"
-latestBinaryCompatibleVersion in ThisBuild := Some("0.16.3")
+latestVersion in ThisBuild := "0.16.4"
+latestBinaryCompatibleVersion in ThisBuild := Some("0.16.4")
