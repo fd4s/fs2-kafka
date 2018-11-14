@@ -41,7 +41,7 @@ private[kafka] object syntax {
   }
 
   implicit final class MapSyntax[K, V](val map: Map[K, V]) extends AnyVal {
-    def toKeySet: Set[K] = {
+    def keySetStrict: Set[K] = {
       val builder = Set.newBuilder[K]
       map.foreach(builder += _._1)
       builder.result()

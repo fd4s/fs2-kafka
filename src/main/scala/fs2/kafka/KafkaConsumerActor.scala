@@ -158,8 +158,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private def revoked(revoked: Request.Revoked[F, K, V]): F[Unit] =
     ref.get.flatMap { state =>
-      val fetches = state.fetches.toKeySet
-      val records = state.records.toKeySet
+      val fetches = state.fetches.keySetStrict
+      val records = state.records.keySetStrict
 
       val revokedFetches = revoked.partitions.toSortedSet intersect fetches
       val withRecords = records intersect revokedFetches
@@ -273,8 +273,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       withConsumer { consumer =>
         F.delay {
           val assigned = consumer.assignment.toSet
-          val requested = state.fetches.toKeySet
-          val available = state.records.toKeySet
+          val requested = state.fetches.keySetStrict
+          val available = state.records.keySetStrict
 
           val resume = (requested intersect assigned) diff available
           val pause = assigned diff resume
@@ -294,10 +294,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         val allRecords = state.records combine newRecords
 
         if (allRecords.nonEmpty) {
-          val requested = state.fetches.toKeySet
+          val requested = state.fetches.keySetStrict
 
-          val canBeCompleted = allRecords.toKeySet intersect requested
-          val canBeStored = newRecords.toKeySet diff canBeCompleted
+          val canBeCompleted = allRecords.keySetStrict intersect requested
+          val canBeStored = newRecords.keySetStrict diff canBeCompleted
 
           val complete =
             if (canBeCompleted.nonEmpty) {
