@@ -41,9 +41,27 @@ private[kafka] object syntax {
   }
 
   implicit final class MapSyntax[K, V](val map: Map[K, V]) extends AnyVal {
-    def toKeySet: Set[K] = {
+    def keySetStrict: Set[K] = {
       val builder = Set.newBuilder[K]
       map.foreach(builder += _._1)
+      builder.result()
+    }
+
+    def filterKeysStrict(p: K => Boolean): Map[K, V] = {
+      val builder = Map.newBuilder[K, V]
+      map.foreach(e => if (p(e._1)) builder += e)
+      builder.result()
+    }
+
+    def filterKeysStrictList(p: K => Boolean): List[(K, V)] = {
+      val builder = List.newBuilder[(K, V)]
+      map.foreach(e => if (p(e._1)) builder += e)
+      builder.result()
+    }
+
+    def filterKeysStrictValuesList(p: K => Boolean): List[V] = {
+      val builder = List.newBuilder[V]
+      map.foreach(e => if (p(e._1)) builder += e._2)
       builder.result()
     }
   }

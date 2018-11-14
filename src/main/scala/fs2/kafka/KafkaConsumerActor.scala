@@ -158,8 +158,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private def revoked(revoked: Request.Revoked[F, K, V]): F[Unit] =
     ref.get.flatMap { state =>
-      val fetches = state.fetches.toKeySet
-      val records = state.records.toKeySet
+      val fetches = state.fetches.keySetStrict
+      val records = state.records.keySetStrict
 
       val revokedFetches = revoked.partitions.toSortedSet intersect fetches
       val withRecords = records intersect revokedFetches
@@ -167,7 +167,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
       val completeWithRecords =
         if (withRecords.nonEmpty) {
-          state.fetches.filterKeys(withRecords).toList.traverse {
+          state.fetches.filterKeysStrictList(withRecords).traverse {
             case (partition, partitionFetches) =>
               val records = Chunk.chain(state.records(partition).toChain)
               partitionFetches.traverse(_.completeRevoked(records))
@@ -177,9 +177,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       val completeWithoutRecords =
         if (withoutRecords.nonEmpty) {
           state.fetches
-            .filterKeys(withoutRecords)
-            .values
-            .toList
+            .filterKeysStrictValuesList(withoutRecords)
             .traverse(_.traverse(_.completeRevoked(Chunk.empty))) >>
             ref.update(_.withoutFetches(withoutRecords))
         } else F.unit
@@ -273,8 +271,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       withConsumer { consumer =>
         F.delay {
           val assigned = consumer.assignment.toSet
-          val requested = state.fetches.toKeySet
-          val available = state.records.toKeySet
+          val requested = state.fetches.keySetStrict
+          val available = state.records.keySetStrict
 
           val resume = (requested intersect assigned) diff available
           val pause = assigned diff resume
@@ -294,14 +292,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         val allRecords = state.records combine newRecords
 
         if (allRecords.nonEmpty) {
-          val requested = state.fetches.toKeySet
+          val requested = state.fetches.keySetStrict
 
-          val canBeCompleted = allRecords.toKeySet intersect requested
-          val canBeStored = newRecords.toKeySet diff canBeCompleted
+          val canBeCompleted = allRecords.keySetStrict intersect requested
+          val canBeStored = newRecords.keySetStrict diff canBeCompleted
 
           val complete =
             if (canBeCompleted.nonEmpty) {
-              state.fetches.filterKeys(canBeCompleted).toList.traverse {
+              state.fetches.filterKeysStrictList(canBeCompleted).traverse {
                 case (partition, fetches) =>
                   val records = Chunk.chain(allRecords(partition).toChain)
                   fetches.traverse(_.completeRecords(records))
@@ -313,7 +311,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
           val store =
             if (canBeStored.nonEmpty) {
-              ref.update(_.withRecords(newRecords.filterKeys(canBeStored)))
+              ref.update(_.withRecords(newRecords.filterKeysStrict(canBeStored)))
             } else F.unit
 
           complete >> store
@@ -440,7 +438,7 @@ private[kafka] object KafkaConsumerActor {
     }
 
     def withoutFetches(partitions: Set[TopicPartition]): State[F, K, V] =
-      copy(fetches = fetches.filterKeys(!partitions.contains(_)))
+      copy(fetches = fetches.filterKeysStrict(!partitions.contains(_)))
 
     def withRecords(
       records: Map[TopicPartition, NonEmptyChain[CommittableMessage[F, K, V]]]
@@ -448,7 +446,7 @@ private[kafka] object KafkaConsumerActor {
       copy(records = this.records combine records)
 
     def withoutRecords(partitions: Set[TopicPartition]): State[F, K, V] =
-      copy(records = records.filterKeys(!partitions.contains(_)))
+      copy(records = records.filterKeysStrict(!partitions.contains(_)))
 
     def asSubscribed: State[F, K, V] =
       copy(subscribed = true)
