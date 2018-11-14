@@ -49,19 +49,19 @@ private[kafka] object syntax {
 
     def filterKeysStrict(p: K => Boolean): Map[K, V] = {
       val builder = Map.newBuilder[K, V]
-      map.foreach(e => if(p(e._1)) builder += e)
+      map.foreach(e => if (p(e._1)) builder += e)
       builder.result()
     }
 
     def filterKeysStrictList(p: K => Boolean): List[(K, V)] = {
       val builder = List.newBuilder[(K, V)]
-      map.foreach(e => if(p(e._1)) builder += e)
+      map.foreach(e => if (p(e._1)) builder += e)
       builder.result()
     }
 
     def filterKeysStrictValuesList(p: K => Boolean): List[V] = {
       val builder = List.newBuilder[V]
-      map.foreach(e => if(p(e._1)) builder += e._2)
+      map.foreach(e => if (p(e._1)) builder += e._2)
       builder.result()
     }
   }
