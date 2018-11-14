@@ -46,6 +46,24 @@ private[kafka] object syntax {
       map.foreach(builder += _._1)
       builder.result()
     }
+
+    def filterKeysStrict(p: K => Boolean): Map[K, V] = {
+      val builder = Map.newBuilder[K, V]
+      map.foreach(e => if(p(e._1)) builder += e)
+      builder.result()
+    }
+
+    def filterKeysStrictList(p: K => Boolean): List[(K, V)] = {
+      val builder = List.newBuilder[(K, V)]
+      map.foreach(e => if(p(e._1)) builder += e)
+      builder.result()
+    }
+
+    def filterKeysStrictValuesList(p: K => Boolean): List[V] = {
+      val builder = List.newBuilder[V]
+      map.foreach(e => if(p(e._1)) builder += e._2)
+      builder.result()
+    }
   }
 
   implicit final class JavaUtilCollectionSyntax[A](val collection: util.Collection[A])

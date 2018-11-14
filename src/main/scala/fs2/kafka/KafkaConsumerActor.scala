@@ -167,7 +167,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
       val completeWithRecords =
         if (withRecords.nonEmpty) {
-          state.fetches.filterKeys(withRecords).toList.traverse {
+          state.fetches.filterKeysStrictList(withRecords).traverse {
             case (partition, partitionFetches) =>
               val records = Chunk.chain(state.records(partition).toChain)
               partitionFetches.traverse(_.completeRevoked(records))
@@ -177,9 +177,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       val completeWithoutRecords =
         if (withoutRecords.nonEmpty) {
           state.fetches
-            .filterKeys(withoutRecords)
-            .values
-            .toList
+            .filterKeysStrictValuesList(withoutRecords)
             .traverse(_.traverse(_.completeRevoked(Chunk.empty))) >>
             ref.update(_.withoutFetches(withoutRecords))
         } else F.unit
@@ -301,7 +299,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
           val complete =
             if (canBeCompleted.nonEmpty) {
-              state.fetches.filterKeys(canBeCompleted).toList.traverse {
+              state.fetches.filterKeysStrictList(canBeCompleted).traverse {
                 case (partition, fetches) =>
                   val records = Chunk.chain(allRecords(partition).toChain)
                   fetches.traverse(_.completeRecords(records))
@@ -313,7 +311,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
           val store =
             if (canBeStored.nonEmpty) {
-              ref.update(_.withRecords(newRecords.filterKeys(canBeStored)))
+              ref.update(_.withRecords(newRecords.filterKeysStrict(canBeStored)))
             } else F.unit
 
           complete >> store
@@ -440,7 +438,7 @@ private[kafka] object KafkaConsumerActor {
     }
 
     def withoutFetches(partitions: Set[TopicPartition]): State[F, K, V] =
-      copy(fetches = fetches.filterKeys(!partitions.contains(_)))
+      copy(fetches = fetches.filterKeysStrict(!partitions.contains(_)))
 
     def withRecords(
       records: Map[TopicPartition, NonEmptyChain[CommittableMessage[F, K, V]]]
@@ -448,7 +446,7 @@ private[kafka] object KafkaConsumerActor {
       copy(records = this.records combine records)
 
     def withoutRecords(partitions: Set[TopicPartition]): State[F, K, V] =
-      copy(records = records.filterKeys(!partitions.contains(_)))
+      copy(records = records.filterKeysStrict(!partitions.contains(_)))
 
     def asSubscribed: State[F, K, V] =
       copy(subscribed = true)
