@@ -35,10 +35,9 @@ import fs2.kafka.internal.Synchronized
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
 import fs2.{Chunk, Stream}
-import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer, _}
+import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.TopicPartition
 
-import scala.collection.JavaConverters._
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
@@ -166,13 +165,8 @@ private[kafka] object KafkaConsumer {
     context: ContextShift[F]
   ): Resource[F, Synchronized[F, Consumer[K, V]]] =
     Resource.make[F, Synchronized[F, Consumer[K, V]]] {
-      F.delay {
-          new KConsumer(
-            (settings.properties: Map[String, AnyRef]).asJava,
-            settings.keyDeserializer,
-            settings.valueDeserializer
-          )
-        }
+      settings.consumerFactory
+        .create(settings)
         .flatMap(Synchronized[F].of)
     } { synchronized =>
       synchronized.use { consumer =>

@@ -54,6 +54,10 @@ sealed abstract class ProducerSettings[K, V] {
   def closeTimeout: FiniteDuration
 
   def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[K, V]
+
+  def producerFactory: ProducerFactory
+
+  def withProducerFactory(producerFactory: ProducerFactory): ProducerSettings[K, V]
 }
 
 object ProducerSettings {
@@ -61,7 +65,8 @@ object ProducerSettings {
     override val keySerializer: Serializer[K],
     override val valueSerializer: Serializer[V],
     override val properties: Map[String, String],
-    override val closeTimeout: FiniteDuration
+    override val closeTimeout: FiniteDuration,
+    override val producerFactory: ProducerFactory
   ) extends ProducerSettings[K, V] {
     override def withBootstrapServers(bootstrapServers: String): ProducerSettings[K, V] =
       withProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -105,6 +110,9 @@ object ProducerSettings {
     override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[K, V] =
       copy(closeTimeout = closeTimeout)
 
+    override def withProducerFactory(producerFactory: ProducerFactory): ProducerSettings[K, V] =
+      copy(producerFactory = producerFactory)
+
     override def toString: String =
       Show[ProducerSettings[K, V]].show(this)
   }
@@ -117,9 +125,12 @@ object ProducerSettings {
       keySerializer = keySerializer,
       valueSerializer = valueSerializer,
       properties = Map.empty,
-      closeTimeout = 60.seconds
+      closeTimeout = 60.seconds,
+      producerFactory = ProducerFactory.Default
     )
 
   implicit def producerSettingsShow[K, V]: Show[ProducerSettings[K, V]] =
-    Show.show(s => s"ProducerSettings(closeTimeout = ${s.closeTimeout})")
+    Show.show { s =>
+      s"ProducerSettings(closeTimeout = ${s.closeTimeout}, producerFactory = ${s.producerFactory})"
+    }
 }

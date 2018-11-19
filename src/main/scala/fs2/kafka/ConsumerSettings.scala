@@ -81,6 +81,10 @@ sealed abstract class ConsumerSettings[K, V] {
   def commitRecovery: CommitRecovery
 
   def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[K, V]
+
+  def consumerFactory: ConsumerFactory
+
+  def withConsumerFactory(consumerFactory: ConsumerFactory): ConsumerSettings[K, V]
 }
 
 object ConsumerSettings {
@@ -94,7 +98,8 @@ object ConsumerSettings {
     override val fetchTimeout: FiniteDuration,
     override val pollInterval: FiniteDuration,
     override val pollTimeout: FiniteDuration,
-    override val commitRecovery: CommitRecovery
+    override val commitRecovery: CommitRecovery,
+    override val consumerFactory: ConsumerFactory
   ) extends ConsumerSettings[K, V] {
     override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[K, V] =
       withProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -165,6 +170,9 @@ object ConsumerSettings {
     override def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[K, V] =
       copy(commitRecovery = commitRecovery)
 
+    override def withConsumerFactory(consumerFactory: ConsumerFactory): ConsumerSettings[K, V] =
+      copy(consumerFactory = consumerFactory)
+
     override def toString: String =
       Show[ConsumerSettings[K, V]].show(this)
   }
@@ -193,11 +201,12 @@ object ConsumerSettings {
     fetchTimeout = 500.millis,
     pollInterval = 50.millis,
     pollTimeout = 50.millis,
-    commitRecovery = CommitRecovery.Default
+    commitRecovery = CommitRecovery.Default,
+    consumerFactory = ConsumerFactory.Default
   )
 
   implicit def consumerSettingsShow[K, V]: Show[ConsumerSettings[K, V]] =
     Show.show { s =>
-      s"ConsumerSettings(closeTimeout = ${s.closeTimeout}, commitTimeout = ${s.commitTimeout}, fetchTimeout = ${s.fetchTimeout}, pollInterval = ${s.pollInterval}, pollTimeout = ${s.pollTimeout}, commitRecovery = ${s.commitRecovery})"
+      s"ConsumerSettings(closeTimeout = ${s.closeTimeout}, commitTimeout = ${s.commitTimeout}, fetchTimeout = ${s.fetchTimeout}, pollInterval = ${s.pollInterval}, pollTimeout = ${s.pollTimeout}, commitRecovery = ${s.commitRecovery}, consumerFactory = ${s.consumerFactory})"
     }
 }

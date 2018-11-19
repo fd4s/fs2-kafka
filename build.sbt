@@ -92,7 +92,14 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[IncompatibleResultTypeProblem]("fs2.kafka.KafkaConsumerActor#State.copy$default$3"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.parallelPartitionedStream"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.internal.syntax#MapSyntax.toKeySet"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.internal.syntax#MapSyntax.toKeySet$extension")
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.internal.syntax#MapSyntax.toKeySet$extension"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.consumerFactory"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withConsumerFactory"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.producerFactory"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withProducerFactory"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.apply"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.copy"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.this")
     )
     // format: on
   }
