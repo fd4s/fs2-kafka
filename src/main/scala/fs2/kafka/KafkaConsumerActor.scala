@@ -16,6 +16,7 @@
 
 package fs2.kafka
 
+import java.time.Duration
 import java.util
 
 import cats.data.{Chain, NonEmptyChain, NonEmptyList, NonEmptySet}
@@ -92,43 +93,39 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     partition: TopicPartition,
     deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], ExpiringFetchCompletedReason)]
   ): F[Unit] = {
-    val assignment = withConsumer { consumer =>
-      F.delay(consumer.assignment.contains(partition))
-    }
+    val assigned =
+      withConsumer { consumer =>
+        F.delay(consumer.assignment.contains(partition))
+      }
 
-    val storeFetch =
+    def storeFetch =
       nowExpiryTime.flatMap { now =>
         val expiresAt = now + settings.fetchTimeout.length
         ref.update(_.withExpiringFetch(partition, deferred, expiresAt))
       }
 
-    val completeRevoked =
+    def completeRevoked =
       deferred.complete((Chunk.empty, ExpiringFetchCompletedReason.TopicPartitionRevoked))
 
-    assignment.flatMap { assigned =>
-      if (assigned) storeFetch
-      else completeRevoked
-    }
+    assigned.ifM(storeFetch, completeRevoked)
   }
 
   private def fetch(
     partition: TopicPartition,
     deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
   ): F[Unit] = {
-    val assignment = withConsumer { consumer =>
-      F.delay(consumer.assignment.contains(partition))
-    }
+    val assigned =
+      withConsumer { consumer =>
+        F.delay(consumer.assignment.contains(partition))
+      }
 
-    val storeFetch =
+    def storeFetch =
       ref.update(_.withFetch(partition, deferred))
 
-    val completeRevoked =
+    def completeRevoked =
       deferred.complete((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
 
-    assignment.flatMap { assigned =>
-      if (assigned) storeFetch
-      else completeRevoked
-    }
+    assigned.ifM(storeFetch, completeRevoked)
   }
 
   private def commit(
@@ -171,7 +168,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             case (partition, partitionFetches) =>
               val records = Chunk.chain(state.records(partition).toChain)
               partitionFetches.traverse(_.completeRevoked(records))
-          } >> ref.update(_.withoutFetches(withRecords).withoutRecords(withRecords))
+          } >> ref.update(_.withoutFetchesAndRecords(withRecords))
         } else F.unit
 
       val completeWithoutRecords =
@@ -199,9 +196,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         } else F.pure(Left(NotSubscribedException))
 
       val withOnRebalance =
-        onRebalance
-          .map(on => ref.update(_.withOnRebalance(on)))
-          .getOrElse(F.unit)
+        onRebalance.fold(F.unit)(on => ref.update(_.withOnRebalance(on)))
 
       assigned.flatMap(deferred.complete) >> withOnRebalance
     }
@@ -224,8 +219,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               }
         }
 
-      val recovery = settings.commitRecovery.recoverCommitWith(offsets, commit)
-      commit.handleErrorWith(recovery)
+      commit.handleErrorWith {
+        settings.commitRecovery
+          .recoverCommitWith(offsets, commit)
+      }
     }
 
   private def message(
@@ -266,6 +263,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       messages.result
     }
 
+  private val pollTimeout: Duration =
+    settings.pollTimeout.asJava
+
   private val poll: F[Unit] = {
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords[K, V]] =
       withConsumer { consumer =>
@@ -279,7 +279,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
           consumer.pause(pause.asJava)
           consumer.resume(resume.asJava)
-          consumer.poll(settings.pollTimeout.asJava)
+          consumer.poll(pollTimeout)
         }
       }
 
@@ -303,10 +303,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
                 case (partition, fetches) =>
                   val records = Chunk.chain(allRecords(partition).toChain)
                   fetches.traverse(_.completeRecords(records))
-              } >> ref.update {
-                _.withoutFetches(canBeCompleted)
-                  .withoutRecords(canBeCompleted)
-              }
+              } >> ref.update(_.withoutFetchesAndRecords(canBeCompleted))
             } else F.unit
 
           val store =
@@ -354,7 +351,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
     ref.get.flatMap { state =>
       if (state.subscribed) {
-        pollConsumer(state).flatMap(handleBatch(state, _)) >> completeExpiredFetches
+        pollConsumer(state)
+          .flatMap(handleBatch(state, _))
+          .flatMap(_ => completeExpiredFetches)
       } else F.unit
     }
   }
@@ -445,11 +444,14 @@ private[kafka] object KafkaConsumerActor {
     ): State[F, K, V] =
       copy(records = this.records combine records)
 
-    def withoutRecords(partitions: Set[TopicPartition]): State[F, K, V] =
-      copy(records = records.filterKeysStrict(!partitions.contains(_)))
+    def withoutFetchesAndRecords(partitions: Set[TopicPartition]): State[F, K, V] =
+      copy(
+        fetches = fetches.filterKeysStrict(!partitions.contains(_)),
+        records = records.filterKeysStrict(!partitions.contains(_))
+      )
 
     def asSubscribed: State[F, K, V] =
-      copy(subscribed = true)
+      if (subscribed) this else copy(subscribed = true)
   }
 
   object State {
