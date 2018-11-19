@@ -24,9 +24,7 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
 import cats.syntax.traverse._
-import org.apache.kafka.clients.producer.{KafkaProducer => KProducer, _}
-
-import scala.collection.JavaConverters._
+import org.apache.kafka.clients.producer._
 
 abstract class KafkaProducer[F[_], K, V] {
   def produceBatched[P](message: ProducerMessage[K, V, P]): F[F[ProducerResult[K, V, P]]]
@@ -39,13 +37,8 @@ private[kafka] object KafkaProducer {
     settings: ProducerSettings[K, V]
   )(implicit F: Sync[F]): Resource[F, Producer[K, V]] = {
     Resource.make[F, Producer[K, V]] {
-      F.delay {
-        new KProducer(
-          (settings.properties: Map[String, AnyRef]).asJava,
-          settings.keySerializer,
-          settings.valueSerializer
-        )
-      }
+      settings.producerFactory
+        .create(settings)
     } { producer =>
       F.delay {
         producer.close(
