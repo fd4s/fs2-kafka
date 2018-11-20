@@ -23,12 +23,14 @@ import cats.instances.long._
 import cats.instances.string._
 import cats.instances.tuple._
 import cats.syntax.show._
-import cats.{Order, Show}
+import cats.{Order, Semigroup, Show}
 import org.apache.kafka.clients.consumer.{ConsumerRecord, OffsetAndMetadata}
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.header.{Header, Headers}
 import org.apache.kafka.common.record.TimestampType
+
+import scala.collection.mutable.ArrayBuffer
 
 private[kafka] object instances {
   implicit def consumerRecordShow[K, V](
@@ -94,4 +96,7 @@ private[kafka] object instances {
 
   implicit val topicPartitionShow: Show[TopicPartition] =
     Show.show(tp => show"${tp.topic}-${tp.partition}")
+
+  implicit def arrayBufferSemigroup[A]: Semigroup[ArrayBuffer[A]] =
+    Semigroup.instance(_ ++ _)
 }
