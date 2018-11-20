@@ -177,12 +177,7 @@ package object kafka {
   def commitBatchChunkOption[F[_]](
     implicit F: Applicative[F]
   ): Sink[F, Chunk[Option[CommittableOffset[F]]]] =
-    _.evalMap {
-      _.foldLeft(CommittableOffsetBatch.empty[F]) {
-        case (batch, Some(offset)) => batch.updated(offset)
-        case (batch, None)         => batch
-      }.commit
-    }
+    _.evalMap(CommittableOffsetBatch.fromFoldableOption(_).commit)
 
   /**
     * Commits offsets in batches determined by `Chunk`s. This allows

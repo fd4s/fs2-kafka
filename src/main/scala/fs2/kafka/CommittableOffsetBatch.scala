@@ -23,11 +23,42 @@ import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
+/**
+  * [[CommittableOffsetBatch]] represents a batch of Kafka [[offsets]]
+  * which can be committed together using [[commit]]. An offset can be
+  * added to the batch using [[updated]]. Note that this requires the
+  * offsets per topic-partition to be included in-order, since offset
+  * commits in general require it.<br>
+  * <br>
+  * Use [[CommittableOffsetBatch#empty]] to create an empty batch. The
+  * [[CommittableOffset#batch]] function can be used to create a batch
+  * from an existing [[CommittableOffset]].<br>
+  * <br>
+  * If you have some offsets in-order per topic-partition, you can fold
+  * them together using [[CommittableOffsetBatch#empty]] and [[updated]],
+  * or you can use [[CommittableOffsetBatch#fromFoldable]]. Generally,
+  * prefer to use `fromFoldable`, as it has better performance. Provided
+  * sinks like [[commitBatch]] and [[commitBatchWithin]] are also to be
+  * preferred, as they also achieve better performance.
+  */
 sealed abstract class CommittableOffsetBatch[F[_]] {
+
+  /**
+    * Creates a new [[CommittableOffsetBatch]] with the specified offset
+    * included. Note that this function requires offsets to be in-order
+    * per topic-partition, as provided offsets will override existing
+    * offsets for the same topic-partition.
+    */
   def updated(that: CommittableOffset[F]): CommittableOffsetBatch[F]
 
+  /**
+    * The offsets included in the [[CommittableOffsetBatch]].
+    */
   def offsets: Map[TopicPartition, OffsetAndMetadata]
 
+  /**
+    * Commits the [[offsets]] to Kafka in a single commit.
+    */
   def commit: F[Unit]
 }
 
@@ -41,7 +72,10 @@ object CommittableOffsetBatch {
 
     new CommittableOffsetBatch[F] {
       override def updated(that: CommittableOffset[F]): CommittableOffsetBatch[F] =
-        CommittableOffsetBatch(this.offsets ++ that.offsets, _commit)
+        CommittableOffsetBatch(
+          _offsets.updated(that.topicPartition, that.offsetAndMetadata),
+          _commit
+        )
 
       override val offsets: Map[TopicPartition, OffsetAndMetadata] =
         _offsets
@@ -54,12 +88,81 @@ object CommittableOffsetBatch {
     }
   }
 
+  /**
+    * Creates a [[CommittableOffsetBatch]] from some [[CommittableOffset]]s,
+    * where the containing type has a `Foldable` instance. Guaranteed to be
+    * equivalent to the following, but implemented more efficiently.
+    *
+    * {{{
+    * offsets.foldLeft(CommittableOffsetBatch.empty[F])(_ updated _)
+    * }}}
+    *
+    * Note that just like for [[CommittableOffsetBatch#updated]], `offsets`
+    * have to be in order per topic-partition.
+    *
+    * @see [[CommittableOffsetBatch#fromFoldableOption]]
+    */
   def fromFoldable[F[_], G[_]](offsets: G[CommittableOffset[F]])(
     implicit F: Applicative[F],
     G: Foldable[G]
-  ): CommittableOffsetBatch[F] =
-    offsets.foldLeft(empty[F])(_ updated _)
+  ): CommittableOffsetBatch[F] = {
+    var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
+    var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
+    var empty: Boolean = true
 
+    offsets.foldLeft(()) { (_, offset) =>
+      if (empty) { commit = offset.commitOffsets; empty = false }
+      offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
+    }
+
+    if (empty) CommittableOffsetBatch.empty[F]
+    else CommittableOffsetBatch(offsetsMap, commit)
+  }
+
+  /**
+    * Creates a [[CommittableOffsetBatch]] from some [[CommittableOffset]]s wrapped
+    * in `Option`, where the containing type has a `Foldable` instance. Guaranteed
+    * to be equivalent to the following, but implemented more efficiently.
+    *
+    * {{{
+    * offsets.foldLeft(CommittableOffsetBatch.empty[F]) {
+    *   case (batch, Some(offset)) => batch.updated(offset)
+    *   case (batch, None)         => batch
+    * }
+    * }}}
+    *
+    * Note that just like for [[CommittableOffsetBatch#updated]], `offsets`
+    * have to be in order per topic-partition.
+    *
+    * @see [[CommittableOffsetBatch#fromFoldable]]
+    */
+  def fromFoldableOption[F[_], G[_]](offsets: G[Option[CommittableOffset[F]]])(
+    implicit F: Applicative[F],
+    G: Foldable[G]
+  ): CommittableOffsetBatch[F] = {
+    var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
+    var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
+    var empty: Boolean = true
+
+    offsets.foldLeft(()) {
+      case (_, Some(offset)) =>
+        if (empty) { commit = offset.commitOffsets; empty = false }
+        offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
+      case (_, None) => ()
+    }
+
+    if (empty) CommittableOffsetBatch.empty[F]
+    else CommittableOffsetBatch(offsetsMap, commit)
+  }
+
+  /**
+    * An empty [[CommittableOffsetBatch]] which does not include any
+    * offsets and `commit` will not commit offsets. This can be used
+    * together with `updated` to create a batch from some offsets.
+    *
+    * @see [[CommittableOffsetBatch#fromFoldable]]
+    * @see [[CommittableOffsetBatch#fromFoldableOption]]
+    */
   def empty[F[_]](implicit F: Applicative[F]): CommittableOffsetBatch[F] =
     new CommittableOffsetBatch[F] {
       override def updated(that: CommittableOffset[F]): CommittableOffsetBatch[F] =

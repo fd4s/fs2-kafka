@@ -100,7 +100,8 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.apply"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.copy"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.withoutRecords")
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaConsumerActor#State.withoutRecords"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.CommittableOffset.commitOffsets")
     )
     // format: on
   }
