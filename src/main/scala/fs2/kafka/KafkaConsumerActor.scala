@@ -19,7 +19,7 @@ package fs2.kafka
 import java.time.Duration
 import java.util
 
-import cats.data.{Chain, NonEmptyChain, NonEmptyList, NonEmptySet, NonEmptyVector}
+import cats.data.{Chain, NonEmptyChain, NonEmptyList, NonEmptySet}
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ConcurrentEffect, ContextShift, IO, Timer}
 import cats.instances.list._
@@ -41,6 +41,7 @@ import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.SortedSet
+import scala.collection.mutable.ArrayBuffer
 
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[K, V],
@@ -166,7 +167,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         if (withRecords.nonEmpty) {
           state.fetches.filterKeysStrictList(withRecords).traverse {
             case (partition, partitionFetches) =>
-              val records = Chunk.vector(state.records(partition).toVector)
+              val records = Chunk.buffer(state.records(partition))
               partitionFetches.traverse(_.completeRevoked(records))
           } >> ref.update(_.withoutFetchesAndRecords(withRecords))
         } else F.unit
@@ -240,26 +241,24 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private def records(
     batch: ConsumerRecords[K, V]
-  ): Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]] =
+  ): Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]] =
     if (batch.isEmpty) Map.empty
     else {
-      val messages = Map.newBuilder[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]]
-      val partitions = batch.partitions.iterator
+      var messages = Map.empty[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]]
 
+      val partitions = batch.partitions.iterator
       while (partitions.hasNext) {
         val partition = partitions.next
-        val records = batch.records(partition).iterator
-        val partitionMessages = Vector.newBuilder[CommittableMessage[F, K, V]]
+        val records = batch.records(partition)
+        val partitionMessages = new ArrayBuffer[CommittableMessage[F, K, V]](records.size)
 
-        while (records.hasNext) {
-          val partitionMessage = message(records.next, partition)
-          partitionMessages += partitionMessage
-        }
+        val it = records.iterator
+        while (it.hasNext) partitionMessages += message(it.next, partition)
 
-        messages += partition -> NonEmptyVector.fromVectorUnsafe(partitionMessages.result)
+        messages = messages.updated(partition, partitionMessages)
       }
 
-      messages.result
+      messages
     }
 
   private val pollTimeout: Duration =
@@ -300,7 +299,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             if (canBeCompleted.nonEmpty) {
               state.fetches.filterKeysStrictList(canBeCompleted).traverse {
                 case (partition, fetches) =>
-                  val records = Chunk.vector(allRecords(partition).toVector)
+                  val records = Chunk.buffer(allRecords(partition))
                   fetches.traverse(_.completeRecords(records))
               } >> ref.update(_.withoutFetchesAndRecords(canBeCompleted))
             } else F.unit
@@ -411,7 +410,7 @@ private[kafka] object KafkaConsumerActor {
 
   final case class State[F[_], K, V](
     fetches: Map[TopicPartition, NonEmptyChain[FetchRequest[F, K, V]]],
-    records: Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]],
+    records: Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]],
     onRebalances: Chain[OnRebalance[F, K, V]],
     subscribed: Boolean
   ) {
@@ -439,7 +438,7 @@ private[kafka] object KafkaConsumerActor {
       copy(fetches = fetches.filterKeysStrict(!partitions.contains(_)))
 
     def withRecords(
-      records: Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]]
+      records: Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]]
     ): State[F, K, V] =
       copy(records = this.records combine records)
 
