@@ -21,9 +21,34 @@ import cats.syntax.show._
 import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
+/**
+  * [[CommittableMessage]] is a Kafka record along with an instance of
+  * [[CommittableOffset]], which can be used commit the record offset
+  * to Kafka. Offsets are normally committed in batches, either using
+  * [[CommittableOffsetBatch]] or via sinks, like [[commitBatch]] and
+  * [[commitBatchWithin]]. If you are not committing offsets to Kafka
+  * then you can use [[record]] to get the underlying record and also
+  * discard the [[committableOffset]].<br>
+  * <br>
+  * While normally not necessary, [[CommittableMessage#apply]] can be
+  * used to create a new instance.
+  */
 sealed abstract class CommittableMessage[F[_], K, V] {
+
+  /**
+    * The Kafka record for the [[CommittableMessage]]. If you are not
+    * committing offsets to Kafka, simply use this to get the records
+    * and discard the [[committableOffset]]s.
+    */
   def record: ConsumerRecord[K, V]
 
+  /**
+    * A [[CommittableOffset]] instance, providing a way to commit the
+    * [[record]] offset to Kafka. This is normally done in batches as
+    * it achieves better performance. Sinks like [[commitBatch]] and
+    * [[commitBatchWithin]] use [[CommittableOffsetBatch]] to batch
+    * and commit offsets.
+    */
   def committableOffset: CommittableOffset[F]
 }
 
@@ -36,6 +61,11 @@ object CommittableMessage {
       s"CommittableMessage($record, $committableOffset)"
   }
 
+  /**
+    * Creates a new [[CommittableMessage]] using the specified Kafka
+    * record and [[CommittableOffset]], which can be used to commit
+    * the record offset to Kafka.
+    */
   def apply[F[_], K, V](
     record: ConsumerRecord[K, V],
     committableOffset: CommittableOffset[F]
