@@ -19,7 +19,22 @@ package fs2.kafka
 import cats.effect.ConcurrentEffect
 import fs2.Stream
 
+/**
+  * [[ProducerStream]] provides support for inferring the key and
+  * value type from [[ProducerSettings]] when using `producerStream`
+  * using the following syntax.
+  *
+  * {{{
+  * producerStream[F].using(settings)
+  * }}}
+  */
 final class ProducerStream[F[_]] private[kafka] {
+
+  /**
+    * Creates a new [[KafkaProducer]] in the `Stream` context.
+    * This is equivalent to using `producerStream` directly,
+    * except we're able to infer the key and value type.
+    */
   def using[K, V](settings: ProducerSettings[K, V])(
     implicit F: ConcurrentEffect[F]
   ): Stream[F, KafkaProducer[F, K, V]] =
