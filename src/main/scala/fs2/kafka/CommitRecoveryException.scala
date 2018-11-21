@@ -21,36 +21,54 @@ import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{KafkaException, TopicPartition}
 
+/**
+  * [[CommitRecoveryException]] indicates that offset commit recovery was
+  * attempted `attempts` times for `offsets`, but that it wasn't able to
+  * complete successfully. The last encountered exception is provided as
+  * `lastException`.<br>
+  * <br>
+  * Use [[CommitRecoveryException#apply]] to create a new instance.
+  */
 sealed abstract class CommitRecoveryException(
   attempts: Int,
   lastException: Throwable,
   offsets: Map[TopicPartition, OffsetAndMetadata]
-) extends KafkaException({
-      val builder =
-        new StringBuilder(s"offset commit is still failing after $attempts attempts")
+) extends KafkaException(
+      {
+        val builder =
+          new StringBuilder(s"offset commit is still failing after $attempts attempts")
 
-      if (offsets.nonEmpty) {
-        builder.append(" for offsets: ")
-        val sorted = offsets.toList.sorted
-        var first = true
+        if (offsets.nonEmpty) {
+          builder.append(" for offsets: ")
+          val sorted = offsets.toList.sorted
+          var first = true
 
-        sorted.foreach {
-          case (tp, oam) =>
-            if (first) first = false
-            else builder.append(", ")
+          sorted.foreach {
+            case (tp, oam) =>
+              if (first) first = false
+              else builder.append(", ")
 
-            builder.append(tp.show).append(" -> ").append(oam.show)
+              builder.append(tp.show).append(" -> ").append(oam.show)
+          }
         }
-      }
 
-      builder.append(s"; last exception was: $lastException").toString
-    }) {
+        builder.append(s"; last exception was: $lastException").toString
+      },
+      lastException
+    ) {
 
   override def toString: String =
     s"fs2.kafka.CommitRecoveryException: $getMessage"
 }
 
 object CommitRecoveryException {
+
+  /**
+    * Creates a new [[CommitRecoveryException]] indicating that offset
+    * commit recovery was attempted `attempts` times for `offsets` but
+    * that it wasn't able to complete successfully. The last exception
+    * encountered was `lastException`.
+    */
   def apply(
     attempts: Int,
     lastException: Throwable,
