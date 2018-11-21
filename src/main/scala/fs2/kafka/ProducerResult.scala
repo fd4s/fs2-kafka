@@ -21,6 +21,25 @@ import cats.syntax.show._
 import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 
+/**
+  * [[ProducerResult]] represents the result of having produced zero
+  * or more `ProducerRecord`s in the form of [[ProducerMessage]]s,
+  * while keeping an arbitrary passthrough value. [[ProducerResult]]s
+  * can be created using one of the following options.<br>
+  * <br>
+  * - [[ProducerResult#single]] for when exactly one record has been
+  * produced using [[ProducerMessage#single]].<br>
+  * - [[ProducerResult#multiple]] when zero or more records have been
+  * produced with [[ProducerMessage#multiple]].<br>
+  * - [[ProducerResult#passthrough]] when exactly zero records have been
+  * produced using [[ProducerMessage#passthrough]].<br>
+  * <br>
+  * Most often, only the [[passthrough]] value needs to be accessed.
+  * If you need to access the `RecordMetadata` from having produced
+  * some records, or the `ProducerRecord`s themselves, then there are
+  * also extractors for the three cases: [[ProducerResult#Single]],
+  * [[ProducerResult#Multiple]], [[ProducerResult#Passthrough]].
+  */
 sealed abstract class ProducerResult[K, V, P] {
   def passthrough: P
 }
@@ -101,6 +120,12 @@ object ProducerResult {
     }
   }
 
+  /**
+    * Creates a new [[ProducerResult]] for the result of having produced
+    * exactly one `ProducerRecord` using [[ProducerMessage#single]].
+    * [[ProducerResult#Single]] can be used to extract instances
+    * created with this function.
+    */
   def single[K, V, P](
     metadata: RecordMetadata,
     record: ProducerRecord[K, V],
@@ -108,18 +133,36 @@ object ProducerResult {
   ): ProducerResult[K, V, P] =
     new Single(metadata, record, passthrough) {}
 
+  /**
+    * Creates a new [[ProducerResult]] for the result of having produced
+    * zero or more `ProducerRecord`s using [[ProducerMessage#multiple]].
+    * The parts can be created using [[ProducerResult#multiplePart]].
+    * [[ProducerResult#Multiple]] can be used to extract instances
+    * created with this function.
+    */
   def multiple[K, V, P](
     parts: List[MultiplePart[K, V]],
     passthrough: P
   ): ProducerResult[K, V, P] =
     new Multiple(parts, passthrough) {}
 
+  /**
+    * Creates a new [[MultiplePart]] for use with [[ProducerResult#multiple]].
+    * Each part consists of the `ProducerRecord` and `RecordMetadata` metadata
+    * from having produced a single record.
+    */
   def multiplePart[K, V](
     metadata: RecordMetadata,
     record: ProducerRecord[K, V]
   ): MultiplePart[K, V] =
     new MultiplePart(metadata, record) {}
 
+  /**
+    * Creates a new [[ProducerResult]] for the result of having produced
+    * exactly zero `ProducerRecord`s using [[ProducerMessage#passthrough]].
+    * [[ProducerResult#Passthrough]] can be used to extract instances
+    * created with this function.
+    */
   def passthrough[K, V, P](
     passthrough: P
   ): ProducerResult[K, V, P] =
