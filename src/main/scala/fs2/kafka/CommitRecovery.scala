@@ -28,13 +28,14 @@ import scala.concurrent.duration._
 
 /**
   * [[CommitRecovery]] describes how to recover from exceptions raised
-  * while trying to commit offsets. See [[CommitRecovery.Default]] for
+  * while trying to commit offsets. See [[CommitRecovery#Default]] for
   * the default recovery strategy. If you do not wish to recover from
-  * any exceptions, you can use [[CommitRecovery.None]].<br>
+  * any exceptions, you can use [[CommitRecovery#None]].<br>
   * <br>
   * To create a new [[CommitRecovery]], simply create a new instance
   * and implement the [[recoverCommitWith]] function with the wanted
-  * recovery strategy.
+  * recovery strategy. To use the [[CommitRecovery]], you can simply
+  * set it with [[ConsumerSettings#withCommitRecovery]].
   */
 abstract class CommitRecovery {
 
