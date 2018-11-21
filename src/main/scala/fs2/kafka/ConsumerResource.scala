@@ -18,7 +18,22 @@ package fs2.kafka
 
 import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
 
+/**
+  * [[ConsumerResource]] provides support for inferring the key and
+  * value type from [[ConsumerSettings]] when using `consumerResource`
+  * using the following syntax.
+  *
+  * {{{
+  * consumerResource[F].using(settings)
+  * }}}
+  */
 final class ConsumerResource[F[_]] private[kafka] {
+
+  /**
+    * Creates a new [[KafkaConsumer]] in the `Resource` context.
+    * This is equivalent to using `consumerResource` directly,
+    * except we're able to infer the key and value type.
+    */
   def using[K, V](settings: ConsumerSettings[K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
