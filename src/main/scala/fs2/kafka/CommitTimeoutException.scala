@@ -24,6 +24,11 @@ import org.apache.kafka.common.{KafkaException, TopicPartition}
 
 import scala.concurrent.duration.FiniteDuration
 
+/**
+  * [[CommitTimeoutException]] indicates that offset commit took longer
+  * than the configured [[ConsumerSettings#commitTimeout]]. The timeout
+  * and offsets are included in the exception message.
+  */
 sealed abstract class CommitTimeoutException(
   timeout: FiniteDuration,
   offsets: Map[TopicPartition, OffsetAndMetadata]
