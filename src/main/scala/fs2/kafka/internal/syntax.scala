@@ -25,7 +25,9 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
 private[kafka] object syntax {
-  implicit final class FiniteDurationSyntax(val duration: FiniteDuration) extends AnyVal {
+  implicit final class FiniteDurationSyntax(
+    private val duration: FiniteDuration
+  ) extends AnyVal {
     def asJava: Duration =
       if (duration.length == 0L) Duration.ZERO
       else
@@ -40,7 +42,9 @@ private[kafka] object syntax {
         }
   }
 
-  implicit final class MapSyntax[K, V](val map: Map[K, V]) extends AnyVal {
+  implicit final class MapSyntax[K, V](
+    private val map: Map[K, V]
+  ) extends AnyVal {
     def keySetStrict: Set[K] = {
       val builder = Set.newBuilder[K]
       map.foreach(builder += _._1)
@@ -66,9 +70,9 @@ private[kafka] object syntax {
     }
   }
 
-  implicit final class JavaUtilCollectionSyntax[A](val collection: util.Collection[A])
-      extends AnyVal {
-
+  implicit final class JavaUtilCollectionSyntax[A](
+    private val collection: util.Collection[A]
+  ) extends AnyVal {
     def toSet: Set[A] = {
       val builder = Set.newBuilder[A]
       val it = collection.iterator()

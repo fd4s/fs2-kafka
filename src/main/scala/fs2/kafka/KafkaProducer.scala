@@ -26,9 +26,35 @@ import cats.syntax.monadError._
 import cats.syntax.traverse._
 import org.apache.kafka.clients.producer._
 
+/**
+  * [[KafkaProducer]] represents a producer of Kafka messages, with the
+  * ability to produce `ProducerRecord`s, either using [[produce]] for
+  * a one-off produce, while also waiting for the records to be sent,
+  * or with [[produceBatched]] for multiple records over time.<br>
+  * <br>
+  * Records are wrapped in [[ProducerMessage]] which allow some arbitrary
+  * passthroughs to be included in the [[ProducerResult]]s. This is mostly
+  * useful for keeping the [[CommittableOffset]]s of consumed messages,
+  * but any values can be used as passthrough values.
+  */
 abstract class KafkaProducer[F[_], K, V] {
+
+  /**
+    * Produces the `ProducerRecord`s in the specified [[ProducerMessage]]
+    * in two steps: first effect puts the records in the producer buffer,
+    * and the second effect waits for the records to have been sent,
+    * according to configured producer settings. Generally, this version
+    * should be preferred over [[produce]], since it can achieve
+    * significantly better performance.
+    */
   def produceBatched[P](message: ProducerMessage[K, V, P]): F[F[ProducerResult[K, V, P]]]
 
+  /**
+    * Produces the `ProducerRecord`s in the specified [[ProducerMessage]]
+    * and waits for the records to have been sent, according to configured
+    * producer settings. For performance reasons, instead prefer to use
+    * [[produceBatched]] whenever possible.
+    */
   def produce[P](message: ProducerMessage[K, V, P]): F[ProducerResult[K, V, P]]
 }
 

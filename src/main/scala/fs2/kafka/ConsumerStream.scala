@@ -19,7 +19,22 @@ package fs2.kafka
 import cats.effect.{ConcurrentEffect, ContextShift, Timer}
 import fs2.Stream
 
+/**
+  * [[ConsumerStream]] provides support for inferring the key and
+  * value type from [[ConsumerSettings]] when using `consumerStream`
+  * using the following syntax.
+  *
+  * {{{
+  * consumerStream[F].using(settings)
+  * }}}
+  */
 final class ConsumerStream[F[_]] private[kafka] {
+
+  /**
+    * Creates a new [[KafkaConsumer]] in the `Stream` context.
+    * This is equivalent to using `consumerStream` directly,
+    * except we're able to infer the key and value type.
+    */
   def using[K, V](settings: ConsumerSettings[K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],

@@ -22,41 +22,164 @@ import org.apache.kafka.common.serialization.Serializer
 
 import scala.concurrent.duration._
 
+/**
+  * [[ProducerSettings]] contain settings necessary to create a [[KafkaProducer]].
+  * At the very least, this includes a key serializer and a value serializer.<br>
+  * <br>
+  * Several convenience functions are provided so that you don't have to work with
+  * `String` values and `ProducerConfig` for configuration. It's still possible to
+  * specify `ProducerConfig` values with functions like [[withProperty]]. Instances
+  * of [[ProducerSettings]] are immutable and all modification functions return a
+  * new [[ProducerSettings]] instance.<br>
+  * <br>
+  * Use [[ProducerSettings#apply]] to create a new instance.
+  */
 sealed abstract class ProducerSettings[K, V] {
+
+  /**
+    * The `Serializer` to use for serializing record keys.
+    */
   def keySerializer: Serializer[K]
 
+  /**
+    * The `Serializer` to use for serializing record values.
+    */
   def valueSerializer: Serializer[V]
 
+  /**
+    * Properties which can be provided when creating a Java `KafkaProducer`
+    * instance. Numerous functions in [[ProducerSettings]] add properties
+    * here if the setting is used by the Java `KafkaProducer`.
+    */
   def properties: Map[String, String]
 
+  /**
+    * Returns a new [[ProducerSettings]] instance with the specified
+    * bootstrap servers. This is equivalent to setting the following
+    * property using the [[withProperty]] function.
+    *
+    * {{{
+    * ProducerConfig.BOOTSTRAP_SERVERS_CONFIG
+    * }}}
+    */
   def withBootstrapServers(bootstrapServers: String): ProducerSettings[K, V]
 
+  /**
+    * Returns a new [[ProducerSettings]] instance with the specified
+    * acknowledgements. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with [[Acks]] instead of a `String`.
+    *
+    * {{{
+    * ProducerConfig.ACKS_CONFIG
+    * }}}
+    */
   def withAcks(acks: Acks): ProducerSettings[K, V]
 
+  /**
+    * Returns a new [[ProducerSettings]] instance with the specified
+    * batch size. This is equivalent to setting the following property
+    * using the [[withProperty]] function, except you can specify it
+    * with an `Int` instead of a `String`.
+    *
+    * {{{
+    * ProducerConfig.BATCH_SIZE_CONFIG
+    * }}}
+    */
   def withBatchSize(batchSize: Int): ProducerSettings[K, V]
 
+  /**
+    * Returns a new [[ProducerSettings]] instance with the specified
+    * client id. This is equivalent to setting the following property
+    * using the [[withProperty]] function.
+    *
+    * {{{
+    * ProducerConfig.CLIENT_ID_CONFIG
+    * }}}
+    */
   def withClientId(clientId: String): ProducerSettings[K, V]
 
+  /**
+    * Returns a new [[ProducerSettings]] instance with the specified
+    * retries. This is equivalent to setting the following property
+    * using the [[withProperty]] function, except you can specify
+    * it with an `Int` instead of a `String`.
+    *
+    * {{{
+    * ProducerConfig.RETRIES_CONFIG
+    * }}}
+    */
   def withRetries(retries: Int): ProducerSettings[K, V]
 
+  /**
+    * Returns a new [[ProducerSettings]] instance with the specified
+    * max in-flight requests per connection. This is equivalent to
+    * setting the following property using the [[withProperty]]
+    * function, except you can specify it with an `Int` instead
+    * of a `String`.
+    *
+    * {{{
+    * ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION
+    * }}}
+    */
   def withMaxInFlightRequestsPerConnection(
     maxInFlightRequestsPerConnection: Int
   ): ProducerSettings[K, V]
 
+  /**
+    * Returns a new [[ProducerSettings]] instance with the specified
+    * idempotence setting. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `Boolean` instead of a `String`.
+    *
+    * {{{
+    * ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG
+    * }}}
+    */
   def withEnableIdempotence(enableIdempotence: Boolean): ProducerSettings[K, V]
 
+  /**
+    * Includes a property with the specified `key` and `value`.
+    * The key should be one of the keys in `ProducerConfig`,
+    * and the value should be a valid choice for the key.
+    */
   def withProperty(key: String, value: String): ProducerSettings[K, V]
 
+  /**
+    * Includes the specified keys and values as properties. The
+    * keys should be part of the `ProducerConfig` keys, and
+    * the values should be valid choices for the keys.
+    */
   def withProperties(properties: (String, String)*): ProducerSettings[K, V]
 
+  /**
+    * Includes the specified keys and values as properties. The
+    * keys should be part of the `ProducerConfig` keys, and
+    * the values should be valid choices for the keys.
+    */
   def withProperties(properties: Map[String, String]): ProducerSettings[K, V]
 
+  /**
+    * The time to wait for the Java `KafkaProducer` to shutdown.
+    * The default value is 60 seconds.
+    */
   def closeTimeout: FiniteDuration
 
+  /**
+    * Creates a new [[ProducerSettings]] with the specified [[closeTimeout]].
+    */
   def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[K, V]
 
+  /**
+    * The [[ProducerFactory]] for creating the Java `Producer`.
+    * The default is [[ProducerFactory#Default]].
+    */
   def producerFactory: ProducerFactory
 
+  /**
+    * Creates a new [[ProducerSettings]] with the specified
+    * [[ProducerFactory]] as the [[producerFactory]] to use.
+    */
   def withProducerFactory(producerFactory: ProducerFactory): ProducerSettings[K, V]
 }
 
@@ -117,6 +240,9 @@ object ProducerSettings {
       Show[ProducerSettings[K, V]].show(this)
   }
 
+  /**
+    * Creates a new [[ProducerSettings]] instance using the specified settings.
+    */
   def apply[K, V](
     keySerializer: Serializer[K],
     valueSerializer: Serializer[V]

@@ -21,6 +21,22 @@ import org.apache.kafka.clients.consumer.Consumer
 
 import scala.collection.JavaConverters._
 
+/**
+  * [[ConsumerFactory]] represents the ability to create a
+  * new Kafka `Consumer` given [[ConsumerSettings]]. Normal
+  * usage does not require a custom [[ConsumerFactory]], but
+  * it can be useful for testing purposes.<br>
+  * <br>
+  * To create a new [[ConsumerFactory]], simply create a new
+  * instance and implement the [[create]] function with the
+  * desired `Consumer` behaviour. To use a custom instance
+  * of [[ConsumerFactory]], you can simply set it with the
+  * [[ConsumerSettings#withConsumerFactory]] function.<br>
+  * <br>
+  * [[ConsumerFactory#Default]] is the default instance, and
+  * it creates a default `KafkaConsumer` instance from the
+  * provided [[ConsumerSettings]].
+  */
 abstract class ConsumerFactory {
   def create[F[_], K, V](
     settings: ConsumerSettings[K, V]
@@ -28,6 +44,12 @@ abstract class ConsumerFactory {
 }
 
 object ConsumerFactory {
+
+  /**
+    * The default [[ConsumerFactory]] used in [[ConsumerSettings]]
+    * unless a different one has been specified. Default instance
+    * creates `KafkaConsumer` instances from provided settings.
+    */
   val Default: ConsumerFactory =
     new ConsumerFactory {
       override def create[F[_], K, V](

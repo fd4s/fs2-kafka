@@ -26,7 +26,7 @@ import cats.syntax.functor._
   * `synchronized(a) { use(a) }`, except the blocking is semantic only,
   * and no actual threads are blocked by the implementation.
   */
-private[kafka] abstract class Synchronized[F[_], A] {
+private[kafka] sealed abstract class Synchronized[F[_], A] {
 
   /**
     * Runs the specified function on the resource `A`, or waits until
@@ -56,7 +56,7 @@ private[kafka] object Synchronized {
       }
     }
 
-  final class ApplyBuilders[F[_]](val F: Concurrent[F]) extends AnyVal {
+  final class ApplyBuilders[F[_]](private val F: Concurrent[F]) extends AnyVal {
     def of[A](a: A): F[Synchronized[F, A]] =
       Synchronized.of(a)(F)
   }

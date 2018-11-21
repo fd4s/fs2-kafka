@@ -23,67 +23,263 @@ import org.apache.kafka.common.serialization.Deserializer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
+/**
+  * [[ConsumerSettings]] contain settings necessary to create a [[KafkaConsumer]].
+  * At the very least, this includes a key deserializer, a value deserializer, and
+  * an `ExecutionContext` on which blocking Kafka operations can be executed.<br>
+  * <br>
+  * Several convenience functions are provided so that you don't have to work with
+  * `String` values and `ConsumerConfig` for configuration. It's still possible to
+  * specify `ConsumerConfig` values with functions like [[withProperty]]. Instances
+  * of [[ConsumerSettings]] are immutable and all modification functions return a
+  * new [[ConsumerSettings]] instance.<br>
+  * <br>
+  * Use [[ConsumerSettings#apply]] to create a new instance.
+  */
 sealed abstract class ConsumerSettings[K, V] {
+
+  /**
+    * The `Deserializer` to use for deserializing record keys.
+    */
   def keyDeserializer: Deserializer[K]
 
+  /**
+    * The `Deserializer` to use for deserializing record values.
+    */
   def valueDeserializer: Deserializer[V]
 
+  /**
+    * The `ExecutionContext` on which to run blocking Kafka operations.
+    */
   def executionContext: ExecutionContext
 
+  /**
+    * Properties which can be provided when creating a Java `KafkaConsumer`
+    * instance. Numerous functions in [[ConsumerSettings]] add properties
+    * here if the setting is used by the Java `KafkaConsumer`.
+    */
   def properties: Map[String, String]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * bootstrap servers. This is equivalent to setting the following
+    * property using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG
+    * }}}
+    */
   def withBootstrapServers(bootstrapServers: String): ConsumerSettings[K, V]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * auto offset reset. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with [[AutoOffsetReset]] instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.AUTO_OFFSET_RESET_CONFIG
+    * }}}
+    */
   def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): ConsumerSettings[K, V]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * client id. This is equivalent to setting the following property
+    * using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.CLIENT_ID_CONFIG
+    * }}}
+    */
   def withClientId(clientId: String): ConsumerSettings[K, V]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * group id. This is equivalent to setting the following property
+    * using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.GROUP_ID_CONFIG
+    * }}}
+    */
   def withGroupId(groupId: String): ConsumerSettings[K, V]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * max poll records. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with an `Int` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.MAX_POLL_RECORDS_CONFIG
+    * }}}
+    */
   def withMaxPollRecords(maxPollRecords: Int): ConsumerSettings[K, V]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * max poll interval. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG
+    * }}}
+    */
   def withMaxPollInterval(maxPollInterval: FiniteDuration): ConsumerSettings[K, V]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * session timeout. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG
+    * }}}
+    */
   def withSessionTimeout(sessionTimeout: FiniteDuration): ConsumerSettings[K, V]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * heartbeat interval. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG
+    * }}}
+    */
   def withHeartbeatInterval(heartbeatInterval: FiniteDuration): ConsumerSettings[K, V]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * auto commit setting. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `Boolean` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG
+    * }}}
+    *
+    * Note that by default, this setting is set to `false`.
+    */
   def withEnableAutoCommit(enableAutoCommit: Boolean): ConsumerSettings[K, V]
 
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * auto commit interval. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG
+    * }}}
+    */
   def withAutoCommitInterval(autoCommitInterval: FiniteDuration): ConsumerSettings[K, V]
 
+  /**
+    * Includes a property with the specified `key` and `value`.
+    * The key should be one of the keys in `ConsumerConfig`,
+    * and the value should be a valid choice for the key.
+    */
   def withProperty(key: String, value: String): ConsumerSettings[K, V]
 
+  /**
+    * Includes the specified keys and values as properties. The
+    * keys should be part of the `ConsumerConfig` keys, and
+    * the values should be valid choices for the keys.
+    */
   def withProperties(properties: (String, String)*): ConsumerSettings[K, V]
 
+  /**
+    * Includes the specified keys and values as properties. The
+    * keys should be part of the `ConsumerConfig` keys, and
+    * the values should be valid choices for the keys.
+    */
   def withProperties(properties: Map[String, String]): ConsumerSettings[K, V]
 
+  /**
+    * The time to wait for the Java `KafkaConsumer` to shutdown.
+    * The default value is 20 seconds.
+    */
   def closeTimeout: FiniteDuration
 
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[closeTimeout]].
+    */
   def withCloseTimeout(closeTimeout: FiniteDuration): ConsumerSettings[K, V]
 
+  /**
+    * The time to wait for offset commits to complete. If an offset commit
+    * doesn't complete within this time, a [[CommitTimeoutException]] will
+    * be raised instead. The default value is 15 seconds.
+    */
   def commitTimeout: FiniteDuration
 
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[commitTimeout]].
+    */
   def withCommitTimeout(commitTimeout: FiniteDuration): ConsumerSettings[K, V]
 
+  /**
+    * The time to wait for topic-partition fetches to complete when
+    * using [[KafkaConsumer#stream]]. Once all topic-partition fetches
+    * expire, new fetches for all assigned partitions will be issued.
+    * The default value is 500 milliseconds.
+    */
   def fetchTimeout: FiniteDuration
 
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[fetchTimeout]].
+    */
   def withFetchTimeout(fetchTimeout: FiniteDuration): ConsumerSettings[K, V]
 
+  /**
+    * How often we should attempt to call `poll` on the Java
+    * `KafkaConsumer`. The default value is 50 milliseconds.
+    */
   def pollInterval: FiniteDuration
 
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[pollInterval]].
+    */
   def withPollInterval(pollInterval: FiniteDuration): ConsumerSettings[K, V]
 
+  /**
+    * How long we should allow the `poll` call to block for in the
+    * Java `KafkaConsumer`. The default value is 50 milliseconds.
+    */
   def pollTimeout: FiniteDuration
 
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[pollTimeout]].
+    */
   def withPollTimeout(pollTimeout: FiniteDuration): ConsumerSettings[K, V]
 
+  /**
+    * The [[CommitRecovery]] strategy for recovering from offset
+    * commit exceptions. The default is [[CommitRecovery#Default]].
+    */
   def commitRecovery: CommitRecovery
 
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified
+    * [[CommitRecovery]] as the [[commitRecovery]] to use.
+    */
   def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[K, V]
 
+  /**
+    * The [[ConsumerFactory]] for creating the Java `Consumer`.
+    * The default is [[ConsumerFactory#Default]].
+    */
   def consumerFactory: ConsumerFactory
 
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified
+    * [[ConsumerFactory]] as the [[consumerFactory]] to use.
+    */
   def withConsumerFactory(consumerFactory: ConsumerFactory): ConsumerSettings[K, V]
 }
 
@@ -178,14 +374,14 @@ object ConsumerSettings {
   }
 
   /**
-    * Creates a new [[ConsumerSettings]] instance using the specified
-    * settings. Since offset commits are managed manually, automatic
-    * commits are disabled by default. You can explicitly enable it
-    * again using [[ConsumerSettings.withEnableAutoCommit]].<br>
+    * Creates a new [[ConsumerSettings]] instance using the specified settings.
+    * Since offset commits are managed manually, automatic commits are disabled
+    * by default. Automatic offset commits can explicitly be enabled again using
+    * [[ConsumerSettings#withEnableAutoCommit]].<br>
     * <br>
-    * Since some Kafka operations are blocking, we should shift these
-    * operations to a dedicated `ExecutionContext.` A sensible option
-    * is provided by the [[consumerExecutionContextStream]] function.
+    * Since some Kafka operations are blocking, these operations should be run
+    * on a dedicated `ExecutionContext`. If you need such an `ExecutionContext`,
+    * the [[consumerExecutionContextStream]] provides a sensible default option.
     */
   def apply[K, V](
     keyDeserializer: Deserializer[K],

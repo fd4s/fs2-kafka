@@ -308,6 +308,17 @@ package object kafka {
   ): Sink[F, F[Option[CommittableOffset[F]]]] =
     _.groupWithin(n, d).to(commitBatchChunkOptionF)
 
+  /**
+    * Creates a new [[KafkaConsumer]] in the `Resource` context,
+    * using the specified [[ConsumerSettings]]. Note that there
+    * is another version where `F` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * consumerResource[F].using(settings)
+    * }}}
+    */
   def consumerResource[F[_], K, V](settings: ConsumerSettings[K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
@@ -315,9 +326,30 @@ package object kafka {
   ): Resource[F, KafkaConsumer[F, K, V]] =
     KafkaConsumer.consumerResource(settings)
 
+  /**
+    * Alternative version of `consumerResource` where the `F` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ConsumerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * consumerResource[F].using(settings)
+    * }}}
+    */
   def consumerResource[F[_]]: ConsumerResource[F] =
     new ConsumerResource[F]
 
+  /**
+    * Creates a new [[KafkaConsumer]] in the `Stream` context,
+    * using the specified [[ConsumerSettings]]. Note that there
+    * is another version where `F` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * consumerStream[F].using(settings)
+    * }}}
+    */
   def consumerStream[F[_], K, V](settings: ConsumerSettings[K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
@@ -325,9 +357,34 @@ package object kafka {
   ): Stream[F, KafkaConsumer[F, K, V]] =
     Stream.resource(consumerResource(settings))
 
+  /**
+    * Alternative version of `consumerStream` where the `F` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ConsumerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * consumerStream[F].using(settings)
+    * }}}
+    */
   def consumerStream[F[_]]: ConsumerStream[F] =
     new ConsumerStream[F]
 
+  /**
+    * Creates a new `ExecutionContext` backed by a single thread.
+    * This is suitable for use with a single `KafkaConsumer`, and
+    * is required to be set when defining [[ConsumerSettings]].<br>
+    * <br>
+    * If you already have a `ExecutionContext` for blocking code,
+    * then you might prefer to use that over explicitly creating
+    * one with this function.<br>
+    * <br>
+    * The thread created by this function will be of type daemon,
+    * and the `Resource` context will automatically shutdown the
+    * underlying `Executor` as part of finalization.
+    *
+    * @see [[consumerExecutionContextStream]]
+    */
   def consumerExecutionContextResource[F[_]](implicit F: Sync[F]): Resource[F, ExecutionContext] =
     Resource
       .make {
@@ -344,22 +401,69 @@ package object kafka {
       }(executor => F.delay(executor.shutdown()))
       .map(ExecutionContext.fromExecutor)
 
+  /**
+    * Like [[consumerExecutionContextResource]], but returns a
+    * `Stream` rather than a `Resource`, for convenience when
+    * working with `Stream`s.
+    */
   def consumerExecutionContextStream[F[_]](implicit F: Sync[F]): Stream[F, ExecutionContext] =
     Stream.resource(consumerExecutionContextResource[F])
 
+  /**
+    * Creates a new [[KafkaProducer]] in the `Resource` context,
+    * using the specified [[ProducerSettings]]. Note that there
+    * is another version where `F` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * producerResource[F].using(settings)
+    * }}}
+    */
   def producerResource[F[_], K, V](settings: ProducerSettings[K, V])(
     implicit F: ConcurrentEffect[F]
   ): Resource[F, KafkaProducer[F, K, V]] =
     KafkaProducer.producerResource(settings)
 
+  /**
+    * Alternative version of `producerResource` where the `F` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ProducerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * producerResource[F].using(settings)
+    * }}}
+    */
   def producerResource[F[_]]: ProducerResource[F] =
     new ProducerResource[F]
 
+  /**
+    * Creates a new [[KafkaProducer]] in the `Stream` context,
+    * using the specified [[ProducerSettings]]. Note that there
+    * is another version where `F` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * producerStream[F].using(settings)
+    * }}}
+    */
   def producerStream[F[_], K, V](settings: ProducerSettings[K, V])(
     implicit F: ConcurrentEffect[F]
   ): Stream[F, KafkaProducer[F, K, V]] =
     Stream.resource(producerResource(settings))
 
+  /**
+    * Alternative version of `producerStream` where the `F` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ProducerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * producerStream[F].using(settings)
+    * }}}
+    */
   def producerStream[F[_]]: ProducerStream[F] =
     new ProducerStream[F]
 }
