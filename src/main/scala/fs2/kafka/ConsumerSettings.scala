@@ -272,13 +272,19 @@ sealed abstract class ConsumerSettings[K, V] {
 
   /**
     * The [[ConsumerFactory]] for creating the Java `Consumer`.
-    * The default is [[ConsumerFactory#Default]].
+    * The default is [[ConsumerFactory#Default]]. Note that you
+    * normally don't need to have a custom [[ConsumerFactory]],
+    * and you should instead prefer to create a custom instance
+    * of [[KafkaConsumer]] for testing purposes.
     */
   def consumerFactory: ConsumerFactory
 
   /**
     * Creates a new [[ConsumerSettings]] with the specified
     * [[ConsumerFactory]] as the [[consumerFactory]] to use.
+    * Note that under normal usage you don't need to have a
+    * custom [[ConsumerFactory]] instance. For testing, you
+    * should prefer to use a custom [[KafkaConsumer]].
     */
   def withConsumerFactory(consumerFactory: ConsumerFactory): ConsumerSettings[K, V]
 }
