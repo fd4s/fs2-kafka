@@ -26,7 +26,7 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "org.typelevel" %% "cats-effect" % "1.1.0-M1",
     "co.fs2" %% "fs2-core" % "1.0.0",
-    "org.apache.kafka" % "kafka-clients" % "2.0.0"
+    "org.apache.kafka" % "kafka-clients" % "2.1.0"
   ),
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % "3.0.5",
