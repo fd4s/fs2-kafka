@@ -25,7 +25,9 @@ import scala.collection.JavaConverters._
   * [[ProducerFactory]] represents the ability to create a
   * new Kafka `Producer` given [[ProducerSettings]]. Normal
   * usage does not require a custom [[ProducerFactory]], but
-  * it can be useful for testing purposes.<br>
+  * it can be useful for testing purposes. If you can instead
+  * have a custom [[KafkaProducer]] for testing, then prefer
+  * that over having a custom [[ProducerFactory]].<br>
   * <br>
   * To create a new [[ProducerFactory]], simply create a new
   * instance and implement the [[create]] function with the

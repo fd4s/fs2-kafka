@@ -172,13 +172,19 @@ sealed abstract class ProducerSettings[K, V] {
 
   /**
     * The [[ProducerFactory]] for creating the Java `Producer`.
-    * The default is [[ProducerFactory#Default]].
+    * The default is [[ProducerFactory#Default]]. Note that you
+    * normally don't need to have a custom [[ProducerFactory]],
+    * and you should instead prefer to create a custom instance
+    * of [[KafkaProducer]] for testing purposes.
     */
   def producerFactory: ProducerFactory
 
   /**
     * Creates a new [[ProducerSettings]] with the specified
     * [[ProducerFactory]] as the [[producerFactory]] to use.
+    * Note that under normal usage you don't need to have a
+    * custom [[ProducerFactory]] instance. For testing, you
+    * should prefer to use a custom [[KafkaProducer]].
     */
   def withProducerFactory(producerFactory: ProducerFactory): ProducerSettings[K, V]
 }
