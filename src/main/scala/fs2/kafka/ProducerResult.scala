@@ -40,7 +40,7 @@ import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
   * also extractors for the three cases: [[ProducerResult#Single]],
   * [[ProducerResult#Multiple]], [[ProducerResult#Passthrough]].
   */
-sealed abstract class ProducerResult[K, V, P] {
+sealed abstract class ProducerResult[+K, +V, +P] {
   def passthrough: P
 }
 
