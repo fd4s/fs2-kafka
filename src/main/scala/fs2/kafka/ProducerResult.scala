@@ -27,12 +27,12 @@ import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
   * while keeping an arbitrary passthrough value. [[ProducerResult]]s
   * can be created using one of the following options.<br>
   * <br>
-  * - [[ProducerResult#single]] for when exactly one record has been
-  * produced using [[ProducerMessage#single]].<br>
-  * - [[ProducerResult#multiple]] when zero or more records have been
-  * produced with [[ProducerMessage#multiple]].<br>
-  * - [[ProducerResult#passthrough]] when exactly zero records have been
-  * produced using [[ProducerMessage#passthrough]].<br>
+  * - `ProducerResult#single` for when exactly one record has been
+  * produced using `ProducerMessage#single`.<br>
+  * - `ProducerResult#multiple` when zero or more records have been
+  * produced with `ProducerMessage#multiple`.<br>
+  * - `ProducerResult#passthrough` when exactly zero records have been
+  * produced using `ProducerMessage#passthrough`.<br>
   * <br>
   * Most often, only the [[passthrough]] value needs to be accessed.
   * If you need to access the `RecordMetadata` from having produced
@@ -40,7 +40,7 @@ import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
   * also extractors for the three cases: [[ProducerResult#Single]],
   * [[ProducerResult#Multiple]], [[ProducerResult#Passthrough]].
   */
-sealed abstract class ProducerResult[K, V, P] {
+sealed abstract class ProducerResult[+K, +V, +P] {
   def passthrough: P
 }
 
@@ -122,7 +122,7 @@ object ProducerResult {
 
   /**
     * Creates a new [[ProducerResult]] for the result of having produced
-    * exactly one `ProducerRecord` using [[ProducerMessage#single]].
+    * exactly one `ProducerRecord` using `ProducerMessage#single`.
     * [[ProducerResult#Single]] can be used to extract instances
     * created with this function.
     */
@@ -135,7 +135,19 @@ object ProducerResult {
 
   /**
     * Creates a new [[ProducerResult]] for the result of having produced
-    * zero or more `ProducerRecord`s using [[ProducerMessage#multiple]].
+    * exactly one `ProducerRecord` using `ProducerMessage#single`.
+    * [[ProducerResult#Single]] can be used to extract instances
+    * created with this function.
+    */
+  def single[K, V](
+    metadata: RecordMetadata,
+    record: ProducerRecord[K, V]
+  ): ProducerResult[K, V, Unit] =
+    single(metadata, record, ())
+
+  /**
+    * Creates a new [[ProducerResult]] for the result of having produced
+    * zero or more `ProducerRecord`s using `ProducerMessage#multiple`.
     * The parts can be created using [[ProducerResult#multiplePart]].
     * [[ProducerResult#Multiple]] can be used to extract instances
     * created with this function.
@@ -147,7 +159,19 @@ object ProducerResult {
     new Multiple(parts, passthrough) {}
 
   /**
-    * Creates a new [[MultiplePart]] for use with [[ProducerResult#multiple]].
+    * Creates a new [[ProducerResult]] for the result of having produced
+    * zero or more `ProducerRecord`s using `ProducerMessage#multiple`.
+    * The parts can be created using [[ProducerResult#multiplePart]].
+    * [[ProducerResult#Multiple]] can be used to extract instances
+    * created with this function.
+    */
+  def multiple[K, V](
+    parts: List[MultiplePart[K, V]]
+  ): ProducerResult[K, V, Unit] =
+    new Multiple(parts, ()) {}
+
+  /**
+    * Creates a new [[MultiplePart]] for use with `ProducerResult#multiple`.
     * Each part consists of the `ProducerRecord` and `RecordMetadata` metadata
     * from having produced a single record.
     */
@@ -159,7 +183,7 @@ object ProducerResult {
 
   /**
     * Creates a new [[ProducerResult]] for the result of having produced
-    * exactly zero `ProducerRecord`s using [[ProducerMessage#passthrough]].
+    * exactly zero `ProducerRecord`s using `ProducerMessage#passthrough`.
     * [[ProducerResult#Passthrough]] can be used to extract instances
     * created with this function.
     */
