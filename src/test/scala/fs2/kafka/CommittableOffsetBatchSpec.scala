@@ -51,5 +51,20 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
         }
       }
     }
+
+    it("should be able to update with batch") {
+      forAll { (batch1: CommittableOffsetBatch[Id], batch2: CommittableOffsetBatch[Id]) =>
+        val result = batch1.updated(batch2)
+
+        val offsets = batch2.offsets.map {
+          case (topicPartition, offsetAndMetadata) =>
+            CommittableOffset[Id](topicPartition, offsetAndMetadata, _ => ())
+        }
+
+        val expected = offsets.foldLeft(batch1)(_ updated _)
+
+        assert(result.offsets == expected.offsets)
+      }
+    }
   }
 }
