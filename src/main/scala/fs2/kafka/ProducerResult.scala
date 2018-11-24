@@ -28,11 +28,11 @@ import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
   * can be created using one of the following options.<br>
   * <br>
   * - [[ProducerResult#single]] for when exactly one record has been
-  * produced using [[ProducerMessage#single]].<br>
+  * produced using `ProducerMessage#single`.<br>
   * - [[ProducerResult#multiple]] when zero or more records have been
-  * produced with [[ProducerMessage#multiple]].<br>
+  * produced with `ProducerMessage#multiple`.<br>
   * - [[ProducerResult#passthrough]] when exactly zero records have been
-  * produced using [[ProducerMessage#passthrough]].<br>
+  * produced using `ProducerMessage#passthrough`.<br>
   * <br>
   * Most often, only the [[passthrough]] value needs to be accessed.
   * If you need to access the `RecordMetadata` from having produced
@@ -122,7 +122,7 @@ object ProducerResult {
 
   /**
     * Creates a new [[ProducerResult]] for the result of having produced
-    * exactly one `ProducerRecord` using [[ProducerMessage#single]].
+    * exactly one `ProducerRecord` using `ProducerMessage#single`.
     * [[ProducerResult#Single]] can be used to extract instances
     * created with this function.
     */
@@ -135,7 +135,7 @@ object ProducerResult {
 
   /**
     * Creates a new [[ProducerResult]] for the result of having produced
-    * zero or more `ProducerRecord`s using [[ProducerMessage#multiple]].
+    * zero or more `ProducerRecord`s using `ProducerMessage#multiple`.
     * The parts can be created using [[ProducerResult#multiplePart]].
     * [[ProducerResult#Multiple]] can be used to extract instances
     * created with this function.
@@ -159,7 +159,7 @@ object ProducerResult {
 
   /**
     * Creates a new [[ProducerResult]] for the result of having produced
-    * exactly zero `ProducerRecord`s using [[ProducerMessage#passthrough]].
+    * exactly zero `ProducerRecord`s using `ProducerMessage#passthrough`.
     * [[ProducerResult#Passthrough]] can be used to extract instances
     * created with this function.
     */

@@ -27,13 +27,13 @@ import org.apache.kafka.clients.producer.ProducerRecord
   * can be used with [[KafkaProducer]]. A [[ProducerMessage]] can
   * be created using one of the following options.<br>
   * <br>
-  * - [[ProducerMessage#single]] to produce exactly one record and
+  * - `ProducerMessage#single` to produce exactly one record and
   * then emit a [[ProducerResult#Single]] with the result and the
   * passthrough value.<br>
-  * - [[ProducerMessage#multiple]] to produce zero or more records
+  * - `ProducerMessage#multiple` to produce zero or more records
   * and then emit a [[ProducerResult#Multiple]] with the results
   * and the passthrough value.<br>
-  * - [[ProducerMessage#passthrough]] to produce exactly zero records,
+  * - `ProducerMessage#passthrough` to produce exactly zero records,
   * simply emitting a [[ProducerResult#Passthrough]] with the specified
   * passthrough value.<br>
   * <br>
@@ -113,6 +113,19 @@ object ProducerMessage {
     new Single(record, passthrough) {}
 
   /**
+    * Creates a new [[ProducerMessage]] for producing exactly one
+    * `ProducerRecord`, then emitting a [[ProducerResult#Single]]
+    * with the result and `Unit` passthrough value.<br>
+    * <br>
+    * [[ProducerMessage#Single]] can be used to extract instances
+    * created with this function.
+    */
+  def single[K, V](
+    record: ProducerRecord[K, V]
+  ): ProducerMessage[K, V, Unit] =
+    single(record, ())
+
+  /**
     * Creates a new [[ProducerMessage]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult#Multiple]]
     * with the results and specified passthrough value.<br>
@@ -125,6 +138,19 @@ object ProducerMessage {
     passthrough: P
   ): ProducerMessage[K, V, P] =
     new Multiple(records, passthrough) {}
+
+  /**
+    * Creates a new [[ProducerMessage]] for producing zero or more
+    * `ProducerRecords`s, then emitting a [[ProducerResult#Multiple]]
+    * with the results and `Unit` passthrough value.<br>
+    * <br>
+    * [[ProducerMessage#Multiple]] can be used to extract instances
+    * created with this function.
+    */
+  def multiple[K, V, P](
+    records: List[ProducerRecord[K, V]]
+  ): ProducerMessage[K, V, Unit] =
+    multiple(records, ())
 
   /**
     * Creates a new [[ProducerMessage]] for producing exactly zero
