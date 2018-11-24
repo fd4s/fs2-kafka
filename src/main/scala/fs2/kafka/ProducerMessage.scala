@@ -42,7 +42,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
   * three cases: [[ProducerMessage#Single]], [[ProducerMessage#Multiple]],
   * and [[ProducerMessage#Passthrough]].
   */
-sealed abstract class ProducerMessage[K, V, P] {
+sealed abstract class ProducerMessage[+K, +V, +P] {
   def passthrough: P
 }
 
