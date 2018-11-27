@@ -106,7 +106,9 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.internal.Synchronized#ApplyBuilders.F"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.internal.syntax#FiniteDurationSyntax.duration"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.internal.syntax#JavaUtilCollectionSyntax.collection"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.CommittableOffsetBatch.updated")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.CommittableOffsetBatch.updated"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.recordMetadata"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withRecordMetadata")
     )
     // format: on
   }

@@ -27,6 +27,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
         valueDeserializer = new StringDeserializer,
         executionContext = executionContext
       ).withProperties(consumerProperties(config))
+        .withRecordMetadata(_.timestamp.toString)
     }
 
   final def producerSettings(

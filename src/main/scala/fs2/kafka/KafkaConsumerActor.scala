@@ -234,7 +234,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       record = record,
       committableOffset = CommittableOffset(
         topicPartition = partition,
-        offsetAndMetadata = new OffsetAndMetadata(record.offset + 1L),
+        offsetAndMetadata = new OffsetAndMetadata(
+          record.offset + 1L,
+          settings.recordMetadata(record)
+        ),
         commit = messageCommit
       )
     )

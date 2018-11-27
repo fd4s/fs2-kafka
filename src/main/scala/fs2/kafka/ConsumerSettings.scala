@@ -17,7 +17,8 @@
 package fs2.kafka
 
 import cats.Show
-import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
+import org.apache.kafka.common.requests.OffsetFetchResponse
 import org.apache.kafka.common.serialization.Deserializer
 
 import scala.concurrent.ExecutionContext
@@ -287,6 +288,20 @@ sealed abstract class ConsumerSettings[K, V] {
     * should prefer to use a custom [[KafkaConsumer]].
     */
   def withConsumerFactory(consumerFactory: ConsumerFactory): ConsumerSettings[K, V]
+
+  /**
+    * The function used to specify metadata for records. This
+    * metadata will be included in `OffsetAndMetadata` in the
+    * [[CommittableOffset]]s, and can then be committed with
+    * the offsets. By default, there will be no metadata, as
+    * determined by `OffsetFetchResponse.NO_METADATA`.
+    */
+  def recordMetadata: ConsumerRecord[K, V] => String
+
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[recordMetadata]].
+    */
+  def withRecordMetadata(recordMetadata: ConsumerRecord[K, V] => String): ConsumerSettings[K, V]
 }
 
 object ConsumerSettings {
@@ -301,7 +316,8 @@ object ConsumerSettings {
     override val pollInterval: FiniteDuration,
     override val pollTimeout: FiniteDuration,
     override val commitRecovery: CommitRecovery,
-    override val consumerFactory: ConsumerFactory
+    override val consumerFactory: ConsumerFactory,
+    override val recordMetadata: ConsumerRecord[K, V] => String
   ) extends ConsumerSettings[K, V] {
     override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[K, V] =
       withProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -375,6 +391,11 @@ object ConsumerSettings {
     override def withConsumerFactory(consumerFactory: ConsumerFactory): ConsumerSettings[K, V] =
       copy(consumerFactory = consumerFactory)
 
+    override def withRecordMetadata(
+      recordMetadata: ConsumerRecord[K, V] => String
+    ): ConsumerSettings[K, V] =
+      copy(recordMetadata = recordMetadata)
+
     override def toString: String =
       Show[ConsumerSettings[K, V]].show(this)
   }
@@ -404,7 +425,8 @@ object ConsumerSettings {
     pollInterval = 50.millis,
     pollTimeout = 50.millis,
     commitRecovery = CommitRecovery.Default,
-    consumerFactory = ConsumerFactory.Default
+    consumerFactory = ConsumerFactory.Default,
+    recordMetadata = _ => OffsetFetchResponse.NO_METADATA
   )
 
   implicit def consumerSettingsShow[K, V]: Show[ConsumerSettings[K, V]] =
