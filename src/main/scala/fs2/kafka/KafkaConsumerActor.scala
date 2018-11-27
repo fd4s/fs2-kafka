@@ -18,6 +18,7 @@ package fs2.kafka
 
 import java.time.Duration
 import java.util
+import java.util.regex.Pattern
 
 import cats.data.{Chain, NonEmptyChain, NonEmptyList, NonEmptySet}
 import cats.effect.concurrent.{Deferred, Ref}
@@ -61,28 +62,41 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     }
 
+  private val consumerRebalanceListener: ConsumerRebalanceListener =
+    new ConsumerRebalanceListener {
+      override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
+        if (partitions.isEmpty) ()
+        else {
+          val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
+          val revoked = requests.enqueue1(Request.Revoked(nonEmpty))
+          F.runAsync(revoked)(_ => IO.unit).unsafeRunSync
+        }
+
+      override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
+        if (partitions.isEmpty) ()
+        else {
+          val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
+          val assigned = requests.enqueue1(Request.Assigned(nonEmpty))
+          F.runAsync(assigned)(_ => IO.unit).unsafeRunSync
+        }
+    }
+
   private def subscribe(topics: NonEmptyList[String]): F[Unit] =
     withConsumer { consumer =>
       F.delay {
         consumer.subscribe(
           topics.toList.asJava,
-          new ConsumerRebalanceListener {
-            override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
-              if (partitions.isEmpty) ()
-              else {
-                val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
-                val revoked = requests.enqueue1(Request.Revoked(nonEmpty))
-                F.runAsync(revoked)(_ => IO.unit).unsafeRunSync
-              }
+          consumerRebalanceListener
+        )
+      }
+    } >> ref.update(_.asSubscribed)
 
-            override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
-              if (partitions.isEmpty) ()
-              else {
-                val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
-                val assigned = requests.enqueue1(Request.Assigned(nonEmpty))
-                F.runAsync(assigned)(_ => IO.unit).unsafeRunSync
-              }
-          }
+  private def subscribe(pattern: Pattern): F[Unit] =
+    withConsumer { consumer =>
+      F.delay {
+        consumer.subscribe(
+          pattern,
+          consumerRebalanceListener
         )
       }
     } >> ref.update(_.asSubscribed)
@@ -364,7 +378,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Request.Assignment(deferred, onRebalance)  => assignment(deferred, onRebalance)
       case request @ Request.Assigned(_)              => assigned(request)
       case Request.Poll()                             => poll
-      case Request.Subscribe(topics)                  => subscribe(topics)
+      case Request.SubscribeTopics(topics)            => subscribe(topics)
+      case Request.SubscribePattern(pattern)          => subscribe(pattern)
       case Request.Fetch(partition, deferred)         => fetch(partition, deferred)
       case Request.ExpiringFetch(partition, deferred) => expiringFetch(partition, deferred)
       case Request.Commit(offsets, deferred)          => commit(offsets, deferred)
@@ -511,7 +526,15 @@ private[kafka] object KafkaConsumerActor {
 
     final case class Poll[F[_], K, V]() extends Request[F, K, V]
 
-    final case class Subscribe[F[_], K, V](topics: NonEmptyList[String]) extends Request[F, K, V]
+    sealed abstract class Subscribe[F[_], K, V] extends Request[F, K, V]
+
+    final case class SubscribeTopics[F[_], K, V](
+      topics: NonEmptyList[String]
+    ) extends Subscribe[F, K, V]
+
+    final case class SubscribePattern[F[_], K, V](
+      pattern: Pattern
+    ) extends Subscribe[F, K, V]
 
     final case class Fetch[F[_], K, V](
       partition: TopicPartition,

@@ -48,7 +48,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           (for {
             consumerSettings <- consumerSettings(config)
             consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- consumer.subscribe(NonEmptyList.of(topic))
+            _ <- consumer.subscribe(topic.r)
             offsets <- f(consumer)
               .take(produced.size.toLong)
               .map(_.committableOffset)
