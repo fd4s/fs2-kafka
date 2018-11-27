@@ -76,7 +76,7 @@ import scala.util.matching.Regex
   * per [[KafkaConsumer]], and if you want to start a new stream if the first
   * one finishes, let the [[KafkaConsumer]] shutdown and create a new one.
   */
-abstract class KafkaConsumer[F[_], K, V] {
+sealed abstract class KafkaConsumer[F[_], K, V] {
 
   /**
     * `Stream` where the elements are Kafka messages and where ordering

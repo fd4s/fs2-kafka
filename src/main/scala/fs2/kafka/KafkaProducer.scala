@@ -37,7 +37,7 @@ import org.apache.kafka.clients.producer._
   * useful for keeping the [[CommittableOffset]]s of consumed messages,
   * but any values can be used as passthrough values.
   */
-abstract class KafkaProducer[F[_], K, V] {
+sealed abstract class KafkaProducer[F[_], K, V] {
 
   /**
     * Produces the `ProducerRecord`s in the specified [[ProducerMessage]]
