@@ -28,17 +28,17 @@ import fs2.Stream
   * producerStream[F].using(settings)
   * }}}
   */
-final class ProducerStream[F[_]] private[kafka] {
+final class ProducerStream[F[_]] private[kafka] (
+  private val F: ConcurrentEffect[F]
+) extends AnyVal {
 
   /**
     * Creates a new [[KafkaProducer]] in the `Stream` context.
     * This is equivalent to using `producerStream` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: ProducerSettings[K, V])(
-    implicit F: ConcurrentEffect[F]
-  ): Stream[F, KafkaProducer[F, K, V]] =
-    producerStream(settings)
+  def using[K, V](settings: ProducerSettings[K, V]): Stream[F, KafkaProducer[F, K, V]] =
+    producerStream(settings)(F)
 
   override def toString: String =
     "ProducerStream$" + System.identityHashCode(this)

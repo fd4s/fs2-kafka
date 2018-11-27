@@ -336,8 +336,8 @@ package object kafka {
     * consumerResource[F].using(settings)
     * }}}
     */
-  def consumerResource[F[_]]: ConsumerResource[F] =
-    new ConsumerResource[F]
+  def consumerResource[F[_]](implicit F: ConcurrentEffect[F]): ConsumerResource[F] =
+    new ConsumerResource[F](F)
 
   /**
     * Creates a new [[KafkaConsumer]] in the `Stream` context,
@@ -367,8 +367,8 @@ package object kafka {
     * consumerStream[F].using(settings)
     * }}}
     */
-  def consumerStream[F[_]]: ConsumerStream[F] =
-    new ConsumerStream[F]
+  def consumerStream[F[_]](implicit F: ConcurrentEffect[F]): ConsumerStream[F] =
+    new ConsumerStream[F](F)
 
   /**
     * Creates a new `ExecutionContext` backed by a single thread.
@@ -435,8 +435,8 @@ package object kafka {
     * producerResource[F].using(settings)
     * }}}
     */
-  def producerResource[F[_]]: ProducerResource[F] =
-    new ProducerResource[F]
+  def producerResource[F[_]](implicit F: ConcurrentEffect[F]): ProducerResource[F] =
+    new ProducerResource[F](F)
 
   /**
     * Creates a new [[KafkaProducer]] in the `Stream` context,
@@ -464,6 +464,6 @@ package object kafka {
     * producerStream[F].using(settings)
     * }}}
     */
-  def producerStream[F[_]]: ProducerStream[F] =
-    new ProducerStream[F]
+  def producerStream[F[_]](implicit F: ConcurrentEffect[F]): ProducerStream[F] =
+    new ProducerStream[F](F)
 }
