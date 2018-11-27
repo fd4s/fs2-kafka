@@ -10,8 +10,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     tests(_.stream)
   }
 
-  describe("KafkaConsumer#parallelPartitionedStream") {
-    tests(_.parallelPartitionedStream.parJoin(partitions))
+  describe("KafkaConsumer#partitionedStream") {
+    tests(_.partitionedStream.parJoin(partitions))
   }
 
   val partitions = 3

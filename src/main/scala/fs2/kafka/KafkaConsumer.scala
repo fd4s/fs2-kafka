@@ -118,11 +118,6 @@ abstract class KafkaConsumer[F[_], K, V] {
   def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]]
 
   /**
-    * Alias of [[partitionedStream]].
-    */
-  def parallelPartitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]]
-
-  /**
     * Subscribes the consumer to the specified topics. Note that you have to
     * use this function to subscribe to one or more topics before using any
     * of the provided `Stream`s, or a [[NotSubscribedException]] will be
@@ -345,9 +340,6 @@ private[kafka] object KafkaConsumer {
             partitions.dequeue.interruptWhen(fiber.join.attempt)
         }
       }
-
-      override val parallelPartitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]] =
-        partitionedStream
 
       override val stream: Stream[F, CommittableMessage[F, K, V]] = {
         val requestAssignment: F[SortedSet[TopicPartition]] =
