@@ -188,15 +188,18 @@ private[kafka] object KafkaConsumer {
     context: ContextShift[F]
   ): Resource[F, Fiber[F, Unit]] =
     Resource.make {
-      Deferred[F, Unit].flatMap { deferred =>
-        F.guarantee {
+      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
+        F.guaranteeCase {
             requests.tryDequeue1
               .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
               .flatMap(actor.handle(_) >> context.shift)
               .foreverM[Unit]
-          }(deferred.complete(()))
+          } {
+            case ExitCase.Error(e) => deferred.complete(Left(e))
+            case _                 => deferred.complete(Right(()))
+          }
           .start
-          .map(fiber => Fiber[F, Unit](deferred.get, fiber.cancel.start.void))
+          .map(fiber => Fiber[F, Unit](deferred.get.rethrow, fiber.cancel.start.void))
       }
     }(_.cancel)
 
@@ -208,15 +211,18 @@ private[kafka] object KafkaConsumer {
     timer: Timer[F]
   ): Resource[F, Fiber[F, Unit]] =
     Resource.make {
-      Deferred[F, Unit].flatMap { deferred =>
-        F.guarantee {
-            {
-              polls.enqueue1(Request.Poll()) >>
-                timer.sleep(pollInterval)
-            }.foreverM[Unit]
-          }(deferred.complete(()))
+      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
+        F.guaranteeCase {
+            polls
+              .enqueue1(Request.Poll())
+              .flatMap(_ => timer.sleep(pollInterval))
+              .foreverM[Unit]
+          } {
+            case ExitCase.Error(e) => deferred.complete(Left(e))
+            case _                 => deferred.complete(Right(()))
+          }
           .start
-          .map(fiber => Fiber[F, Unit](deferred.get, fiber.cancel.start.void))
+          .map(fiber => Fiber[F, Unit](deferred.get.rethrow, fiber.cancel.start.void))
       }
     }(_.cancel)
 
@@ -256,7 +262,7 @@ private[kafka] object KafkaConsumer {
           chunkQueue.flatMap { chunks =>
             Deferred[F, Unit].flatMap { dequeueDone =>
               Deferred[F, Unit].flatMap { partitionRevoked =>
-                val shutdown = F.race(fiber.join, dequeueDone.get).void
+                val shutdown = F.race(fiber.join.attempt, dequeueDone.get).void
                 partitions.enqueue1 {
                   Stream.eval {
                     F.guarantee {
@@ -317,8 +323,8 @@ private[kafka] object KafkaConsumer {
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request = Request.Assignment[F, K, V](deferred, Some(onRebalance(partitions)))
             val assignment = requests.enqueue1(request) >> deferred.get.rethrow
-            F.race(fiber.join, assignment).map {
-              case Left(())        => SortedSet.empty[TopicPartition]
+            F.race(fiber.join.attempt, assignment).map {
+              case Left(_)         => SortedSet.empty[TopicPartition]
               case Right(assigned) => assigned
             }
           }
@@ -346,8 +352,8 @@ private[kafka] object KafkaConsumer {
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request = Request.Assignment[F, K, V](deferred, onRebalance = None)
             val assignment = requests.enqueue1(request) >> deferred.get.rethrow
-            F.race(fiber.join, assignment).map {
-              case Left(())        => SortedSet.empty[TopicPartition]
+            F.race(fiber.join.attempt, assignment).map {
+              case Left(_)         => SortedSet.empty[TopicPartition]
               case Right(assigned) => assigned
             }
           }
@@ -369,7 +375,7 @@ private[kafka] object KafkaConsumer {
                       Deferred[F, PartitionRequest].flatMap { deferred =>
                         val request = Request.ExpiringFetch(partition, deferred)
                         val fetch = requests.enqueue1(request) >> deferred.get
-                        F.race(F.race(fiber.join, dequeueDone.get), fetch).flatMap {
+                        F.race(F.race(fiber.join.attempt, dequeueDone.get), fetch).flatMap {
                           case Right((chunk, _)) if chunk.nonEmpty =>
                             chunks.enqueue1(Some(chunk))
                           case _ => F.unit

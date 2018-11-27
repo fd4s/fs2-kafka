@@ -4,6 +4,7 @@ import cats.data.NonEmptyList
 import cats.effect.IO
 import cats.implicits._
 import fs2.Stream
+import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
   describe("KafkaConsumer#stream") {
@@ -96,6 +97,27 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           } yield ()).compile.lastOrError.attempt.unsafeRunSync
 
         assert(consumed.left.toOption.contains(NotSubscribedException))
+      }
+    }
+
+    it("should propagate consumer errors to stream") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = partitions)
+
+        val consumed =
+          (for {
+            consumerSettings <- consumerSettings(config)
+              .map(_.withAutoOffsetReset(AutoOffsetReset.None))
+            consumer <- consumerStream[IO].using(consumerSettings)
+            _ <- consumer.subscribe(NonEmptyList.of(topic))
+            _ <- f(consumer)
+          } yield ()).compile.lastOrError.attempt.unsafeRunSync
+
+        consumed.left.toOption match {
+          case Some(_: NoOffsetForPartitionException) => succeed
+          case Some(cause)                            => fail("Unexpected exception", cause)
+          case None                                   => fail(s"Unexpected result [$consumed]")
+        }
       }
     }
   }
