@@ -30,8 +30,8 @@ import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import fs2.concurrent.Queue
-import fs2.kafka.KafkaConsumerActor._
-import fs2.kafka.internal.Synchronized
+import fs2.kafka.internal.KafkaConsumerActor._
+import fs2.kafka.internal.{KafkaConsumerActor, Synchronized}
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
 import fs2.{Chunk, Stream}
