@@ -40,10 +40,11 @@ import org.apache.kafka.common.TopicPartition
 
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
+import scala.util.matching.Regex
 
 /**
   * [[KafkaConsumer]] represents a consumer of Kafka messages, with the
-  * ability to [[subscribe]] to topics, start a single top-level stream
+  * ability to `subscribe` to topics, start a single top-level stream
   * and optionally control it via the provided [[fiber]] instance.<br>
   * <br>
   * The following top-level streams are provided.<br>
@@ -91,7 +92,7 @@ abstract class KafkaConsumer[F[_], K, V] {
     * partition requests, but a second request for the same partition will
     * wait for outstanding fetches to complete or timeout before being sent.
     *
-    * @note you have to first use [[subscribe]] to subscribe the consumer
+    * @note you have to first use `subscribe` to subscribe the consumer
     *       before using this `Stream`. If you forgot to subscribe, there
     *       will be a [[NotSubscribedException]] raised in the `Stream`.
     */
@@ -110,7 +111,7 @@ abstract class KafkaConsumer[F[_], K, V] {
     * can use [[stream]] instead, where records for all partitions are in
     * a single `Stream`.
     *
-    * @note you have to first use [[subscribe]] to subscribe the consumer
+    * @note you have to first use `subscribe` to subscribe the consumer
     *       before using this `Stream`. If you forgot to subscribe, there
     *       will be a [[NotSubscribedException]] raised in the `Stream`.
     */
@@ -130,6 +131,16 @@ abstract class KafkaConsumer[F[_], K, V] {
     * @param topics the topics to which the consumer should subscribe
     */
   def subscribe(topics: NonEmptyList[String]): Stream[F, Unit]
+
+  /**
+    * Subscribes the consumer to the topics matching the specified `Regex`.
+    * Note that you have to use one of the `subscribe` functions before you
+    * can use any of the provided `Stream`s, or a [[NotSubscribedException]]
+    * will be raised in the `Stream`s.
+    *
+    * @param regex the regex to which matching topics should be subscribed
+    */
+  def subscribe(regex: Regex): Stream[F, Unit]
 
   /**
     * A `Fiber` that can be used to cancel the underlying consumer, or
@@ -394,7 +405,10 @@ private[kafka] object KafkaConsumer {
       }
 
       override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
-        Stream.eval(requests.enqueue1(Request.Subscribe(topics)))
+        Stream.eval(requests.enqueue1(Request.SubscribeTopics(topics)))
+
+      override def subscribe(regex: Regex): Stream[F, Unit] =
+        Stream.eval(requests.enqueue1(Request.SubscribePattern(regex.pattern)))
 
       override def toString: String =
         "KafkaConsumer$" + System.identityHashCode(this)
