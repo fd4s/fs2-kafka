@@ -28,7 +28,9 @@ import fs2.Stream
   * consumerStream[F].using(settings)
   * }}}
   */
-final class ConsumerStream[F[_]] private[kafka] {
+final class ConsumerStream[F[_]] private[kafka] (
+  private val F: ConcurrentEffect[F]
+) extends AnyVal {
 
   /**
     * Creates a new [[KafkaConsumer]] in the `Stream` context.
@@ -36,11 +38,10 @@ final class ConsumerStream[F[_]] private[kafka] {
     * except we're able to infer the key and value type.
     */
   def using[K, V](settings: ConsumerSettings[K, V])(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F],
+    implicit context: ContextShift[F],
     timer: Timer[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =
-    consumerStream(settings)
+    consumerStream(settings)(F, context, timer)
 
   override def toString: String =
     "ConsumerStream$" + System.identityHashCode(this)

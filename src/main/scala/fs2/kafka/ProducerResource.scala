@@ -27,17 +27,17 @@ import cats.effect.{ConcurrentEffect, Resource}
   * producerResource[F].using(settings)
   * }}}
   */
-final class ProducerResource[F[_]] private[kafka] {
+final class ProducerResource[F[_]] private[kafka] (
+  private val F: ConcurrentEffect[F]
+) extends AnyVal {
 
   /**
     * Creates a new [[KafkaProducer]] in the `Resource` context.
     * This is equivalent to using `producerResource` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: ProducerSettings[K, V])(
-    implicit F: ConcurrentEffect[F]
-  ): Resource[F, KafkaProducer[F, K, V]] =
-    producerResource(settings)
+  def using[K, V](settings: ProducerSettings[K, V]): Resource[F, KafkaProducer[F, K, V]] =
+    producerResource(settings)(F)
 
   override def toString: String =
     "ProducerResource$" + System.identityHashCode(this)
