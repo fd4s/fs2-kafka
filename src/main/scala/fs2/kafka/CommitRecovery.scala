@@ -87,7 +87,7 @@ object CommitRecovery {
     */
   val Default: CommitRecovery =
     new CommitRecovery {
-      private def backoff[F[_]](attempt: Int)(
+      private[this] def backoff[F[_]](attempt: Int)(
         implicit F: Functor[F],
         jitter: Jitter[F]
       ): F[FiniteDuration] = {
