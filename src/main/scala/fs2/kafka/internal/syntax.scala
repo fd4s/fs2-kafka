@@ -49,20 +49,27 @@ private[kafka] object syntax {
   implicit final class FoldableSyntax[F[_], A](
     private val fa: F[A]
   ) extends AnyVal {
+    def mkStringAppend(f: (String => Unit, A) => Unit)(
+      start: String,
+      sep: String,
+      end: String
+    )(implicit F: Foldable[F]): String = {
+      val builder = new java.lang.StringBuilder(start)
+      val append: String => Unit = s => { builder.append(s); () }
+      var first = true
+
+      fa.foldLeft(()) { (_, a) =>
+        if (first) first = false
+        else builder.append(sep)
+        f(append, a)
+      }
+
+      builder.append(end).toString
+    }
+
     def mkStringMap(f: A => String)(start: String, sep: String, end: String)(
       implicit F: Foldable[F]
-    ): String = {
-      var first = true
-      fa.foldLeft(new java.lang.StringBuilder(start)) { (b, a) =>
-        if (first) {
-          first = false
-          b.append(f(a))
-        } else {
-          b.append(sep)
-          b.append(f(a))
-        }
-      }.append(end).toString
-    }
+    ): String = mkStringAppend((append, a) => append(f(a)))(start, sep, end)
 
     def mkString(start: String, sep: String, end: String)(
       implicit F: Foldable[F]

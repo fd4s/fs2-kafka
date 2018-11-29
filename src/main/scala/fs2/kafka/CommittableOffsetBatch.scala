@@ -16,10 +16,12 @@
 
 package fs2.kafka
 
+import cats.instances.list._
 import cats.syntax.foldable._
 import cats.syntax.show._
 import cats.{Applicative, Foldable, Show}
 import fs2.kafka.internal.instances._
+import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
@@ -199,19 +201,16 @@ object CommittableOffsetBatch {
     Show.show { cob =>
       if (cob.offsets.isEmpty) "CommittableOffsetBatch(<empty>)"
       else {
-        val builder = new StringBuilder("CommittableOffsetBatch(")
-        val offsets = cob.offsets.toList.sorted
-        var first = true
-
-        offsets.foreach {
-          case (tp, oam) =>
-            if (first) first = false
-            else builder.append(", ")
-
-            builder.append(tp.show).append(" -> ").append(oam.show)
-        }
-
-        builder.append(')').toString
+        cob.offsets.toList.sorted.mkStringAppend {
+          case (append, (tp, oam)) =>
+            append(tp.show)
+            append(" -> ")
+            append(oam.show)
+        }(
+          start = "CommittableOffsetBatch(",
+          sep = ", ",
+          end = ")"
+        )
       }
     }
 }

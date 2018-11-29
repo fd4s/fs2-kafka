@@ -16,8 +16,10 @@
 
 package fs2.kafka
 
+import cats.instances.list._
 import cats.syntax.show._
 import fs2.kafka.internal.instances._
+import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{KafkaException, TopicPartition}
 
@@ -33,29 +35,20 @@ sealed abstract class CommitRecoveryException(
   attempts: Int,
   lastException: Throwable,
   offsets: Map[TopicPartition, OffsetAndMetadata]
-) extends KafkaException(
-      {
-        val builder =
-          new StringBuilder(s"offset commit is still failing after $attempts attempts")
-
-        if (offsets.nonEmpty) {
-          builder.append(" for offsets: ")
-          val sorted = offsets.toList.sorted
-          var first = true
-
-          sorted.foreach {
-            case (tp, oam) =>
-              if (first) first = false
-              else builder.append(", ")
-
-              builder.append(tp.show).append(" -> ").append(oam.show)
-          }
-        }
-
-        builder.append(s"; last exception was: $lastException").toString
-      },
-      lastException
-    ) {
+) extends KafkaException({
+      offsets.toList.sorted.mkStringAppend {
+        case (append, (tp, oam)) =>
+          append(tp.show)
+          append(" -> ")
+          append(oam.show)
+      }(
+        start =
+          s"offset commit is still failing after $attempts attempts${if (offsets.nonEmpty) " for offsets: "
+          else ""}",
+        sep = ", ",
+        end = s"; last exception was: $lastException"
+      )
+    }) {
 
   override def toString: String =
     s"fs2.kafka.CommitRecoveryException: $getMessage"
