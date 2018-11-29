@@ -147,7 +147,7 @@ object ProducerMessage {
     * [[ProducerMessage#Multiple]] can be used to extract instances
     * created with this function.
     */
-  def multiple[K, V, P](
+  def multiple[K, V](
     records: List[ProducerRecord[K, V]]
   ): ProducerMessage[K, V, Unit] =
     multiple(records, ())
