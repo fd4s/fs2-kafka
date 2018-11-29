@@ -55,14 +55,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   jitter: Jitter[F],
   timer: Timer[F]
 ) {
-  private def withConsumer[A](f: Consumer[K, V] => F[A]): F[A] =
+  private[this] def withConsumer[A](f: Consumer[K, V] => F[A]): F[A] =
     synchronized.use { consumer =>
       context.evalOn(settings.executionContext) {
         f(consumer)
       }
     }
 
-  private val consumerRebalanceListener: ConsumerRebalanceListener =
+  private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
       override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
         if (partitions.isEmpty) ()
@@ -81,7 +81,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         }
     }
 
-  private def subscribe(topics: NonEmptyList[String]): F[Unit] =
+  private[this] def subscribe(topics: NonEmptyList[String]): F[Unit] =
     withConsumer { consumer =>
       F.delay {
         consumer.subscribe(
@@ -91,7 +91,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     } >> ref.update(_.asSubscribed)
 
-  private def subscribe(pattern: Pattern): F[Unit] =
+  private[this] def subscribe(pattern: Pattern): F[Unit] =
     withConsumer { consumer =>
       F.delay {
         consumer.subscribe(
@@ -101,10 +101,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     } >> ref.update(_.asSubscribed)
 
-  private val nowExpiryTime: F[Long] =
+  private[this] val nowExpiryTime: F[Long] =
     timer.clock.monotonic(settings.fetchTimeout.unit)
 
-  private def expiringFetch(
+  private[this] def expiringFetch(
     partition: TopicPartition,
     deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], ExpiringFetchCompletedReason)]
   ): F[Unit] = {
@@ -125,7 +125,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     assigned.ifM(storeFetch, completeRevoked)
   }
 
-  private def fetch(
+  private[this] def fetch(
     partition: TopicPartition,
     deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
   ): F[Unit] = {
@@ -143,7 +143,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     assigned.ifM(storeFetch, completeRevoked)
   }
 
-  private def commit(
+  private[this] def commit(
     offsets: Map[TopicPartition, OffsetAndMetadata],
     deferred: Deferred[F, Either[Throwable, Unit]]
   ): F[Unit] =
@@ -165,10 +165,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     }
 
-  private def assigned(assigned: Request.Assigned[F, K, V]): F[Unit] =
+  private[this] def assigned(assigned: Request.Assigned[F, K, V]): F[Unit] =
     ref.get.flatMap(_.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned)))
 
-  private def revoked(revoked: Request.Revoked[F, K, V]): F[Unit] =
+  private[this] def revoked(revoked: Request.Revoked[F, K, V]): F[Unit] =
     ref.get.flatMap { state =>
       val fetches = state.fetches.keySetStrict
       val records = state.records.keySetStrict
@@ -200,7 +200,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       completeWithRecords >> completeWithoutRecords >> onRevoked
     }
 
-  private def assignment(
+  private[this] def assignment(
     deferred: Deferred[F, Either[Throwable, SortedSet[TopicPartition]]],
     onRebalance: Option[OnRebalance[F, K, V]]
   ): F[Unit] =
@@ -216,7 +216,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       assigned.flatMap(deferred.complete) >> withOnRebalance
     }
 
-  private val messageCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
+  private[this] val messageCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
       val commit =
         Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
@@ -240,7 +240,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     }
 
-  private def message(
+  private[this] def message(
     record: ConsumerRecord[K, V],
     partition: TopicPartition
   ): CommittableMessage[F, K, V] =
@@ -256,7 +256,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       )
     )
 
-  private def records(
+  private[this] def records(
     batch: ConsumerRecords[K, V]
   ): Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]] =
     if (batch.isEmpty) Map.empty
@@ -278,10 +278,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       messages
     }
 
-  private val pollTimeout: Duration =
+  private[this] val pollTimeout: Duration =
     settings.pollTimeout.asJava
 
-  private val poll: F[Unit] = {
+  private[this] val poll: F[Unit] = {
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords[K, V]] =
       withConsumer { consumer =>
         F.delay {
