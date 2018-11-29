@@ -21,6 +21,10 @@ import java.time.temporal.ChronoUnit
 import java.util
 import java.util.concurrent.TimeUnit
 
+import cats.syntax.foldable._
+import cats.syntax.show._
+import cats.{Foldable, Show}
+
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
@@ -40,6 +44,34 @@ private[kafka] object syntax {
           case TimeUnit.MICROSECONDS => Duration.of(duration.length, ChronoUnit.MICROS)
           case TimeUnit.NANOSECONDS  => Duration.ofNanos(duration.length)
         }
+  }
+
+  implicit final class FoldableSyntax[F[_], A](
+    private val fa: F[A]
+  ) extends AnyVal {
+    def mkStringMap(f: A => String)(start: String, sep: String, end: String)(
+      implicit F: Foldable[F]
+    ): String = {
+      var first = true
+      fa.foldLeft(new java.lang.StringBuilder(start)) { (b, a) =>
+        if (first) {
+          first = false
+          b.append(f(a))
+        } else {
+          b.append(sep)
+          b.append(f(a))
+        }
+      }.append(end).toString
+    }
+
+    def mkString(start: String, sep: String, end: String)(
+      implicit F: Foldable[F]
+    ): String = mkStringMap(_.toString)(start, sep, end)
+
+    def mkStringShow(start: String, sep: String, end: String)(
+      implicit F: Foldable[F],
+      A: Show[A]
+    ): String = mkStringMap(_.show)(start, sep, end)
   }
 
   implicit final class MapSyntax[K, V](

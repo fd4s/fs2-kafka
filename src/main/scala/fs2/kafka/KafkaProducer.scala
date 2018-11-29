@@ -16,14 +16,13 @@
 
 package fs2.kafka
 
-import cats.Applicative
 import cats.effect.concurrent.Deferred
 import cats.effect.{ConcurrentEffect, IO, Resource, Sync}
-import cats.instances.list._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
 import cats.syntax.traverse._
+import cats.{Applicative, Traverse}
 import org.apache.kafka.clients.producer._
 
 /**
@@ -47,7 +46,9 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     * should be preferred over [[produce]], since it can achieve
     * significantly better performance.
     */
-  def produceBatched[P](message: ProducerMessage[K, V, P]): F[F[ProducerResult[K, V, P]]]
+  def produceBatched[G[_], P](
+    message: ProducerMessage[G, K, V, P]
+  )(implicit G: Traverse[G]): F[F[ProducerResult[G, K, V, P]]]
 
   /**
     * Produces the `ProducerRecord`s in the specified [[ProducerMessage]]
@@ -55,7 +56,9 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     * producer settings. For performance reasons, instead prefer to use
     * [[produceBatched]] whenever possible.
     */
-  def produce[P](message: ProducerMessage[K, V, P]): F[ProducerResult[K, V, P]]
+  def produce[G[_], P](
+    message: ProducerMessage[G, K, V, P]
+  )(implicit G: Traverse[G]): F[ProducerResult[G, K, V, P]]
 }
 
 private[kafka] object KafkaProducer {
@@ -75,12 +78,12 @@ private[kafka] object KafkaProducer {
     }
   }
 
-  private[this] def produceSingle[F[_], K, V, P](
+  private[this] def produceSingle[F[_], G[_], K, V, P](
     producer: Producer[K, V],
     record: ProducerRecord[K, V],
     passthrough: P
-  )(implicit F: ConcurrentEffect[F]): F[F[ProducerResult[K, V, P]]] =
-    Deferred[F, Either[Throwable, ProducerResult[K, V, P]]]
+  )(implicit F: ConcurrentEffect[F]): F[F[ProducerResult[G, K, V, P]]] =
+    Deferred[F, Either[Throwable, ProducerResult[G, K, V, P]]]
       .flatMap { deferred =>
         F.delay {
             producer.send(
@@ -99,11 +102,14 @@ private[kafka] object KafkaProducer {
           .as(deferred.get.rethrow)
       }
 
-  private[this] def produceMultiple[F[_], K, V, P](
+  private[this] def produceMultiple[F[_], G[_], K, V, P](
     producer: Producer[K, V],
-    records: List[ProducerRecord[K, V]],
+    records: G[ProducerRecord[K, V]],
     passthrough: P
-  )(implicit F: ConcurrentEffect[F]): F[F[ProducerResult[K, V, P]]] =
+  )(
+    implicit F: ConcurrentEffect[F],
+    G: Traverse[G]
+  ): F[F[ProducerResult[G, K, V, P]]] =
     records
       .traverse { record =>
         Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]]
@@ -137,9 +143,9 @@ private[kafka] object KafkaProducer {
         }
       }
 
-  private[this] def producePassthrough[F[_], K, V, P](
+  private[this] def producePassthrough[F[_], G[_], K, V, P](
     passthrough: P
-  )(implicit F: Applicative[F]): F[F[ProducerResult[K, V, P]]] =
+  )(implicit F: Applicative[F]): F[F[ProducerResult[G, K, V, P]]] =
     F.pure(F.pure(ProducerResult.passthrough(passthrough)))
 
   private[this] def callback(f: (RecordMetadata, Throwable) => Unit): Callback =
@@ -153,9 +159,9 @@ private[kafka] object KafkaProducer {
   ): Resource[F, KafkaProducer[F, K, V]] =
     createProducer(settings).map { producer =>
       new KafkaProducer[F, K, V] {
-        override def produceBatched[P](
-          message: ProducerMessage[K, V, P]
-        ): F[F[ProducerResult[K, V, P]]] = message match {
+        override def produceBatched[G[_], P](
+          message: ProducerMessage[G, K, V, P]
+        )(implicit G: Traverse[G]): F[F[ProducerResult[G, K, V, P]]] = message match {
           case ProducerMessage.Single(record, passthrough) =>
             produceSingle(producer, record, passthrough)
 
@@ -166,9 +172,9 @@ private[kafka] object KafkaProducer {
             producePassthrough(passthrough)
         }
 
-        override def produce[P](
-          message: ProducerMessage[K, V, P]
-        ): F[ProducerResult[K, V, P]] =
+        override def produce[G[_], P](
+          message: ProducerMessage[G, K, V, P]
+        )(implicit G: Traverse[G]): F[ProducerResult[G, K, V, P]] =
           produceBatched(message).flatten
 
         override def toString: String =

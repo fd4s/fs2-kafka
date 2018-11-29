@@ -16,9 +16,11 @@
 
 package fs2.kafka
 
-import cats.Show
+import cats.syntax.foldable._
 import cats.syntax.show._
+import cats.{Foldable, Show}
 import fs2.kafka.internal.instances._
+import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.producer.ProducerRecord
 
 /**
@@ -42,59 +44,60 @@ import org.apache.kafka.clients.producer.ProducerRecord
   * three cases: [[ProducerMessage#Single]], [[ProducerMessage#Multiple]],
   * and [[ProducerMessage#Passthrough]].
   */
-sealed abstract class ProducerMessage[+K, +V, +P] {
+sealed abstract class ProducerMessage[+F[_], +K, +V, +P] {
   def passthrough: P
 }
 
 object ProducerMessage {
-  sealed abstract class Single[K, V, P](
+  sealed abstract class Single[F[_], K, V, P](
     val record: ProducerRecord[K, V],
     override val passthrough: P
-  ) extends ProducerMessage[K, V, P] {
+  ) extends ProducerMessage[F, K, V, P] {
     override def toString: String =
       s"Single($record, $passthrough)"
   }
 
   object Single {
-    def unapply[K, V, P](
-      message: ProducerMessage[K, V, P]
+    def unapply[F[_], K, V, P](
+      message: ProducerMessage[F, K, V, P]
     ): Option[(ProducerRecord[K, V], P)] = message match {
-      case single: Single[K, V, P] => Some((single.record, single.passthrough))
-      case _                       => None
+      case single: Single[F, K, V, P] => Some((single.record, single.passthrough))
+      case _                          => None
     }
   }
 
-  sealed abstract class Multiple[K, V, P](
-    val records: List[ProducerRecord[K, V]],
+  sealed abstract class Multiple[F[_], K, V, P](
+    val records: F[ProducerRecord[K, V]],
     override val passthrough: P
-  ) extends ProducerMessage[K, V, P] {
+  )(implicit F: Foldable[F])
+      extends ProducerMessage[F, K, V, P] {
     override def toString: String =
       if (records.isEmpty) s"Multiple(<empty>, $passthrough)"
       else records.mkString("Multiple(", ", ", s", $passthrough)")
   }
 
   object Multiple {
-    def unapply[K, V, P](
-      message: ProducerMessage[K, V, P]
-    ): Option[(List[ProducerRecord[K, V]], P)] = message match {
-      case multiple: Multiple[K, V, P] => Some((multiple.records, multiple.passthrough))
-      case _                           => None
+    def unapply[F[_], K, V, P](
+      message: ProducerMessage[F, K, V, P]
+    ): Option[(F[ProducerRecord[K, V]], P)] = message match {
+      case multiple: Multiple[F, K, V, P] => Some((multiple.records, multiple.passthrough))
+      case _                              => None
     }
   }
 
-  sealed abstract class Passthrough[K, V, P](
+  sealed abstract class Passthrough[F[_], K, V, P](
     override val passthrough: P
-  ) extends ProducerMessage[K, V, P] {
+  ) extends ProducerMessage[F, K, V, P] {
     override def toString: String =
       s"Passthrough($passthrough)"
   }
 
   object Passthrough {
-    def unapply[K, V, P](
-      message: ProducerMessage[K, V, P]
+    def unapply[F[_], K, V, P](
+      message: ProducerMessage[F, K, V, P]
     ): Option[P] = message match {
-      case passthrough: Passthrough[K, V, P] => Some(passthrough.passthrough)
-      case _                                 => None
+      case passthrough: Passthrough[F, K, V, P] => Some(passthrough.passthrough)
+      case _                                    => None
     }
   }
 
@@ -106,10 +109,10 @@ object ProducerMessage {
     * [[ProducerMessage#Single]] can be used to extract instances
     * created with this function.
     */
-  def single[K, V, P](
+  def single[F[_], K, V, P](
     record: ProducerRecord[K, V],
     passthrough: P
-  ): ProducerMessage[K, V, P] =
+  ): ProducerMessage[F, K, V, P] =
     new Single(record, passthrough) {}
 
   /**
@@ -120,9 +123,9 @@ object ProducerMessage {
     * [[ProducerMessage#Single]] can be used to extract instances
     * created with this function.
     */
-  def single[K, V](
+  def single[F[_], K, V](
     record: ProducerRecord[K, V]
-  ): ProducerMessage[K, V, Unit] =
+  ): ProducerMessage[F, K, V, Unit] =
     single(record, ())
 
   /**
@@ -133,10 +136,12 @@ object ProducerMessage {
     * [[ProducerMessage#Multiple]] can be used to extract instances
     * created with this function.
     */
-  def multiple[K, V, P](
-    records: List[ProducerRecord[K, V]],
+  def multiple[F[_], K, V, P](
+    records: F[ProducerRecord[K, V]],
     passthrough: P
-  ): ProducerMessage[K, V, P] =
+  )(
+    implicit F: Foldable[F]
+  ): ProducerMessage[F, K, V, P] =
     new Multiple(records, passthrough) {}
 
   /**
@@ -147,9 +152,11 @@ object ProducerMessage {
     * [[ProducerMessage#Multiple]] can be used to extract instances
     * created with this function.
     */
-  def multiple[K, V](
-    records: List[ProducerRecord[K, V]]
-  ): ProducerMessage[K, V, Unit] =
+  def multiple[F[_], K, V](
+    records: F[ProducerRecord[K, V]]
+  )(
+    implicit F: Foldable[F]
+  ): ProducerMessage[F, K, V, Unit] =
     multiple(records, ())
 
   /**
@@ -160,22 +167,23 @@ object ProducerMessage {
     * [[ProducerMessage#Passthrough]] can be used to extract instances
     * created with this function.
     */
-  def passthrough[K, V, P](
+  def passthrough[F[_], K, V, P](
     passthrough: P
-  ): ProducerMessage[K, V, P] =
-    new Passthrough[K, V, P](passthrough) {}
+  ): ProducerMessage[F, K, V, P] =
+    new Passthrough[F, K, V, P](passthrough) {}
 
-  implicit def producerMessageShow[K, V, P](
+  implicit def producerMessageShow[F[_], K, V, P](
     implicit
+    F: Foldable[F],
     K: Show[K],
     V: Show[V],
     P: Show[P]
-  ): Show[ProducerMessage[K, V, P]] = Show.show {
+  ): Show[ProducerMessage[F, K, V, P]] = Show.show {
     case Single(record, passthrough) =>
       show"Single($record, $passthrough)"
     case Multiple(records, passthrough) =>
       if (records.isEmpty) show"Multiple(<empty>, $passthrough)"
-      else records.map(_.show).mkString("Multiple(", ", ", s", $passthrough)")
+      else records.mkStringShow("Multiple(", ", ", s", $passthrough)")
     case Passthrough(passthrough) =>
       show"Passthrough($passthrough)"
   }

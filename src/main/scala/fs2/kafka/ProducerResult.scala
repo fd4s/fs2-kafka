@@ -16,9 +16,11 @@
 
 package fs2.kafka
 
-import cats.Show
+import cats.{Foldable, Show}
+import cats.syntax.foldable._
 import cats.syntax.show._
 import fs2.kafka.internal.instances._
+import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 
 /**
@@ -40,26 +42,26 @@ import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
   * also extractors for the three cases: [[ProducerResult#Single]],
   * [[ProducerResult#Multiple]], [[ProducerResult#Passthrough]].
   */
-sealed abstract class ProducerResult[+K, +V, +P] {
+sealed abstract class ProducerResult[+F[_], +K, +V, +P] {
   def passthrough: P
 }
 
 object ProducerResult {
-  sealed abstract class Single[K, V, P](
+  sealed abstract class Single[F[_], K, V, P](
     val metadata: RecordMetadata,
     val record: ProducerRecord[K, V],
     override val passthrough: P
-  ) extends ProducerResult[K, V, P] {
+  ) extends ProducerResult[F, K, V, P] {
     override def toString: String =
       s"Single($metadata -> $record, $passthrough)"
   }
 
   object Single {
-    def unapply[K, V, P](
-      result: ProducerResult[K, V, P]
+    def unapply[F[_], K, V, P](
+      result: ProducerResult[F, K, V, P]
     ): Option[(RecordMetadata, ProducerRecord[K, V], P)] = result match {
-      case single: Single[K, V, P] => Some((single.metadata, single.record, single.passthrough))
-      case _                       => None
+      case single: Single[F, K, V, P] => Some((single.metadata, single.record, single.passthrough))
+      case _                          => None
     }
   }
 
@@ -86,37 +88,38 @@ object ProducerResult {
     }
   }
 
-  sealed abstract class Multiple[K, V, P](
-    val parts: List[MultiplePart[K, V]],
+  sealed abstract class Multiple[F[_], K, V, P](
+    val parts: F[MultiplePart[K, V]],
     override val passthrough: P
-  ) extends ProducerResult[K, V, P] {
+  )(implicit F: Foldable[F])
+      extends ProducerResult[F, K, V, P] {
     override def toString: String =
       if (parts.isEmpty) s"Multiple(<empty>, $passthrough)"
       else parts.mkString("Multiple(", ", ", s", $passthrough)")
   }
 
   object Multiple {
-    def unapply[K, V, P](
-      result: ProducerResult[K, V, P]
-    ): Option[(List[MultiplePart[K, V]], P)] = result match {
-      case multiple: Multiple[K, V, P] => Some((multiple.parts, multiple.passthrough))
-      case _                           => None
+    def unapply[F[_], K, V, P](
+      result: ProducerResult[F, K, V, P]
+    ): Option[(F[MultiplePart[K, V]], P)] = result match {
+      case multiple: Multiple[F, K, V, P] => Some((multiple.parts, multiple.passthrough))
+      case _                              => None
     }
   }
 
-  sealed abstract class Passthrough[K, V, P](
+  sealed abstract class Passthrough[F[_], K, V, P](
     override val passthrough: P
-  ) extends ProducerResult[K, V, P] {
+  ) extends ProducerResult[F, K, V, P] {
     override def toString: String =
       s"Passthrough($passthrough)"
   }
 
   object Passthrough {
-    def unapply[K, V, P](
-      result: ProducerResult[K, V, P]
+    def unapply[F[_], K, V, P](
+      result: ProducerResult[F, K, V, P]
     ): Option[P] = result match {
-      case passthrough: Passthrough[K, V, P] => Some(passthrough.passthrough)
-      case _                                 => None
+      case passthrough: Passthrough[F, K, V, P] => Some(passthrough.passthrough)
+      case _                                    => None
     }
   }
 
@@ -126,11 +129,11 @@ object ProducerResult {
     * [[ProducerResult#Single]] can be used to extract instances
     * created with this function.
     */
-  def single[K, V, P](
+  def single[F[_], K, V, P](
     metadata: RecordMetadata,
     record: ProducerRecord[K, V],
     passthrough: P
-  ): ProducerResult[K, V, P] =
+  ): ProducerResult[F, K, V, P] =
     new Single(metadata, record, passthrough) {}
 
   /**
@@ -139,10 +142,10 @@ object ProducerResult {
     * [[ProducerResult#Single]] can be used to extract instances
     * created with this function.
     */
-  def single[K, V](
+  def single[F[_], K, V](
     metadata: RecordMetadata,
     record: ProducerRecord[K, V]
-  ): ProducerResult[K, V, Unit] =
+  ): ProducerResult[F, K, V, Unit] =
     single(metadata, record, ())
 
   /**
@@ -152,10 +155,12 @@ object ProducerResult {
     * [[ProducerResult#Multiple]] can be used to extract instances
     * created with this function.
     */
-  def multiple[K, V, P](
-    parts: List[MultiplePart[K, V]],
+  def multiple[F[_], K, V, P](
+    parts: F[MultiplePart[K, V]],
     passthrough: P
-  ): ProducerResult[K, V, P] =
+  )(
+    implicit F: Foldable[F]
+  ): ProducerResult[F, K, V, P] =
     new Multiple(parts, passthrough) {}
 
   /**
@@ -165,9 +170,11 @@ object ProducerResult {
     * [[ProducerResult#Multiple]] can be used to extract instances
     * created with this function.
     */
-  def multiple[K, V](
-    parts: List[MultiplePart[K, V]]
-  ): ProducerResult[K, V, Unit] =
+  def multiple[F[_], K, V](
+    parts: F[MultiplePart[K, V]]
+  )(
+    implicit F: Foldable[F]
+  ): ProducerResult[F, K, V, Unit] =
     new Multiple(parts, ()) {}
 
   /**
@@ -187,22 +194,23 @@ object ProducerResult {
     * [[ProducerResult#Passthrough]] can be used to extract instances
     * created with this function.
     */
-  def passthrough[K, V, P](
+  def passthrough[F[_], K, V, P](
     passthrough: P
-  ): ProducerResult[K, V, P] =
-    new Passthrough[K, V, P](passthrough) {}
+  ): ProducerResult[F, K, V, P] =
+    new Passthrough[F, K, V, P](passthrough) {}
 
-  implicit def producerResultShow[K, V, P](
+  implicit def producerResultShow[F[_], K, V, P](
     implicit
+    F: Foldable[F],
     K: Show[K],
     V: Show[V],
     P: Show[P]
-  ): Show[ProducerResult[K, V, P]] = Show.show {
+  ): Show[ProducerResult[F, K, V, P]] = Show.show {
     case Single(metadata, record, passthrough) =>
       show"Single($metadata -> $record, $passthrough)"
     case Multiple(parts, passthrough) =>
       if (parts.isEmpty) show"Multiple(<empty>, $passthrough)"
-      else parts.map(_.show).mkString("Multiple(", ", ", s", $passthrough)")
+      else parts.mkStringShow("Multiple(", ", ", s", $passthrough)")
     case Passthrough(passthrough) =>
       show"Passthrough($passthrough)"
   }

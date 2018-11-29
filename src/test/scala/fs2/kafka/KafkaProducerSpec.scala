@@ -1,6 +1,7 @@
 package fs2.kafka
 
 import cats.effect.IO
+import cats.instances.list._
 import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.producer.ProducerRecord
 
