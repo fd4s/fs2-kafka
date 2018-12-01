@@ -19,9 +19,9 @@ package fs2.kafka
 import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
 
 /**
-  * [[ConsumerResource]] provides support for inferring the key and
-  * value type from [[ConsumerSettings]] when using `consumerResource`
-  * using the following syntax.
+  * [[ConsumerResource]] provides support for inferring the key and value
+  * type from [[ConsumerSettings]] when using `consumerResource` with the
+  * following syntax.
   *
   * {{{
   * consumerResource[F].using(settings)

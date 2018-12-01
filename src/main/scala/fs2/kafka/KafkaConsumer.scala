@@ -44,7 +44,7 @@ import scala.util.matching.Regex
 
 /**
   * [[KafkaConsumer]] represents a consumer of Kafka messages, with the
-  * ability to `subscribe` to topics, start a single top-level stream
+  * ability to `subscribe` to topics, start a single top-level stream,
   * and optionally control it via the provided [[fiber]] instance.<br>
   * <br>
   * The following top-level streams are provided.<br>
@@ -119,9 +119,9 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 
   /**
     * Subscribes the consumer to the specified topics. Note that you have to
-    * use this function to subscribe to one or more topics before using any
-    * of the provided `Stream`s, or a [[NotSubscribedException]] will be
-    * raised in the `Stream`s.
+    * use one of the `subscribe` functions to subscribe to one or more topics
+    * before using any of the provided `Stream`s, or a [[NotSubscribedException]]
+    * will be raised in the `Stream`s.
     *
     * @param topics the topics to which the consumer should subscribe
     */

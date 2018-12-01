@@ -31,9 +31,10 @@ import scala.concurrent.duration._
   * <br>
   * Several convenience functions are provided so that you don't have to work with
   * `String` values and `ConsumerConfig` for configuration. It's still possible to
-  * specify `ConsumerConfig` values with functions like [[withProperty]]. Instances
-  * of [[ConsumerSettings]] are immutable and all modification functions return a
-  * new [[ConsumerSettings]] instance.<br>
+  * specify `ConsumerConfig` values with functions like [[withProperty]].<br>
+  * <br>
+  * [[ConsumerSettings]] instances are immutable and all modification functions
+  * return a new [[ConsumerSettings]] instance.<br>
   * <br>
   * Use [[ConsumerSettings#apply]] to create a new instance.
   */
@@ -57,7 +58,7 @@ sealed abstract class ConsumerSettings[K, V] {
   /**
     * Properties which can be provided when creating a Java `KafkaConsumer`
     * instance. Numerous functions in [[ConsumerSettings]] add properties
-    * here if the setting is used by the Java `KafkaConsumer`.
+    * here if the settings are used by the Java `KafkaConsumer`.
     */
   def properties: Map[String, String]
 
@@ -202,7 +203,8 @@ sealed abstract class ConsumerSettings[K, V] {
   def withProperties(properties: Map[String, String]): ConsumerSettings[K, V]
 
   /**
-    * The time to wait for the Java `KafkaConsumer` to shutdown.
+    * The time to wait for the Java `KafkaConsumer` to shutdown.<br>
+    * <br>
     * The default value is 20 seconds.
     */
   def closeTimeout: FiniteDuration
@@ -215,7 +217,9 @@ sealed abstract class ConsumerSettings[K, V] {
   /**
     * The time to wait for offset commits to complete. If an offset commit
     * doesn't complete within this time, a [[CommitTimeoutException]] will
-    * be raised instead. The default value is 15 seconds.
+    * be raised instead.<br>
+    * <br>
+    * The default value is 15 seconds.
     */
   def commitTimeout: FiniteDuration
 
@@ -227,7 +231,8 @@ sealed abstract class ConsumerSettings[K, V] {
   /**
     * The time to wait for topic-partition fetches to complete when
     * using [[KafkaConsumer#stream]]. Once all topic-partition fetches
-    * expire, new fetches for all assigned partitions will be issued.
+    * expire, new fetches for all assigned partitions will be issued.<br>
+    * <br>
     * The default value is 500 milliseconds.
     */
   def fetchTimeout: FiniteDuration
@@ -238,8 +243,9 @@ sealed abstract class ConsumerSettings[K, V] {
   def withFetchTimeout(fetchTimeout: FiniteDuration): ConsumerSettings[K, V]
 
   /**
-    * How often we should attempt to call `poll` on the Java
-    * `KafkaConsumer`. The default value is 50 milliseconds.
+    * How often we should attempt to call `poll` on the Java `KafkaConsumer`.<br>
+    * <br>
+    * The default value is 50 milliseconds.
     */
   def pollInterval: FiniteDuration
 
@@ -250,7 +256,9 @@ sealed abstract class ConsumerSettings[K, V] {
 
   /**
     * How long we should allow the `poll` call to block for in the
-    * Java `KafkaConsumer`. The default value is 50 milliseconds.
+    * Java `KafkaConsumer`.<br>
+    * <br>
+    * The default value is 50 milliseconds.
     */
   def pollTimeout: FiniteDuration
 
@@ -261,7 +269,9 @@ sealed abstract class ConsumerSettings[K, V] {
 
   /**
     * The [[CommitRecovery]] strategy for recovering from offset
-    * commit exceptions. The default is [[CommitRecovery#Default]].
+    * commit exceptions.<br>
+    * <br>
+    * The default is [[CommitRecovery#Default]].
     */
   def commitRecovery: CommitRecovery
 
@@ -275,8 +285,8 @@ sealed abstract class ConsumerSettings[K, V] {
     * The [[ConsumerFactory]] for creating the Java `Consumer`.
     * The default is [[ConsumerFactory#Default]]. Note that you
     * normally don't need to have a custom [[ConsumerFactory]],
-    * and you should instead prefer to create a custom instance
-    * of [[KafkaConsumer]] for testing purposes.
+    * and you should instead prefer to create a custom trait or
+    * class similar to [[KafkaConsumer]] for testing purposes.
     */
   def consumerFactory: ConsumerFactory
 
@@ -285,7 +295,8 @@ sealed abstract class ConsumerSettings[K, V] {
     * [[ConsumerFactory]] as the [[consumerFactory]] to use.
     * Note that under normal usage you don't need to have a
     * custom [[ConsumerFactory]] instance. For testing, you
-    * should prefer to use a custom [[KafkaConsumer]].
+    * should prefer to use a custom trait or class similar
+    * to [[KafkaConsumer]].
     */
   def withConsumerFactory(consumerFactory: ConsumerFactory): ConsumerSettings[K, V]
 
@@ -293,8 +304,10 @@ sealed abstract class ConsumerSettings[K, V] {
     * The function used to specify metadata for records. This
     * metadata will be included in `OffsetAndMetadata` in the
     * [[CommittableOffset]]s, and can then be committed with
-    * the offsets. By default, there will be no metadata, as
-    * determined by `OffsetFetchResponse.NO_METADATA`.
+    * the offsets.<br>
+    * <br>
+    * By default, there will be no metadata, as determined by
+    * `OffsetFetchResponse.NO_METADATA`.
     */
   def recordMetadata: ConsumerRecord[K, V] => String
 

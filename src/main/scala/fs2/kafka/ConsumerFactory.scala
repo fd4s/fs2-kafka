@@ -26,8 +26,9 @@ import scala.collection.JavaConverters._
   * new Kafka `Consumer` given [[ConsumerSettings]]. Normal
   * usage does not require a custom [[ConsumerFactory]], but
   * it can be useful for testing purposes. If you can instead
-  * have a custom [[KafkaConsumer]] for testing, then prefer
-  * that over having a custom [[ConsumerFactory]].<br>
+  * have a custom trait or class similar to [[KafkaConsumer]]
+  * for testing, then prefer that over having a custom
+  * [[ConsumerFactory]].<br>
   * <br>
   * To create a new [[ConsumerFactory]], simply create a new
   * instance and implement the [[create]] function with the
