@@ -16,13 +16,13 @@
 
 package fs2.kafka
 
+import cats.Traverse
 import cats.effect.concurrent.Deferred
 import cats.effect.{ConcurrentEffect, IO, Resource, Sync}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
 import cats.syntax.traverse._
-import cats.{Applicative, Traverse}
 import org.apache.kafka.clients.producer._
 
 /**
@@ -48,7 +48,7 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     */
   def produceBatched[G[_], P](
     message: ProducerMessage[G, K, V, P]
-  )(implicit G: Traverse[G]): F[F[ProducerResult[G, K, V, P]]]
+  ): F[F[ProducerResult[G, K, V, P]]]
 
   /**
     * Produces the `ProducerRecord`s in the specified [[ProducerMessage]]
@@ -58,7 +58,7 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     */
   def produce[G[_], P](
     message: ProducerMessage[G, K, V, P]
-  )(implicit G: Traverse[G]): F[ProducerResult[G, K, V, P]]
+  ): F[ProducerResult[G, K, V, P]]
 }
 
 private[kafka] object KafkaProducer {
@@ -78,76 +78,6 @@ private[kafka] object KafkaProducer {
     }
   }
 
-  private[this] def produceSingle[F[_], G[_], K, V, P](
-    producer: Producer[K, V],
-    record: ProducerRecord[K, V],
-    passthrough: P
-  )(implicit F: ConcurrentEffect[F]): F[F[ProducerResult[G, K, V, P]]] =
-    Deferred[F, Either[Throwable, ProducerResult[G, K, V, P]]]
-      .flatMap { deferred =>
-        F.delay {
-            producer.send(
-              record,
-              callback {
-                case (metadata, throwable) =>
-                  val result = Option(throwable).toLeft {
-                    ProducerResult.single(metadata, record, passthrough)
-                  }
-
-                  val complete = deferred.complete(result)
-                  F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
-              }
-            )
-          }
-          .as(deferred.get.rethrow)
-      }
-
-  private[this] def produceMultiple[F[_], G[_], K, V, P](
-    producer: Producer[K, V],
-    records: G[ProducerRecord[K, V]],
-    passthrough: P
-  )(
-    implicit F: ConcurrentEffect[F],
-    G: Traverse[G]
-  ): F[F[ProducerResult[G, K, V, P]]] =
-    records
-      .traverse { record =>
-        Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]]
-          .flatMap { deferred =>
-            F.delay {
-                producer.send(
-                  record,
-                  callback {
-                    case (metadata, throwable) =>
-                      val result = Option(throwable).toLeft(record -> metadata)
-                      val complete = deferred.complete(result)
-                      F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
-                  }
-                )
-              }
-              .as(deferred.get.rethrow)
-          }
-      }
-      .map { produced =>
-        produced.sequence.map { records =>
-          ProducerResult.multiple(
-            parts = records.map {
-              case (record, metadata) =>
-                ProducerResult.multiplePart(
-                  metadata = metadata,
-                  record = record
-                )
-            },
-            passthrough = passthrough
-          )
-        }
-      }
-
-  private[this] def producePassthrough[F[_], G[_], K, V, P](
-    passthrough: P
-  )(implicit F: Applicative[F]): F[F[ProducerResult[G, K, V, P]]] =
-    F.pure(F.pure(ProducerResult.passthrough(passthrough)))
-
   private[this] def callback(f: (RecordMetadata, Throwable) => Unit): Callback =
     new Callback {
       override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
@@ -161,20 +91,32 @@ private[kafka] object KafkaProducer {
       new KafkaProducer[F, K, V] {
         override def produceBatched[G[_], P](
           message: ProducerMessage[G, K, V, P]
-        )(implicit G: Traverse[G]): F[F[ProducerResult[G, K, V, P]]] = message match {
-          case ProducerMessage.Single(record, passthrough) =>
-            produceSingle(producer, record, passthrough)
-
-          case ProducerMessage.Multiple(records, passthrough) =>
-            produceMultiple(producer, records, passthrough)
-
-          case ProducerMessage.Passthrough(passthrough) =>
-            producePassthrough(passthrough)
+        ): F[F[ProducerResult[G, K, V, P]]] = {
+          implicit val G: Traverse[G] = message.traverse
+          message.records
+            .traverse { record =>
+              Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]]
+                .flatMap { deferred =>
+                  F.delay {
+                      producer.send(
+                        record,
+                        callback {
+                          case (metadata, throwable) =>
+                            val result = Option(throwable).toLeft(record -> metadata)
+                            val complete = deferred.complete(result)
+                            F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+                        }
+                      )
+                    }
+                    .as(deferred.get.rethrow)
+                }
+            }
+            .map(_.sequence.map(ProducerResult(_, message.passthrough)))
         }
 
         override def produce[G[_], P](
           message: ProducerMessage[G, K, V, P]
-        )(implicit G: Traverse[G]): F[ProducerResult[G, K, V, P]] =
+        ): F[ProducerResult[G, K, V, P]] =
           produceBatched(message).flatten
 
         override def toString: String =

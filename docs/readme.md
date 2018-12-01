@@ -74,7 +74,7 @@ object Main extends IOApp {
                   val record = new ProducerRecord("topic", key, value)
                   ProducerMessage.single(record, message.committableOffset)
               })
-            .evalMap(producer.produceBatched(_))
+            .evalMap(producer.produceBatched)
             .map(_.map(_.passthrough))
             .to(commitBatchWithinF(500, 15.seconds))
       } yield ()
