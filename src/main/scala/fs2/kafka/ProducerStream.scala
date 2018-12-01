@@ -20,9 +20,9 @@ import cats.effect.ConcurrentEffect
 import fs2.Stream
 
 /**
-  * [[ProducerStream]] provides support for inferring the key and
-  * value type from [[ProducerSettings]] when using `producerStream`
-  * using the following syntax.
+  * [[ProducerStream]] provides support for inferring the key and value
+  * type from [[ProducerSettings]] when using `producerStream` with the
+  * following syntax.
   *
   * {{{
   * producerStream[F].using(settings)

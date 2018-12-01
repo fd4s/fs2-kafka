@@ -18,7 +18,7 @@ package fs2.kafka
 
 import cats.syntax.foldable._
 import cats.syntax.show._
-import cats.{Applicative, MonoidK, Show, Traverse}
+import cats.{Applicative, Foldable, MonoidK, Show, Traverse}
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -54,7 +54,7 @@ sealed abstract class ProducerMessage[F[_], K, V, +P] {
   /** The passthrough to emit once all [[records]] have been produced. */
   def passthrough: P
 
-  /** The traverse instance for `F[_]`. Used by [[KafkaProducer]]. */
+  /** The traverse instance for `F[_]`. Required by [[KafkaProducer]]. */
   def traverse: Traverse[F]
 }
 
@@ -65,7 +65,7 @@ object ProducerMessage {
     override val traverse: Traverse[F]
   ) extends ProducerMessage[F, K, V, P] {
     override def toString: String = {
-      implicit val F: Traverse[F] = traverse
+      implicit val F: Foldable[F] = traverse
       if (records.isEmpty) s"ProducerMessage(<empty>, $passthrough)"
       else records.mkString("ProducerMessage(", ", ", s", $passthrough)")
     }
@@ -142,7 +142,7 @@ object ProducerMessage {
     V: Show[V],
     P: Show[P]
   ): Show[ProducerMessage[F, K, V, P]] = Show.show { message =>
-    implicit val F: Traverse[F] = message.traverse
+    implicit val F: Foldable[F] = message.traverse
     if (message.records.isEmpty) show"ProducerMessage(<empty>, ${message.passthrough})"
     else message.records.mkStringShow("ProducerMessage(", ", ", s", ${message.passthrough})")
   }

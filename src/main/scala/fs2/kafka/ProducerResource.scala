@@ -19,9 +19,9 @@ package fs2.kafka
 import cats.effect.{ConcurrentEffect, Resource}
 
 /**
-  * [[ProducerResource]] provides support for inferring the key and
-  * value type from [[ProducerSettings]] when using `producerResource`
-  * using the following syntax.
+  * [[ProducerResource]] provides support for inferring the key and value
+  * type from [[ProducerSettings]] when using `producerResource` with the
+  * following syntax.
   *
   * {{{
   * producerResource[F].using(settings)

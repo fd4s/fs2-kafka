@@ -20,9 +20,9 @@ import cats.effect.{ConcurrentEffect, ContextShift, Timer}
 import fs2.Stream
 
 /**
-  * [[ConsumerStream]] provides support for inferring the key and
-  * value type from [[ConsumerSettings]] when using `consumerStream`
-  * using the following syntax.
+  * [[ConsumerStream]] provides support for inferring the key and value
+  * type from [[ConsumerSettings]] when using `consumerStream` with the
+  * following syntax.
   *
   * {{{
   * consumerStream[F].using(settings)

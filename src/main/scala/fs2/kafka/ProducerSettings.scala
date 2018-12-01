@@ -28,9 +28,10 @@ import scala.concurrent.duration._
   * <br>
   * Several convenience functions are provided so that you don't have to work with
   * `String` values and `ProducerConfig` for configuration. It's still possible to
-  * specify `ProducerConfig` values with functions like [[withProperty]]. Instances
-  * of [[ProducerSettings]] are immutable and all modification functions return a
-  * new [[ProducerSettings]] instance.<br>
+  * specify `ProducerConfig` values with functions like [[withProperty]].<br>
+  * <br>
+  * [[ProducerSettings]] instances are immutable and all modification functions
+  * return a new [[ProducerSettings]] instance.<br>
   * <br>
   * Use [[ProducerSettings#apply]] to create a new instance.
   */
@@ -49,7 +50,7 @@ sealed abstract class ProducerSettings[K, V] {
   /**
     * Properties which can be provided when creating a Java `KafkaProducer`
     * instance. Numerous functions in [[ProducerSettings]] add properties
-    * here if the setting is used by the Java `KafkaProducer`.
+    * here if the settings are used by the Java `KafkaProducer`.
     */
   def properties: Map[String, String]
 
@@ -184,7 +185,8 @@ sealed abstract class ProducerSettings[K, V] {
   def withProperties(properties: Map[String, String]): ProducerSettings[K, V]
 
   /**
-    * The time to wait for the Java `KafkaProducer` to shutdown.
+    * The time to wait for the Java `KafkaProducer` to shutdown.<br>
+    * <br>
     * The default value is 60 seconds.
     */
   def closeTimeout: FiniteDuration
@@ -198,8 +200,8 @@ sealed abstract class ProducerSettings[K, V] {
     * The [[ProducerFactory]] for creating the Java `Producer`.
     * The default is [[ProducerFactory#Default]]. Note that you
     * normally don't need to have a custom [[ProducerFactory]],
-    * and you should instead prefer to create a custom instance
-    * of [[KafkaProducer]] for testing purposes.
+    * and you should instead prefer to create a custom trait or
+    * class similar to [[KafkaProducer]] for testing purposes.
     */
   def producerFactory: ProducerFactory
 
@@ -208,7 +210,8 @@ sealed abstract class ProducerSettings[K, V] {
     * [[ProducerFactory]] as the [[producerFactory]] to use.
     * Note that under normal usage you don't need to have a
     * custom [[ProducerFactory]] instance. For testing, you
-    * should prefer to use a custom [[KafkaProducer]].
+    * should prefer to create a custom trait or class
+    * similar to [[KafkaProducer]].
     */
   def withProducerFactory(producerFactory: ProducerFactory): ProducerSettings[K, V]
 }

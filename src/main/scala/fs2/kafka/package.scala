@@ -33,7 +33,7 @@ package object kafka {
     * underlying `Stream`. If you want more explicit control over
     * how batches are created, instead use [[commitBatchChunk]].<br>
     * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
     * like the produce effect from [[KafkaProducer.produceBatched]],
     * then there is a [[commitBatchF]] function for that instead.
     *
@@ -54,7 +54,7 @@ package object kafka {
     * producing records, you can use [[KafkaProducer.produceBatched]]
     * and keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
     * like the produce effect from `produceBatched`, then there is a
     * [[commitBatch]] function for that instead.
     *
@@ -77,7 +77,7 @@ package object kafka {
     * results in producing multiple messages, and an offset should only
     * be committed once all of the messages have been produced.<br>
     * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
     * like the produce effect from [[KafkaProducer.produceBatched]],
     * then there is a [[commitBatchOptionF]] function for that instead.
     *
@@ -104,7 +104,7 @@ package object kafka {
     * producing records, you can use [[KafkaProducer.produceBatched]]
     * and keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
     * like the produce effect from `produceBatched`, then there is a
     * [[commitBatchOption]] function for that instead.
     *
@@ -122,7 +122,7 @@ package object kafka {
     * want to use the underlying `Chunk`s of the `Stream`, simply
     * use [[commitBatch]] instead.<br>
     * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
     * like the produce effect from [[KafkaProducer.produceBatched]],
     * then there is a [[commitBatchChunkF]] function for that instead.
     *
@@ -144,7 +144,7 @@ package object kafka {
     * producing records, you can use [[KafkaProducer.produceBatched]]
     * and keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
     * like the produce effect from `produceBatched`, then there is a
     * [[commitBatchChunk]] function for that instead.
     *
@@ -167,7 +167,7 @@ package object kafka {
     * results in producing multiple messages, and an offset should only
     * be committed once all of the messages have been produced.<br>
     * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
     * like the produce effect from [[KafkaProducer.produceBatched]],
     * then there is a [[commitBatchChunkOptionF]] for that instead.
     *
@@ -194,7 +194,7 @@ package object kafka {
     * producing records, you can use [[KafkaProducer.produceBatched]]
     * and keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
     * like the produce effect from `produceBatched`, then there is a
     * [[commitBatchChunkOption]] function for that instead.
     *
@@ -212,7 +212,7 @@ package object kafka {
     * to commit within a time window, no attempt will be made to commit
     * offsets for that time window.<br>
     * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
     * like the produce effect from [[KafkaProducer.produceBatched]],
     * then there is a [[commitBatchWithinF]] function for that instead.
     *
@@ -237,7 +237,7 @@ package object kafka {
     * producing records, you can use [[KafkaProducer.produceBatched]]
     * and keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
     * like the produce effect from `produceBatched`, then there is a
     * [[commitBatchWithin]] function for that instead.
     *
@@ -263,7 +263,7 @@ package object kafka {
     * results in producing multiple messages, and an offset should only
     * be committed once all of the messages have been produced.<br>
     * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
     * like the produce effect from [[KafkaProducer.produceBatched]],
     * then there is a [[commitBatchOptionWithinF]] for that instead.
     *
@@ -293,7 +293,7 @@ package object kafka {
     * producing records, you can use [[KafkaProducer.produceBatched]]
     * and keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F`,
+    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
     * like the produce effect from `produceBatched`, then there is a
     * [[commitBatchOptionWithin]] function for that instead.
     *
@@ -311,7 +311,7 @@ package object kafka {
   /**
     * Creates a new [[KafkaConsumer]] in the `Resource` context,
     * using the specified [[ConsumerSettings]]. Note that there
-    * is another version where `F` is specified explicitly and
+    * is another version where `F[_]` is specified explicitly and
     * the key and value type can be inferred, which allows you
     * to use the following syntax.
     *
@@ -327,7 +327,7 @@ package object kafka {
     KafkaConsumer.consumerResource(settings)
 
   /**
-    * Alternative version of `consumerResource` where the `F` is
+    * Alternative version of `consumerResource` where the `F[_]` is
     * specified explicitly, and where the key and value type can
     * be inferred from the [[ConsumerSettings]]. This allows you
     * to use the following syntax.
@@ -342,7 +342,7 @@ package object kafka {
   /**
     * Creates a new [[KafkaConsumer]] in the `Stream` context,
     * using the specified [[ConsumerSettings]]. Note that there
-    * is another version where `F` is specified explicitly and
+    * is another version where `F[_]` is specified explicitly and
     * the key and value type can be inferred, which allows you
     * to use the following syntax.
     *
@@ -358,7 +358,7 @@ package object kafka {
     Stream.resource(consumerResource(settings))
 
   /**
-    * Alternative version of `consumerStream` where the `F` is
+    * Alternative version of `consumerStream` where the `F[_]` is
     * specified explicitly, and where the key and value type can
     * be inferred from the [[ConsumerSettings]]. This allows you
     * to use the following syntax.
@@ -375,7 +375,7 @@ package object kafka {
     * This is suitable for use with a single `KafkaConsumer`, and
     * is required to be set when defining [[ConsumerSettings]].<br>
     * <br>
-    * If you already have a `ExecutionContext` for blocking code,
+    * If you already have an `ExecutionContext` for blocking code,
     * then you might prefer to use that over explicitly creating
     * one with this function.<br>
     * <br>
@@ -412,7 +412,7 @@ package object kafka {
   /**
     * Creates a new [[KafkaProducer]] in the `Resource` context,
     * using the specified [[ProducerSettings]]. Note that there
-    * is another version where `F` is specified explicitly and
+    * is another version where `F[_]` is specified explicitly and
     * the key and value type can be inferred, which allows you
     * to use the following syntax.
     *
@@ -426,7 +426,7 @@ package object kafka {
     KafkaProducer.producerResource(settings)
 
   /**
-    * Alternative version of `producerResource` where the `F` is
+    * Alternative version of `producerResource` where the `F[_]` is
     * specified explicitly, and where the key and value type can
     * be inferred from the [[ProducerSettings]]. This allows you
     * to use the following syntax.
@@ -441,7 +441,7 @@ package object kafka {
   /**
     * Creates a new [[KafkaProducer]] in the `Stream` context,
     * using the specified [[ProducerSettings]]. Note that there
-    * is another version where `F` is specified explicitly and
+    * is another version where `F[_]` is specified explicitly and
     * the key and value type can be inferred, which allows you
     * to use the following syntax.
     *
@@ -455,7 +455,7 @@ package object kafka {
     Stream.resource(producerResource(settings))
 
   /**
-    * Alternative version of `producerStream` where the `F` is
+    * Alternative version of `producerStream` where the `F[_]` is
     * specified explicitly, and where the key and value type can
     * be inferred from the [[ProducerSettings]]. This allows you
     * to use the following syntax.
