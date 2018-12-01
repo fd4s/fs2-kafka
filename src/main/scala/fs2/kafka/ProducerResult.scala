@@ -16,9 +16,9 @@
 
 package fs2.kafka
 
-import cats.{Foldable, Show}
 import cats.syntax.foldable._
 import cats.syntax.show._
+import cats.{Foldable, Show}
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
@@ -47,7 +47,7 @@ sealed abstract class ProducerResult[+F[_], +K, +V, +P] {
 }
 
 object ProducerResult {
-  sealed abstract class Single[F[_], K, V, P](
+  private[this] final class Single[F[_], K, V, P](
     val metadata: RecordMetadata,
     val record: ProducerRecord[K, V],
     override val passthrough: P
@@ -65,12 +65,10 @@ object ProducerResult {
     }
   }
 
-  sealed abstract class MultiplePart[K, V](
-    val metadata: RecordMetadata,
-    val record: ProducerRecord[K, V]
-  ) {
-    override def toString: String =
-      s"$metadata -> $record"
+  sealed abstract class MultiplePart[K, V] {
+    def metadata: RecordMetadata
+
+    def record: ProducerRecord[K, V]
   }
 
   object MultiplePart {
@@ -88,7 +86,7 @@ object ProducerResult {
     }
   }
 
-  sealed abstract class Multiple[F[_], K, V, P](
+  private[this] final class Multiple[F[_], K, V, P](
     val parts: F[MultiplePart[K, V]],
     override val passthrough: P
   )(implicit F: Foldable[F])
@@ -107,7 +105,7 @@ object ProducerResult {
     }
   }
 
-  sealed abstract class Passthrough[F[_], K, V, P](
+  private[this] final class Passthrough[F[_], K, V, P](
     override val passthrough: P
   ) extends ProducerResult[F, K, V, P] {
     override def toString: String =
@@ -134,7 +132,7 @@ object ProducerResult {
     record: ProducerRecord[K, V],
     passthrough: P
   ): ProducerResult[F, K, V, P] =
-    new Single(metadata, record, passthrough) {}
+    new Single(metadata, record, passthrough)
 
   /**
     * Creates a new [[ProducerResult]] for the result of having produced
@@ -161,7 +159,7 @@ object ProducerResult {
   )(
     implicit F: Foldable[F]
   ): ProducerResult[F, K, V, P] =
-    new Multiple(parts, passthrough) {}
+    new Multiple(parts, passthrough)
 
   /**
     * Creates a new [[ProducerResult]] for the result of having produced
@@ -175,7 +173,7 @@ object ProducerResult {
   )(
     implicit F: Foldable[F]
   ): ProducerResult[F, K, V, Unit] =
-    new Multiple(parts, ()) {}
+    multiple(parts, ())
 
   /**
     * Creates a new [[MultiplePart]] for use with `ProducerResult#multiple`.
@@ -185,8 +183,19 @@ object ProducerResult {
   def multiplePart[K, V](
     metadata: RecordMetadata,
     record: ProducerRecord[K, V]
-  ): MultiplePart[K, V] =
-    new MultiplePart(metadata, record) {}
+  ): MultiplePart[K, V] = {
+    val _metadata = metadata
+    val _record = record
+
+    new MultiplePart[K, V] {
+      override val metadata: RecordMetadata = _metadata
+
+      override val record: ProducerRecord[K, V] = _record
+
+      override def toString: String =
+        s"${_metadata} -> ${_record}"
+    }
+  }
 
   /**
     * Creates a new [[ProducerResult]] for the result of having produced
@@ -197,7 +206,7 @@ object ProducerResult {
   def passthrough[F[_], K, V, P](
     passthrough: P
   ): ProducerResult[F, K, V, P] =
-    new Passthrough[F, K, V, P](passthrough) {}
+    new Passthrough[F, K, V, P](passthrough)
 
   implicit def producerResultShow[F[_], K, V, P](
     implicit

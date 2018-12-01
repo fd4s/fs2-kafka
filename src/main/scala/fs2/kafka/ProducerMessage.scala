@@ -49,7 +49,7 @@ sealed abstract class ProducerMessage[+F[_], +K, +V, +P] {
 }
 
 object ProducerMessage {
-  sealed abstract class Single[F[_], K, V, P](
+  private[this] final class Single[F[_], K, V, P](
     val record: ProducerRecord[K, V],
     override val passthrough: P
   ) extends ProducerMessage[F, K, V, P] {
@@ -66,7 +66,7 @@ object ProducerMessage {
     }
   }
 
-  sealed abstract class Multiple[F[_], K, V, P](
+  private[this] final class Multiple[F[_], K, V, P](
     val records: F[ProducerRecord[K, V]],
     override val passthrough: P
   )(implicit F: Foldable[F])
@@ -85,7 +85,7 @@ object ProducerMessage {
     }
   }
 
-  sealed abstract class Passthrough[F[_], K, V, P](
+  private[this] final class Passthrough[F[_], K, V, P](
     override val passthrough: P
   ) extends ProducerMessage[F, K, V, P] {
     override def toString: String =
@@ -113,7 +113,7 @@ object ProducerMessage {
     record: ProducerRecord[K, V],
     passthrough: P
   ): ProducerMessage[F, K, V, P] =
-    new Single(record, passthrough) {}
+    new Single(record, passthrough)
 
   /**
     * Creates a new [[ProducerMessage]] for producing exactly one
@@ -142,7 +142,7 @@ object ProducerMessage {
   )(
     implicit F: Foldable[F]
   ): ProducerMessage[F, K, V, P] =
-    new Multiple(records, passthrough) {}
+    new Multiple(records, passthrough)
 
   /**
     * Creates a new [[ProducerMessage]] for producing zero or more
@@ -170,7 +170,7 @@ object ProducerMessage {
   def passthrough[F[_], K, V, P](
     passthrough: P
   ): ProducerMessage[F, K, V, P] =
-    new Passthrough[F, K, V, P](passthrough) {}
+    new Passthrough[F, K, V, P](passthrough)
 
   implicit def producerMessageShow[F[_], K, V, P](
     implicit
