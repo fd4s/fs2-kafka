@@ -1,6 +1,7 @@
 package fs2.kafka
 
 import cats.effect.IO
+import cats.instances.list._
 import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.producer.ProducerRecord
 
@@ -47,14 +48,13 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
           result <- Stream.eval(producer.produce(message))
         } yield result).compile.lastOrError.unsafeRunSync
 
-      produced match {
-        case ProducerResult.Multiple(parts, passthrough) =>
-          val produced = parts.map(part => (part.record.key, part.record.value))
-          assert(produced == toProduce && passthrough == toPassthrough)
+      val records =
+        produced.records.map {
+          case (record, _) =>
+            record.key -> record.value
+        }
 
-        case result =>
-          fail(s"unexpected producer result: $result")
-      }
+      assert(records == toProduce && produced.passthrough == toPassthrough)
 
       val consumed =
         consumeNumberKeyedMessagesFrom[String, String](topic, toProduce.size)
