@@ -1,4 +1,4 @@
-[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v@LATEST_VERSION@-orange.svg)](https://bintray.com/ovotech/maven/fs2-kafka/@LATEST_VERSION@)
+[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v@LATEST_VERSION@-orange.svg)](https://search.maven.org/artifact/com.ovoenergy/fs2-kafka_2.12/@LATEST_VERSION@/jar)
 
 ## FS2 Kafka
 Tiny library providing an [FS2][fs2] wrapper around the official Kafka Java client.  
@@ -7,11 +7,9 @@ The API is inspired by [Alpakka Kafka][alpakka-kafka], and migration should be r
 This is a new project under active development. Feedback and contributions are welcome.
 
 ### Getting Started
-To get started with [sbt][sbt], simply add the following lines to your `build.sbt` file.
+To get started with [sbt][sbt], simply add the following line to your `build.sbt` file.
 
 ```scala
-resolvers += Resolver.bintrayRepo("ovotech", "maven")
-
 libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "@LATEST_VERSION@"
 ```
 

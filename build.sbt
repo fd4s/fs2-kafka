@@ -3,11 +3,11 @@ import ReleaseTransformations._
 lazy val `fs2-kafka` = project
   .in(file("."))
   .settings(
+    moduleName := "fs2-kafka",
+    name := moduleName.value,
     dependencySettings,
-    metadataSettings,
+    publishSettings,
     mimaSettings,
-    releaseSettings,
-    resolverSettings,
     scalaSettings,
     testSettings
   )
@@ -15,7 +15,8 @@ lazy val `fs2-kafka` = project
 lazy val docs = project
   .in(file("docs"))
   .settings(
-    metadataSettings,
+    moduleName := "fs2-kafka-docs",
+    name := moduleName.value,
     noPublishSettings,
     scalaSettings,
     mdocSettings
@@ -44,10 +45,57 @@ lazy val mdocSettings = Seq(
 lazy val metadataSettings = Seq(
   organization := "com.ovoenergy",
   organizationName := "OVO Energy Ltd",
-  bintrayOrganization := Some("ovotech"),
-  licenses += ("Apache-2.0", url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
-  startYear := Some(2018)
+  organizationHomepage := Some(url("https://ovoenergy.com"))
 )
+
+lazy val publishSettings =
+  metadataSettings ++ Seq(
+    publishMavenStyle := true,
+    publishArtifact in Test := false,
+    publishTo := sonatypePublishTo.value,
+    pomIncludeRepository := (_ => false),
+    homepage := Some(url("https://github.com/ovotech/fs2-kafka")),
+    licenses := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
+    startYear := Some(2018),
+    developers := List(
+      Developer(
+        id = "vlovgr",
+        name = "Viktor Lövgren",
+        email = "github@vlovgr.se",
+        url = url("https://vlovgr.se")
+      )
+    ),
+    scmInfo := Some(
+      ScmInfo(
+        url("https://github.com/ovotech/fs2-kafka"),
+        "scm:git@github.com:ovotech/fs2-kafka.git"
+      )
+    ),
+    useGpg := false,
+    releaseCrossBuild := true,
+    releaseUseGlobalVersion := true,
+    releaseTagName := s"v${(version in ThisBuild).value}",
+    releasePublishArtifactsAction := PgpKeys.publishSigned.value,
+    releaseTagComment := s"Release version ${(version in ThisBuild).value}",
+    releaseCommitMessage := s"Set version to ${(version in ThisBuild).value}",
+    releaseProcess := Seq[ReleaseStep](
+      checkSnapshotDependencies,
+      inquireVersions,
+      runClean,
+      runTest,
+      setReleaseVersion,
+      setLatestVersion,
+      releaseStepTask(updateReadme in ThisBuild),
+      releaseStepTask(addDateToReleaseNotes in ThisBuild),
+      commitReleaseVersion,
+      tagRelease,
+      publishArtifacts,
+      releaseStepCommand("sonatypeRelease"),
+      setNextVersion,
+      commitNextVersion,
+      pushChanges
+    )
+  )
 
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
@@ -68,39 +116,11 @@ lazy val mimaSettings = Seq(
   }
 )
 
-lazy val noPublishSettings = Seq(
-  skip in publish := true,
-  publishArtifact := false
-)
-
-lazy val releaseSettings = Seq(
-  useGpg := false,
-  releaseCrossBuild := true,
-  releaseUseGlobalVersion := true,
-  releaseTagName := s"v${(version in ThisBuild).value}",
-  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
-  releaseTagComment := s"Release version ${(version in ThisBuild).value}",
-  releaseCommitMessage := s"Set version to ${(version in ThisBuild).value}",
-  releaseProcess := Seq[ReleaseStep](
-    checkSnapshotDependencies,
-    inquireVersions,
-    runClean,
-    runTest,
-    setReleaseVersion,
-    setLatestVersion,
-    releaseStepTask(updateReadme in ThisBuild),
-    commitReleaseVersion,
-    tagRelease,
-    publishArtifacts,
-    setNextVersion,
-    commitNextVersion,
-    pushChanges
+lazy val noPublishSettings =
+  metadataSettings ++ Seq(
+    skip in publish := true,
+    publishArtifact := false
   )
-)
-
-lazy val resolverSettings = Seq(
-  resolvers += Resolver.bintrayRepo("ovotech", "maven")
-)
 
 lazy val scalaSettings = Seq(
   scalaVersion := "2.12.7",
@@ -123,7 +143,9 @@ lazy val scalaSettings = Seq(
     "-Xfuture",
     "-Ywarn-unused",
     "-Ypartial-unification"
-  )
+  ),
+  scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
+  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value
 )
 
 lazy val testSettings = Seq(
@@ -166,12 +188,49 @@ updateReadme in ThisBuild := {
   }
 }
 
+val releaseNotesFile = taskKey[File]("Release notes for current version")
+releaseNotesFile in ThisBuild := {
+  val currentVersion = (version in ThisBuild).value
+  file("notes") / s"$currentVersion.markdown"
+}
+
+val ensureReleaseNotesExists = taskKey[Unit]("Ensure release notes exists")
+ensureReleaseNotesExists in ThisBuild := {
+  val currentVersion = (version in ThisBuild).value
+  val notes = releaseNotesFile.value
+  if (!notes.isFile) {
+    throw new IllegalStateException(
+      s"no release notes found for version [$currentVersion] at [$notes].")
+  }
+}
+
+val addDateToReleaseNotes = taskKey[Unit]("Add current date to release notes")
+addDateToReleaseNotes in ThisBuild := {
+  ensureReleaseNotesExists.value
+
+  val dateString = {
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    val now = java.time.ZonedDateTime.now()
+    now.format(formatter)
+  }
+
+  val file = releaseNotesFile.value
+  val newContents = IO.read(file).trim + s"\n\nReleased on $dateString.\n"
+  IO.write(file, newContents)
+
+  sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
+    vcs.add(file.getAbsolutePath).!
+    vcs.commit(s"Add release date for v${(version in ThisBuild).value}", sign = true).!
+  }
+}
+
 def addCommandsAlias(name: String, values: List[String]) =
   addCommandAlias(name, values.mkString(";", ";", ""))
 
 addCommandsAlias(
   "validate",
   List(
+    "clean",
     "coverage",
     "test",
     "coverageReport",
