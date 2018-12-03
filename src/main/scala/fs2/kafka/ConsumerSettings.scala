@@ -421,7 +421,7 @@ object ConsumerSettings {
     * <br>
     * Since some Kafka operations are blocking, these operations should be run
     * on a dedicated `ExecutionContext`. If you need such an `ExecutionContext`,
-    * the [[consumerExecutionContextStream]] provides a sensible default option.
+    * `consumerExecutionContextStream` provides a sensible default option.
     */
   def apply[K, V](
     keyDeserializer: Deserializer[K],
