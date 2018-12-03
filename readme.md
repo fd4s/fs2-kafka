@@ -1,4 +1,4 @@
-[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.16.4-orange.svg)](https://bintray.com/ovotech/maven/fs2-kafka/0.16.4)
+[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.17.0-orange.svg)](https://search.maven.org/artifact/com.ovoenergy/fs2-kafka_2.12/0.17.0/jar)
 
 ## FS2 Kafka
 
@@ -9,18 +9,16 @@ This is a new project under active development. Feedback and contributions are w
 
 ### Getting Started
 
-To get started with [sbt][sbt], simply add the following lines to your `build.sbt` file.
+To get started with [sbt][sbt], simply add the following line to your `build.sbt` file.
 
 ```scala
-resolvers += Resolver.bintrayRepo("ovotech", "maven")
-
-libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.16.4"
+libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.17.0"
 ```
 
 The library is published for Scala 2.11 and 2.12.
 
 Backwards binary compatibility for the library is guaranteed between patch versions.  
-For example, `0.16.x` is backwards binary compatible with `0.16.y` for any `x > y`.
+For example, `0.17.x` is backwards binary compatible with `0.17.y` for any `x > y`.
 
 ### Usage
 
@@ -30,10 +28,9 @@ Start with `import fs2.kafka._` and use `consumerStream` and `producerStream` to
 import cats.data.NonEmptyList
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
-import cats.syntax.traverse._
 import fs2.kafka._
-import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
-import org.apache.kafka.clients.producer.{ProducerConfig, ProducerRecord}
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 
 import scala.concurrent.ExecutionContext
