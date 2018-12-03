@@ -24,7 +24,7 @@ lazy val docs = project
 
 lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
-    "org.typelevel" %% "cats-effect" % "1.1.0-M1",
+    "org.typelevel" %% "cats-effect" % "1.1.0",
     "co.fs2" %% "fs2-core" % "1.0.0",
     "org.apache.kafka" % "kafka-clients" % "2.0.1"
   ),
