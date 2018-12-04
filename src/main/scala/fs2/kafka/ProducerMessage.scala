@@ -72,6 +72,136 @@ object ProducerMessage {
   }
 
   /**
+    * Enables creating [[ProducerMessage]]s with the following syntax.
+    *
+    * {{{
+    * ProducerMessage.single[F].of(record, passthrough)
+    *
+    * ProducerMessage.single[F].of(record)
+    * }}}
+    */
+  final class SingleApplyBuilders[F[_]] private[kafka] (
+    private val F: Traverse[F]
+  ) extends AnyVal {
+
+    /**
+      * Creates a new [[ProducerMessage]] using the specified
+      * `ProducerRecord` and specified passthrough value.
+      */
+    def of[K, V, P](
+      record: ProducerRecord[K, V],
+      passthrough: P
+    )(
+      implicit A: Applicative[F]
+    ): ProducerMessage[F, K, V, P] =
+      ProducerMessage.single(record, passthrough)(F, A)
+
+    /**
+      * Creates a new [[ProducerMessage]] using the specified
+      * `ProducerRecord` and `Unit` passthrough value.
+      */
+    def of[K, V](
+      record: ProducerRecord[K, V]
+    )(
+      implicit A: Applicative[F]
+    ): ProducerMessage[F, K, V, Unit] =
+      ProducerMessage.single(record)(F, A)
+  }
+
+  /**
+    * Enables creating [[ProducerMessage]]s with the following syntax.
+    *
+    * {{{
+    * ProducerMessage.multiple[F].of(records, passthrough)
+    *
+    * ProducerMessage.multiple[F].of(records)
+    * }}}
+    */
+  final class MultipleApplyBuilders[F[_]] private[kafka] (
+    private val F: Traverse[F]
+  ) extends AnyVal {
+
+    /**
+      * Creates a new [[ProducerMessage]] using the specified
+      * `ProducerRecord`s and specified passthrough value.
+      */
+    def of[K, V, P](
+      records: F[ProducerRecord[K, V]],
+      passthrough: P
+    ): ProducerMessage[F, K, V, P] =
+      ProducerMessage.multiple(records, passthrough)(F)
+
+    /**
+      * Creates a new [[ProducerMessage]] using the specified
+      * `ProducerRecord`s and `Unit` passthrough value.
+      */
+    def of[K, V](
+      records: F[ProducerRecord[K, V]]
+    ): ProducerMessage[F, K, V, Unit] =
+      ProducerMessage.multiple(records)(F)
+  }
+
+  /**
+    * Enables creating [[ProducerMessage]]s with the following syntax.
+    *
+    * {{{
+    * ProducerMessage.passthrough[F].withKeyAndValue[K, V].of(passthrough)
+    * }}}
+    */
+  final class PassthroughKeyAndValueApplyBuilders[F[_], K, V] private[kafka] (
+    private val F: Traverse[F]
+  ) extends AnyVal {
+
+    /**
+      * Creates a new [[ProducerMessage]] using the specified
+      * passthrough value.
+      */
+    def of[P](
+      passthrough: P
+    )(
+      implicit M: MonoidK[F]
+    ): ProducerMessage[F, K, V, P] =
+      ProducerMessage.passthrough(passthrough)(F, M)
+  }
+
+  /**
+    * Enables creating [[ProducerMessage]]s with the following syntax.
+    *
+    * {{{
+    * ProducerMessage.passthrough[F].of(passthrough)
+    *
+    * ProducerMessage.passthrough[F].withKeyAndValue[K, V].of(passthrough)
+    * }}}
+    */
+  final class PassthroughApplyBuilders[F[_]] private[kafka] (
+    private val F: Traverse[F]
+  ) extends AnyVal {
+
+    /**
+      * Creates a new [[ProducerMessage]] using the specified
+      * passthrough value.
+      */
+    def of[K, V, P](
+      passthrough: P
+    )(
+      implicit M: MonoidK[F]
+    ): ProducerMessage[F, K, V, P] =
+      ProducerMessage.passthrough(passthrough)(F, M)
+
+    /**
+      * Creates a new [[ProducerMessage]] by first explicitly
+      * specifying the key and value types. This allows you
+      * to use the following syntax.
+      *
+      * {{{
+      * ProducerMessage.passthrough[F].withKeyAndValue[K, V].of(passthrough)
+      * }}}
+      */
+    def withKeyAndValue[K, V]: PassthroughKeyAndValueApplyBuilders[F, K, V] =
+      new PassthroughKeyAndValueApplyBuilders[F, K, V](F)
+  }
+
+  /**
     * Creates a new [[ProducerMessage]] for producing exactly one
     * `ProducerRecord`, then emitting a [[ProducerResult]] with
     * the result and specified passthrough value.
@@ -99,6 +229,26 @@ object ProducerMessage {
     single(record, ())
 
   /**
+    * Creates a new [[ProducerMessage]] for producing exactly one
+    * `ProducerRecord`, then emitting a [[ProducerResult]] with
+    * the result and either specified or `Unit` passthrough.<br>
+    * <br>
+    * This version allows you to explicitly specify the context `F[_]`,
+    * while the key, value, and passthrough types can be inferred. This
+    * is useful when the context cannot otherwise be inferred correctly.<br>
+    * <br>
+    * This function enables the following syntax.
+    *
+    * {{{
+    * ProducerMessage.single[F].of(record, passthrough)
+    *
+    * ProducerMessage.single[F].of(record)
+    * }}}
+    */
+  def single[F[_]](implicit F: Traverse[F]): SingleApplyBuilders[F] =
+    new SingleApplyBuilders[F](F)
+
+  /**
     * Creates a new [[ProducerMessage]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
@@ -124,6 +274,26 @@ object ProducerMessage {
     multiple(records, ())
 
   /**
+    * Creates a new [[ProducerMessage]] for producing zero or more
+    * `ProducerRecord`s, then emitting a [[ProducerResult]] with
+    * the results and either specified or `Unit` passthrough.<br>
+    * <br>
+    * This version allows you to explicitly specify the context `F[_]`,
+    * while the key, value, and passthrough types can be inferred. This
+    * is useful when the context cannot otherwise be inferred correctly.<br>
+    * <br>
+    * This function enables the following syntax.
+    *
+    * {{{
+    * ProducerMessage.multiple[F].of(records, passthrough)
+    *
+    * ProducerMessage.multiple[F].of(records)
+    * }}}
+    */
+  def multiple[F[_]](implicit F: Traverse[F]): MultipleApplyBuilders[F] =
+    new MultipleApplyBuilders[F](F)
+
+  /**
     * Creates a new [[ProducerMessage]] for producing exactly zero
     * `ProducerRecord`s, emitting a [[ProducerResult]] with the
     * specified passthrough value.
@@ -135,6 +305,28 @@ object ProducerMessage {
     M: MonoidK[F]
   ): ProducerMessage[F, K, V, P] =
     multiple(M.empty, passthrough)
+
+  /**
+    * Creates a new [[ProducerMessage]] for producing exactly zero
+    * `ProducerRecord`s, then emitting a [[ProducerResult]] with
+    * the specified passthrough value.<br>
+    * <br>
+    * This version allows you to explicitly specify the context `F[_]`,
+    * while the key, value, and passthrough types can be inferred. This
+    * is useful when the context cannot otherwise be inferred correctly.
+    * If needed, the key and value types can be explicitly specified by
+    * also using `withKeyAndValue`.<br>
+    * <br>
+    * This function enables the following syntax.
+    *
+    * {{{
+    * ProducerMessage.passthrough[F].of(passthrough)
+    *
+    * ProducerMessage.passthrough[F].withKeyAndValue[K, V].of(passthrough)
+    * }}}
+    */
+  def passthrough[F[_]](implicit F: Traverse[F]): PassthroughApplyBuilders[F] =
+    new PassthroughApplyBuilders[F](F)
 
   implicit def producerMessageShow[F[_], K, V, P](
     implicit
