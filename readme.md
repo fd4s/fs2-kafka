@@ -1,4 +1,4 @@
-[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.17.0-orange.svg)](https://search.maven.org/artifact/com.ovoenergy/fs2-kafka_2.12/0.17.0/jar)
+[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.17.1-orange.svg)](https://search.maven.org/artifact/com.ovoenergy/fs2-kafka_2.12/0.17.1/jar)
 
 ## FS2 Kafka
 
@@ -12,7 +12,7 @@ This is a new project under active development. Feedback and contributions are w
 To get started with [sbt][sbt], simply add the following line to your `build.sbt` file.
 
 ```scala
-libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.17.0"
+libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.17.1"
 ```
 
 The library is published for Scala 2.11 and 2.12.
@@ -25,6 +25,7 @@ For example, `0.17.x` is backwards binary compatible with `0.17.y` for any `x > 
 Start with `import fs2.kafka._` and use `consumerStream` and `producerStream` to create a consumer and producer, by providing a `ConsumerSettings` and `ProducerSettings`, respectively. The consumer is similar to `committableSource` in Alpakka Kafka, wrapping records in `CommittableMessage`. The producer accepts records wrapped in `ProducerMessage`, allowing offsets, and other elements, as passthrough values.
 
 ```scala
+import cats.Id
 import cats.data.NonEmptyList
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
@@ -73,7 +74,7 @@ object Main extends IOApp {
               .map {
                 case (key, value) =>
                   val record = new ProducerRecord("topic", key, value)
-                  ProducerMessage.single(record, message.committableOffset)
+                  ProducerMessage.single[Id].of(record, message.committableOffset)
               })
             .evalMap(producer.produceBatched)
             .map(_.map(_.passthrough))
