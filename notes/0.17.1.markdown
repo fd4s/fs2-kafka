@@ -1,0 +1,4 @@
+### Additions
+- Add `ProducerMessage` functions for partial type application. ([#47][#47])
+
+[#47]: https://github.com/ovotech/fs2-kafka/pull/47
