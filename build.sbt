@@ -98,14 +98,11 @@ lazy val publishSettings =
 
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
-    def isPublishing = publishArtifact.value
-
-    latestBinaryCompatibleVersion.value match {
-      case Some(version) if isPublishing =>
-        Set(organization.value %% moduleName.value % version)
-      case _ =>
-        Set.empty
-    }
+    if (publishArtifact.value)
+      binaryCompatibleVersions.value
+        .map(version => organization.value %% moduleName.value % version)
+    else
+      Set.empty
   },
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
