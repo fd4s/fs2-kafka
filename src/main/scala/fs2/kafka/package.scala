@@ -309,6 +309,27 @@ package object kafka {
     _.groupWithin(n, d).to(commitBatchChunkOptionF)
 
   /**
+    * Creates a new [[KafkaAdminClient]] in the `Resource` context,
+    * using the specified [[AdminClientSettings]]. If working in a
+    * `Stream` context, you might prefer [[adminClientStream]].
+    */
+  def adminClientResource[F[_]](settings: AdminClientSettings)(
+    implicit F: Concurrent[F]
+  ): Resource[F, KafkaAdminClient[F]] =
+    KafkaAdminClient.adminClientResource(settings)
+
+  /**
+    * Creates a new [[KafkaAdminClient]] in the `Stream` context,
+    * using the specified [[AdminClientSettings]]. If you're not
+    * working in a `Stream` context, you might instead prefer to
+    * use the [[adminClientResource]] function.
+    */
+  def adminClientStream[F[_]](settings: AdminClientSettings)(
+    implicit F: Concurrent[F]
+  ): Stream[F, KafkaAdminClient[F]] =
+    Stream.resource(adminClientResource(settings))
+
+  /**
     * Creates a new [[KafkaConsumer]] in the `Resource` context,
     * using the specified [[ConsumerSettings]]. Note that there
     * is another version where `F[_]` is specified explicitly and

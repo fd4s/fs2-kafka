@@ -5,6 +5,7 @@ import java.util.UUID
 import cats.effect.IO
 import fs2.Stream
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
+import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer => KConsumer}
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization._
@@ -17,6 +18,12 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
 
   implicit final val stringDeserializer: Deserializer[String] =
     new StringDeserializer
+
+  final def adminClientSettings(
+    config: EmbeddedKafkaConfig
+  ): AdminClientSettings =
+    AdminClientSettings.Default
+      .withProperties(adminClientProperties(config))
 
   final def consumerSettings(
     config: EmbeddedKafkaConfig
@@ -37,6 +44,9 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
       keySerializer = new StringSerializer,
       valueSerializer = new StringSerializer
     ).withProperties(producerProperties(config))
+
+  final def adminClientProperties(config: EmbeddedKafkaConfig): Map[String, String] =
+    Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}")
 
   final def consumerProperties(config: EmbeddedKafkaConfig): Map[String, String] =
     Map(
