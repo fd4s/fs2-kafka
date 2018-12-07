@@ -1,4 +1,4 @@
-[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v@LATEST_VERSION@-orange.svg)](https://search.maven.org/artifact/com.ovoenergy/fs2-kafka_2.12/@LATEST_VERSION@/jar)
+[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v@LATEST_VERSION@-orange.svg)](https://index.scala-lang.org/ovotech/fs2-kafka)
 
 ## FS2 Kafka
 Tiny library providing an [FS2][fs2] wrapper around the official Kafka Java client.  
