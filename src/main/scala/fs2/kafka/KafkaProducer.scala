@@ -17,8 +17,9 @@
 package fs2.kafka
 
 import cats.Traverse
+import cats.effect._
 import cats.effect.concurrent.Deferred
-import cats.effect.{ConcurrentEffect, IO, Resource, Sync}
+import cats.effect.syntax.concurrent._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
@@ -64,17 +65,19 @@ sealed abstract class KafkaProducer[F[_], K, V] {
 private[kafka] object KafkaProducer {
   private[this] def createProducer[F[_], K, V](
     settings: ProducerSettings[K, V]
-  )(implicit F: Sync[F]): Resource[F, Producer[K, V]] = {
+  )(implicit F: Concurrent[F]): Resource[F, Producer[K, V]] = {
     Resource.make[F, Producer[K, V]] {
       settings.producerFactory
         .create(settings)
     } { producer =>
       F.delay {
-        producer.close(
-          settings.closeTimeout.length,
-          settings.closeTimeout.unit
-        )
-      }
+          producer.close(
+            settings.closeTimeout.length,
+            settings.closeTimeout.unit
+          )
+        }
+        .start
+        .flatMap(_.join)
     }
   }
 
