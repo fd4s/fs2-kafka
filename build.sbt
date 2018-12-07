@@ -36,9 +36,8 @@ lazy val dependencySettings = Seq(
 )
 
 lazy val mdocSettings = Seq(
-  scalaVersion := "2.12.7",
   crossScalaVersions := Seq(scalaVersion.value),
-  libraryDependencies += "com.geirsson" % "mdoc" % "0.5.3" cross CrossVersion.full
+  libraryDependencies += "com.geirsson" %% "mdoc" % "0.7.1"
 )
 
 lazy val metadataSettings = Seq(
@@ -119,7 +118,7 @@ lazy val noPublishSettings =
   )
 
 lazy val scalaSettings = Seq(
-  scalaVersion := "2.12.7",
+  scalaVersion := "2.12.8",
   crossScalaVersions := Seq(scalaVersion.value, "2.11.12"),
   scalacOptions ++= Seq(
     "-deprecation",
@@ -164,7 +163,7 @@ def runMdoc(args: String*) = Def.taskDyn {
     "LATEST_MINOR_VERSION" -> {
       val latestVersionString = (latestVersion in ThisBuild).value.toString
       val (major, minor) = CrossVersion.partialVersion(latestVersionString).get
-      s"$major.$minor." // Add trailing dot to workaround: https://github.com/olafurpg/mdoc/issues/102
+      s"$major.$minor"
     }
   ).map { case (k, v) => s"""--site.$k "$v"""" }.mkString(" ")
   (runMain in (docs, Compile)).toTask {

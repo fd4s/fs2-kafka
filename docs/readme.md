@@ -16,7 +16,7 @@ libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "@LATEST_VERSION@"
 The library is published for Scala 2.11 and 2.12.
 
 Backwards binary compatibility for the library is guaranteed between patch versions.  
-For example, `@LATEST_MINOR_VERSION@x` is backwards binary compatible with `@LATEST_MINOR_VERSION@y` for any `x > y`.
+For example, `@LATEST_MINOR_VERSION@.x` is backwards binary compatible with `@LATEST_MINOR_VERSION@.y` for any `x > y`.
 
 ### Usage
 Start with `import fs2.kafka._` and use `consumerStream` and `producerStream` to create a consumer and producer, by providing a `ConsumerSettings` and `ProducerSettings`, respectively. The consumer is similar to `committableSource` in Alpakka Kafka, wrapping records in `CommittableMessage`. The producer accepts records wrapped in `ProducerMessage`, allowing offsets, and other elements, as passthrough values.
