@@ -22,6 +22,7 @@ lazy val docs = project
     mdocSettings
   )
   .dependsOn(`fs2-kafka`)
+  .enablePlugins(DocusaurusPlugin)
 
 lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
@@ -83,7 +84,7 @@ lazy val publishSettings =
       runTest,
       setReleaseVersion,
       setLatestVersion,
-      releaseStepTask(updateReadme in ThisBuild),
+      releaseStepTask(updateSiteVariables in ThisBuild),
       releaseStepTask(addDateToReleaseNotes in ThisBuild),
       commitReleaseVersion,
       tagRelease,
@@ -91,7 +92,8 @@ lazy val publishSettings =
       releaseStepCommand("sonatypeRelease"),
       setNextVersion,
       commitNextVersion,
-      pushChanges
+      pushChanges,
+      releaseStepCommand("docs/docusaurusPublishGhpages")
     )
   )
 
@@ -151,7 +153,7 @@ lazy val testSettings = Seq(
 
 def runMdoc(args: String*) = Def.taskDyn {
   val in = (baseDirectory in `fs2-kafka`).value / "docs"
-  val out = (baseDirectory in `fs2-kafka`).value
+  val out = (baseDirectory in `fs2-kafka`).value / "out"
   val scalacOptionsString = {
     val scalacOptionsValue = (scalacOptions in Compile).value
     val excludedOptions = Seq("-Xfatal-warnings")
@@ -171,22 +173,41 @@ def runMdoc(args: String*) = Def.taskDyn {
   }
 }
 
-val generateReadme = taskKey[Unit]("Generates the readme using mdoc")
-generateReadme in ThisBuild := runMdoc().value
+val mdocWatch = taskKey[Unit]("Start mdoc in watch mode")
+mdocWatch in ThisBuild := runMdoc("--watch").value
 
-val updateReadme = taskKey[Unit]("Generates and commits the readme")
-updateReadme in ThisBuild := {
-  (generateReadme in ThisBuild).value
-  sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
-    vcs.add("readme.md").!
-    vcs.commit("Update readme to latest version", sign = true).!
-  }
-}
+val validateDocs = taskKey[Unit]("Validate documentation")
+validateDocs in ThisBuild := runMdoc().value
 
 val releaseNotesFile = taskKey[File]("Release notes for current version")
 releaseNotesFile in ThisBuild := {
   val currentVersion = (version in ThisBuild).value
   file("notes") / s"$currentVersion.markdown"
+}
+
+val updateSiteVariables = taskKey[Unit]("Update site variables")
+updateSiteVariables in ThisBuild := {
+  val file = (baseDirectory in `fs2-kafka`).value / "website" / "siteConfig.js"
+  val lines = IO.read(file).trim.split('\n').toVector
+
+  val latestVersionString = (latestVersion in ThisBuild).value.toString
+  val latestMinorVersionString = {
+    val latestVersionString = (latestVersion in ThisBuild).value.toString
+    val (major, minor) = CrossVersion.partialVersion(latestVersionString).get
+    s"$major.$minor"
+  }
+
+  val lineIndex = lines.indexWhere(_.trim.startsWith("const buildInfo"))
+  val newLine =
+    s"const buildInfo = { latestVersion: '$latestVersionString', latestMinorVersion: '$latestMinorVersionString' };"
+  val newLines = lines.updated(lineIndex, newLine)
+  val newFileContents = newLines.mkString("", "\n", "\n")
+  IO.write(file, newFileContents)
+
+  sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
+    vcs.add(file.getAbsolutePath).!
+    vcs.commit(s"Update site variables for v${(version in ThisBuild).value}", sign = true).!
+  }
 }
 
 val ensureReleaseNotesExists = taskKey[Unit]("Ensure release notes exists")
@@ -234,12 +255,5 @@ addCommandsAlias(
     "scalafmtSbtCheck",
     "headerCheck",
     "doc"
-  )
-)
-
-addCommandsAlias(
-  "validateDocs",
-  List(
-    "generateReadme"
   )
 )
