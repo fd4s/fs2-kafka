@@ -1,30 +1,12 @@
-[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v0.17.1-orange.svg)](https://index.scala-lang.org/ovotech/fs2-kafka)
+---
+id: overview
+title: Overview
+---
 
-## FS2 Kafka
-
-Tiny library providing an [FS2][fs2] wrapper around the official Kafka Java client.  
-The API is inspired by [Alpakka Kafka][alpakka-kafka], and migration should be relatively easy.
-
-This is a new project under active development. Feedback and contributions are welcome.
-
-### Getting Started
-
-To get started with [sbt][sbt], simply add the following line to your `build.sbt` file.
-
-```scala
-libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "0.17.1"
-```
-
-The library is published for Scala 2.11 and 2.12.
-
-Backwards binary compatibility for the library is guaranteed between patch versions.  
-For example, `0.17.x` is backwards binary compatible with `0.17.y` for any `x > y`.
-
-### Usage
-
+## Quick Example
 Start with `import fs2.kafka._` and use `consumerStream` and `producerStream` to create a consumer and producer, by providing a `ConsumerSettings` and `ProducerSettings`, respectively. The consumer is similar to `committableSource` in Alpakka Kafka, wrapping records in `CommittableMessage`. The producer accepts records wrapped in `ProducerMessage`, allowing offsets, and other elements, as passthrough values.
 
-```scala
+```scala mdoc
 import cats.Id
 import cats.data.NonEmptyList
 import cats.effect.{ExitCode, IO, IOApp}
@@ -85,8 +67,3 @@ object Main extends IOApp {
   }
 }
 ```
-
-[alpakka-kafka]: https://github.com/akka/alpakka-kafka
-[fs2]: http://fs2.io/
-[sbt]: https://www.scala-sbt.org
-

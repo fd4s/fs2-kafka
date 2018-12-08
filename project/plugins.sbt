@@ -1,3 +1,4 @@
+addSbtPlugin("com.geirsson" % "sbt-docusaurus" % "0.3.5")
 addSbtPlugin("com.geirsson" % "sbt-scalafmt" % "1.5.1")
 addSbtPlugin("com.github.gseitz" % "sbt-release" % "1.0.9")
 addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.1.2")
