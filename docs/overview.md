@@ -3,67 +3,33 @@ id: overview
 title: Overview
 ---
 
-## Quick Example
-Start with `import fs2.kafka._` and use `consumerStream` and `producerStream` to create a consumer and producer, by providing a `ConsumerSettings` and `ProducerSettings`, respectively. The consumer is similar to `committableSource` in Alpakka Kafka, wrapping records in `CommittableMessage`. The producer accepts records wrapped in `ProducerMessage`, allowing offsets, and other elements, as passthrough values.
+Functional backpressured streams for consuming and producing Kafka records. Exposes a minimalistic interface, while taking care of common functionality: batch consuming and producing records, batched offset commits, offset commit recovery, and administration, while also simplifying client configuration.
 
-```scala mdoc
-import cats.Id
-import cats.data.NonEmptyList
-import cats.effect.{ExitCode, IO, IOApp}
-import cats.syntax.functor._
-import fs2.kafka._
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+Documentation is kept up-to-date with new releases, currently documenting v@LATEST_VERSION@ on Scala @DOCS_SCALA_MINOR_VERSION@.
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
+## Getting Started
+To get started with [sbt](https://scala-sbt.org), simply add the following line to your `build.sbt` file.
 
-object Main extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] = {
-    val consumerSettings = (executionContext: ExecutionContext) =>
-      ConsumerSettings(
-        keyDeserializer = new StringDeserializer,
-        valueDeserializer = new StringDeserializer,
-        executionContext = executionContext
-      )
-      .withAutoOffsetReset(AutoOffsetReset.Earliest)
-      .withBootstrapServers("localhost")
-      .withGroupId("group")
-
-    val producerSettings =
-      ProducerSettings(
-        keySerializer = new StringSerializer,
-        valueSerializer = new StringSerializer,
-      )
-      .withBootstrapServers("localhost")
-
-    val topics =
-      NonEmptyList.one("topic")
-
-    def processRecord(record: ConsumerRecord[String, String]): IO[(String, String)] =
-      IO.pure(record.key -> record.value)
-
-    val stream =
-      for {
-        executionContext <- consumerExecutionContextStream[IO]
-        consumer <- consumerStream[IO].using(consumerSettings(executionContext))
-        producer <- producerStream[IO].using(producerSettings)
-        _ <- consumer.subscribe(topics)
-        _ <- consumer.stream
-          .mapAsync(25)(message =>
-            processRecord(message.record)
-              .map {
-                case (key, value) =>
-                  val record = new ProducerRecord("topic", key, value)
-                  ProducerMessage.single[Id].of(record, message.committableOffset)
-              })
-            .evalMap(producer.produceBatched)
-            .map(_.map(_.passthrough))
-            .to(commitBatchWithinF(500, 15.seconds))
-      } yield ()
-
-    stream.compile.drain.as(ExitCode.Success)
-  }
-}
+```scala
+libraryDependencies += "@ORGANIZATION@" %% "@MODULE_NAME@" % "@LATEST_VERSION@"
 ```
+
+Published for Scala @SCALA_PUBLISH_VERSIONS@. For changes, refer to the [release notes](https://github.com/ovotech/fs2-kafka/releases).
+
+Backwards binary-compatibility for the library is guaranteed between patch versions.  
+For example, `@LATEST_MINOR_VERSION@.x` is backwards binary-compatible with `@LATEST_MINOR_VERSION@.y` for any `x > y`.
+
+Remember to enable partial unification by adding the following line to `build.sbt`.
+
+```scala
+scalacOptions += "-Ypartial-unification"
+```
+
+## Dependencies
+Has a minimal set of dependencies:
+
+- FS2 v@FS2_VERSION@ ([Documentation](https://fs2.io), [GitHub](https://github.com/functional-streams-for-scala/fs2)), and 
+- Apache Kafka Client v@KAFKA_VERSION@ ([Documentation](https://kafka.apache.org/@KAFKA_DOCS_VERSION@/documentation.html), [GitHub](https://github.com/apache/kafka)).
+
+## License
+Licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.html). Refer to the [license file](https://github.com/ovotech/fs2-kafka/blob/master/license.txt).

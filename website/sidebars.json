@@ -1,7 +1,8 @@
 {
   "docs": {
     "Documentation": [
-      "overview"
+      "overview",
+      "quick-example"
     ]
   }
 }
