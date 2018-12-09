@@ -1,4 +1,6 @@
-import build.BuildInfo._
+package fs2.kafka.docs
+
+import fs2.kafka.build.info._
 
 object Main {
   def minorVersion(version: String): String = {

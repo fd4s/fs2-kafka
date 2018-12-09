@@ -42,13 +42,14 @@ lazy val dependencySettings = Seq(
 )
 
 lazy val mdocSettings = Seq(
-  mainClass in Compile := Some("Main"),
+  mainClass in Compile := Some("fs2.kafka.docs.Main"),
   crossScalaVersions := Seq(scalaVersion.value),
   libraryDependencies += "com.geirsson" %% "mdoc" % "0.7.1"
 )
 
 lazy val buildInfoSettings = Seq(
-  buildInfoPackage := "build",
+  buildInfoPackage := "fs2.kafka.build",
+  buildInfoObject := "info",
   buildInfoKeys := Seq[BuildInfoKey](
     BuildInfoKey.map(organization in `fs2-kafka`) { case (_, v)  => "organization" -> v },
     BuildInfoKey.map(moduleName in `fs2-kafka`) { case (_, v)    => "moduleName" -> v },
