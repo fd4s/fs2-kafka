@@ -7,6 +7,9 @@
     "docs": {
       "overview": {
         "title": "Overview"
+      },
+      "quick-example": {
+        "title": "Quick Example"
       }
     },
     "links": {

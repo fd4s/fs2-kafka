@@ -1,5 +1,9 @@
 import ReleaseTransformations._
 
+val fs2Version = "1.0.2"
+
+val kafkaVersion = "2.0.1"
+
 lazy val `fs2-kafka` = project
   .in(file("."))
   .settings(
@@ -26,8 +30,8 @@ lazy val docs = project
 
 lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
-    "co.fs2" %% "fs2-core" % "1.0.2",
-    "org.apache.kafka" % "kafka-clients" % "2.0.1"
+    "co.fs2" %% "fs2-core" % fs2Version,
+    "org.apache.kafka" % "kafka-clients" % kafkaVersion
   ),
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % "3.0.5",
@@ -121,7 +125,7 @@ lazy val noPublishSettings =
 
 lazy val scalaSettings = Seq(
   scalaVersion := "2.12.8",
-  crossScalaVersions := Seq(scalaVersion.value, "2.11.12"),
+  crossScalaVersions := Seq("2.11.12", scalaVersion.value),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
@@ -151,6 +155,12 @@ lazy val testSettings = Seq(
   testOptions in Test += Tests.Argument("-oDF")
 )
 
+def minorVersion(version: String): String = {
+  val (major, minor) =
+    CrossVersion.partialVersion(version).get
+  s"$major.$minor"
+}
+
 def runMdoc(args: String*) = Def.taskDyn {
   val in = (baseDirectory in `fs2-kafka`).value / "docs"
   val out = (baseDirectory in `fs2-kafka`).value / "out"
@@ -161,11 +171,18 @@ def runMdoc(args: String*) = Def.taskDyn {
   }
   val argsString = args.mkString(" ")
   val siteVariables = List[(String, String)](
+    "ORGANIZATION" -> (organization in `fs2-kafka`).value,
+    "MODULE_NAME" -> (moduleName in `fs2-kafka`).value,
     "LATEST_VERSION" -> (latestVersion in ThisBuild).value.toString,
-    "LATEST_MINOR_VERSION" -> {
-      val latestVersionString = (latestVersion in ThisBuild).value.toString
-      val (major, minor) = CrossVersion.partialVersion(latestVersionString).get
-      s"$major.$minor"
+    "LATEST_MINOR_VERSION" -> minorVersion((latestVersion in ThisBuild).value),
+    "DOCS_SCALA_MINOR_VERSION" -> minorVersion((scalaVersion in docs).value),
+    "FS2_VERSION" -> fs2Version,
+    "KAFKA_VERSION" -> kafkaVersion,
+    "KAFKA_DOCS_VERSION" -> minorVersion(kafkaVersion).filter(_ != '.'),
+    "SCALA_PUBLISH_VERSIONS" -> {
+      val minorVersions = (crossScalaVersions in `fs2-kafka`).value.map(minorVersion)
+      if (minorVersions.size <= 2) minorVersions.mkString(" and ")
+      else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
     }
   ).map { case (k, v) => s"""--site.$k "$v"""" }.mkString(" ")
   (runMain in (docs, Compile)).toTask {
@@ -196,10 +213,17 @@ updateSiteVariables in ThisBuild := {
     val (major, minor) = CrossVersion.partialVersion(latestVersionString).get
     s"$major.$minor"
   }
+  val organizationString = (organization in `fs2-kafka`).value
+  val moduleNameString = (moduleName in `fs2-kafka`).value
+  val scalaPublishVersions = {
+    val minorVersions = (crossScalaVersions in `fs2-kafka`).value.map(minorVersion)
+    if (minorVersions.size <= 2) minorVersions.mkString(" and ")
+    else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
+  }
 
   val lineIndex = lines.indexWhere(_.trim.startsWith("const buildInfo"))
   val newLine =
-    s"const buildInfo = { latestVersion: '$latestVersionString', latestMinorVersion: '$latestMinorVersionString' };"
+    s"const buildInfo = { organization: '$organizationString', moduleName: '$moduleNameString', latestVersion: '$latestVersionString', latestMinorVersion: '$latestMinorVersionString', scalaPublishVersions: '$scalaPublishVersions' };"
   val newLines = lines.updated(lineIndex, newLine)
   val newFileContents = newLines.mkString("", "\n", "\n")
   IO.write(file, newFileContents)

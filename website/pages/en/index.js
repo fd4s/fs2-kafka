@@ -66,7 +66,7 @@ class Index extends React.Component {
   render() {
     const {config: siteConfig, language = ''} = this.props;
     const {baseUrl, buildInfo} = siteConfig;
-    const {latestVersion, latestMinorVersion} = buildInfo;
+    const {organization, moduleName, latestVersion, latestMinorVersion, scalaPublishVersions} = buildInfo;
 
     const Block = props => (
       <Container
@@ -84,23 +84,17 @@ class Index extends React.Component {
     const index =
 `[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v${latestVersion}-orange.svg)](https://index.scala-lang.org/ovotech/fs2-kafka)
 
-Functional streams for Kafka with [FS2][fs2] and the official Kafka Java client.  
-Project under active development. Feedback and contributions welcome.
+Functional streams for Kafka with [FS2](https://fs2.io) and the official Apache Kafka client.  
+Project is under active development. Feedback and contributions welcome.
 
 ### Getting Started
-To get started with [sbt][sbt], simply add the following line to your \`build.sbt\` file.
+To get started with [sbt](https://scala-sbt.org), simply add the following line to your \`build.sbt\` file.
 
 \`\`\`scala
-libraryDependencies += "com.ovoenergy" %% "fs2-kafka" % "${latestVersion}"
+libraryDependencies += "${organization}" %% "${moduleName}" % "${latestVersion}"
 \`\`\`
 
-The library is published for Scala 2.11 and 2.12.
-
-Backwards binary-compatibility for the library is guaranteed between patch versions.  
-For example, \`${latestMinorVersion}.x\` is backwards binary-compatible with \`${latestMinorVersion}.y\` for any \`x > y\`.
-
-[fs2]: https://fs2.io
-[sbt]: https://scala-sbt.org
+Published for Scala ${scalaPublishVersions}. For changes, refer to the [release notes](https://github.com/ovotech/fs2-kafka/releases).
 `.trim()
 
     return (
