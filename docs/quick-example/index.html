@@ -1,0 +1,96 @@
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>Quick Example · FS2 Kafka</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta name="description" content="&lt;p&gt;Following is an example showing how to:&lt;/p&gt;
+"/><meta name="docsearch:language" content="en"/><meta property="og:title" content="Quick Example · FS2 Kafka"/><meta property="og:type" content="website"/><meta property="og:url" content="https://ovotech.github.io/fs2-kafka/fs2-kafka/index.html"/><meta property="og:description" content="&lt;p&gt;Following is an example showing how to:&lt;/p&gt;
+"/><meta name="twitter:card" content="summary"/><link rel="shortcut icon" href="/fs2-kafka/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css"/><link rel="stylesheet" href="/fs2-kafka/css/main.css"/></head><body class="sideNavVisible separateOnPageNav"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/fs2-kafka/"><img class="logo" src="/fs2-kafka/img/fs2-kafka.white.svg" alt="FS2 Kafka"/><h2 class="headerTitleWithLogo">FS2 Kafka</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li class="siteNavGroupActive"><a href="/fs2-kafka/docs/overview" target="_self">Documentation</a></li><li class=""><a href="https://github.com/ovotech/fs2-kafka" target="_self">GitHub</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="container docsNavContainer" id="docsNav"><nav class="toc"><div class="toggleNav"><section class="navWrapper wrapper"><div class="navBreadcrumb wrapper"><div class="navToggle" id="navToggler"><i></i></div><h2><i>›</i><span>Documentation</span></h2><div class="tocToggler" id="tocToggler"><i class="icon-toc"></i></div></div><div class="navGroups"><div class="navGroup"><h3 class="navGroupCategoryTitle">Documentation</h3><ul><li class="navListItem"><a class="navItem" href="/fs2-kafka/docs/overview">Overview</a></li><li class="navListItem navListItemActive"><a class="navItem" href="/fs2-kafka/docs/quick-example">Quick Example</a></li></ul></div></div></section></div><script>
+            document.addEventListener('DOMContentLoaded', function() {
+              createToggler('#navToggler', '#docsNav', 'docsSliderActive');
+              createToggler('#tocToggler', 'body', 'tocActive');
+
+              const headings = document.querySelector('.toc-headings');
+              headings && headings.addEventListener('click', function(event) {
+                if (event.target.tagName === 'A') {
+                  document.body.classList.remove('tocActive');
+                }
+              }, false);
+
+              function createToggler(togglerSelector, targetSelector, className) {
+                var toggler = document.querySelector(togglerSelector);
+                var target = document.querySelector(targetSelector);
+
+                if (!toggler) {
+                  return;
+                }
+
+                toggler.onclick = function(event) {
+                  event.preventDefault();
+
+                  target.classList.toggle(className);
+                };
+              }
+            });
+        </script></nav></div><div class="container mainContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 class="postHeaderTitle">Quick Example</h1></header><article><div><span><p>Following is an example showing how to:</p>
+<ul>
+<li>use <code>consumerStream</code> in order to stream records from Kafka,</li>
+<li>use <code>producerStream</code> to produce newly created records to Kafka,</li>
+<li>use <code>commitBatchWithinF</code> to commit consumed offsets in batches.</li>
+</ul>
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.<span class="hljs-type">Id</span>
+<span class="hljs-keyword">import</span> cats.data.<span class="hljs-type">NonEmptyList</span>
+<span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">ExitCode</span>, <span class="hljs-type">IO</span>, <span class="hljs-type">IOApp</span>}
+<span class="hljs-keyword">import</span> cats.syntax.functor._
+<span class="hljs-keyword">import</span> fs2.kafka._
+<span class="hljs-keyword">import</span> org.apache.kafka.clients.consumer.<span class="hljs-type">ConsumerRecord</span>
+<span class="hljs-keyword">import</span> org.apache.kafka.clients.producer.<span class="hljs-type">ProducerRecord</span>
+<span class="hljs-keyword">import</span> org.apache.kafka.common.serialization.{<span class="hljs-type">StringDeserializer</span>, <span class="hljs-type">StringSerializer</span>}
+
+<span class="hljs-keyword">import</span> scala.concurrent.<span class="hljs-type">ExecutionContext</span>
+<span class="hljs-keyword">import</span> scala.concurrent.duration._
+
+<span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">Main</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
+  <span class="hljs-keyword">override</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+    <span class="hljs-keyword">val</span> consumerSettings = (executionContext: <span class="hljs-type">ExecutionContext</span>) =&gt;
+      <span class="hljs-type">ConsumerSettings</span>(
+        keyDeserializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringDeserializer</span>,
+        valueDeserializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringDeserializer</span>,
+        executionContext = executionContext
+      )
+      .withAutoOffsetReset(<span class="hljs-type">AutoOffsetReset</span>.<span class="hljs-type">Earliest</span>)
+      .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+      .withGroupId(<span class="hljs-string">"group"</span>)
+
+    <span class="hljs-keyword">val</span> producerSettings =
+      <span class="hljs-type">ProducerSettings</span>(
+        keySerializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringSerializer</span>,
+        valueSerializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringSerializer</span>,
+      )
+      .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+
+    <span class="hljs-keyword">val</span> topics =
+      <span class="hljs-type">NonEmptyList</span>.one(<span class="hljs-string">"topic"</span>)
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[(<span class="hljs-type">String</span>, <span class="hljs-type">String</span>)] =
+      <span class="hljs-type">IO</span>.pure(record.key -&gt; record.value)
+
+    <span class="hljs-keyword">val</span> stream =
+      <span class="hljs-keyword">for</span> {
+        executionContext &lt;- consumerExecutionContextStream[<span class="hljs-type">IO</span>]
+        consumer &lt;- consumerStream[<span class="hljs-type">IO</span>].using(consumerSettings(executionContext))
+        producer &lt;- producerStream[<span class="hljs-type">IO</span>].using(producerSettings)
+        _ &lt;- consumer.subscribe(topics)
+        _ &lt;- consumer.stream
+          .mapAsync(<span class="hljs-number">25</span>)(message =&gt;
+            processRecord(message.record)
+              .map {
+                <span class="hljs-keyword">case</span> (key, value) =&gt;
+                  <span class="hljs-keyword">val</span> record = <span class="hljs-keyword">new</span> <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, key, value)
+                  <span class="hljs-type">ProducerMessage</span>.single[<span class="hljs-type">Id</span>].of(record, message.committableOffset)
+              })
+            .evalMap(producer.produceBatched)
+            .map(_.map(_.passthrough))
+            .to(commitBatchWithinF(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
+      } <span class="hljs-keyword">yield</span> ()
+
+    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+  }
+}
+</code></pre>
+</span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="/fs2-kafka/docs/overview"><span class="arrow-prev">← </span><span>Overview</span></a></div></div></div><nav class="onPageNav"></nav></div><footer class="nav-footer" id="footer"><hr class="separator"/><section class="copyright">Copyright © 2018 OVO Energy Limited.<br/>Icon by <a href="https://www.flaticon.com/authors/franco-averta" rel="noopener">Franco Averta</a>. <a href="https://creativecommons.org/licenses/by/3.0" rel="noopener">CC 3.0 BY</a>.</section></footer></div></body></html>
