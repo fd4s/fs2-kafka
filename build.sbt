@@ -23,10 +23,11 @@ lazy val docs = project
     name := moduleName.value,
     noPublishSettings,
     scalaSettings,
-    mdocSettings
+    mdocSettings,
+    buildInfoSettings
   )
   .dependsOn(`fs2-kafka`)
-  .enablePlugins(DocusaurusPlugin)
+  .enablePlugins(BuildInfoPlugin, DocusaurusPlugin)
 
 lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
@@ -41,8 +42,24 @@ lazy val dependencySettings = Seq(
 )
 
 lazy val mdocSettings = Seq(
+  mainClass in Compile := Some("Main"),
   crossScalaVersions := Seq(scalaVersion.value),
   libraryDependencies += "com.geirsson" %% "mdoc" % "0.7.1"
+)
+
+lazy val buildInfoSettings = Seq(
+  buildInfoPackage := "build",
+  buildInfoKeys := Seq[BuildInfoKey](
+    BuildInfoKey.map(organization in `fs2-kafka`) { case (_, v)  => "organization" -> v },
+    BuildInfoKey.map(moduleName in `fs2-kafka`) { case (_, v)    => "moduleName" -> v },
+    BuildInfoKey.map(latestVersion in ThisBuild) { case (_, v)   => "latestVersion" -> v },
+    BuildInfoKey.map(scalacOptions in `fs2-kafka`) { case (_, v) => "scalacOptions" -> v },
+    BuildInfoKey
+      .map(crossScalaVersions in `fs2-kafka`) { case (_, v) => "crossScalaVersions" -> v },
+    BuildInfoKey.map(scalaVersion) { case (_, v)            => "scalaVersionDocs" -> v },
+    BuildInfoKey("fs2Version" -> fs2Version),
+    BuildInfoKey("kafkaVersion" -> kafkaVersion),
+  )
 )
 
 lazy val metadataSettings = Seq(
@@ -161,40 +178,8 @@ def minorVersion(version: String): String = {
   s"$major.$minor"
 }
 
-def runMdoc(args: String*) = Def.taskDyn {
-  val in = (baseDirectory in `fs2-kafka`).value / "docs"
-  val out = (baseDirectory in `fs2-kafka`).value / "out"
-  val scalacOptionsString = {
-    val scalacOptionsValue = (scalacOptions in Compile).value
-    val excludedOptions = Seq("-Xfatal-warnings")
-    (scalacOptionsValue diff excludedOptions).mkString(" ")
-  }
-  val argsString = args.mkString(" ")
-  val siteVariables = List[(String, String)](
-    "ORGANIZATION" -> (organization in `fs2-kafka`).value,
-    "MODULE_NAME" -> (moduleName in `fs2-kafka`).value,
-    "LATEST_VERSION" -> (latestVersion in ThisBuild).value.toString,
-    "LATEST_MINOR_VERSION" -> minorVersion((latestVersion in ThisBuild).value),
-    "DOCS_SCALA_MINOR_VERSION" -> minorVersion((scalaVersion in docs).value),
-    "FS2_VERSION" -> fs2Version,
-    "KAFKA_VERSION" -> kafkaVersion,
-    "KAFKA_DOCS_VERSION" -> minorVersion(kafkaVersion).filter(_ != '.'),
-    "SCALA_PUBLISH_VERSIONS" -> {
-      val minorVersions = (crossScalaVersions in `fs2-kafka`).value.map(minorVersion)
-      if (minorVersions.size <= 2) minorVersions.mkString(" and ")
-      else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
-    }
-  ).map { case (k, v) => s"""--site.$k "$v"""" }.mkString(" ")
-  (runMain in (docs, Compile)).toTask {
-    s""" mdoc.Main --in "$in" --out "$out" --exclude "target" --scalac-options "$scalacOptionsString" $siteVariables $argsString"""
-  }
-}
-
-val mdocWatch = taskKey[Unit]("Start mdoc in watch mode")
-mdocWatch in ThisBuild := runMdoc("--watch").value
-
 val validateDocs = taskKey[Unit]("Validate documentation")
-validateDocs in ThisBuild := runMdoc().value
+validateDocs in ThisBuild := (run in (docs, Compile)).toTask(" ").value
 
 val releaseNotesFile = taskKey[File]("Release notes for current version")
 releaseNotesFile in ThisBuild := {
