@@ -182,6 +182,30 @@ sealed abstract class ConsumerSettings[K, V] {
   def withAutoCommitInterval(autoCommitInterval: FiniteDuration): ConsumerSettings[K, V]
 
   /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * request timeout. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG
+    * }}}
+    */
+  def withRequestTimeout(requestTimeout: FiniteDuration): ConsumerSettings[K, V]
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * default api timeout. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
+    * }}}
+    */
+  def withDefaultApiTimeout(defaultApiTimeout: FiniteDuration): ConsumerSettings[K, V]
+
+  /**
     * Includes a property with the specified `key` and `value`.
     * The key should be one of the keys in `ConsumerConfig`,
     * and the value should be a valid choice for the key.
@@ -372,6 +396,18 @@ object ConsumerSettings {
       withProperty(
         ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
         autoCommitInterval.toMillis.toString
+      )
+
+    override def withRequestTimeout(requestTimeout: FiniteDuration): ConsumerSettings[K, V] =
+      withProperty(
+        ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG,
+        requestTimeout.toMillis.toString
+      )
+
+    override def withDefaultApiTimeout(defaultApiTimeout: FiniteDuration): ConsumerSettings[K, V] =
+      withProperty(
+        ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG,
+        defaultApiTimeout.toMillis.toString
       )
 
     override def withProperty(key: String, value: String): ConsumerSettings[K, V] =

@@ -43,6 +43,7 @@ import org.apache.kafka.common.TopicPartition
 import scala.collection.JavaConverters._
 import scala.collection.immutable.SortedSet
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.duration.FiniteDuration
 
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[K, V],
@@ -80,6 +81,42 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           F.runAsync(assigned)(_ => IO.unit).unsafeRunSync
         }
     }
+
+  private[this] def beginningOffsets(
+    partitions: Set[TopicPartition],
+    timeout: Option[FiniteDuration],
+    deferred: Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
+  ): F[Unit] = {
+    val beginningOffsets =
+      withConsumer { consumer =>
+        F.delay {
+          (timeout match {
+            case None           => consumer.beginningOffsets(partitions.asJava)
+            case Some(duration) => consumer.beginningOffsets(partitions.asJava, duration.asJava)
+          }).asInstanceOf[util.Map[TopicPartition, Long]].toMap
+        }.attempt
+      }
+
+    beginningOffsets.flatMap(deferred.complete)
+  }
+
+  private[this] def endOffsets(
+    partitions: Set[TopicPartition],
+    timeout: Option[FiniteDuration],
+    deferred: Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
+  ): F[Unit] = {
+    val endOffsets =
+      withConsumer { consumer =>
+        F.delay {
+          (timeout match {
+            case None           => consumer.endOffsets(partitions.asJava)
+            case Some(duration) => consumer.endOffsets(partitions.asJava, duration.asJava)
+          }).asInstanceOf[util.Map[TopicPartition, Long]].toMap
+        }.attempt
+      }
+
+    endOffsets.flatMap(deferred.complete)
+  }
 
   private[this] def subscribe(topics: NonEmptyList[String]): F[Unit] =
     withConsumer { consumer =>
@@ -375,8 +412,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   def handle(request: Request[F, K, V]): F[Unit] =
     request match {
-      case Request.Assignment(deferred, onRebalance)  => assignment(deferred, onRebalance)
-      case request @ Request.Assigned(_)              => assigned(request)
+      case Request.Assignment(deferred, onRebalance) => assignment(deferred, onRebalance)
+      case request @ Request.Assigned(_)             => assigned(request)
+      case Request.BeginningOffsets(partitions, timeout, deferred) =>
+        beginningOffsets(partitions, timeout, deferred)
+      case Request.EndOffsets(partitions, timeout, deferred) =>
+        endOffsets(partitions, timeout, deferred)
       case Request.Poll()                             => poll
       case Request.SubscribeTopics(topics)            => subscribe(topics)
       case Request.SubscribePattern(pattern)          => subscribe(pattern)
@@ -539,6 +580,18 @@ private[kafka] object KafkaConsumerActor {
     final case class Fetch[F[_], K, V](
       partition: TopicPartition,
       deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
+    ) extends Request[F, K, V]
+
+    final case class BeginningOffsets[F[_], K, V](
+      partitions: Set[TopicPartition],
+      timeout: Option[FiniteDuration],
+      deferred: Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
+    ) extends Request[F, K, V]
+
+    final case class EndOffsets[F[_], K, V](
+      partitions: Set[TopicPartition],
+      timeout: Option[FiniteDuration],
+      deferred: Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
     ) extends Request[F, K, V]
 
     final case class ExpiringFetch[F[_], K, V](
