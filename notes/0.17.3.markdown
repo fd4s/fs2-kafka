@@ -3,3 +3,5 @@
 - Add `withRequestTimeout` and `withDefaultApiTimeout` to `ConsumerSettings`. ([#59][#59])
 
 [#59]: https://github.com/ovotech/fs2-kafka/pull/59
+
+Released on 2018-12-10.
