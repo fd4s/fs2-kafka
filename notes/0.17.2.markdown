@@ -1,0 +1,27 @@
+### Additions
+- Add initial `KafkaAdminClient`. ([#53][#53])
+
+### Fixes
+- Change to start `Producer#close` in a `Fiber`. ([#52][#52])
+
+### Updates
+- Update fs2 to 1.0.2. ([#48][#48])
+
+### Documentation
+- Update mdoc to 0.7.1. ([#51][#51])
+- Add initial project [website][website]. ([#54][#54], [#55][#55], [#56][#56], [#57][#57], [#58][#58])
+
+### Miscellaneous
+- Change to check all binary-compatible releases. ([#49][#49])
+
+[website]: https://ovotech.github.io/fs2-kafka/
+[#48]: https://github.com/ovotech/fs2-kafka/pull/48
+[#49]: https://github.com/ovotech/fs2-kafka/pull/49
+[#51]: https://github.com/ovotech/fs2-kafka/pull/51
+[#52]: https://github.com/ovotech/fs2-kafka/pull/52
+[#53]: https://github.com/ovotech/fs2-kafka/pull/53
+[#54]: https://github.com/ovotech/fs2-kafka/pull/54
+[#55]: https://github.com/ovotech/fs2-kafka/pull/55
+[#56]: https://github.com/ovotech/fs2-kafka/pull/56
+[#57]: https://github.com/ovotech/fs2-kafka/pull/57
+[#58]: https://github.com/ovotech/fs2-kafka/pull/58
