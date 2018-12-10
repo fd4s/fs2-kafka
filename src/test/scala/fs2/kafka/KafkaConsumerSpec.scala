@@ -5,6 +5,8 @@ import cats.effect.IO
 import cats.implicits._
 import fs2.Stream
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
+import org.apache.kafka.common.TopicPartition
+import scala.concurrent.duration._
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
   describe("KafkaConsumer#stream") {
@@ -118,6 +120,39 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           case Some(cause)                            => fail("Unexpected exception", cause)
           case None                                   => fail(s"Unexpected result [$consumed]")
         }
+      }
+    }
+
+    it("should be able to retrieve offsets") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 1)
+        val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
+        publishToKafka(topic, produced)
+
+        val topicPartition = new TopicPartition(topic, 0)
+        val topicPartitions = Set(topicPartition)
+        val timeout = 10.seconds
+
+        (for {
+          consumerSettings <- consumerSettings(config)
+          consumer <- consumerStream[IO].using(consumerSettings)
+          _ <- consumer.subscribe(NonEmptyList.of(topic))
+          _ <- f(consumer)
+            .take(produced.size.toLong)
+            .map(_.committableOffset)
+            .to(commitBatch[IO])
+
+          start <- Stream.eval(consumer.beginningOffsets(topicPartitions))
+          startTimeout <- Stream.eval(consumer.beginningOffsets(topicPartitions, timeout))
+          _ <- Stream.eval(IO {
+            assert(start == startTimeout && start == Map(topicPartition -> 0L))
+          })
+          end <- Stream.eval(consumer.endOffsets(topicPartitions))
+          endTimeout <- Stream.eval(consumer.endOffsets(topicPartitions, timeout))
+          _ <- Stream.eval(IO {
+            assert(end == endTimeout && end == Map(topicPartition -> produced.size.toLong))
+          })
+        } yield ()).compile.drain.unsafeRunSync
       }
     }
   }

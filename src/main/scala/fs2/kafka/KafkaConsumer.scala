@@ -138,6 +138,42 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
   def subscribe(regex: Regex): Stream[F, Unit]
 
   /**
+    * Returns the first offset for the specified partitions.<br>
+    * <br>
+    * Timeout is determined by `default.api.timeout.ms`, which
+    * is set using [[ConsumerSettings#withDefaultApiTimeout]].
+    */
+  def beginningOffsets(
+    partitions: Set[TopicPartition]
+  ): F[Map[TopicPartition, Long]]
+
+  /**
+    * Returns the first offset for the specified partitions.
+    */
+  def beginningOffsets(
+    partitions: Set[TopicPartition],
+    timeout: FiniteDuration
+  ): F[Map[TopicPartition, Long]]
+
+  /**
+    * Returns the last offset for the specified partitions.<br>
+    * <br>
+    * Timeout is determined by `request.timeout.ms`, which
+    * is set using [[ConsumerSettings#withRequestTimeout]].
+    */
+  def endOffsets(
+    partitions: Set[TopicPartition]
+  ): F[Map[TopicPartition, Long]]
+
+  /**
+    * Returns the last offset for the specified partitions.
+    */
+  def endOffsets(
+    partitions: Set[TopicPartition],
+    timeout: FiniteDuration
+  ): F[Map[TopicPartition, Long]]
+
+  /**
     * A `Fiber` that can be used to cancel the underlying consumer, or
     * wait for it to complete. If you're using [[stream]], or any other
     * provided stream in [[KafkaConsumer]], these will be automatically
@@ -407,6 +443,64 @@ private[kafka] object KafkaConsumer {
 
       override def subscribe(regex: Regex): Stream[F, Unit] =
         Stream.eval(requests.enqueue1(Request.SubscribePattern(regex.pattern)))
+
+      override def beginningOffsets(
+        partitions: Set[TopicPartition]
+      ): F[Map[TopicPartition, Long]] =
+        Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
+          .flatMap { deferred =>
+            requests.enqueue1 {
+              Request.BeginningOffsets(
+                partitions = partitions,
+                timeout = None,
+                deferred = deferred
+              )
+            } >> deferred.get.rethrow
+          }
+
+      override def beginningOffsets(
+        partitions: Set[TopicPartition],
+        timeout: FiniteDuration
+      ): F[Map[TopicPartition, Long]] =
+        Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
+          .flatMap { deferred =>
+            requests.enqueue1 {
+              Request.BeginningOffsets(
+                partitions = partitions,
+                timeout = Some(timeout),
+                deferred = deferred
+              )
+            } >> deferred.get.rethrow
+          }
+
+      override def endOffsets(
+        partitions: Set[TopicPartition]
+      ): F[Map[TopicPartition, Long]] =
+        Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
+          .flatMap { deferred =>
+            requests.enqueue1 {
+              Request.EndOffsets(
+                partitions = partitions,
+                timeout = None,
+                deferred = deferred
+              )
+            } >> deferred.get.rethrow
+          }
+
+      override def endOffsets(
+        partitions: Set[TopicPartition],
+        timeout: FiniteDuration
+      ): F[Map[TopicPartition, Long]] =
+        Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
+          .flatMap { deferred =>
+            requests.enqueue1 {
+              Request.EndOffsets(
+                partitions = partitions,
+                timeout = Some(timeout),
+                deferred = deferred
+              )
+            } >> deferred.get.rethrow
+          }
 
       override def toString: String =
         "KafkaConsumer$" + System.identityHashCode(this)
