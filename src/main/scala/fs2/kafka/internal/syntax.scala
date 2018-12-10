@@ -19,11 +19,14 @@ package fs2.kafka.internal
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{CancellationException, CompletionException, TimeUnit}
 
+import cats.effect.{CancelToken, Concurrent, Sync}
 import cats.syntax.foldable._
 import cats.syntax.show._
 import cats.{Foldable, Show}
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
 
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
@@ -79,6 +82,12 @@ private[kafka] object syntax {
       implicit F: Foldable[F],
       A: Show[A]
     ): String = mkStringMap(_.show)(start, sep, end)
+
+    def asJava(implicit F: Foldable[F]): util.List[A] = {
+      val array = new util.ArrayList[A](fa.size.toInt)
+      fa.foldLeft(())((_, a) => { array.add(a); () })
+      util.Collections.unmodifiableList(array)
+    }
   }
 
   implicit final class MapSyntax[K, V](
@@ -119,11 +128,67 @@ private[kafka] object syntax {
       builder.result()
     }
 
+    def toList: List[A] = {
+      val builder = List.newBuilder[A]
+      val it = collection.iterator()
+      while (it.hasNext) builder += it.next()
+      builder.result()
+    }
+
+    def mapToList[B](f: A => B): List[B] = {
+      val builder = List.newBuilder[B]
+      val it = collection.iterator()
+      while (it.hasNext) builder += f(it.next())
+      builder.result()
+    }
+
     def toSortedSet(implicit ordering: Ordering[A]): SortedSet[A] = {
       val builder = SortedSet.newBuilder[A]
       val it = collection.iterator()
       while (it.hasNext) builder += it.next()
       builder.result()
     }
+  }
+
+  implicit final class JavaUtilMapSyntax[K, V](
+    private val map: util.Map[K, V]
+  ) extends AnyVal {
+    def toMap: Map[K, V] = {
+      var result = Map.empty[K, V]
+      val it = map.entrySet.iterator()
+      while (it.hasNext) {
+        val e = it.next()
+        result = result.updated(e.getKey, e.getValue)
+      }
+      result
+    }
+  }
+
+  implicit final class KafkaFutureSyntax[A](
+    private val future: KafkaFuture[A]
+  ) extends AnyVal {
+    private[this] def baseFunction[B](f: A => B): BaseFunction[A, B] =
+      new BaseFunction[A, B] { override def apply(a: A): B = f(a) }
+
+    def map[B](f: A => B): KafkaFuture[B] =
+      future.thenApply(baseFunction(f))
+
+    def cancelToken[F[_]](implicit F: Sync[F]): CancelToken[F] =
+      F.delay { future.cancel(true); () }
+
+    // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
+    def cancelable[F[_]](implicit F: Concurrent[F]): F[A] =
+      F.cancelable { cb =>
+        future
+          .whenComplete(new BiConsumer[A, Throwable] {
+            override def accept(a: A, t: Throwable): Unit = t match {
+              case null                                         => cb(Right(a))
+              case _: CancellationException                     => ()
+              case e: CompletionException if e.getCause != null => cb(Left(e.getCause))
+              case e                                            => cb(Left(e))
+            }
+          })
+          .cancelToken
+      }
   }
 }
