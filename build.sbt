@@ -42,13 +42,14 @@ lazy val dependencySettings = Seq(
 )
 
 lazy val mdocSettings = Seq(
-  mainClass in Compile := Some("Main"),
+  mainClass in Compile := Some("fs2.kafka.docs.Main"),
   crossScalaVersions := Seq(scalaVersion.value),
   libraryDependencies += "com.geirsson" %% "mdoc" % "0.7.1"
 )
 
 lazy val buildInfoSettings = Seq(
-  buildInfoPackage := "build",
+  buildInfoPackage := "fs2.kafka.build",
+  buildInfoObject := "info",
   buildInfoKeys := Seq[BuildInfoKey](
     BuildInfoKey.map(organization in `fs2-kafka`) { case (_, v)  => "organization" -> v },
     BuildInfoKey.map(moduleName in `fs2-kafka`) { case (_, v)    => "moduleName" -> v },
@@ -200,6 +201,7 @@ updateSiteVariables in ThisBuild := {
   }
   val organizationString = (organization in `fs2-kafka`).value
   val moduleNameString = (moduleName in `fs2-kafka`).value
+  val scalaMinorVersion = minorVersion((scalaVersion in `fs2-kafka`).value)
   val scalaPublishVersions = {
     val minorVersions = (crossScalaVersions in `fs2-kafka`).value.map(minorVersion)
     if (minorVersions.size <= 2) minorVersions.mkString(" and ")
@@ -208,7 +210,7 @@ updateSiteVariables in ThisBuild := {
 
   val lineIndex = lines.indexWhere(_.trim.startsWith("const buildInfo"))
   val newLine =
-    s"const buildInfo = { organization: '$organizationString', moduleName: '$moduleNameString', latestVersion: '$latestVersionString', latestMinorVersion: '$latestMinorVersionString', scalaPublishVersions: '$scalaPublishVersions' };"
+    s"const buildInfo = { scalaMinorVersion: '$scalaMinorVersion', organization: '$organizationString', moduleName: '$moduleNameString', latestVersion: '$latestVersionString', latestMinorVersion: '$latestMinorVersionString', scalaPublishVersions: '$scalaPublishVersions' };"
   val newLines = lines.updated(lineIndex, newLine)
   val newFileContents = newLines.mkString("", "\n", "\n")
   IO.write(file, newFileContents)
