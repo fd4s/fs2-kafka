@@ -19,40 +19,32 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
-    val consumerSettings = (executionContext: ExecutionContext) =>
-      ConsumerSettings(
-        keyDeserializer = new StringDeserializer,
-        valueDeserializer = new StringDeserializer,
-        executionContext = executionContext
-      )
-      .withAutoOffsetReset(AutoOffsetReset.Earliest)
-      .withBootstrapServers("localhost")
-      .withGroupId("group")
-
-    val producerSettings =
-      ProducerSettings(
-        keySerializer = new StringSerializer,
-        valueSerializer = new StringSerializer,
-      )
-      .withBootstrapServers("localhost")
-
-    val topics =
-      NonEmptyList.one("topic")
-
     def processRecord(record: ConsumerRecord[String, String]): IO[(String, String)] =
       IO.pure(record.key -> record.value)
 
     val stream =
       for {
-        executionContext <- consumerExecutionContextStream[IO]
-        consumer <- consumerStream[IO].using(consumerSettings(executionContext))
-        producer <- producerStream[IO].using(producerSettings)
-        _ <- consumer.subscribe(topics)
+        consumer <- consumerStream[IO].using {
+          ConsumerSettings(
+            keyDeserializer = new StringDeserializer,
+            valueDeserializer = new StringDeserializer
+          )
+          .withAutoOffsetReset(AutoOffsetReset.Earliest)
+          .withBootstrapServers("localhost")
+          .withGroupId("group")
+        }
+        producer <- producerStream[IO].using {
+          ProducerSettings(
+            keySerializer = new StringSerializer,
+            valueSerializer = new StringSerializer
+          )
+          .withBootstrapServers("localhost")
+        }
+        _ <- consumer.subscribe(NonEmptyList.one("topic"))
         _ <- consumer.stream
           .mapAsync(25)(message =>
             processRecord(message.record)

@@ -43,10 +43,12 @@ import org.apache.kafka.common.TopicPartition
 import scala.collection.JavaConverters._
 import scala.collection.immutable.SortedSet
 import scala.collection.mutable.ArrayBuffer
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[K, V],
+  executionContext: ExecutionContext,
   ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
   synchronized: Synchronized[F, Consumer[K, V]]
@@ -58,7 +60,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 ) {
   private[this] def withConsumer[A](f: Consumer[K, V] => F[A]): F[A] =
     synchronized.use { consumer =>
-      context.evalOn(settings.executionContext) {
+      context.evalOn(executionContext) {
         f(consumer)
       }
     }
