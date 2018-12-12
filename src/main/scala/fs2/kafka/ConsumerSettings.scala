@@ -36,7 +36,7 @@ import scala.concurrent.duration._
   * [[ConsumerSettings]] instances are immutable and all modification functions
   * return a new [[ConsumerSettings]] instance.<br>
   * <br>
-  * Use [[ConsumerSettings#apply]] to create a new instance.
+  * Use `ConsumerSettings#apply` to create a new instance.
   */
 sealed abstract class ConsumerSettings[K, V] {
 
@@ -52,8 +52,10 @@ sealed abstract class ConsumerSettings[K, V] {
 
   /**
     * The `ExecutionContext` on which to run blocking Kafka operations.
+    * If not explicitly provided, a default `ExecutionContext` will be
+    * instantiated when creating a `KafkaConsumer` instance.
     */
-  def executionContext: ExecutionContext
+  def executionContext: Option[ExecutionContext]
 
   /**
     * Properties which can be provided when creating a Java `KafkaConsumer`
@@ -345,7 +347,7 @@ object ConsumerSettings {
   private[this] final case class ConsumerSettingsImpl[K, V](
     override val keyDeserializer: Deserializer[K],
     override val valueDeserializer: Deserializer[V],
-    override val executionContext: ExecutionContext,
+    override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val commitTimeout: FiniteDuration,
@@ -449,20 +451,10 @@ object ConsumerSettings {
       Show[ConsumerSettings[K, V]].show(this)
   }
 
-  /**
-    * Creates a new [[ConsumerSettings]] instance using the specified settings.
-    * Since offset commits are managed manually, automatic commits are disabled
-    * by default. Automatic offset commits can explicitly be enabled again using
-    * [[ConsumerSettings#withEnableAutoCommit]].<br>
-    * <br>
-    * Since some Kafka operations are blocking, these operations should be run
-    * on a dedicated `ExecutionContext`. If you need such an `ExecutionContext`,
-    * `consumerExecutionContextStream` provides a sensible default option.
-    */
-  def apply[K, V](
+  private[this] def create[K, V](
     keyDeserializer: Deserializer[K],
     valueDeserializer: Deserializer[V],
-    executionContext: ExecutionContext
+    executionContext: Option[ExecutionContext]
   ): ConsumerSettings[K, V] = ConsumerSettingsImpl(
     keyDeserializer = keyDeserializer,
     valueDeserializer = valueDeserializer,
@@ -476,6 +468,56 @@ object ConsumerSettings {
     commitRecovery = CommitRecovery.Default,
     consumerFactory = ConsumerFactory.Default,
     recordMetadata = _ => OffsetFetchResponse.NO_METADATA
+  )
+
+  /**
+    * Creates a new [[ConsumerSettings]] instance using the
+    * specified settings. Since offset commits are managed
+    * manually, automatic commits are disabled by default.
+    * Automatic offset commits can be enabled again using
+    * [[ConsumerSettings#withEnableAutoCommit]].<br>
+    * <br>
+    * Since some Kafka operations are blocking, these should
+    * be run on a dedicated `ExecutionContext`. When no such
+    * `ExecutionContext` is specified, a default one will be
+    * used. The default `ExecutionContext` is equivalent to
+    * a `consumerExecutionContextResource` with `1` thread.
+    */
+  def apply[K, V](
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V]
+  ): ConsumerSettings[K, V] = create(
+    keyDeserializer = keyDeserializer,
+    valueDeserializer = valueDeserializer,
+    executionContext = None
+  )
+
+  /**
+    * Creates a new [[ConsumerSettings]] instance using the
+    * specified settings. Since offset commits are managed
+    * manually, automatic commits are disabled by default.
+    * Automatic offset commits can be enabled again using
+    * [[ConsumerSettings#withEnableAutoCommit]].<br>
+    * <br>
+    * Since some Kafka operations are blocking, these should
+    * be run on a dedicated `ExecutionContext`. If you have
+    * a suitable context, you can specify it. Otherwise,
+    * you can:<br>
+    * <br>
+    * - use `consumerExecutionContextResource` to create one,<br>
+    * <br>
+    * - not specify an `ExecutionContext`, and a default one
+    *   will be used; the default context is equivalent to a
+    *   `consumerExecutionContextResource` with `1` thread.
+    */
+  def apply[K, V](
+    keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V],
+    executionContext: ExecutionContext
+  ): ConsumerSettings[K, V] = create(
+    keyDeserializer = keyDeserializer,
+    valueDeserializer = valueDeserializer,
+    executionContext = Some(executionContext)
   )
 
   implicit def consumerSettingsShow[K, V]: Show[ConsumerSettings[K, V]] =

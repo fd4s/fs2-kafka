@@ -31,14 +31,15 @@ import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import fs2.concurrent.Queue
 import fs2.kafka.internal.KafkaConsumerActor._
-import fs2.kafka.internal.{KafkaConsumerActor, Synchronized}
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
+import fs2.kafka.internal.{KafkaConsumerActor, Synchronized}
 import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.immutable.SortedSet
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
 
@@ -197,8 +198,19 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 }
 
 private[kafka] object KafkaConsumer {
-  private[this] def createConsumer[F[_], K, V](
+  private[this] def executionContextResource[F[_], K, V](
     settings: ConsumerSettings[K, V]
+  )(
+    implicit F: Sync[F]
+  ): Resource[F, ExecutionContext] =
+    settings.executionContext match {
+      case Some(executionContext) => Resource.pure(executionContext)
+      case None                   => consumerExecutionContextResource
+    }
+
+  private[this] def createConsumer[F[_], K, V](
+    settings: ConsumerSettings[K, V],
+    executionContext: ExecutionContext
   )(
     implicit F: Concurrent[F],
     context: ContextShift[F]
@@ -209,7 +221,7 @@ private[kafka] object KafkaConsumer {
         .flatMap(Synchronized[F].of)
     } { synchronized =>
       synchronized.use { consumer =>
-        context.evalOn(settings.executionContext) {
+        context.evalOn(executionContext) {
           F.delay(consumer.close(settings.closeTimeout.asJava))
         }
       }
@@ -517,11 +529,21 @@ private[kafka] object KafkaConsumer {
       Resource.liftF(Queue.bounded[F, Request[F, K, V]](1)).flatMap { polls =>
         Resource.liftF(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
           Resource.liftF(Jitter.default[F]).flatMap { implicit jitter =>
-            createConsumer(settings).flatMap { synchronized =>
-              val actor = new KafkaConsumerActor(settings, ref, requests, synchronized)
-              startConsumerActor(requests, polls, actor).flatMap { actor =>
-                startPollScheduler(polls, settings.pollInterval).map { polls =>
-                  createKafkaConsumer(requests, actor, polls)
+            executionContextResource(settings).flatMap { executionContext =>
+              createConsumer(settings, executionContext).flatMap { synchronized =>
+                val actor =
+                  new KafkaConsumerActor(
+                    settings = settings,
+                    executionContext = executionContext,
+                    ref = ref,
+                    requests = requests,
+                    synchronized = synchronized
+                  )
+
+                startConsumerActor(requests, polls, actor).flatMap { actor =>
+                  startPollScheduler(polls, settings.pollInterval).map { polls =>
+                    createKafkaConsumer(requests, actor, polls)
+                  }
                 }
               }
             }
