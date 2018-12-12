@@ -41,6 +41,41 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
+    it("should read from the given offset") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic)
+
+        val numMessages = 100l
+        val readOffset = 90
+
+        val produced = (0l until numMessages).map(n => s"key-$n" -> s"value->$n")
+        publishToKafka(topic, produced)
+
+        val consumed =
+          consumerSettings(config).flatMap { consumerSettings =>
+            consumerStream[IO].using(consumerSettings).flatMap { consumer =>
+
+              val input = f(consumer)
+
+              val setOffset = for {
+                consumed <- (consumer.subscribe(NonEmptyList.one(topic)).drain ++ input.take(produced.size.toLong)).compile.toList
+                co        = consumed(readOffset-1).committableOffset
+                _        <- consumer.seek(co.topicPartition, co.offsetAndMetadata.offset()).compile.drain
+              } yield ()
+
+              val consume = input.take(numMessages-readOffset)
+
+              (Stream.eval_(setOffset) ++ consume)
+                .map(_.record)
+                .map(record => record.key -> record.value())
+
+            }
+          }.compile.toVector.unsafeRunSync()
+
+        consumed should contain theSameElementsAs produced.drop(readOffset)
+      }
+    }
+
     it("should commit the last processed offsets") {
       withKafka { (config, topic) =>
         createCustomTopic(topic, partitions = partitions)

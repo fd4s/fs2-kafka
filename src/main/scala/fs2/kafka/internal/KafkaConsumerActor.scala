@@ -138,6 +138,16 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     } >> ref.update(_.asSubscribed)
 
+  private[this] def seek(partition: TopicPartition, offset: Long) =
+    withConsumer { consumer =>
+      F.delay {
+        consumer.seek(
+          partition,
+          offset
+        )
+      }
+    }
+
   private[this] val nowExpiryTime: F[Long] =
     timer.clock.monotonic(settings.fetchTimeout.unit)
 
@@ -425,6 +435,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Request.ExpiringFetch(partition, deferred) => expiringFetch(partition, deferred)
       case Request.Commit(offsets, deferred)          => commit(offsets, deferred)
       case request @ Request.Revoked(_)               => revoked(request)
+      case Request.Seek(partition, offset)            => seek(partition, offset)
     }
 }
 
@@ -602,6 +613,11 @@ private[kafka] object KafkaConsumerActor {
     final case class Commit[F[_], K, V](
       offsets: Map[TopicPartition, OffsetAndMetadata],
       deferred: Deferred[F, Either[Throwable, Unit]]
+    ) extends Request[F, K, V]
+
+    final case class Seek[F[_], K, V](
+      partition: TopicPartition,
+      offset: Long
     ) extends Request[F, K, V]
   }
 }
