@@ -1,6 +1,5 @@
 package fs2.kafka
 
-import cats.data.NonEmptyList
 import cats.effect.IO
 import cats.implicits._
 import fs2.Stream
@@ -14,28 +13,30 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
   }
 
   describe("KafkaConsumer#partitionedStream") {
-    tests(_.partitionedStream.parJoin(partitions))
+    tests(_.partitionedStream.parJoinUnbounded)
   }
 
-  val partitions = 3
+  type Consumer = KafkaConsumer[IO, String, String]
 
-  def tests(
-    f: KafkaConsumer[IO, String, String] => Stream[IO, CommittableMessage[IO, String, String]]
-  ): Unit = {
+  type ConsumerStream = Stream[IO, CommittableMessage[IO, String, String]]
+
+  def tests(stream: Consumer => ConsumerStream): Unit = {
     it("should consume all messages") {
       withKafka { (config, topic) =>
-        createCustomTopic(topic, partitions = partitions)
+        createCustomTopic(topic, partitions = 3)
         val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
 
         val consumed =
-          (for {
-            consumerSettings <- consumerSettings(config)
-            consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- Stream.eval(consumer.subscribe(NonEmptyList.of(topic)))
-            consumed <- f(consumer).take(produced.size.toLong)
-            record = consumed.record
-          } yield record.key -> record.value).compile.toVector.unsafeRunSync
+          consumerStream[IO]
+            .using(consumerSettings(config))
+            .evalTap(_.subscribeTo(topic))
+            .flatMap(stream)
+            .take(produced.size.toLong)
+            .map(message => message.record.key -> message.record.value)
+            .compile
+            .toVector
+            .unsafeRunSync
 
         consumed should contain theSameElementsAs produced
       }
@@ -43,21 +44,24 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
     it("should commit the last processed offsets") {
       withKafka { (config, topic) =>
-        createCustomTopic(topic, partitions = partitions)
+        createCustomTopic(topic, partitions = 3)
         val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
 
         val committed =
-          (for {
-            consumerSettings <- consumerSettings(config)
-            consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- Stream.eval(consumer.subscribe(topic.r))
-            offsets <- f(consumer)
-              .take(produced.size.toLong)
-              .map(_.committableOffset)
-              .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
-              .evalMap(batch => batch.commit.as(batch.offsets))
-          } yield offsets).compile.lastOrError.unsafeRunSync
+          consumerStream[IO]
+            .using(consumerSettings(config))
+            .evalTap(_.subscribe(topic.r))
+            .flatMap { consumer =>
+              stream(consumer)
+                .take(produced.size.toLong)
+                .map(_.committableOffset)
+                .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
+                .evalMap(batch => batch.commit.as(batch.offsets))
+            }
+            .compile
+            .lastOrError
+            .unsafeRunSync
 
         assert {
           committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
@@ -74,14 +78,15 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     it("should interrupt the stream when cancelled") {
       withKafka { (config, topic) =>
         val consumed =
-          (for {
-            consumerSettings <- consumerSettings(config)
-            consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- Stream.eval(consumer.subscribe(NonEmptyList.of(topic)))
-            _ <- Stream.eval(consumer.fiber.cancel)
-            _ <- f(consumer)
-            _ <- Stream.eval(consumer.fiber.join)
-          } yield ()).compile.toVector.unsafeRunSync
+          consumerStream[IO]
+            .using(consumerSettings(config))
+            .evalTap(_.subscribeTo(topic))
+            .evalTap(_.fiber.cancel)
+            .flatTap(stream)
+            .evalTap(_.fiber.join)
+            .compile
+            .toVector
+            .unsafeRunSync
 
         assert(consumed.isEmpty)
       }
@@ -89,14 +94,16 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
     it("should fail with an error if not subscribed") {
       withKafka { (config, topic) =>
-        createCustomTopic(topic, partitions = partitions)
+        createCustomTopic(topic, partitions = 3)
 
         val consumed =
-          (for {
-            consumerSettings <- consumerSettings(config)
-            consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- f(consumer)
-          } yield ()).compile.lastOrError.attempt.unsafeRunSync
+          consumerStream[IO]
+            .using(consumerSettings(config))
+            .flatMap(stream)
+            .compile
+            .lastOrError
+            .attempt
+            .unsafeRunSync
 
         assert(consumed.left.toOption.contains(NotSubscribedException))
       }
@@ -104,16 +111,20 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
     it("should propagate consumer errors to stream") {
       withKafka { (config, topic) =>
-        createCustomTopic(topic, partitions = partitions)
+        createCustomTopic(topic, partitions = 3)
 
         val consumed =
-          (for {
-            consumerSettings <- consumerSettings(config)
-              .map(_.withAutoOffsetReset(AutoOffsetReset.None))
-            consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- Stream.eval(consumer.subscribe(NonEmptyList.of(topic)))
-            _ <- f(consumer)
-          } yield ()).compile.lastOrError.attempt.unsafeRunSync
+          consumerStream[IO]
+            .using {
+              consumerSettings(config)
+                .withAutoOffsetReset(AutoOffsetReset.None)
+            }
+            .evalTap(_.subscribeTo(topic))
+            .flatMap(stream)
+            .compile
+            .lastOrError
+            .attempt
+            .unsafeRunSync
 
         consumed.left.toOption match {
           case Some(_: NoOffsetForPartitionException) => succeed
@@ -133,26 +144,33 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val topicPartitions = Set(topicPartition)
         val timeout = 10.seconds
 
-        (for {
-          consumerSettings <- consumerSettings(config)
-          consumer <- consumerStream[IO].using(consumerSettings)
-          _ <- Stream.eval(consumer.subscribe(NonEmptyList.of(topic)))
-          _ <- f(consumer)
-            .take(produced.size.toLong)
-            .map(_.committableOffset)
-            .to(commitBatch[IO])
-
-          start <- Stream.eval(consumer.beginningOffsets(topicPartitions))
-          startTimeout <- Stream.eval(consumer.beginningOffsets(topicPartitions, timeout))
-          _ <- Stream.eval(IO {
-            assert(start == startTimeout && start == Map(topicPartition -> 0L))
-          })
-          end <- Stream.eval(consumer.endOffsets(topicPartitions))
-          endTimeout <- Stream.eval(consumer.endOffsets(topicPartitions, timeout))
-          _ <- Stream.eval(IO {
-            assert(end == endTimeout && end == Map(topicPartition -> produced.size.toLong))
-          })
-        } yield ()).compile.drain.unsafeRunSync
+        consumerStream[IO]
+          .using(consumerSettings(config))
+          .evalTap(_.subscribeTo(topic))
+          .flatTap { consumer =>
+            stream(consumer)
+              .take(produced.size.toLong)
+              .map(_.committableOffset)
+              .to(commitBatch)
+          }
+          .evalTap { consumer =>
+            for {
+              start <- consumer.beginningOffsets(topicPartitions)
+              startTimeout <- consumer.beginningOffsets(topicPartitions, timeout)
+              _ <- IO(assert(start == startTimeout && start == Map(topicPartition -> 0L)))
+            } yield ()
+          }
+          .evalTap { consumer =>
+            for {
+              end <- consumer.endOffsets(topicPartitions)
+              endTimeout <- consumer.endOffsets(topicPartitions, timeout)
+              _ <- IO(
+                assert(end == endTimeout && end == Map(topicPartition -> produced.size.toLong)))
+            } yield ()
+          }
+          .compile
+          .drain
+          .unsafeRunSync
       }
     }
   }
