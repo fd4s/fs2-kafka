@@ -16,6 +16,7 @@
 
 package fs2.kafka
 
+import cats.Reducible
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref}
@@ -27,6 +28,7 @@ import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.monadError._
+import cats.syntax.reducible._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
 import fs2.concurrent.Queue
@@ -123,10 +125,18 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
     * use one of the `subscribe` functions to subscribe to one or more topics
     * before using any of the provided `Stream`s, or a [[NotSubscribedException]]
     * will be raised in the `Stream`s.
+    */
+  def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit]
+
+  /**
+    * Subscribes the consumer to the specified topics. Note that you have to
+    * use one of the `subscribe` functions to subscribe to one or more topics
+    * before using any of the provided `Stream`s, or a [[NotSubscribedException]]
+    * will be raised in the `Stream`s.
     *
     * @param topics the topics to which the consumer should subscribe
     */
-  def subscribe(topics: NonEmptyList[String]): Stream[F, Unit]
+  def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit]
 
   /**
     * Subscribes the consumer to the topics matching the specified `Regex`.
@@ -136,7 +146,7 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
     *
     * @param regex the regex to which matching topics should be subscribed
     */
-  def subscribe(regex: Regex): Stream[F, Unit]
+  def subscribe(regex: Regex): F[Unit]
 
   /**
     * Returns the first offset for the specified partitions.<br>
@@ -450,11 +460,14 @@ private[kafka] object KafkaConsumer {
           .interruptWhen(fiber.join.attempt)
       }
 
-      override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
-        Stream.eval(requests.enqueue1(Request.SubscribeTopics(topics)))
+      override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
+        subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
-      override def subscribe(regex: Regex): Stream[F, Unit] =
-        Stream.eval(requests.enqueue1(Request.SubscribePattern(regex.pattern)))
+      override def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] =
+        requests.enqueue1(Request.SubscribeTopics(topics.toNonEmptyList))
+
+      override def subscribe(regex: Regex): F[Unit] =
+        requests.enqueue1(Request.SubscribePattern(regex.pattern))
 
       override def beginningOffsets(
         partitions: Set[TopicPartition]

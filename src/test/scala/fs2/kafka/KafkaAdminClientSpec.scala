@@ -2,6 +2,7 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.implicits._
+import fs2.Stream
 import org.apache.kafka.common.TopicPartition
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
@@ -15,7 +16,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
         (for {
           consumerSettings <- consumerSettings(config)
           consumer <- consumerStream[IO].using(consumerSettings)
-          _ <- consumer.subscribe(topic.r)
+          _ <- Stream.eval(consumer.subscribe(topic.r))
           _ <- consumer.stream
             .take(produced.size.toLong)
             .map(_.committableOffset)
