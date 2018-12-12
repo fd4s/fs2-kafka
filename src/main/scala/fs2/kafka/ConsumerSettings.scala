@@ -25,16 +25,17 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 /**
-  * [[ConsumerSettings]] contain settings necessary to create a [[KafkaConsumer]].
-  * At the very least, this includes a key deserializer, a value deserializer, and
-  * an `ExecutionContext` on which blocking Kafka operations can be executed.<br>
+  * [[ConsumerSettings]] contain settings necessary to create a
+  * [[KafkaConsumer]]. At the very least, this includes key and
+  * value deserializers.<br>
   * <br>
-  * Several convenience functions are provided so that you don't have to work with
-  * `String` values and `ConsumerConfig` for configuration. It's still possible to
-  * specify `ConsumerConfig` values with functions like [[withProperty]].<br>
+  * Several convenience functions are provided so that you don't
+  * have to work with `String` values and `ConsumerConfig` for
+  * configuration. It's still possible to specify `ConsumerConfig`
+  * values with functions like [[withProperty]].<br>
   * <br>
-  * [[ConsumerSettings]] instances are immutable and all modification functions
-  * return a new [[ConsumerSettings]] instance.<br>
+  * [[ConsumerSettings]] instances are immutable and all modification
+  * functions return a new [[ConsumerSettings]] instance.<br>
   * <br>
   * Use `ConsumerSettings#apply` to create a new instance.
   */
