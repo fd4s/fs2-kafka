@@ -2,7 +2,6 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.implicits._
-import fs2.Stream
 import org.apache.kafka.common.TopicPartition
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
@@ -13,15 +12,16 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
         val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
 
-        (for {
-          consumerSettings <- consumerSettings(config)
-          consumer <- consumerStream[IO].using(consumerSettings)
-          _ <- Stream.eval(consumer.subscribe(topic.r))
-          _ <- consumer.stream
-            .take(produced.size.toLong)
-            .map(_.committableOffset)
-            .to(commitBatch)
-        } yield ()).compile.lastOrError.unsafeRunSync
+        consumerStream[IO]
+          .using(consumerSettings(config))
+          .evalTap(_.subscribe(topic.r))
+          .flatMap(_.stream)
+          .take(produced.size.toLong)
+          .map(_.committableOffset)
+          .to(commitBatch)
+          .compile
+          .lastOrError
+          .unsafeRunSync
 
         adminClientResource[IO](adminClientSettings(config)).use { adminClient =>
           for {
