@@ -14,6 +14,7 @@ import cats.Id
 import cats.data.NonEmptyList
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
+import fs2.Stream
 import fs2.kafka._
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -44,7 +45,7 @@ object Main extends IOApp {
           )
           .withBootstrapServers("localhost")
         }
-        _ <- consumer.subscribe(NonEmptyList.one("topic"))
+        _ <- Stream.eval(consumer.subscribe(NonEmptyList.one("topic")))
         _ <- consumer.stream
           .mapAsync(25)(message =>
             processRecord(message.record)

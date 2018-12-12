@@ -32,7 +32,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           (for {
             consumerSettings <- consumerSettings(config)
             consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- consumer.subscribe(NonEmptyList.of(topic))
+            _ <- Stream.eval(consumer.subscribe(NonEmptyList.of(topic)))
             consumed <- f(consumer).take(produced.size.toLong)
             record = consumed.record
           } yield record.key -> record.value).compile.toVector.unsafeRunSync
@@ -51,7 +51,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           (for {
             consumerSettings <- consumerSettings(config)
             consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- consumer.subscribe(topic.r)
+            _ <- Stream.eval(consumer.subscribe(topic.r))
             offsets <- f(consumer)
               .take(produced.size.toLong)
               .map(_.committableOffset)
@@ -77,7 +77,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           (for {
             consumerSettings <- consumerSettings(config)
             consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- consumer.subscribe(NonEmptyList.of(topic))
+            _ <- Stream.eval(consumer.subscribe(NonEmptyList.of(topic)))
             _ <- Stream.eval(consumer.fiber.cancel)
             _ <- f(consumer)
             _ <- Stream.eval(consumer.fiber.join)
@@ -111,7 +111,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             consumerSettings <- consumerSettings(config)
               .map(_.withAutoOffsetReset(AutoOffsetReset.None))
             consumer <- consumerStream[IO].using(consumerSettings)
-            _ <- consumer.subscribe(NonEmptyList.of(topic))
+            _ <- Stream.eval(consumer.subscribe(NonEmptyList.of(topic)))
             _ <- f(consumer)
           } yield ()).compile.lastOrError.attempt.unsafeRunSync
 
@@ -136,7 +136,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         (for {
           consumerSettings <- consumerSettings(config)
           consumer <- consumerStream[IO].using(consumerSettings)
-          _ <- consumer.subscribe(NonEmptyList.of(topic))
+          _ <- Stream.eval(consumer.subscribe(NonEmptyList.of(topic)))
           _ <- f(consumer)
             .take(produced.size.toLong)
             .map(_.committableOffset)
