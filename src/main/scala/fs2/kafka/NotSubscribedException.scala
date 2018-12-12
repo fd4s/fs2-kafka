@@ -24,10 +24,9 @@ import org.apache.kafka.common.KafkaException
   * to any topics before starting.
   */
 sealed abstract class NotSubscribedException
-    extends KafkaException("consumer is not subscribed to any topics") {
+    extends KafkaException("consumer is not subscribed to any topics")
 
+case object NotSubscribedException extends NotSubscribedException {
   override def toString: String =
     s"fs2.kafka.NotSubscribedException: $getMessage"
 }
-
-case object NotSubscribedException extends NotSubscribedException

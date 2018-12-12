@@ -45,16 +45,15 @@ sealed abstract class CommitTimeoutException(
         sep = ", ",
         end = ""
       )
-    }) {
-
-  override def toString: String =
-    show"fs2.kafka.CommitTimeoutException: $getMessage"
-}
+    })
 
 object CommitTimeoutException {
   private[kafka] def apply(
     timeout: FiniteDuration,
     offsets: Map[TopicPartition, OffsetAndMetadata]
   ): CommitTimeoutException =
-    new CommitTimeoutException(timeout, offsets) {}
+    new CommitTimeoutException(timeout, offsets) {
+      override def toString: String =
+        show"fs2.kafka.CommitTimeoutException: $getMessage"
+    }
 }

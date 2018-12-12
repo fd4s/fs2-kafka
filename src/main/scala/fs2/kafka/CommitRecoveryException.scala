@@ -48,11 +48,7 @@ sealed abstract class CommitRecoveryException(
         sep = ", ",
         end = s"; last exception was: $lastException"
       )
-    }) {
-
-  override def toString: String =
-    s"fs2.kafka.CommitRecoveryException: $getMessage"
-}
+    })
 
 object CommitRecoveryException {
 
@@ -67,5 +63,8 @@ object CommitRecoveryException {
     lastException: Throwable,
     offsets: Map[TopicPartition, OffsetAndMetadata]
   ): CommitRecoveryException =
-    new CommitRecoveryException(attempts, lastException, offsets) {}
+    new CommitRecoveryException(attempts, lastException, offsets) {
+      override def toString: String =
+        s"fs2.kafka.CommitRecoveryException: $getMessage"
+    }
 }
