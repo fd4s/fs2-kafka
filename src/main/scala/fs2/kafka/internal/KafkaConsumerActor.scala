@@ -247,7 +247,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       val assigned: F[Either[Throwable, SortedSet[TopicPartition]]] =
         if (state.subscribed) withConsumer { consumer =>
           F.delay(Right(consumer.assignment.toSortedSet))
-        } else F.pure(Left(NotSubscribedException))
+        } else F.pure(Left(NotSubscribedException()))
 
       val withOnRebalance =
         onRebalance.fold(F.unit)(on => ref.update(_.withOnRebalance(on)))
