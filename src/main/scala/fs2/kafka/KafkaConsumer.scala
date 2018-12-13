@@ -306,7 +306,7 @@ private[kafka] object KafkaConsumer {
         actorFiber combine pollsFiber
       }
 
-      override val partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]] = {
+      override def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableMessage[F, K, V]]]]] =
           Queue.bounded[F, Option[Chunk[CommittableMessage[F, K, V]]]](1)
 
@@ -405,7 +405,7 @@ private[kafka] object KafkaConsumer {
         }
       }
 
-      override val stream: Stream[F, CommittableMessage[F, K, V]] = {
+      override def stream: Stream[F, CommittableMessage[F, K, V]] = {
         val requestAssignment: F[SortedSet[TopicPartition]] =
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request = Request.Assignment[F, K, V](deferred, onRebalance = None)
