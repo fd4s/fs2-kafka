@@ -128,7 +128,7 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
     * offset is negative, or an [[IllegalStateException]] if the provided
     * TopicPartition is not assigned to this consumer.
     */
-  def seek(topicPartition: TopicPartition, offset: Long): Stream[F, Unit]
+  def seek(partition: TopicPartition, offset: Long): F[Unit]
 
   /**
     * Subscribes the consumer to the specified topics. Note that you have to
@@ -451,8 +451,8 @@ private[kafka] object KafkaConsumer {
           .interruptWhen(fiber.join.attempt)
       }
 
-      override def seek(partition: TopicPartition, offset: Long): Stream[F, Unit] =
-        Stream.eval(requests.enqueue1(Request.Seek(partition, offset)))
+      override def seek(partition: TopicPartition, offset: Long): F[Unit] =
+        requests.enqueue1(Request.Seek(partition, offset))
 
       override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
         Stream.eval(requests.enqueue1(Request.SubscribeTopics(topics)))

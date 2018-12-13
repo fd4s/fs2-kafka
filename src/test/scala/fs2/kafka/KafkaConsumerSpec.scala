@@ -60,7 +60,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               val setOffset = for {
                 consumed <- (consumer.subscribe(NonEmptyList.one(topic)).drain ++ input.take(produced.size.toLong)).compile.toList
                 co        = consumed(readOffset-1).committableOffset
-                _        <- consumer.seek(co.topicPartition, co.offsetAndMetadata.offset()).compile.drain
+                _        <- consumer.seek(co.topicPartition, co.offsetAndMetadata.offset())
               } yield ()
 
               val consume = input.take(numMessages-readOffset)
