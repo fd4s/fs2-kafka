@@ -120,25 +120,49 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     endOffsets.flatMap(deferred.complete)
   }
 
-  private[this] def subscribe(topics: NonEmptyList[String]): F[Unit] =
-    withConsumer { consumer =>
-      F.delay {
-        consumer.subscribe(
-          topics.toList.asJava,
-          consumerRebalanceListener
-        )
+  private[this] def subscribe(
+    topics: NonEmptyList[String],
+    deferred: Deferred[F, Either[Throwable, Unit]]
+  ): F[Unit] = {
+    val subscribe =
+      withConsumer { consumer =>
+        F.delay {
+          consumer.subscribe(
+            topics.toList.asJava,
+            consumerRebalanceListener
+          )
+        }.attempt
       }
-    } >> ref.update(_.asSubscribed)
 
-  private[this] def subscribe(pattern: Pattern): F[Unit] =
-    withConsumer { consumer =>
-      F.delay {
-        consumer.subscribe(
-          pattern,
-          consumerRebalanceListener
-        )
+    subscribe
+      .flatTap {
+        case Left(_)  => F.unit
+        case Right(_) => ref.update(_.asSubscribed)
       }
-    } >> ref.update(_.asSubscribed)
+      .flatMap(deferred.complete)
+  }
+
+  private[this] def subscribe(
+    pattern: Pattern,
+    deferred: Deferred[F, Either[Throwable, Unit]]
+  ): F[Unit] = {
+    val subscribe =
+      withConsumer { consumer =>
+        F.delay {
+          consumer.subscribe(
+            pattern,
+            consumerRebalanceListener
+          )
+        }.attempt
+      }
+
+    subscribe
+      .flatTap {
+        case Left(_)  => F.unit
+        case Right(_) => ref.update(_.asSubscribed)
+      }
+      .flatMap(deferred.complete)
+  }
 
   private[this] val nowExpiryTime: F[Long] =
     timer.clock.monotonic(settings.fetchTimeout.unit)
@@ -420,13 +444,13 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         beginningOffsets(partitions, timeout, deferred)
       case Request.EndOffsets(partitions, timeout, deferred) =>
         endOffsets(partitions, timeout, deferred)
-      case Request.Poll()                             => poll
-      case Request.SubscribeTopics(topics)            => subscribe(topics)
-      case Request.SubscribePattern(pattern)          => subscribe(pattern)
-      case Request.Fetch(partition, deferred)         => fetch(partition, deferred)
-      case Request.ExpiringFetch(partition, deferred) => expiringFetch(partition, deferred)
-      case Request.Commit(offsets, deferred)          => commit(offsets, deferred)
-      case request @ Request.Revoked(_)               => revoked(request)
+      case Request.Poll()                              => poll
+      case Request.SubscribeTopics(topics, deferred)   => subscribe(topics, deferred)
+      case Request.SubscribePattern(pattern, deferred) => subscribe(pattern, deferred)
+      case Request.Fetch(partition, deferred)          => fetch(partition, deferred)
+      case Request.ExpiringFetch(partition, deferred)  => expiringFetch(partition, deferred)
+      case Request.Commit(offsets, deferred)           => commit(offsets, deferred)
+      case request @ Request.Revoked(_)                => revoked(request)
     }
 }
 
@@ -572,11 +596,13 @@ private[kafka] object KafkaConsumerActor {
     sealed abstract class Subscribe[F[_], K, V] extends Request[F, K, V]
 
     final case class SubscribeTopics[F[_], K, V](
-      topics: NonEmptyList[String]
+      topics: NonEmptyList[String],
+      deferred: Deferred[F, Either[Throwable, Unit]]
     ) extends Subscribe[F, K, V]
 
     final case class SubscribePattern[F[_], K, V](
-      pattern: Pattern
+      pattern: Pattern,
+      deferred: Deferred[F, Either[Throwable, Unit]]
     ) extends Subscribe[F, K, V]
 
     final case class Fetch[F[_], K, V](
