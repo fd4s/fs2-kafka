@@ -118,15 +118,15 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
   def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]]
 
   /**
-    * Overrides the fetch offsets that the consumer will use on the next poll.
-    * If this API is invoked for the same partition more than once, the latest
-    * offset will be used on the next poll(). Note that you may lose data if
-    * this API is arbitrarily used in the middle of consumption, to reset the
-    * fetch offsets.
+    * Overrides the fetch offsets that the consumer will use when reading the
+    * next message. If this API is invoked for the same partition more than once,
+    * the latest offset will be used. Note that you may lose data if this API is
+    * arbitrarily used in the middle of consumption to reset the fetch offsets.
     *
-    * The stream will raise an [[IllegalArgumentException]] if the provided
-    * offset is negative, or an [[IllegalStateException]] if the provided
-    * TopicPartition is not assigned to this consumer.
+    * The stream obtained from [[stream]] or [[partitionedStream]] will raise
+    * an [[IllegalArgumentException]] if the provided offset is negative, or an
+    * [[IllegalStateException]] if the provided TopicPartition is not assigned
+    * to this consumer.
     */
   def seek(partition: TopicPartition, offset: Long): F[Unit]
 
