@@ -47,8 +47,8 @@ sealed abstract class CommitTimeoutException(
       )
     })
 
-object CommitTimeoutException {
-  private[kafka] def apply(
+private[kafka] object CommitTimeoutException {
+  def apply(
     timeout: FiniteDuration,
     offsets: Map[TopicPartition, OffsetAndMetadata]
   ): CommitTimeoutException =

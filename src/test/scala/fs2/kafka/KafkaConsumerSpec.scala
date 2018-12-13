@@ -105,7 +105,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .attempt
             .unsafeRunSync
 
-        assert(consumed.left.toOption.contains(NotSubscribedException))
+        assert(consumed.left.toOption.map(_.toString).contains(NotSubscribedException().toString))
       }
     }
 
