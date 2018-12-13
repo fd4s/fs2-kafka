@@ -460,72 +460,81 @@ private[kafka] object KafkaConsumer {
           .interruptWhen(fiber.join.attempt)
       }
 
+      private[this] def request[A](
+        request: Deferred[F, Either[Throwable, A]] => Request[F, K, V]
+      ): F[A] =
+        Deferred[F, Either[Throwable, A]].flatMap { deferred =>
+          requests.enqueue1(request(deferred)) >>
+            F.race(fiber.join, deferred.get.rethrow).flatMap {
+              case Left(()) => F.raiseError(ConsumerShutdownException())
+              case Right(a) => F.pure(a)
+            }
+        }
+
       override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
         subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
       override def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] =
-        requests.enqueue1(Request.SubscribeTopics(topics.toNonEmptyList))
+        request { deferred =>
+          Request.SubscribeTopics(
+            topics = topics.toNonEmptyList,
+            deferred = deferred
+          )
+        }
 
       override def subscribe(regex: Regex): F[Unit] =
-        requests.enqueue1(Request.SubscribePattern(regex.pattern))
+        request { deferred =>
+          Request.SubscribePattern(
+            pattern = regex.pattern,
+            deferred = deferred
+          )
+        }
 
       override def beginningOffsets(
         partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
-        Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
-          .flatMap { deferred =>
-            requests.enqueue1 {
-              Request.BeginningOffsets(
-                partitions = partitions,
-                timeout = None,
-                deferred = deferred
-              )
-            } >> deferred.get.rethrow
-          }
+        request { deferred =>
+          Request.BeginningOffsets(
+            partitions = partitions,
+            timeout = None,
+            deferred = deferred
+          )
+        }
 
       override def beginningOffsets(
         partitions: Set[TopicPartition],
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
-        Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
-          .flatMap { deferred =>
-            requests.enqueue1 {
-              Request.BeginningOffsets(
-                partitions = partitions,
-                timeout = Some(timeout),
-                deferred = deferred
-              )
-            } >> deferred.get.rethrow
-          }
+        request { deferred =>
+          Request.BeginningOffsets(
+            partitions = partitions,
+            timeout = Some(timeout),
+            deferred = deferred
+          )
+        }
 
       override def endOffsets(
         partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
-        Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
-          .flatMap { deferred =>
-            requests.enqueue1 {
-              Request.EndOffsets(
-                partitions = partitions,
-                timeout = None,
-                deferred = deferred
-              )
-            } >> deferred.get.rethrow
-          }
+        request { deferred =>
+          Request.EndOffsets(
+            partitions = partitions,
+            timeout = None,
+            deferred = deferred
+          )
+        }
 
       override def endOffsets(
         partitions: Set[TopicPartition],
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
-        Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
-          .flatMap { deferred =>
-            requests.enqueue1 {
-              Request.EndOffsets(
-                partitions = partitions,
-                timeout = Some(timeout),
-                deferred = deferred
-              )
-            } >> deferred.get.rethrow
-          }
+        request { deferred =>
+          Request.EndOffsets(
+            partitions = partitions,
+            timeout = Some(timeout),
+            deferred = deferred
+          )
+        }
 
       override def toString: String =
         "KafkaConsumer$" + System.identityHashCode(this)
