@@ -65,7 +65,7 @@ lazy val buildInfoSettings = Seq(
 
 lazy val metadataSettings = Seq(
   organization := "com.ovoenergy",
-  organizationName := "OVO Energy Ltd",
+  organizationName := "OVO Energy Limited",
   organizationHomepage := Some(url("https://ovoenergy.com"))
 )
 
