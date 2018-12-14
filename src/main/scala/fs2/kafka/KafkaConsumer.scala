@@ -122,11 +122,6 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
     * next message. If this API is invoked for the same partition more than once,
     * the latest offset will be used. Note that you may lose data if this API is
     * arbitrarily used in the middle of consumption to reset the fetch offsets.
-    *
-    * The stream obtained from [[stream]] or [[partitionedStream]] will raise
-    * an `IllegalArgumentException` if the provided offset is negative, or an
-    * `IllegalStateException` if the provided TopicPartition is not assigned
-    * to this consumer.
     */
   def seek(partition: TopicPartition, offset: Long): F[Unit]
 
@@ -452,7 +447,16 @@ private[kafka] object KafkaConsumer {
       }
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
-        requests.enqueue1(Request.Seek(partition, offset))
+        Deferred[F, Either[Throwable, Unit]]
+          .flatMap { deferred =>
+            requests.enqueue1 {
+              Request.Seek(
+                partition = partition,
+                offset = offset,
+                deferred = deferred
+              )
+            } >> deferred.get.rethrow
+          }
 
       override def subscribe(topics: NonEmptyList[String]): Stream[F, Unit] =
         Stream.eval(requests.enqueue1(Request.SubscribeTopics(topics)))

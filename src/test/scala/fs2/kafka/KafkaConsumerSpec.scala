@@ -51,13 +51,16 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
     it("should fail to read from a negative offset") {
       withKafka {
-        an[IllegalArgumentException] should be thrownBy seekTest(numMessages = 100, readOffset = -1)(_, _)
+        an[IllegalArgumentException] should be thrownBy seekTest(numMessages = 100,
+                                                                 readOffset = -1)(_, _)
       }
     }
 
     it("should fail to read from a partition not assigned to this consumer") {
       withKafka {
-        an[IllegalStateException] should be thrownBy seekTest(numMessages = 100, readOffset = 90, partition = Some(123))(_, _)
+        an[IllegalStateException] should be thrownBy seekTest(numMessages = 100,
+                                                              readOffset = 90,
+                                                              partition = Some(123))(_, _)
       }
     }
 
@@ -176,48 +179,53 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
-    def seekTest(numMessages: Long, readOffset: Long, partition: Option[Int] = None)(config: EmbeddedKafkaConfig, topic: String) = {
+    def seekTest(numMessages: Long, readOffset: Long, partition: Option[Int] = None)(
+      config: EmbeddedKafkaConfig,
+      topic: String) = {
       createCustomTopic(topic)
 
       val produced = (0l until numMessages).map(n => s"key-$n" -> s"value->$n")
       publishToKafka(topic, produced)
 
       val consumed =
-          consumerSettings(config).flatMap { consumerSettings =>
+        consumerSettings(config)
+          .flatMap { consumerSettings =>
             consumerStream[IO].using(consumerSettings).flatMap { consumer =>
-
               val validSeekParams =
                 f(consumer)
                   .take(Math.max(readOffset, 1))
-                  .map(_.committableOffset).compile.toList.map(_.last)
+                  .map(_.committableOffset)
+                  .compile
+                  .toList
+                  .map(_.last)
                   .map(co => (co.topicPartition, co.offsetAndMetadata.offset()))
 
               val seekParams =
-                validSeekParams.map { case (topicPartition, offset) =>
-                  val p = partition.map(new TopicPartition(topic, _)).getOrElse(topicPartition)
-                  val o = Math.min(readOffset, offset)
+                validSeekParams.map {
+                  case (topicPartition, offset) =>
+                    val p = partition.map(new TopicPartition(topic, _)).getOrElse(topicPartition)
+                    val o = Math.min(readOffset, offset)
 
-                  (p, o)
+                    (p, o)
                 }
 
               val setOffset =
                 seekParams.flatMap { case (tp, o) => consumer.seek(tp, o) }
 
-              val consume = f(consumer).take(numMessages-readOffset)
+              val consume = f(consumer).take(numMessages - readOffset)
 
               consumer.subscribe(NonEmptyList.one(topic)).drain ++
-              (Stream.eval_(setOffset) ++ consume)
-                .map(_.record)
-                .map(record => record.key -> record.value())
+                (Stream.eval_(setOffset) ++ consume)
+                  .map(_.record)
+                  .map(record => record.key -> record.value())
 
             }
-          }.compile.toVector.unsafeRunSync()
+          }
+          .compile
+          .toVector
+          .unsafeRunSync()
 
-        consumed should contain theSameElementsAs produced.drop(readOffset.toInt)
-      }
-
+      consumed should contain theSameElementsAs produced.drop(readOffset.toInt)
+    }
   }
-
-
-
 }
