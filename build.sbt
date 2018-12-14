@@ -130,15 +130,7 @@ lazy val mimaSettings = Seq(
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
     // format: off
-    Seq(
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withRequestTimeout"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withDefaultApiTimeout"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.endOffsets"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.endOffsets"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.beginningOffsets"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.beginningOffsets"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seek")
-    )
+    Seq()
     // format: on
   }
 )
