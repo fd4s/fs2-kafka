@@ -79,7 +79,8 @@ private[kafka] object instances {
     val key = if (r.key != null) r.key.show else "null"
     val value = if (r.value != null) r.value.show else "null"
     val timestamp = if (r.timestamp != null) (r.timestamp: Long).show else "null"
-    show"ProducerRecord(topic = ${r.topic}, partition = ${(r.partition: Int).show}, headers = $headers, key = $key, value = $value, timestamp = $timestamp)"
+    val partition = if (r.partition != null) (r.partition: Int).show else "null"
+    show"ProducerRecord(topic = ${r.topic}, partition = $partition, headers = $headers, key = $key, value = $value, timestamp = $timestamp)"
   }
 
   implicit val recordMetadataShow: Show[RecordMetadata] =

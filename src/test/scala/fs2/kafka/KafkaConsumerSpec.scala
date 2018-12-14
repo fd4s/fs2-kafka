@@ -1,8 +1,10 @@
 package fs2.kafka
 
 import cats.effect.IO
+import cats.effect.concurrent.Ref
 import cats.implicits._
 import fs2.Stream
+import fs2.concurrent.Queue
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 import org.apache.kafka.common.TopicPartition
@@ -33,6 +35,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           consumerStream[IO]
             .using(consumerSettings(config))
             .evalTap(_.subscribeTo(topic))
+            .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
             .flatMap(stream)
             .take(produced.size.toLong)
             .map(message => message.record.key -> message.record.value)
@@ -41,6 +44,50 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .unsafeRunSync
 
         consumed should contain theSameElementsAs produced
+      }
+    }
+
+    it("should handle rebalance") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 3)
+        val produced1 = (0 until 100).map(n => s"key-$n" -> s"value->$n")
+        val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
+        val producedTotal = produced1.size.toLong + produced2.size.toLong
+
+        val consumer = (queue: Queue[IO, CommittableMessage[IO, String, String]]) =>
+          consumerStream[IO]
+            .using(consumerSettings(config))
+            .evalTap(_.subscribeTo(topic))
+            .evalMap(stream(_).evalMap(queue.enqueue1).compile.drain.start.void)
+
+        (for {
+          queue <- Stream.eval(Queue.unbounded[IO, CommittableMessage[IO, String, String]])
+          ref <- Stream.eval(Ref.of[IO, Set[String]](Set.empty))
+          _ <- consumer(queue)
+          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- Stream.eval(IO(publishToKafka(topic, produced1)))
+          _ <- consumer(queue)
+          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- Stream.eval(IO(publishToKafka(topic, produced2)))
+          _ <- Stream.eval {
+            queue.dequeue
+              .evalMap { message =>
+                ref.modify { keys =>
+                  val newKeys = keys + message.record.key
+                  (newKeys, newKeys)
+                }
+              }
+              .takeWhile(_.size < 200)
+              .compile
+              .drain
+          }
+          keys <- Stream.eval(ref.get)
+          _ <- Stream.eval(IO(assert {
+            keys.size.toLong == producedTotal && {
+              keys == (0 until 200).map(n => s"key-$n").toSet
+            }
+          }))
+        } yield ()).compile.drain.unsafeRunSync
       }
     }
 
@@ -72,8 +119,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         publishToKafka(topic, produced)
 
         val committed =
-          consumerStream[IO]
-            .using(consumerSettings(config))
+          consumerSettingsExecutionContext(config)
+            .flatMap(consumerStream[IO].using)
             .evalTap(_.subscribe(topic.r))
             .flatMap { consumer =>
               stream(consumer)
@@ -129,6 +176,45 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .unsafeRunSync
 
         assert(consumed.left.toOption.map(_.toString).contains(NotSubscribedException().toString))
+      }
+    }
+
+    it("should fail with an error if subscribe is invalid") {
+      withKafka { (config, _) =>
+        val subscribeName =
+          consumerStream[IO]
+            .using(consumerSettings(config))
+            .evalMap(_.subscribeTo(""))
+            .compile
+            .lastOrError
+            .attempt
+            .unsafeRunSync
+
+        assert {
+          subscribeName.left.toOption
+            .map(_.toString)
+            .contains {
+              "java.lang.IllegalArgumentException: Topic collection to subscribe to cannot contain null or empty topic"
+            }
+        }
+
+        val subscribeRegex =
+          consumerStream[IO]
+            .using(consumerSettings(config))
+            .evalTap(_.subscribeTo("topic"))
+            .evalMap(_.subscribe("".r))
+            .compile
+            .lastOrError
+            .attempt
+            .unsafeRunSync
+
+        assert {
+          subscribeRegex.left.toOption
+            .map(_.toString)
+            .contains {
+              "java.lang.IllegalStateException: Subscription to topics, partitions and pattern are mutually exclusive"
+            }
+        }
       }
     }
 

@@ -2,6 +2,8 @@ package fs2.kafka
 
 import java.util.UUID
 
+import cats.effect.IO
+import fs2.Stream
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer => KConsumer}
@@ -31,6 +33,18 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
       valueDeserializer = new StringDeserializer
     ).withProperties(consumerProperties(config))
       .withRecordMetadata(_.timestamp.toString)
+
+  final def consumerSettingsExecutionContext(
+    config: EmbeddedKafkaConfig
+  ): Stream[IO, ConsumerSettings[String, String]] =
+    consumerExecutionContextStream[IO].map { executionContext =>
+      ConsumerSettings(
+        keyDeserializer = new StringDeserializer,
+        valueDeserializer = new StringDeserializer,
+        executionContext = executionContext
+      ).withProperties(consumerProperties(config))
+        .withRecordMetadata(_.timestamp.toString)
+    }
 
   final def producerSettings(
     config: EmbeddedKafkaConfig

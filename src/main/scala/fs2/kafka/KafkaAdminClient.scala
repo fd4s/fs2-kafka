@@ -300,9 +300,6 @@ object KafkaAdminClient {
   )(implicit F: Concurrent[F]) {
     def apply[A](f: AdminClient => KafkaFuture[A]): F[A] =
       F.suspend(f(adminClient).cancelable)
-
-    override def toString: String =
-      "Client$" + System.identityHashCode(this)
   }
 
   private[kafka] def adminClientResource[F[_]](
