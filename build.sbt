@@ -136,7 +136,8 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.endOffsets"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.endOffsets"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.beginningOffsets"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.beginningOffsets")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.beginningOffsets"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seek")
     )
     // format: on
   }

@@ -121,6 +121,14 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
   def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]]
 
   /**
+    * Overrides the fetch offsets that the consumer will use when reading the
+    * next message. If this API is invoked for the same partition more than once,
+    * the latest offset will be used. Note that you may lose data if this API is
+    * arbitrarily used in the middle of consumption to reset the fetch offsets.
+    */
+  def seek(partition: TopicPartition, offset: Long): F[Unit]
+
+  /**
     * Subscribes the consumer to the specified topics. Note that you have to
     * use one of the `subscribe` functions to subscribe to one or more topics
     * before using any of the provided `Stream`s, or a [[NotSubscribedException]]
@@ -469,6 +477,15 @@ private[kafka] object KafkaConsumer {
               case Left(()) => F.raiseError(ConsumerShutdownException())
               case Right(a) => F.pure(a)
             }
+        }
+
+      override def seek(partition: TopicPartition, offset: Long): F[Unit] =
+        request { deferred =>
+          Request.Seek(
+            partition = partition,
+            offset = offset,
+            deferred = deferred
+          )
         }
 
       override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
