@@ -37,7 +37,8 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % "3.0.5",
     "org.scalacheck" %% "scalacheck" % "1.14.0",
-    "net.manub" %% "scalatest-embedded-kafka" % "2.0.0"
+    "net.manub" %% "scalatest-embedded-kafka" % "2.0.0",
+    "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test)
 )
 

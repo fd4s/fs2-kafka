@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%yellow(%date{ISO8601}) | %highlight(%-5level)| %cyan(%logger{36}) - %highlight(%msg%n%ex{full})</pattern>
+    </encoder>
+  </appender>
+
+  <root level="OFF" additivity="false">
+    <appender-ref ref="STDOUT"/>
+  </root>
+</configuration>
