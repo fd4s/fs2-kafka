@@ -1,7 +1,9 @@
 package fs2.kafka
 
 import cats.Id
+import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.common.TopicPartition
 import org.scalacheck.Gen
 
 final class CommittableOffsetBatchSpec extends BaseSpec {
@@ -64,6 +66,44 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
         val expected = offsets.foldLeft(batch1)(_ updated _)
 
         assert(result.offsets == expected.offsets)
+      }
+    }
+  }
+
+  describe("CommittableOffsetBatch#toString") {
+    it("should provide a Show instance and matching toString") {
+      assert {
+        CommittableOffsetBatch.empty[Id].toString == "CommittableOffsetBatch(<empty>)" &&
+        CommittableOffsetBatch.empty[Id].show == CommittableOffsetBatch.empty[Id].show
+      }
+
+      val one = CommittableOffset[Id](
+        new TopicPartition("topic", 0),
+        new OffsetAndMetadata(0L),
+        _ => ()
+      ).batch
+
+      assert {
+        one.toString == "CommittableOffsetBatch(topic-0 -> 0)" &&
+        one.show == one.toString
+      }
+
+      val oneMetadata = CommittableOffset[Id](
+        new TopicPartition("topic", 1),
+        new OffsetAndMetadata(0L, "metadata"),
+        _ => ()
+      ).batch
+
+      assert {
+        oneMetadata.toString == "CommittableOffsetBatch(topic-1 -> (0, metadata))" &&
+        oneMetadata.show == oneMetadata.toString
+      }
+
+      val two = one updated oneMetadata
+
+      assert {
+        two.toString == "CommittableOffsetBatch(topic-0 -> 0, topic-1 -> (0, metadata))" &&
+        two.show == two.toString
       }
     }
   }

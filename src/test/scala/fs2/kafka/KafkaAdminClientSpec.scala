@@ -60,6 +60,31 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
             _ <- IO(assert(topicNamesToListingsInternal.size == 2))
             describedTopics <- adminClient.describeTopics(topicNames.toList)
             _ <- IO(assert(describedTopics.size == 1))
+            _ <- IO {
+              adminClient.toString should startWith("KafkaAdminClient$")
+            }
+            _ <- IO {
+              adminClient.listTopics.toString should startWith("ListTopics$")
+            }
+            _ <- IO {
+              adminClient.listTopics.includeInternal.toString should
+                startWith("ListTopicsIncludeInternal$")
+            }
+            _ <- IO {
+              adminClient.listConsumerGroups.toString should
+                startWith("ListConsumerGroups$")
+            }
+            _ <- IO {
+              adminClient
+                .listConsumerGroupOffsets("group")
+                .toString shouldBe "ListConsumerGroupOffsets(groupId = group)"
+            }
+            _ <- IO {
+              adminClient
+                .listConsumerGroupOffsets("group")
+                .forPartitions(List(new TopicPartition("topic", 0)))
+                .toString shouldBe "ListConsumerGroupOffsetsForPartitions(groupId = group, partitions = List(topic-0))"
+            }
           } yield ()
         }.unsafeRunSync
       }
