@@ -492,7 +492,7 @@ private[kafka] object KafkaConsumerActor {
     override def completeRecords(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
       deferred.complete((chunk, ExpiringFetchCompletedReason.FetchedRecords))
 
-    val completeExpired: F[Unit] =
+    def completeExpired: F[Unit] =
       deferred.complete((Chunk.empty, ExpiringFetchCompletedReason.FetchExpired))
 
     override def hasExpired(now: Long): Boolean =
@@ -612,17 +612,21 @@ private[kafka] object KafkaConsumerActor {
 
     final case class Poll[F[_], K, V]() extends Request[F, K, V]
 
-    sealed abstract class Subscribe[F[_], K, V] extends Request[F, K, V]
+    private[this] val pollInstance: Poll[Nothing, Nothing, Nothing] =
+      Poll[Nothing, Nothing, Nothing]()
+
+    def poll[F[_], K, V]: Poll[F, K, V] =
+      pollInstance.asInstanceOf[Poll[F, K, V]]
 
     final case class SubscribeTopics[F[_], K, V](
       topics: NonEmptyList[String],
       deferred: Deferred[F, Either[Throwable, Unit]]
-    ) extends Subscribe[F, K, V]
+    ) extends Request[F, K, V]
 
     final case class SubscribePattern[F[_], K, V](
       pattern: Pattern,
       deferred: Deferred[F, Either[Throwable, Unit]]
-    ) extends Subscribe[F, K, V]
+    ) extends Request[F, K, V]
 
     final case class Fetch[F[_], K, V](
       partition: TopicPartition,

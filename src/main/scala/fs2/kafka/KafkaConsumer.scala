@@ -280,7 +280,7 @@ private[kafka] object KafkaConsumer {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
         F.guaranteeCase {
             polls
-              .enqueue1(Request.Poll())
+              .enqueue1(Request.poll)
               .flatMap(_ => timer.sleep(pollInterval))
               .foreverM[Unit]
           } {
