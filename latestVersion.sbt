@@ -1,3 +1,5 @@
-latestVersion in ThisBuild := "0.17.3"
+latestVersion in ThisBuild := "0.18.0"
 
-binaryCompatibleVersions in ThisBuild := Set()
+binaryCompatibleVersions in ThisBuild := Set(
+  "0.18.0"
+)
