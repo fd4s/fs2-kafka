@@ -101,6 +101,15 @@ final class ProducerSettingsSpec extends BaseSpec {
       }
     }
 
+    it("should provide withDeliveryTimeout") {
+      assert {
+        settings
+          .withDeliveryTimeout(10.seconds)
+          .properties(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG)
+          .contains("10000")
+      }
+    }
+
     it("should provide withProperty/withProperties") {
       assert {
         settings.withProperty("a", "b").properties("a").contains("b") &&

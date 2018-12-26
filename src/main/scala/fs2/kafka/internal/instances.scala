@@ -38,7 +38,8 @@ private[kafka] object instances {
     K: Show[K],
     V: Show[V]
   ): Show[ConsumerRecord[K, V]] = Show.show { cr =>
-    show"ConsumerRecord(topic = ${cr.topic}, partition = ${cr.partition}, offset = ${cr.offset}, ${cr.timestampType} = ${cr.timestamp}, serialized key size = ${cr.serializedKeySize}, serialized value size = ${cr.serializedValueSize}, headers = ${cr.headers}, key = ${cr.key}, value = ${cr.value})"
+    val leaderEpoch = if (cr.leaderEpoch.isPresent) (cr.leaderEpoch.get: Int).show else "null"
+    show"ConsumerRecord(topic = ${cr.topic}, partition = ${cr.partition}, leaderEpoch = $leaderEpoch, offset = ${cr.offset}, ${cr.timestampType} = ${cr.timestamp}, serialized key size = ${cr.serializedKeySize}, serialized value size = ${cr.serializedValueSize}, headers = ${cr.headers}, key = ${cr.key}, value = ${cr.value})"
   }
 
   implicit val headerShow: Show[Header] =

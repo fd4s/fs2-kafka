@@ -2,7 +2,7 @@ import ReleaseTransformations._
 
 val fs2Version = "1.0.2"
 
-val kafkaVersion = "2.0.1"
+val kafkaVersion = "2.1.0"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -37,8 +37,8 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % "3.0.5",
     "org.scalacheck" %% "scalacheck" % "1.14.0",
-    "net.manub" %% "scalatest-embedded-kafka" % "2.0.0",
-    "ch.qos.logback" % "logback-classic" % "1.2.3"
+    "ch.qos.logback" % "logback-classic" % "1.2.3",
+    "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.0"
   ).map(_ % Test)
 )
 
@@ -131,7 +131,9 @@ lazy val mimaSettings = Seq(
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
     // format: off
-    Seq()
+    Seq(
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withDeliveryTimeout")
+    )
     // format: on
   }
 )

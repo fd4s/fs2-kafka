@@ -164,6 +164,18 @@ sealed abstract class ProducerSettings[K, V] {
   def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings[K, V]
 
   /**
+    * Returns a new [[ProducerSettings]] instance with the specified
+    * delivery timeout. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG
+    * }}}
+    */
+  def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[K, V]
+
+  /**
     * Includes a property with the specified `key` and `value`.
     * The key should be one of the keys in `ProducerConfig`,
     * and the value should be a valid choice for the key.
@@ -259,6 +271,9 @@ object ProducerSettings {
 
     override def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings[K, V] =
       withProperty(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, requestTimeout.toMillis.toString)
+
+    override def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[K, V] =
+      withProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeout.toMillis.toString)
 
     override def withProperty(key: String, value: String): ProducerSettings[K, V] =
       copy(properties = properties.updated(key, value))
