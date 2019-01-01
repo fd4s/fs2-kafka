@@ -32,7 +32,7 @@ const siteConfig = {
     secondaryColor: '#153243',
   },
 
-  copyright: `Copyright © 2018 OVO Energy Limited.`,
+  copyright: `Copyright © 2018-${new Date().getFullYear()} OVO Energy Limited.`,
 
   highlight: { theme: 'github' },
 
