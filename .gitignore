@@ -1,6 +1,5 @@
 .idea/
 node_modules/
-out/
 target/
 yarn.lock
 website/build/
