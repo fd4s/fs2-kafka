@@ -3,4 +3,6 @@
 <url> <loc>https://ovotech.github.io/fs2-kafka/fs2-kafka/index</loc> <changefreq>weekly</changefreq> <priority>0.5</priority> <xhtml:link rel="alternate" hreflang="en" href="https://ovotech.github.io/fs2-kafka/fs2-kafka/en/index" /> </url>
 <url> <loc>https://ovotech.github.io/fs2-kafka/fs2-kafka/docs/overview</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="https://ovotech.github.io/fs2-kafka/fs2-kafka/docs/overview" /> </url>
 <url> <loc>https://ovotech.github.io/fs2-kafka/fs2-kafka/docs/quick-example</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="https://ovotech.github.io/fs2-kafka/fs2-kafka/docs/quick-example" /> </url>
+<url> <loc>https://ovotech.github.io/fs2-kafka/fs2-kafka/docs/target/mdoc/overview</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="https://ovotech.github.io/fs2-kafka/fs2-kafka/docs/target/mdoc/overview" /> </url>
+<url> <loc>https://ovotech.github.io/fs2-kafka/fs2-kafka/docs/target/mdoc/quick-example</loc> <changefreq>hourly</changefreq> <priority>1.0</priority> <xhtml:link rel="alternate" hreflang="en" href="https://ovotech.github.io/fs2-kafka/fs2-kafka/docs/target/mdoc/quick-example" /> </url>
 </urlset>
