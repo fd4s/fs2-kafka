@@ -12,7 +12,7 @@ const siteConfig = {
   url: 'https://ovotech.github.io/fs2-kafka',
   baseUrl: '/fs2-kafka/',
 
-  customDocsPath: 'out',
+  customDocsPath: 'docs/target/mdoc',
 
   projectName: 'fs2-kafka',
   organizationName: 'ovotech',

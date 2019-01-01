@@ -27,7 +27,7 @@ lazy val docs = project
     buildInfoSettings
   )
   .dependsOn(`fs2-kafka`)
-  .enablePlugins(BuildInfoPlugin, DocusaurusPlugin)
+  .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin)
 
 lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
@@ -43,9 +43,8 @@ lazy val dependencySettings = Seq(
 )
 
 lazy val mdocSettings = Seq(
-  mainClass in Compile := Some("fs2.kafka.docs.Main"),
-  crossScalaVersions := Seq(scalaVersion.value),
-  libraryDependencies += "com.geirsson" %% "mdoc" % "0.7.1"
+  mdoc := run.in(Compile).evaluated,
+  crossScalaVersions := Seq(scalaVersion.value)
 )
 
 lazy val buildInfoSettings = Seq(
