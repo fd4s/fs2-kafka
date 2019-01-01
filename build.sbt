@@ -44,22 +44,22 @@ lazy val dependencySettings = Seq(
 
 lazy val mdocSettings = Seq(
   mdoc := run.in(Compile).evaluated,
-  crossScalaVersions := Seq(scalaVersion.value)
+  scalacOptions -= "-Xfatal-warnings",
+  crossScalaVersions := Seq(scalaVersion.value),
 )
 
 lazy val buildInfoSettings = Seq(
   buildInfoPackage := "fs2.kafka.build",
   buildInfoObject := "info",
   buildInfoKeys := Seq[BuildInfoKey](
-    BuildInfoKey.map(organization in `fs2-kafka`) { case (_, v)  => "organization" -> v },
-    BuildInfoKey.map(moduleName in `fs2-kafka`) { case (_, v)    => "moduleName" -> v },
-    BuildInfoKey.map(latestVersion in ThisBuild) { case (_, v)   => "latestVersion" -> v },
-    BuildInfoKey.map(scalacOptions in `fs2-kafka`) { case (_, v) => "scalacOptions" -> v },
-    BuildInfoKey
-      .map(crossScalaVersions in `fs2-kafka`) { case (_, v) => "crossScalaVersions" -> v },
-    BuildInfoKey.map(scalaVersion) { case (_, v)            => "scalaVersionDocs" -> v },
+    scalacOptions,
+    latestVersion in ThisBuild,
+    moduleName in `fs2-kafka`,
+    organization in `fs2-kafka`,
+    crossScalaVersions in `fs2-kafka`,
+    BuildInfoKey.map(scalaVersion) { case (_, v) => "scalaVersionDocs" -> v },
     BuildInfoKey("fs2Version" -> fs2Version),
-    BuildInfoKey("kafkaVersion" -> kafkaVersion),
+    BuildInfoKey("kafkaVersion" -> kafkaVersion)
   )
 )
 
@@ -201,15 +201,10 @@ updateSiteVariables in ThisBuild := {
   val file = (baseDirectory in `fs2-kafka`).value / "website" / "siteConfig.js"
   val lines = IO.read(file).trim.split('\n').toVector
 
+  val scalaMinorVersion = minorVersion((scalaVersion in `fs2-kafka`).value)
   val latestVersionString = (latestVersion in ThisBuild).value.toString
-  val latestMinorVersionString = {
-    val latestVersionString = (latestVersion in ThisBuild).value.toString
-    val (major, minor) = CrossVersion.partialVersion(latestVersionString).get
-    s"$major.$minor"
-  }
   val organizationString = (organization in `fs2-kafka`).value
   val moduleNameString = (moduleName in `fs2-kafka`).value
-  val scalaMinorVersion = minorVersion((scalaVersion in `fs2-kafka`).value)
   val scalaPublishVersions = {
     val minorVersions = (crossScalaVersions in `fs2-kafka`).value.map(minorVersion)
     if (minorVersions.size <= 2) minorVersions.mkString(" and ")
@@ -218,7 +213,7 @@ updateSiteVariables in ThisBuild := {
 
   val lineIndex = lines.indexWhere(_.trim.startsWith("const buildInfo"))
   val newLine =
-    s"const buildInfo = { scalaMinorVersion: '$scalaMinorVersion', organization: '$organizationString', moduleName: '$moduleNameString', latestVersion: '$latestVersionString', latestMinorVersion: '$latestMinorVersionString', scalaPublishVersions: '$scalaPublishVersions' };"
+    s"const buildInfo = { organization: '$organizationString', moduleName: '$moduleNameString', latestVersion: '$latestVersionString', scalaMinorVersion: '$scalaMinorVersion', scalaPublishVersions: '$scalaPublishVersions' };"
   val newLines = lines.updated(lineIndex, newLine)
   val newFileContents = newLines.mkString("", "\n", "\n")
   IO.write(file, newFileContents)

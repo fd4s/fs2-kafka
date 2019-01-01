@@ -67,7 +67,7 @@ class Index extends React.Component {
   render() {
     const {config: siteConfig, language = ''} = this.props;
     const {baseUrl, buildInfo} = siteConfig;
-    const {organization, moduleName, latestVersion, latestMinorVersion, scalaPublishVersions} = buildInfo;
+    const {organization, moduleName, latestVersion, scalaPublishVersions} = buildInfo;
 
     const Block = props => (
       <Container

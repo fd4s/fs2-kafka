@@ -48,6 +48,10 @@
   vertical-align: top;
 }
 
+.fixedHeaderContainer header img {
+  margin-right: 0;
+}
+
 a {
   color: #19647e;
 }

@@ -2,7 +2,12 @@ package fs2.kafka.docs
 
 import fs2.kafka.build.info._
 
+import java.nio.file.{FileSystems, PathMatcher}
+
 object Main {
+  def glob(glob: String): PathMatcher =
+    FileSystems.getDefault.getPathMatcher(s"glob:$glob")
+
   def minorVersion(version: String): String = {
     val Array(major, minor, _) = version.split('.')
     s"$major.$minor"
@@ -28,10 +33,8 @@ object Main {
           }
         )
       }
-      .withScalacOptions {
-        val excludedOptions = Seq("-Xfatal-warnings")
-        (scalacOptions diff excludedOptions).mkString(" ")
-      }
+      .withExcludePath(List(glob("src/**"), glob("target/**")))
+      .withScalacOptions(scalacOptions.mkString(" "))
       .withArgs(args.toList)
 
     val exitCode = mdoc.Main.process(settings)
