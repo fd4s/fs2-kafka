@@ -78,6 +78,12 @@ lazy val publishSettings =
     homepage := Some(url("https://github.com/ovotech/fs2-kafka")),
     licenses := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
     startYear := Some(2018),
+    headerLicense := Some {
+      de.heikoseeberger.sbtheader.License.ALv2(
+        s"${startYear.value.get}-${java.time.Year.now}",
+        organizationName.value
+      )
+    },
     developers := List(
       Developer(
         id = "vlovgr",
