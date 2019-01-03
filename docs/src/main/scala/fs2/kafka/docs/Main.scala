@@ -2,11 +2,11 @@ package fs2.kafka.docs
 
 import fs2.kafka.build.info._
 
-import java.nio.file.{FileSystems, PathMatcher}
+import java.nio.file.{FileSystems, Path}
 
 object Main {
-  def glob(glob: String): PathMatcher =
-    FileSystems.getDefault.getPathMatcher(s"glob:$glob")
+  def sourceDirectoryPath(rest: String*): Path =
+    FileSystems.getDefault.getPath(sourceDirectory.getAbsolutePath, rest: _*)
 
   def minorVersion(version: String): String = {
     val Array(major, minor, _) = version.split('.')
@@ -22,7 +22,7 @@ object Main {
           "MODULE_NAME" -> moduleName,
           "LATEST_VERSION" -> latestVersion,
           "LATEST_MINOR_VERSION" -> minorVersion(latestVersion),
-          "DOCS_SCALA_MINOR_VERSION" -> minorVersion(scalaVersionDocs),
+          "DOCS_SCALA_MINOR_VERSION" -> minorVersion(scalaVersion),
           "FS2_VERSION" -> fs2Version,
           "KAFKA_VERSION" -> kafkaVersion,
           "KAFKA_DOCS_VERSION" -> minorVersion(kafkaVersion).filter(_ != '.'),
@@ -33,8 +33,8 @@ object Main {
           }
         )
       }
-      .withExcludePath(List(glob("src/**"), glob("target/**")))
       .withScalacOptions(scalacOptions.mkString(" "))
+      .withIn(sourceDirectoryPath("main", "mdoc"))
       .withArgs(args.toList)
 
     val exitCode = mdoc.Main.process(settings)

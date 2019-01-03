@@ -1,5 +1,5 @@
 .idea/
 node_modules/
 target/
-yarn.lock
 website/build/
+yarn.lock

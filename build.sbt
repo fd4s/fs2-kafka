@@ -52,12 +52,13 @@ lazy val buildInfoSettings = Seq(
   buildInfoPackage := "fs2.kafka.build",
   buildInfoObject := "info",
   buildInfoKeys := Seq[BuildInfoKey](
+    scalaVersion,
     scalacOptions,
+    sourceDirectory,
     latestVersion in ThisBuild,
     moduleName in `fs2-kafka`,
     organization in `fs2-kafka`,
     crossScalaVersions in `fs2-kafka`,
-    BuildInfoKey.map(scalaVersion) { case (_, v) => "scalaVersionDocs" -> v },
     BuildInfoKey("fs2Version" -> fs2Version),
     BuildInfoKey("kafkaVersion" -> kafkaVersion)
   )
@@ -75,15 +76,15 @@ lazy val publishSettings =
     publishArtifact in Test := false,
     publishTo := sonatypePublishTo.value,
     pomIncludeRepository := (_ => false),
-    homepage := Some(url("https://github.com/ovotech/fs2-kafka")),
+    homepage := Some(url("https://ovotech.github.io/fs2-kafka")),
     licenses := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
     startYear := Some(2018),
-    headerLicense := Some {
+    headerLicense := Some(
       de.heikoseeberger.sbtheader.License.ALv2(
         s"${startYear.value.get}-${java.time.Year.now}",
         organizationName.value
       )
-    },
+    ),
     developers := List(
       Developer(
         id = "vlovgr",
@@ -220,7 +221,13 @@ updateSiteVariables in ThisBuild := {
 
   sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
     vcs.add(file.getAbsolutePath).!
-    vcs.commit(s"Update site variables for v${(version in ThisBuild).value}", sign = true).!
+    vcs
+      .commit(
+        s"Update site variables for v${(version in ThisBuild).value}",
+        sign = true,
+        signOff = false
+      )
+      .!
   }
 }
 
@@ -250,7 +257,13 @@ addDateToReleaseNotes in ThisBuild := {
 
   sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
     vcs.add(file.getAbsolutePath).!
-    vcs.commit(s"Add release date for v${(version in ThisBuild).value}", sign = true).!
+    vcs
+      .commit(
+        s"Add release date for v${(version in ThisBuild).value}",
+        sign = true,
+        signOff = false
+      )
+      .!
   }
 }
 
