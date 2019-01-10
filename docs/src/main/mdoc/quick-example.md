@@ -23,39 +23,41 @@ object Main extends IOApp {
     def processRecord(record: ConsumerRecord[String, String]): IO[(String, String)] =
       IO.pure(record.key -> record.value)
 
+    val consumerSettings =
+      ConsumerSettings(
+        keyDeserializer = new StringDeserializer,
+        valueDeserializer = new StringDeserializer
+      )
+      .withAutoOffsetReset(AutoOffsetReset.Earliest)
+      .withBootstrapServers("localhost")
+      .withGroupId("group")
+
+    val producerSettings =
+      ProducerSettings(
+        keySerializer = new StringSerializer,
+        valueSerializer = new StringSerializer
+      )
+      .withBootstrapServers("localhost")
+
     val stream =
-      for {
-        producer <- producerStream[IO]
-          .using {
-            ProducerSettings(
-              keySerializer = new StringSerializer,
-              valueSerializer = new StringSerializer
-            )
-            .withBootstrapServers("localhost")
-          }
-        _ <- consumerStream[IO]
-          .using {
-            ConsumerSettings(
-              keyDeserializer = new StringDeserializer,
-              valueDeserializer = new StringDeserializer
-            )
-            .withAutoOffsetReset(AutoOffsetReset.Earliest)
-            .withBootstrapServers("localhost")
-            .withGroupId("group")
-          }
-          .evalTap(_.subscribeTo("topic"))
-          .flatMap(_.stream)
-          .mapAsync(25) { message =>
-            processRecord(message.record)
-              .map { case (key, value) =>
-                val record = new ProducerRecord("topic", key, value)
-                ProducerMessage.single(record, message.committableOffset)
-              }
-          }
-          .evalMap(producer.produceBatched)
-          .map(_.map(_.passthrough))
-          .to(commitBatchWithinF(500, 15.seconds))
-      } yield ()
+      producerStream[IO]
+        .using(producerSettings)
+        .flatMap { producer =>
+          consumerStream[IO]
+            .using(consumerSettings)
+            .evalTap(_.subscribeTo("topic"))
+            .flatMap(_.stream)
+            .mapAsync(25) { message =>
+              processRecord(message.record)
+                .map { case (key, value) =>
+                  val record = new ProducerRecord("topic", key, value)
+                  ProducerMessage.single(record, message.committableOffset)
+                }
+            }
+            .evalMap(producer.produceBatched)
+            .map(_.map(_.passthrough))
+            .to(commitBatchWithinF(500, 15.seconds))
+        }
 
     stream.compile.drain.as(ExitCode.Success)
   }
