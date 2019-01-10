@@ -46,39 +46,41 @@
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[(<span class="hljs-type">String</span>, <span class="hljs-type">String</span>)] =
       <span class="hljs-type">IO</span>.pure(record.key -&gt; record.value)
 
+    <span class="hljs-keyword">val</span> consumerSettings =
+      <span class="hljs-type">ConsumerSettings</span>(
+        keyDeserializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringDeserializer</span>,
+        valueDeserializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringDeserializer</span>
+      )
+      .withAutoOffsetReset(<span class="hljs-type">AutoOffsetReset</span>.<span class="hljs-type">Earliest</span>)
+      .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+      .withGroupId(<span class="hljs-string">"group"</span>)
+
+    <span class="hljs-keyword">val</span> producerSettings =
+      <span class="hljs-type">ProducerSettings</span>(
+        keySerializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringSerializer</span>,
+        valueSerializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringSerializer</span>
+      )
+      .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+
     <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-keyword">for</span> {
-        producer &lt;- producerStream[<span class="hljs-type">IO</span>]
-          .using {
-            <span class="hljs-type">ProducerSettings</span>(
-              keySerializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringSerializer</span>,
-              valueSerializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringSerializer</span>
-            )
-            .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
-          }
-        _ &lt;- consumerStream[<span class="hljs-type">IO</span>]
-          .using {
-            <span class="hljs-type">ConsumerSettings</span>(
-              keyDeserializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringDeserializer</span>,
-              valueDeserializer = <span class="hljs-keyword">new</span> <span class="hljs-type">StringDeserializer</span>
-            )
-            .withAutoOffsetReset(<span class="hljs-type">AutoOffsetReset</span>.<span class="hljs-type">Earliest</span>)
-            .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
-            .withGroupId(<span class="hljs-string">"group"</span>)
-          }
-          .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
-          .flatMap(_.stream)
-          .mapAsync(<span class="hljs-number">25</span>) { message =&gt;
-            processRecord(message.record)
-              .map { <span class="hljs-keyword">case</span> (key, value) =&gt;
-                <span class="hljs-keyword">val</span> record = <span class="hljs-keyword">new</span> <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, key, value)
-                <span class="hljs-type">ProducerMessage</span>.single(record, message.committableOffset)
-              }
-          }
-          .evalMap(producer.produceBatched)
-          .map(_.map(_.passthrough))
-          .to(commitBatchWithinF(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
-      } <span class="hljs-keyword">yield</span> ()
+      producerStream[<span class="hljs-type">IO</span>]
+        .using(producerSettings)
+        .flatMap { producer =&gt;
+          consumerStream[<span class="hljs-type">IO</span>]
+            .using(consumerSettings)
+            .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
+            .flatMap(_.stream)
+            .mapAsync(<span class="hljs-number">25</span>) { message =&gt;
+              processRecord(message.record)
+                .map { <span class="hljs-keyword">case</span> (key, value) =&gt;
+                  <span class="hljs-keyword">val</span> record = <span class="hljs-keyword">new</span> <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, key, value)
+                  <span class="hljs-type">ProducerMessage</span>.single(record, message.committableOffset)
+                }
+            }
+            .evalMap(producer.produceBatched)
+            .map(_.map(_.passthrough))
+            .to(commitBatchWithinF(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
+        }
 
     stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
   }
