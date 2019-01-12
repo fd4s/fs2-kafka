@@ -18,7 +18,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
           .flatMap(_.stream)
           .take(produced.size.toLong)
           .map(_.committableOffset)
-          .to(commitBatch)
+          .through(commitBatch)
           .compile
           .lastOrError
           .unsafeRunSync

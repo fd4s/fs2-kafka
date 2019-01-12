@@ -19,7 +19,7 @@ final class KafkaSpec extends BaseAsyncSpec {
           _ <- Stream
             .chunk(offsets)
             .covary[IO]
-            .to(commitBatch)
+            .through(commitBatch)
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync
 
@@ -38,7 +38,7 @@ final class KafkaSpec extends BaseAsyncSpec {
             .chunk(offsets)
             .covary[IO]
             .map(IO.pure)
-            .to(commitBatchF)
+            .through(commitBatchF)
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync
 
@@ -56,7 +56,7 @@ final class KafkaSpec extends BaseAsyncSpec {
           _ <- Stream
             .chunk(offsets)
             .covary[IO]
-            .to(commitBatchOption)
+            .through(commitBatchOption)
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync
 
@@ -75,7 +75,7 @@ final class KafkaSpec extends BaseAsyncSpec {
             .chunk(offsets)
             .covary[IO]
             .map(IO.pure)
-            .to(commitBatchOptionF)
+            .through(commitBatchOptionF)
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync
 
@@ -93,7 +93,7 @@ final class KafkaSpec extends BaseAsyncSpec {
           _ <- Stream
             .chunk(offsets)
             .covary[IO]
-            .to(commitBatchWithin(offsets.size, 10.seconds))
+            .through(commitBatchWithin(offsets.size, 10.seconds))
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync
 
@@ -112,7 +112,7 @@ final class KafkaSpec extends BaseAsyncSpec {
             .chunk(offsets)
             .covary[IO]
             .map(IO.pure)
-            .to(commitBatchWithinF(offsets.size, 10.seconds))
+            .through(commitBatchWithinF(offsets.size, 10.seconds))
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync
 
@@ -130,7 +130,7 @@ final class KafkaSpec extends BaseAsyncSpec {
           _ <- Stream
             .chunk(offsets)
             .covary[IO]
-            .to(commitBatchOptionWithin(offsets.size, 10.seconds))
+            .through(commitBatchOptionWithin(offsets.size, 10.seconds))
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync
 
@@ -149,7 +149,7 @@ final class KafkaSpec extends BaseAsyncSpec {
             .chunk(offsets)
             .covary[IO]
             .map(IO.pure)
-            .to(commitBatchOptionWithinF(offsets.size, 10.seconds))
+            .through(commitBatchOptionWithinF(offsets.size, 10.seconds))
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync
 

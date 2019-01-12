@@ -260,7 +260,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             stream(consumer)
               .take(produced.size.toLong)
               .map(_.committableOffset)
-              .to(commitBatch)
+              .through(commitBatch)
           }
           .evalTap { consumer =>
             for {

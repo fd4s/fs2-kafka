@@ -42,8 +42,8 @@ package object kafka {
     */
   def commitBatch[F[_]](
     implicit F: Applicative[F]
-  ): Sink[F, CommittableOffset[F]] =
-    _.chunks.to(commitBatchChunk)
+  ): Pipe[F, CommittableOffset[F], Unit] =
+    _.chunks.through(commitBatchChunk)
 
   /**
     * Commits offsets in batches determined by the `Chunk`s of the
@@ -63,8 +63,8 @@ package object kafka {
     */
   def commitBatchF[F[_]](
     implicit F: Applicative[F]
-  ): Sink[F, F[CommittableOffset[F]]] =
-    _.chunks.to(commitBatchChunkF)
+  ): Pipe[F, F[CommittableOffset[F]], Unit] =
+    _.chunks.through(commitBatchChunkF)
 
   /**
     * Commits offsets in batches determined by the `Chunks` of the
@@ -86,8 +86,8 @@ package object kafka {
     */
   def commitBatchOption[F[_]](
     implicit F: Applicative[F]
-  ): Sink[F, Option[CommittableOffset[F]]] =
-    _.chunks.to(commitBatchChunkOption)
+  ): Pipe[F, Option[CommittableOffset[F]], Unit] =
+    _.chunks.through(commitBatchChunkOption)
 
   /**
     * Commits offsets in batches determined by the `Chunks` of the
@@ -113,8 +113,8 @@ package object kafka {
     */
   def commitBatchOptionF[F[_]](
     implicit F: Applicative[F]
-  ): Sink[F, F[Option[CommittableOffset[F]]]] =
-    _.chunks.to(commitBatchChunkOptionF)
+  ): Pipe[F, F[Option[CommittableOffset[F]]], Unit] =
+    _.chunks.through(commitBatchChunkOptionF)
 
   /**
     * Commits offsets in batches determined by `Chunk`s. This allows
@@ -131,7 +131,7 @@ package object kafka {
     */
   def commitBatchChunk[F[_]](
     implicit F: Applicative[F]
-  ): Sink[F, Chunk[CommittableOffset[F]]] =
+  ): Pipe[F, Chunk[CommittableOffset[F]], Unit] =
     _.evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 
   /**
@@ -153,8 +153,8 @@ package object kafka {
     */
   def commitBatchChunkF[F[_]](
     implicit F: Applicative[F]
-  ): Sink[F, Chunk[F[CommittableOffset[F]]]] =
-    _.evalMap(_.sequence).to(commitBatchChunk)
+  ): Pipe[F, Chunk[F[CommittableOffset[F]]], Unit] =
+    _.evalMap(_.sequence).through(commitBatchChunk)
 
   /**
     * Commits offsets in batches determined by `Chunk`s. This allows
@@ -176,7 +176,7 @@ package object kafka {
     */
   def commitBatchChunkOption[F[_]](
     implicit F: Applicative[F]
-  ): Sink[F, Chunk[Option[CommittableOffset[F]]]] =
+  ): Pipe[F, Chunk[Option[CommittableOffset[F]]], Unit] =
     _.evalMap(CommittableOffsetBatch.fromFoldableOption(_).commit)
 
   /**
@@ -203,8 +203,8 @@ package object kafka {
     */
   def commitBatchChunkOptionF[F[_]](
     implicit F: Applicative[F]
-  ): Sink[F, Chunk[F[Option[CommittableOffset[F]]]]] =
-    _.evalMap(_.sequence).to(commitBatchChunkOption)
+  ): Pipe[F, Chunk[F[Option[CommittableOffset[F]]]], Unit] =
+    _.evalMap(_.sequence).through(commitBatchChunkOption)
 
   /**
     * Commits offsets in batches of every `n` offsets or time window
@@ -224,8 +224,8 @@ package object kafka {
   def commitBatchWithin[F[_]](n: Int, d: FiniteDuration)(
     implicit F: Concurrent[F],
     timer: Timer[F]
-  ): Sink[F, CommittableOffset[F]] =
-    _.groupWithin(n, d).to(commitBatchChunk)
+  ): Pipe[F, CommittableOffset[F], Unit] =
+    _.groupWithin(n, d).through(commitBatchChunk)
 
   /**
     * Commits offsets in batches of every `n` offsets or time window
@@ -249,8 +249,8 @@ package object kafka {
   def commitBatchWithinF[F[_]](n: Int, d: FiniteDuration)(
     implicit F: Concurrent[F],
     timer: Timer[F]
-  ): Sink[F, F[CommittableOffset[F]]] =
-    _.groupWithin(n, d).to(commitBatchChunkF)
+  ): Pipe[F, F[CommittableOffset[F]], Unit] =
+    _.groupWithin(n, d).through(commitBatchChunkF)
 
   /**
     * Commits offsets in batches of every `n` offsets or time window
@@ -275,8 +275,8 @@ package object kafka {
   def commitBatchOptionWithin[F[_]](n: Int, d: FiniteDuration)(
     implicit F: Concurrent[F],
     timer: Timer[F]
-  ): Sink[F, Option[CommittableOffset[F]]] =
-    _.groupWithin(n, d).to(commitBatchChunkOption)
+  ): Pipe[F, Option[CommittableOffset[F]], Unit] =
+    _.groupWithin(n, d).through(commitBatchChunkOption)
 
   /**
     * Commits offsets in batches of every `n` offsets or time window
@@ -305,8 +305,8 @@ package object kafka {
   def commitBatchOptionWithinF[F[_]](n: Int, d: FiniteDuration)(
     implicit F: Concurrent[F],
     timer: Timer[F]
-  ): Sink[F, F[Option[CommittableOffset[F]]]] =
-    _.groupWithin(n, d).to(commitBatchChunkOptionF)
+  ): Pipe[F, F[Option[CommittableOffset[F]]], Unit] =
+    _.groupWithin(n, d).through(commitBatchChunkOptionF)
 
   /**
     * Creates a new [[KafkaAdminClient]] in the `Resource` context,
