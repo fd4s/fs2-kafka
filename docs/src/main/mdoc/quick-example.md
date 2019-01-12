@@ -56,7 +56,7 @@ object Main extends IOApp {
             }
             .evalMap(producer.produceBatched)
             .map(_.map(_.passthrough))
-            .to(commitBatchWithinF(500, 15.seconds))
+            .through(commitBatchWithinF(500, 15.seconds))
         }
 
     stream.compile.drain.as(ExitCode.Success)

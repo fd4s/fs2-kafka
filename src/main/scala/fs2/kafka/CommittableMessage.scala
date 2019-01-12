@@ -25,7 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
   * [[CommittableMessage]] is a Kafka record along with an instance of
   * [[CommittableOffset]], which can be used commit the record offset
   * to Kafka. Offsets are normally committed in batches, either using
-  * [[CommittableOffsetBatch]] or via sinks, like [[commitBatch]] and
+  * [[CommittableOffsetBatch]] or via pipes, like [[commitBatch]] and
   * [[commitBatchWithin]]. If you are not committing offsets to Kafka
   * then you can use [[record]] to get the underlying record and also
   * discard the [[committableOffset]].<br>
@@ -45,7 +45,7 @@ sealed abstract class CommittableMessage[F[_], K, V] {
   /**
     * A [[CommittableOffset]] instance, providing a way to commit the
     * [[record]] offset to Kafka. This is normally done in batches as
-    * it achieves better performance. Sinks like [[commitBatch]] and
+    * it achieves better performance. Pipes like [[commitBatch]] and
     * [[commitBatchWithin]] use [[CommittableOffsetBatch]] to batch
     * and commit offsets.
     */
