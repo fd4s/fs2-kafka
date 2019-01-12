@@ -79,7 +79,7 @@
             }
             .evalMap(producer.produceBatched)
             .map(_.map(_.passthrough))
-            .to(commitBatchWithinF(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
+            .through(commitBatchWithinF(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
         }
 
     stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
