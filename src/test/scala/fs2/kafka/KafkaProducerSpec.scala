@@ -1,7 +1,7 @@
 package fs2.kafka
 
 import cats.effect.IO
-import cats.instances.list._
+import cats.implicits._
 import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.producer.ProducerRecord
 
@@ -17,10 +17,10 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           message <- Stream.chunk(Chunk.seq(toProduce).map {
             case passthrough @ (key, value) =>
-              ProducerMessage.single(new ProducerRecord(topic, key, value), passthrough)
+              ProducerMessage.one(new ProducerRecord(topic, key, value), passthrough)
           })
-          batched <- Stream.eval(producer.produceBatched(message)).buffer(toProduce.size)
-          passthrough <- Stream.eval(batched.map(_.passthrough))
+          batched <- Stream.eval(producer.producePassthrough(message)).buffer(toProduce.size)
+          passthrough <- Stream.eval(batched)
         } yield passthrough).compile.toVector.unsafeRunSync()
 
       produced should contain theSameElementsAs toProduce
@@ -45,8 +45,8 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
             case (key, value) =>
               new ProducerRecord(topic, key, value)
           }
-          message = ProducerMessage.multiple(records, toPassthrough)
-          result <- Stream.eval(producer.produce(message))
+          message = ProducerMessage(records, toPassthrough)
+          result <- Stream.eval(producer.produce(message).flatten)
         } yield result).compile.lastOrError.unsafeRunSync
 
       val records =
@@ -73,8 +73,8 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         (for {
           producer <- producerStream[IO].using(producerSettings(config))
           records = List.empty[ProducerRecord[String, String]]
-          message = ProducerMessage.multiple(records, passthrough)
-          result <- Stream.eval(producer.produce(message))
+          message = ProducerMessage(records, passthrough)
+          result <- Stream.eval(producer.produce(message).flatten)
         } yield result).compile.lastOrError.unsafeRunSync
 
       assert(result.passthrough == passthrough)
@@ -89,7 +89,9 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       val result =
         (for {
           producer <- producerStream[IO].using(producerSettings(config))
-          result <- Stream.eval(producer.produce(ProducerMessage.passthrough(passthrough)))
+          result <- Stream.eval {
+            producer.produce(ProducerMessage[List].of(Nil, passthrough)).flatten
+          }
         } yield result).compile.lastOrError.unsafeRunSync
 
       assert(result.passthrough == passthrough)

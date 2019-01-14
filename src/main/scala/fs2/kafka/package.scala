@@ -34,8 +34,8 @@ package object kafka {
     * how batches are created, instead use [[commitBatchChunk]].<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produceBatched]],
-    * then there is a [[commitBatchF]] function for that instead.
+    * like the produce effect from [[KafkaProducer.produce]], then
+    * there is a [[commitBatchF]] function for that instead.
     *
     * @see [[commitBatchWithin]] for committing offset batches every `n`
     *      offsets or time window of length `d`, whichever happens first
@@ -51,11 +51,11 @@ package object kafka {
     * how batches are created, instead use [[commitBatchChunkF]].<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produceBatched]]
-    * and keep the [[CommittableOffset]] as passthrough value.<br>
+    * producing records, you can use [[KafkaProducer.produce]] and
+    * keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
     * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produceBatched`, then there is a
+    * like the produce effect from `produce`, then there is a
     * [[commitBatch]] function for that instead.
     *
     * @see [[commitBatchWithinF]] for committing offset batches every `n`
@@ -78,8 +78,8 @@ package object kafka {
     * be committed once all of the messages have been produced.<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produceBatched]],
-    * then there is a [[commitBatchOptionF]] function for that instead.
+    * like the produce effect from [[KafkaProducer.produce]], then
+    * there is a [[commitBatchOptionF]] function for that instead.
     *
     * @see [[commitBatchOptionWithin]] for committing offset batches every
     *     `n` offsets or time window of length `d`, whichever happens first
@@ -101,11 +101,11 @@ package object kafka {
     * be committed once all of the messages have been produced.<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produceBatched]]
-    * and keep the [[CommittableOffset]] as passthrough value.<br>
+    * producing records, you can use [[KafkaProducer.produce]] and
+    * keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
     * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produceBatched`, then there is a
+    * like the produce effect from `produce`, then there is a
     * [[commitBatchOption]] function for that instead.
     *
     * @see [[commitBatchOptionWithinF]] for committing offset batches every
@@ -123,8 +123,8 @@ package object kafka {
     * use [[commitBatch]] instead.<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produceBatched]],
-    * then there is a [[commitBatchChunkF]] function for that instead.
+    * like the produce effect from [[KafkaProducer.produce]], then
+    * there is a [[commitBatchChunkF]] function for that instead.
     *
     * @see [[commitBatchWithin]] for committing offset batches every `n`
     *      offsets or time window of length `d`, whichever happens first
@@ -141,11 +141,11 @@ package object kafka {
     * use [[commitBatchF]] instead.<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produceBatched]]
-    * and keep the [[CommittableOffset]] as passthrough value.<br>
+    * producing records, you can use [[KafkaProducer.produce]] and
+    * keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
     * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produceBatched`, then there is a
+    * like the produce effect from `produce`, then there is a
     * [[commitBatchChunk]] function for that instead.
     *
     * @see [[commitBatchWithinF]] for committing offset batches every `n`
@@ -168,8 +168,8 @@ package object kafka {
     * be committed once all of the messages have been produced.<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produceBatched]],
-    * then there is a [[commitBatchChunkOptionF]] for that instead.
+    * like the produce effect from [[KafkaProducer.produce]], then
+    * there is a [[commitBatchChunkOptionF]] for that instead.
     *
     * @see [[commitBatchOptionWithin]] for committing offset batches every
     *     `n` offsets or time window of length `d`, whichever happens first
@@ -191,11 +191,11 @@ package object kafka {
     * be committed once all of the messages have been produced.<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produceBatched]]
-    * and keep the [[CommittableOffset]] as passthrough value.<br>
+    * producing records, you can use [[KafkaProducer.produce]] and
+    * keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
     * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produceBatched`, then there is a
+    * like the produce effect from `produce`, then there is a
     * [[commitBatchChunkOption]] function for that instead.
     *
     * @see [[commitBatchOptionWithinF]] for committing offset batches every
@@ -213,8 +213,8 @@ package object kafka {
     * offsets for that time window.<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produceBatched]],
-    * then there is a [[commitBatchWithinF]] function for that instead.
+    * like the produce effect from [[KafkaProducer.produce]], then
+    * there is a [[commitBatchWithinF]] function for that instead.
     *
     * @see [[commitBatch]] for using the underlying `Chunk`s of
     *      the `Stream` as offset commit batches
@@ -234,11 +234,11 @@ package object kafka {
     * offsets for that time window.<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produceBatched]]
-    * and keep the [[CommittableOffset]] as passthrough value.<br>
+    * producing records, you can use [[KafkaProducer.produce]] and
+    * keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
     * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produceBatched`, then there is a
+    * like the produce effect from `produce`, then there is a
     * [[commitBatchWithin]] function for that instead.
     *
     * @see [[commitBatchF]] for using the underlying `Chunk`s of
@@ -264,8 +264,8 @@ package object kafka {
     * be committed once all of the messages have been produced.<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produceBatched]],
-    * then there is a [[commitBatchOptionWithinF]] for that instead.
+    * like the produce effect from [[KafkaProducer.produce]], then
+    * there is a [[commitBatchOptionWithinF]] for that instead.
     *
     * @see [[commitBatchOption]] for using the underlying `Chunk`s of
     *      the `Stream` as offset commit batches
@@ -290,11 +290,11 @@ package object kafka {
     * be committed once all of the messages have been produced.<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produceBatched]]
-    * and keep the [[CommittableOffset]] as passthrough value.<br>
+    * producing records, you can use [[KafkaProducer.produce]] and
+    * keep the [[CommittableOffset]] as passthrough value.<br>
     * <br>
     * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produceBatched`, then there is a
+    * like the produce effect from `produce`, then there is a
     * [[commitBatchOptionWithin]] function for that instead.
     *
     * @see [[commitBatchOptionF]] for using the underlying `Chunk`s of

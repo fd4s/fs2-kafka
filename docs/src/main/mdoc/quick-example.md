@@ -51,11 +51,10 @@ object Main extends IOApp {
               processRecord(message.record)
                 .map { case (key, value) =>
                   val record = new ProducerRecord("topic", key, value)
-                  ProducerMessage.single(record, message.committableOffset)
+                  ProducerMessage.one(record, message.committableOffset)
                 }
             }
-            .evalMap(producer.produceBatched)
-            .map(_.map(_.passthrough))
+            .evalMap(producer.producePassthrough)
             .through(commitBatchWithinF(500, 15.seconds))
         }
 
