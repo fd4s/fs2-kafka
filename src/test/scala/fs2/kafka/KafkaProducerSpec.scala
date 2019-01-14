@@ -3,7 +3,6 @@ package fs2.kafka
 import cats.effect.IO
 import cats.implicits._
 import fs2.{Chunk, Stream}
-import org.apache.kafka.clients.producer.ProducerRecord
 
 final class KafkaProducerSpec extends BaseKafkaSpec {
   it("should be able to produce records with single") {
@@ -17,7 +16,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           message <- Stream.chunk(Chunk.seq(toProduce).map {
             case passthrough @ (key, value) =>
-              ProducerMessage.one(new ProducerRecord(topic, key, value), passthrough)
+              ProducerMessage.one(ProducerRecord(topic, key, value), passthrough)
           })
           batched <- Stream.eval(producer.producePassthrough(message)).buffer(toProduce.size)
           passthrough <- Stream.eval(batched)
@@ -43,7 +42,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
           producer <- producerStream[IO].using(producerSettings(config))
           records = toProduce.map {
             case (key, value) =>
-              new ProducerRecord(topic, key, value)
+              ProducerRecord(topic, key, value)
           }
           message = ProducerMessage(records, toPassthrough)
           result <- Stream.eval(producer.produce(message).flatten)

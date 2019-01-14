@@ -21,7 +21,7 @@ import cats.syntax.show._
 import cats.{Foldable, Show}
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
-import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
+import org.apache.kafka.clients.producer.RecordMetadata
 
 /**
   * [[ProducerResult]] represents the result of having produced zero
@@ -34,7 +34,7 @@ import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
   * <br>
   * Use [[ProducerResult#apply]] to create a new [[ProducerResult]].
   */
-sealed abstract class ProducerResult[F[_], K, V, +P] {
+sealed abstract class ProducerResult[F[+ _], +K, +V, +P] {
 
   /**
     * The records produced along with respective metadata.
@@ -47,7 +47,7 @@ sealed abstract class ProducerResult[F[_], K, V, +P] {
 }
 
 object ProducerResult {
-  private[this] final class ProducerResultImpl[F[_], K, V, +P](
+  private[this] final class ProducerResultImpl[F[+ _], +K, +V, +P](
     override val records: F[(ProducerRecord[K, V], RecordMetadata)],
     override val passthrough: P
   )(implicit F: Foldable[F])
@@ -75,7 +75,7 @@ object ProducerResult {
     * or more `ProducerRecord`s, finally emitting a passthrough
     * value and the `ProducerRecord`s with `RecordMetadata`.
     */
-  def apply[F[_], K, V, P](
+  def apply[F[+ _], K, V, P](
     records: F[(ProducerRecord[K, V], RecordMetadata)],
     passthrough: P
   )(
@@ -83,7 +83,7 @@ object ProducerResult {
   ): ProducerResult[F, K, V, P] =
     new ProducerResultImpl(records, passthrough)
 
-  implicit def producerResultShow[F[_], K, V, P](
+  implicit def producerResultShow[F[+ _], K, V, P](
     implicit
     F: Foldable[F],
     K: Show[K],
