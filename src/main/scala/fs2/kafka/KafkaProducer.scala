@@ -20,46 +20,42 @@ import cats.Traverse
 import cats.effect._
 import cats.effect.concurrent.Deferred
 import cats.effect.syntax.concurrent._
-import cats.syntax.flatMap._
-import cats.syntax.functor._
-import cats.syntax.monadError._
-import cats.syntax.traverse._
+import cats.implicits._
 import org.apache.kafka.clients.producer._
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka messages, with the
-  * ability to produce `ProducerRecord`s, either using [[produce]] for
-  * a one-off produce, while also waiting for the records to be sent,
-  * or with [[produceBatched]] for multiple records over time.<br>
-  * <br>
-  * Records are wrapped in [[ProducerMessage]] which allow some arbitrary
-  * passthroughs to be included in the [[ProducerResult]]s. This is mostly
-  * useful for keeping the [[CommittableOffset]]s of consumed messages,
-  * but any values can be used as passthrough values.
+  * ability to produce `ProducerRecord`s using [[produce]]. Records are
+  * wrapped in [[ProducerMessage]] which allow an arbitrary value, that
+  * is a passthrough, to be included in the result. Most often this is
+  * used for keeping the [[CommittableOffset]]s, in order to commit
+  * offsets, but any value can be used as passthrough value.
   */
 sealed abstract class KafkaProducer[F[_], K, V] {
 
   /**
     * Produces the `ProducerRecord`s in the specified [[ProducerMessage]]
-    * in two steps: first effect puts the records in the producer buffer,
-    * and the second effect waits for the records to have been sent,
-    * according to configured producer settings. Generally, this version
-    * should be preferred over [[produce]], since it can achieve
-    * significantly better performance.
+    * in two steps: the first effect puts the records in the buffer of the
+    * producer, and the second effect waits for the records to have been
+    * sent. Note that it is very slow to wait for individual records to
+    * complete sending, but if you're sure that's what you want, then
+    * simply `flatten` the result from this function.<br>
+    * <br>
+    * If you're only interested in the passthrough value, and not the whole
+    * [[ProducerResult]], you can instead use [[producePassthrough]] which
+    * only keeps the passthrough value in the output.
     */
-  def produceBatched[G[_], P](
+  def produce[G[_], P](
     message: ProducerMessage[G, K, V, P]
   ): F[F[ProducerResult[G, K, V, P]]]
 
   /**
-    * Produces the `ProducerRecord`s in the specified [[ProducerMessage]]
-    * and waits for the records to have been sent, according to configured
-    * producer settings. For performance reasons, instead prefer to use
-    * [[produceBatched]] whenever possible.
+    * Like [[produce]] but only keeps the passthrough value of the
+    * [[ProducerResult]] rather than the whole [[ProducerResult]].
     */
-  def produce[G[_], P](
+  def producePassthrough[G[_], P](
     message: ProducerMessage[G, K, V, P]
-  ): F[ProducerResult[G, K, V, P]]
+  ): F[F[P]]
 }
 
 private[kafka] object KafkaProducer {
@@ -81,46 +77,61 @@ private[kafka] object KafkaProducer {
     }
   }
 
-  private[this] def callback(f: (RecordMetadata, Throwable) => Unit): Callback =
-    new Callback {
-      override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
-        f(metadata, exception)
-    }
-
   def producerResource[F[_], K, V](settings: ProducerSettings[K, V])(
     implicit F: ConcurrentEffect[F]
   ): Resource[F, KafkaProducer[F, K, V]] =
     createProducer(settings).map { producer =>
       new KafkaProducer[F, K, V] {
-        override def produceBatched[G[_], P](
+        override def produce[G[_], P](
           message: ProducerMessage[G, K, V, P]
         ): F[F[ProducerResult[G, K, V, P]]] = {
-          implicit val G: Traverse[G] = message.traverse
+          implicit val G: Traverse[G] =
+            message.traverse
+
           message.records
-            .traverse { record =>
-              Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]]
-                .flatMap { deferred =>
-                  F.delay {
-                      producer.send(
-                        record,
-                        callback {
-                          case (metadata, throwable) =>
-                            val result = Option(throwable).toLeft(record -> metadata)
-                            val complete = deferred.complete(result)
-                            F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
-                        }
-                      )
-                    }
-                    .as(deferred.get.rethrow)
-                }
-            }
+            .traverse(record => produceRecord(record, (record, _)))
             .map(_.sequence.map(ProducerResult(_, message.passthrough)))
         }
 
-        override def produce[G[_], P](
+        override def producePassthrough[G[_], P](
           message: ProducerMessage[G, K, V, P]
-        ): F[ProducerResult[G, K, V, P]] =
-          produceBatched(message).flatten
+        ): F[F[P]] = {
+          implicit val G: Traverse[G] =
+            message.traverse
+
+          message.records
+            .traverse(record => produceRecord(record, _ => ()))
+            .map(_.sequence_.as(message.passthrough))
+        }
+
+        private[this] def produceRecord[A](
+          record: ProducerRecord[K, V],
+          result: RecordMetadata => A
+        ): F[F[A]] =
+          Deferred[F, Either[Throwable, A]].flatMap { deferred =>
+            F.delay {
+                producer.send(
+                  record,
+                  callback { (metadata, throwable) =>
+                    val complete =
+                      deferred.complete {
+                        if (throwable == null)
+                          Right(result(metadata))
+                        else Left(throwable)
+                      }
+
+                    F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+                  }
+                )
+              }
+              .as(deferred.get.rethrow)
+          }
+
+        private[this] def callback(f: (RecordMetadata, Throwable) => Unit): Callback =
+          new Callback {
+            override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
+              f(metadata, exception)
+          }
 
         override def toString: String =
           "KafkaProducer$" + System.identityHashCode(this)
