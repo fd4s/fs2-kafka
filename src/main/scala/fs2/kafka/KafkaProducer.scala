@@ -21,7 +21,7 @@ import cats.effect._
 import cats.effect.concurrent.Deferred
 import cats.effect.syntax.concurrent._
 import cats.implicits._
-import org.apache.kafka.clients.producer._
+import org.apache.kafka.clients.producer.{Callback, Producer, RecordMetadata}
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka messages, with the
@@ -45,7 +45,7 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     * [[ProducerResult]], you can instead use [[producePassthrough]] which
     * only keeps the passthrough value in the output.
     */
-  def produce[G[_], P](
+  def produce[G[+ _], P](
     message: ProducerMessage[G, K, V, P]
   ): F[F[ProducerResult[G, K, V, P]]]
 
@@ -53,7 +53,7 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     * Like [[produce]] but only keeps the passthrough value of the
     * [[ProducerResult]] rather than the whole [[ProducerResult]].
     */
-  def producePassthrough[G[_], P](
+  def producePassthrough[G[+ _], P](
     message: ProducerMessage[G, K, V, P]
   ): F[F[P]]
 }
@@ -82,7 +82,7 @@ private[kafka] object KafkaProducer {
   ): Resource[F, KafkaProducer[F, K, V]] =
     createProducer(settings).map { producer =>
       new KafkaProducer[F, K, V] {
-        override def produce[G[_], P](
+        override def produce[G[+ _], P](
           message: ProducerMessage[G, K, V, P]
         ): F[F[ProducerResult[G, K, V, P]]] = {
           implicit val G: Traverse[G] =
@@ -93,7 +93,7 @@ private[kafka] object KafkaProducer {
             .map(_.sequence.map(ProducerResult(_, message.passthrough)))
         }
 
-        override def producePassthrough[G[_], P](
+        override def producePassthrough[G[+ _], P](
           message: ProducerMessage[G, K, V, P]
         ): F[F[P]] = {
           implicit val G: Traverse[G] =
@@ -111,7 +111,7 @@ private[kafka] object KafkaProducer {
           Deferred[F, Either[Throwable, A]].flatMap { deferred =>
             F.delay {
                 producer.send(
-                  record,
+                  asJavaRecord(record),
                   callback { (metadata, throwable) =>
                     val complete =
                       deferred.complete {
@@ -126,6 +126,31 @@ private[kafka] object KafkaProducer {
               }
               .as(deferred.get.rethrow)
           }
+
+        private[this] def asJavaRecord(
+          record: ProducerRecord[K, V]
+        ): org.apache.kafka.clients.producer.ProducerRecord[K, V] =
+          new org.apache.kafka.clients.producer.ProducerRecord[K, V](
+            record.topic,
+            if (record.partition.isDefined)
+              record.partition.get: java.lang.Integer
+            else null,
+            if (record.timestamp.isDefined)
+              record.timestamp.get: java.lang.Long
+            else null,
+            record.key,
+            record.value,
+            asJavaHeaders(record.headers)
+          )
+
+        private[this] def asJavaHeaders(
+          headers: Headers
+        ): org.apache.kafka.common.header.Headers = {
+          val empty: org.apache.kafka.common.header.Headers =
+            new org.apache.kafka.common.header.internals.RecordHeaders()
+
+          headers.toChain.foldLeft(empty)(_ add _)
+        }
 
         private[this] def callback(f: (RecordMetadata, Throwable) => Unit): Callback =
           new Callback {

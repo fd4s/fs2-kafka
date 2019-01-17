@@ -25,7 +25,7 @@ import cats.instances.tuple._
 import cats.syntax.show._
 import cats.{Order, Semigroup, Show}
 import org.apache.kafka.clients.consumer.{ConsumerRecord, OffsetAndMetadata}
-import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
+import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.header.{Header, Headers}
 import org.apache.kafka.common.record.TimestampType
@@ -45,18 +45,8 @@ private[kafka] object instances {
   implicit val headerShow: Show[Header] =
     Show.show(h => show"${h.key} -> ${util.Arrays.toString(h.value)}")
 
-  implicit val headerOrder: Order[Header] =
-    Order.by(_.key)
-
-  implicit val headerOrdering: Ordering[Header] =
-    Order[Header].toOrdering
-
   implicit val headersShow: Show[Headers] =
-    Show.show { hs =>
-      val headers = hs.toArray
-      if (headers.isEmpty) "Headers(<empty>)"
-      else headers.sorted.map(_.show).mkString("Headers(", ", ", ")")
-    }
+    Show.show(hs => hs.toArray.map(_.show).mkString("Headers(", ", ", ")"))
 
   implicit val offsetAndMetadataOrder: Order[OffsetAndMetadata] =
     Order.by(oam => (oam.offset, oam.metadata))
@@ -70,19 +60,6 @@ private[kafka] object instances {
         show"(${oam.offset}, ${oam.metadata})"
       else oam.offset.show
     }
-
-  implicit def producerRecordShow[K, V](
-    implicit
-    K: Show[K],
-    V: Show[V]
-  ): Show[ProducerRecord[K, V]] = Show.show { r =>
-    val headers = if (r.headers != null) r.headers.show else "null"
-    val key = if (r.key != null) r.key.show else "null"
-    val value = if (r.value != null) r.value.show else "null"
-    val timestamp = if (r.timestamp != null) (r.timestamp: Long).show else "null"
-    val partition = if (r.partition != null) (r.partition: Int).show else "null"
-    show"ProducerRecord(topic = ${r.topic}, partition = $partition, headers = $headers, key = $key, value = $value, timestamp = $timestamp)"
-  }
 
   implicit val recordMetadataShow: Show[RecordMetadata] =
     Show.show(rm => show"${rm.topic}-${rm.partition}@${rm.offset}")

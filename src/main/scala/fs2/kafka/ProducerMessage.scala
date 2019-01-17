@@ -18,10 +18,8 @@ package fs2.kafka
 
 import cats.syntax.foldable._
 import cats.syntax.show._
-import cats.{Foldable, Id, Show, Traverse}
-import fs2.kafka.internal.instances._
+import cats.{Foldable, Show, Traverse}
 import fs2.kafka.internal.syntax._
-import org.apache.kafka.clients.producer.ProducerRecord
 
 /**
   * [[ProducerMessage]] represents zero or more `ProducerRecord`s,
@@ -43,7 +41,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
   * it needs a `Traverse[F]` instance. This requirement is
   * captured in [[ProducerMessage]] as [[traverse]].
   */
-sealed abstract class ProducerMessage[F[_], K, V, +P] {
+sealed abstract class ProducerMessage[F[+ _], +K, +V, +P] {
 
   /** The records to produce. Can be empty for passthrough-only. */
   def records: F[ProducerRecord[K, V]]
@@ -56,7 +54,7 @@ sealed abstract class ProducerMessage[F[_], K, V, +P] {
 }
 
 object ProducerMessage {
-  private[this] final class ProducerMessageImpl[F[_], K, V, +P](
+  private[this] final class ProducerMessageImpl[F[+ _], +K, +V, +P](
     override val records: F[ProducerRecord[K, V]],
     override val passthrough: P,
     override val traverse: Traverse[F]
@@ -77,7 +75,7 @@ object ProducerMessage {
     * ProducerMessage[F].of(records)
     * }}}
     */
-  final class ApplyBuilders[F[_]] private[kafka] (
+  final class ApplyBuilders[F[+ _]] private[kafka] (
     private val F: Traverse[F]
   ) extends AnyVal {
 
@@ -129,7 +127,7 @@ object ProducerMessage {
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
     */
-  def apply[F[_], K, V, P](
+  def apply[F[+ _], K, V, P](
     records: F[ProducerRecord[K, V]],
     passthrough: P
   )(
@@ -142,7 +140,7 @@ object ProducerMessage {
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and `Unit` passthrough value.
     */
-  def apply[F[_], K, V](
+  def apply[F[+ _], K, V](
     records: F[ProducerRecord[K, V]]
   )(
     implicit F: Traverse[F]
@@ -166,10 +164,10 @@ object ProducerMessage {
     * ProducerMessage[F].of(records)
     * }}}
     */
-  def apply[F[_]](implicit F: Traverse[F]): ApplyBuilders[F] =
+  def apply[F[+ _]](implicit F: Traverse[F]): ApplyBuilders[F] =
     new ApplyBuilders[F](F)
 
-  implicit def producerMessageShow[F[_], K, V, P](
+  implicit def producerMessageShow[F[+ _], K, V, P](
     implicit
     K: Show[K],
     V: Show[V],

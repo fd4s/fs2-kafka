@@ -1,6 +1,5 @@
 package fs2.kafka
 
-import cats.Id
 import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition

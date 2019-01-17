@@ -1,6 +1,5 @@
 package fs2.kafka
 
-import cats.Id
 import cats.effect.IO
 
 final class JitterSpec extends BaseSpec {

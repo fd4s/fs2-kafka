@@ -14,7 +14,6 @@ import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
 import fs2.kafka._
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import scala.concurrent.duration._
 
@@ -50,7 +49,7 @@ object Main extends IOApp {
             .mapAsync(25) { message =>
               processRecord(message.record)
                 .map { case (key, value) =>
-                  val record = new ProducerRecord("topic", key, value)
+                  val record = ProducerRecord("topic", key, value)
                   ProducerMessage.one(record, message.committableOffset)
                 }
             }
