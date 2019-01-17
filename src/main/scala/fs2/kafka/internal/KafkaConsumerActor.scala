@@ -27,7 +27,6 @@ import cats.instances.list._
 import cats.instances.map._
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
-import cats.syntax.foldable._
 import cats.syntax.monadError._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
@@ -180,30 +179,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
 
     seek.flatMap(deferred.complete)
-  }
-
-  private[this] val nowExpiryTime: F[Long] =
-    timer.clock.monotonic(settings.fetchTimeout.unit)
-
-  private[this] def expiringFetch(
-    partition: TopicPartition,
-    deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], ExpiringFetchCompletedReason)]
-  ): F[Unit] = {
-    val assigned =
-      withConsumer { consumer =>
-        F.delay(consumer.assignment.contains(partition))
-      }
-
-    def storeFetch =
-      nowExpiryTime.flatMap { now =>
-        val expiresAt = now + settings.fetchTimeout.length
-        ref.update(_.withExpiringFetch(partition, deferred, expiresAt))
-      }
-
-    def completeRevoked =
-      deferred.complete((Chunk.empty, ExpiringFetchCompletedReason.TopicPartitionRevoked))
-
-    assigned.ifM(storeFetch, completeRevoked)
   }
 
   private[this] def fetch(
@@ -411,45 +386,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         } else F.unit
       }
 
-    val completeExpiredFetches: F[Unit] =
-      ref.get.flatMap { state =>
-        nowExpiryTime.flatMap { now =>
-          val anyExpired =
-            state.fetches.values.exists(_.exists(_.hasExpired(now)))
-
-          if (anyExpired) {
-            val completeExpired =
-              state.fetches.values
-                .foldLeft(F.unit)(_ >> _.foldLeft(F.unit) {
-                  case (es, e @ ExpiringFetch(_, _)) if e.hasExpired(now) =>
-                    es >> e.completeExpired
-                  case (es, _) => es
-                })
-
-            val newFetches =
-              Map.newBuilder[TopicPartition, NonEmptyChain[FetchRequest[F, K, V]]]
-
-            state.fetches.foreach {
-              case (partition, fetches) =>
-                if (!fetches.forall(_.hasExpired(now))) {
-                  val nonExpiredFetches = fetches.filterNot(_.hasExpired(now))
-                  newFetches += partition -> NonEmptyChain.fromChainUnsafe(nonExpiredFetches)
-                }
-            }
-
-            val removeExpired =
-              ref.update(_.copy(fetches = newFetches.result))
-
-            completeExpired >> removeExpired
-          } else F.unit
-        }
-      }
-
     ref.get.flatMap { state =>
       if (state.subscribed) {
         pollConsumer(state)
           .flatMap(handleBatch(state, _))
-          .flatMap(_ => completeExpiredFetches)
       } else F.unit
     }
   }
@@ -466,7 +406,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Request.SubscribeTopics(topics, deferred)   => subscribe(topics, deferred)
       case Request.SubscribePattern(pattern, deferred) => subscribe(pattern, deferred)
       case Request.Fetch(partition, deferred)          => fetch(partition, deferred)
-      case Request.ExpiringFetch(partition, deferred)  => expiringFetch(partition, deferred)
       case Request.Commit(offsets, deferred)           => commit(offsets, deferred)
       case request @ Request.Revoked(_)                => revoked(request)
       case Request.Seek(partition, offset, deferred)   => seek(partition, offset, deferred)
@@ -474,42 +413,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 }
 
 private[kafka] object KafkaConsumerActor {
-  sealed abstract class FetchRequest[F[_], K, V] {
-    def completeRevoked(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit]
-
-    def completeRecords(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit]
-
-    def hasExpired(now: Long): Boolean
-  }
-
-  final case class ExpiringFetch[F[_], K, V](
-    deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], ExpiringFetchCompletedReason)],
-    expiresAt: Long
-  ) extends FetchRequest[F, K, V] {
-    override def completeRevoked(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
-      deferred.complete((chunk, ExpiringFetchCompletedReason.TopicPartitionRevoked))
-
-    override def completeRecords(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
-      deferred.complete((chunk, ExpiringFetchCompletedReason.FetchedRecords))
-
-    def completeExpired: F[Unit] =
-      deferred.complete((Chunk.empty, ExpiringFetchCompletedReason.FetchExpired))
-
-    override def hasExpired(now: Long): Boolean =
-      now >= expiresAt
-  }
-
-  final case class NonExpiringFetch[F[_], K, V](
+  final case class FetchRequest[F[_], K, V](
     deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
-  ) extends FetchRequest[F, K, V] {
-    override def completeRevoked(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
+  ) {
+    def completeRevoked(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
       deferred.complete((chunk, FetchCompletedReason.TopicPartitionRevoked))
 
-    override def completeRecords(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
+    def completeRecords(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
       deferred.complete((chunk, FetchCompletedReason.FetchedRecords))
-
-    override def hasExpired(now: Long): Boolean =
-      false
   }
 
   final case class State[F[_], K, V](
@@ -525,16 +436,7 @@ private[kafka] object KafkaConsumerActor {
       partition: TopicPartition,
       deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
     ): State[F, K, V] = {
-      val fetch = NonEmptyChain.one(NonExpiringFetch(deferred))
-      copy(fetches = fetches combine Map(partition -> fetch))
-    }
-
-    def withExpiringFetch(
-      partition: TopicPartition,
-      deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], ExpiringFetchCompletedReason)],
-      expiresAt: Long
-    ): State[F, K, V] = {
-      val fetch = NonEmptyChain.one(ExpiringFetch(deferred, expiresAt))
+      val fetch = NonEmptyChain.one(FetchRequest(deferred))
       copy(fetches = fetches combine Map(partition -> fetch))
     }
 
@@ -577,16 +479,6 @@ private[kafka] object KafkaConsumerActor {
     case object TopicPartitionRevoked extends FetchCompletedReason
 
     case object FetchedRecords extends FetchCompletedReason
-  }
-
-  sealed abstract class ExpiringFetchCompletedReason
-
-  object ExpiringFetchCompletedReason {
-    case object TopicPartitionRevoked extends ExpiringFetchCompletedReason
-
-    case object FetchedRecords extends ExpiringFetchCompletedReason
-
-    case object FetchExpired extends ExpiringFetchCompletedReason
   }
 
   final case class OnRebalance[F[_], K, V](
@@ -643,11 +535,6 @@ private[kafka] object KafkaConsumerActor {
       partitions: Set[TopicPartition],
       timeout: Option[FiniteDuration],
       deferred: Deferred[F, Either[Throwable, Map[TopicPartition, Long]]]
-    ) extends Request[F, K, V]
-
-    final case class ExpiringFetch[F[_], K, V](
-      partition: TopicPartition,
-      deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], ExpiringFetchCompletedReason)]
     ) extends Request[F, K, V]
 
     final case class Commit[F[_], K, V](

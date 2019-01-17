@@ -256,20 +256,6 @@ sealed abstract class ConsumerSettings[K, V] {
   def withCommitTimeout(commitTimeout: FiniteDuration): ConsumerSettings[K, V]
 
   /**
-    * The time to wait for topic-partition fetches to complete when
-    * using [[KafkaConsumer#stream]]. Once all topic-partition fetches
-    * expire, new fetches for all assigned partitions will be issued.<br>
-    * <br>
-    * The default value is 500 milliseconds.
-    */
-  def fetchTimeout: FiniteDuration
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified [[fetchTimeout]].
-    */
-  def withFetchTimeout(fetchTimeout: FiniteDuration): ConsumerSettings[K, V]
-
-  /**
     * How often we should attempt to call `poll` on the Java `KafkaConsumer`.<br>
     * <br>
     * The default value is 50 milliseconds.
@@ -352,7 +338,6 @@ object ConsumerSettings {
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val commitTimeout: FiniteDuration,
-    override val fetchTimeout: FiniteDuration,
     override val pollInterval: FiniteDuration,
     override val pollTimeout: FiniteDuration,
     override val commitRecovery: CommitRecovery,
@@ -428,9 +413,6 @@ object ConsumerSettings {
     override def withCommitTimeout(commitTimeout: FiniteDuration): ConsumerSettings[K, V] =
       copy(commitTimeout = commitTimeout)
 
-    override def withFetchTimeout(fetchTimeout: FiniteDuration): ConsumerSettings[K, V] =
-      copy(fetchTimeout = fetchTimeout)
-
     override def withPollInterval(pollInterval: FiniteDuration): ConsumerSettings[K, V] =
       copy(pollInterval = pollInterval)
 
@@ -463,7 +445,6 @@ object ConsumerSettings {
     properties = Map(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"),
     closeTimeout = 20.seconds,
     commitTimeout = 15.seconds,
-    fetchTimeout = 500.millis,
     pollInterval = 50.millis,
     pollTimeout = 50.millis,
     commitRecovery = CommitRecovery.Default,
@@ -523,6 +504,6 @@ object ConsumerSettings {
 
   implicit def consumerSettingsShow[K, V]: Show[ConsumerSettings[K, V]] =
     Show.show { s =>
-      s"ConsumerSettings(closeTimeout = ${s.closeTimeout}, commitTimeout = ${s.commitTimeout}, fetchTimeout = ${s.fetchTimeout}, pollInterval = ${s.pollInterval}, pollTimeout = ${s.pollTimeout}, commitRecovery = ${s.commitRecovery}, consumerFactory = ${s.consumerFactory})"
+      s"ConsumerSettings(closeTimeout = ${s.closeTimeout}, commitTimeout = ${s.commitTimeout}, pollInterval = ${s.pollInterval}, pollTimeout = ${s.pollTimeout}, commitRecovery = ${s.commitRecovery}, consumerFactory = ${s.consumerFactory})"
     }
 }
