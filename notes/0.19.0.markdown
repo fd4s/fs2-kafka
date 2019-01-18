@@ -1,0 +1,24 @@
+### Changes
+- Add `KafkaProducer#producePassthrough` for only keeping the passthrough after producing. ([#74][#74])
+- Change `KafkaConsumer#stream` to be an alias for `partitionedStream.parJoinUnbounded`. ([#78][#78])
+  - This also removes `ConsumerSettings#fetchTimeout` as it is now unused.
+- Change to improve type inference of `ProducerMessage`. ([#74][#74], [#76][#76])
+  - To support better type inference, a custom `fs2.kafka.ProducerRecord` has been added.
+  - If you were using the Java `ProducerRecord`, change to `fs2.kafka.ProducerRecord`.
+- Change to replace `Sink`s with `Pipe`s, and usage of `Stream#to` with `Stream#through`. ([#73][#73])
+- Remove `ProducerMessage#single`, `multiple`, and `passthrough`. ([#74][#74])
+  - They have been replaced with `ProducerMessage#apply` and `ProducerMessage#one`.
+  - If you were previously using `single` in isolation, then you can now use `one`.
+  - For all other cases, you can now use `ProducerMessage#apply` instead.
+- Rename `KafkaProducer#produceBatched` to `produce`. ([#74][#74])
+- Remove the previous `KafkaProducer#produce`.
+  - For previous behavior, `flatten` the result from `produce`. ([#74][#74])
+
+### Miscellaneous
+- Change to include current year in license notices. ([#72][#72])
+
+[#72]: https://github.com/ovotech/fs2-kafka/pull/72
+[#73]: https://github.com/ovotech/fs2-kafka/pull/73
+[#74]: https://github.com/ovotech/fs2-kafka/pull/74
+[#76]: https://github.com/ovotech/fs2-kafka/pull/76
+[#78]: https://github.com/ovotech/fs2-kafka/pull/78
