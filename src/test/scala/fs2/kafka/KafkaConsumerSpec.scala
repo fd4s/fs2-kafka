@@ -16,10 +16,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     tests(_.stream)
   }
 
-  describe("KafkaConsumer#partitionedStream") {
-    tests(_.partitionedStream.parJoinUnbounded)
-  }
-
   type Consumer = KafkaConsumer[IO, String, String]
 
   type ConsumerStream = Stream[IO, CommittableMessage[IO, String, String]]

@@ -165,14 +165,6 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should provide withFetchTimeout") {
-      assert {
-        settings
-          .withFetchTimeout(50.millis)
-          .fetchTimeout == 50.millis
-      }
-    }
-
     it("should provide withPollInterval") {
       assert {
         settings
@@ -218,7 +210,7 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
     it("should have a Show instance and matching toString") {
       assert {
-        settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, fetchTimeout = 500 milliseconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default, consumerFactory = Default)" &&
+        settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default, consumerFactory = Default)" &&
         settings.show == settings.toString
       }
     }

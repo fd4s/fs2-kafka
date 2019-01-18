@@ -21,7 +21,6 @@ import cats.data.{NonEmptyList, NonEmptySet}
 import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.syntax.concurrent._
-import cats.instances.list._
 import cats.instances.unit._
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
@@ -30,7 +29,6 @@ import cats.syntax.functor._
 import cats.syntax.monadError._
 import cats.syntax.reducible._
 import cats.syntax.semigroup._
-import cats.syntax.traverse._
 import fs2.concurrent.Queue
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.instances._
@@ -82,18 +80,8 @@ import scala.util.matching.Regex
 sealed abstract class KafkaConsumer[F[_], K, V] {
 
   /**
-    * `Stream` where the elements are Kafka messages and where ordering
-    * is guaranteed per topic-partition. Parallelism can be achieved on
-    * record-level, using for example `parEvalMap`. For partition-level
-    * parallelism, use [[partitionedStream]], where all partitions need
-    * to be processed in parallel.<br>
-    * <br>
-    * The `Stream` works by continually making requests for records on
-    * every assigned partition, waiting for records to come back on all
-    * partitions, or up to [[ConsumerSettings#fetchTimeout]]. Records can
-    * be processed as soon as they are received, without waiting on other
-    * partition requests, but a second request for the same partition will
-    * wait for outstanding fetches to complete or timeout before being sent.
+    * Alias for `partitionedStream.parJoinUnbounded`.
+    * See [[partitionedStream]] for more information.
     *
     * @note you have to first use `subscribe` to subscribe the consumer
     *       before using this `Stream`. If you forgot to subscribe, there
@@ -413,60 +401,8 @@ private[kafka] object KafkaConsumer {
         }
       }
 
-      override def stream: Stream[F, CommittableMessage[F, K, V]] = {
-        val requestAssignment: F[SortedSet[TopicPartition]] =
-          Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
-            val request = Request.Assignment[F, K, V](deferred, onRebalance = None)
-            val assignment = requests.enqueue1(request) >> deferred.get.rethrow
-            F.race(fiber.join.attempt, assignment).map {
-              case Left(_)         => SortedSet.empty[TopicPartition]
-              case Right(assigned) => assigned
-            }
-          }
-
-        type PartitionRequest =
-          (Chunk[CommittableMessage[F, K, V]], ExpiringFetchCompletedReason)
-
-        def chunkQueue(size: Int): F[Queue[F, Option[Chunk[CommittableMessage[F, K, V]]]]] =
-          Queue.bounded[F, Option[Chunk[CommittableMessage[F, K, V]]]](size)
-
-        def requestPartitions(
-          assigned: SortedSet[TopicPartition]
-        ): F[Stream[F, CommittableMessage[F, K, V]]] =
-          chunkQueue(assigned.size).flatMap { chunks =>
-            Deferred[F, Unit].flatMap { dequeueDone =>
-              F.guarantee {
-                  assigned.toList
-                    .traverse { partition =>
-                      Deferred[F, PartitionRequest].flatMap { deferred =>
-                        val request = Request.ExpiringFetch(partition, deferred)
-                        val fetch = requests.enqueue1(request) >> deferred.get
-                        F.race(F.race(fiber.join.attempt, dequeueDone.get), fetch).flatMap {
-                          case Right((chunk, _)) if chunk.nonEmpty =>
-                            chunks.enqueue1(Some(chunk))
-                          case _ => F.unit
-                        }
-                      }.start
-                    }
-                    .flatMap(_.combineAll.join)
-                }(F.race(dequeueDone.get, chunks.enqueue1(None)).void)
-                .start
-                .as {
-                  chunks.dequeue.unNoneTerminate
-                    .flatMap(Stream.chunk)
-                    .covary[F]
-                    .onFinalize(dequeueDone.complete(()))
-                }
-            }
-          }
-
-        Stream
-          .repeatEval(requestAssignment)
-          .filter(_.nonEmpty)
-          .evalMap(requestPartitions)
-          .flatten
-          .interruptWhen(fiber.join.attempt)
-      }
+      override def stream: Stream[F, CommittableMessage[F, K, V]] =
+        partitionedStream.parJoinUnbounded
 
       private[this] def request[A](
         request: Deferred[F, Either[Throwable, A]] => Request[F, K, V]
