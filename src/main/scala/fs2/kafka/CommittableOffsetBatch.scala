@@ -117,8 +117,28 @@ object CommittableOffsetBatch {
     * per topic-partition.
     *
     * @see [[CommittableOffsetBatch#fromFoldableOption]]
+    * @see [[CommittableOffsetBatch#fromFoldableMap]]
     */
   def fromFoldable[F[_], G[_]](offsets: G[CommittableOffset[F]])(
+    implicit F: Applicative[F],
+    G: Foldable[G]
+  ): CommittableOffsetBatch[F] = fromFoldableMap[F, G, CommittableOffset[F]](offsets)(identity)
+
+  /**
+    * Creates a [[CommittableOffsetBatch]] from a `Foldable` containing [[CommittableOffset]]s.
+    * Guaranteed to be equivalent to the following, but implemented more efficiently.
+    *
+    * {{{
+    * offsets.foldLeft(CommittableOffsetBatch.empty[F]){(b, a) => b.updated(toOffset(a))}
+    * }}}
+    *
+    * Note that just like for `updated`, `offsets` have to be in order
+    * per topic-partition.
+    *
+    * @see [[CommittableOffsetBatch#fromFoldableOption]]
+    * @see [[CommittableOffsetBatch#fromFoldable]]
+    */
+  def fromFoldableMap[F[_], G[_], A](offsets: G[A])(toOffset: A => CommittableOffset[F])(
     implicit F: Applicative[F],
     G: Foldable[G]
   ): CommittableOffsetBatch[F] = {
@@ -126,7 +146,8 @@ object CommittableOffsetBatch {
     var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
     var empty: Boolean = true
 
-    offsets.foldLeft(()) { (_, offset) =>
+    offsets.foldLeft(()) { (_, a) =>
+      val offset = toOffset(a)
       if (empty) { commit = offset.commitOffsets; empty = false }
       offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
     }

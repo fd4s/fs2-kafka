@@ -23,6 +23,7 @@ import cats.effect._
 import cats.syntax.functor._
 import cats.syntax.traverse._
 
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
@@ -134,6 +135,31 @@ package object kafka {
     implicit F: Applicative[F]
   ): Pipe[F, Chunk[CommittableOffset[F]], Unit] =
     _.evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
+
+  /**
+    * Commits offsets in batches determined by `Chunk`s while passing
+    * through values. This allows you to explicitly control how offset
+    * batches are created. <br>
+    * If you don't need to pass a value through use [[commitBatchChunk]]
+    * instead. If you want to use the underlying `Chunk`s of the `Stream`,
+    * simply use [[commitBatch]] instead.<br>
+    *
+    * @see [[commitBatchWithin]] for committing offset batches every `n`
+    *      offsets or time window of length `d`, whichever happens first
+    */
+  def commitBatchChunkWithPassthrough[F[_], O](
+    implicit F: Applicative[F]
+  ): Pipe[F, Chunk[(O, CommittableOffset[F])], O] =
+    _.evalMap{ chunk =>
+      val outputs = new ArrayBuffer[O](chunk.size)
+      val batch = CommittableOffsetBatch.fromFoldableMap(chunk) {
+        case (o, offset) =>
+          outputs += o
+          offset
+      }
+      batch.commit.as(Chunk.buffer(outputs.result))
+    }
+    .flatMap(Stream.chunk)
 
   /**
     * Commits offsets in batches determined by `Chunk`s. This allows
