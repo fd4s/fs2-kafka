@@ -20,7 +20,6 @@ import java.util.concurrent.{Executors, ThreadFactory}
 
 import cats.Applicative
 import cats.effect._
-import cats.syntax.functor._
 import cats.syntax.traverse._
 
 import scala.concurrent.ExecutionContext
