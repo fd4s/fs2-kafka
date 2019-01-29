@@ -116,9 +116,32 @@ object CommittableOffsetBatch {
     * Note that just like for `updated`, `offsets` have to be in order
     * per topic-partition.
     *
+    * @see [[CommittableOffsetBatch#fromFoldableMap]]
     * @see [[CommittableOffsetBatch#fromFoldableOption]]
     */
   def fromFoldable[F[_], G[_]](offsets: G[CommittableOffset[F]])(
+    implicit F: Applicative[F],
+    G: Foldable[G]
+  ): CommittableOffsetBatch[F] =
+    fromFoldableMap(offsets)(identity)
+
+  /**
+    * Creates a [[CommittableOffsetBatch]] from a `Foldable` containing
+    * `A`s, by applying `f` to each `A` to get the [[CommittableOffset]].
+    * Guaranteed to be equivalent to the following, but implemented more
+    * efficiently.
+    *
+    * {{{
+    * ga.foldLeft(CommittableOffsetBatch.empty[F])(_ updated f(_))
+    * }}}
+    *
+    * Note that just like for `updated`, `offsets` have to be in order
+    * per topic-partition.
+    *
+    * @see [[CommittableOffsetBatch#fromFoldable]]
+    * @see [[CommittableOffsetBatch#fromFoldableOption]]
+    */
+  def fromFoldableMap[F[_], G[_], A](ga: G[A])(f: A => CommittableOffset[F])(
     implicit F: Applicative[F],
     G: Foldable[G]
   ): CommittableOffsetBatch[F] = {
@@ -126,8 +149,14 @@ object CommittableOffsetBatch {
     var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
     var empty: Boolean = true
 
-    offsets.foldLeft(()) { (_, offset) =>
-      if (empty) { commit = offset.commitOffsets; empty = false }
+    ga.foldLeft(()) { (_, a) =>
+      val offset = f(a)
+
+      if (empty) {
+        commit = offset.commitOffsets
+        empty = false
+      }
+
       offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
     }
 
@@ -151,6 +180,7 @@ object CommittableOffsetBatch {
     * per topic-partition.
     *
     * @see [[CommittableOffsetBatch#fromFoldable]]
+    * @see [[CommittableOffsetBatch#fromFoldableMap]]
     */
   def fromFoldableOption[F[_], G[_]](offsets: G[Option[CommittableOffset[F]]])(
     implicit F: Applicative[F],
@@ -162,7 +192,11 @@ object CommittableOffsetBatch {
 
     offsets.foldLeft(()) {
       case (_, Some(offset)) =>
-        if (empty) { commit = offset.commitOffsets; empty = false }
+        if (empty) {
+          commit = offset.commitOffsets
+          empty = false
+        }
+
         offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
       case (_, None) => ()
     }
