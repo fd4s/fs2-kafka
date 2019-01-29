@@ -20,7 +20,6 @@ import cats.Foldable
 import cats.effect.syntax.concurrent._
 import cats.effect.{Concurrent, Resource}
 import cats.syntax.flatMap._
-import cats.syntax.functor._
 import fs2.kafka.KafkaAdminClient._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin._
