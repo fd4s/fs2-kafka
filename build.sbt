@@ -45,7 +45,7 @@ lazy val dependencySettings = Seq(
 lazy val mdocSettings = Seq(
   mdoc := run.in(Compile).evaluated,
   scalacOptions -= "-Xfatal-warnings",
-  crossScalaVersions := Seq(scalaVersion.value),
+  crossScalaVersions := Seq(scalaVersion.value)
 )
 
 lazy val buildInfoSettings = Seq(
@@ -138,7 +138,12 @@ lazy val mimaSettings = Seq(
     import com.typesafe.tools.mima.core._
     // format: off
     Seq(
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withDeliveryTimeout")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withDeliveryTimeout"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.apply"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withMaxPrefetchBatches"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.maxPrefetchBatches"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.copy"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this")
     )
     // format: on
   }
@@ -237,7 +242,8 @@ ensureReleaseNotesExists in ThisBuild := {
   val notes = releaseNotesFile.value
   if (!notes.isFile) {
     throw new IllegalStateException(
-      s"no release notes found for version [$currentVersion] at [$notes].")
+      s"no release notes found for version [$currentVersion] at [$notes]."
+    )
   }
 }
 

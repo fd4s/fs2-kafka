@@ -328,6 +328,30 @@ sealed abstract class ConsumerSettings[K, V] {
     * Creates a new [[ConsumerSettings]] with the specified [[recordMetadata]].
     */
   def withRecordMetadata(recordMetadata: ConsumerRecord[K, V] => String): ConsumerSettings[K, V]
+
+  /**
+    * The maximum number of record batches to prefetch per topic-partition.
+    * This means that, while records are being processed, there can be up
+    * to `maxPrefetchBatches * max.poll.records` records per topic-partition
+    * that have already been fetched, and are waiting to be processed. You can
+    * use [[withMaxPollRecords]] to control the `max.poll.records` setting.<br>
+    * <br>
+    * This setting effectively controls backpressure, i.e. the maximum number
+    * of batches to prefetch per topic-parititon before starting to slow down
+    * (not fetching more records) until processing has caught-up.<br>
+    * <br>
+    * Note that prefetching cannot be disabled and is generally preferred since
+    * it yields improved performance. The minimum value for this setting is `2`.
+    */
+  def maxPrefetchBatches: Int
+
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified value
+    * for [[maxPrefetchBatches]]. Note that if a value lower than
+    * the minimum `2` is specified, [[maxPrefetchBatches]] will
+    * instead be set to `2` and not the specified value.
+    */
+  def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[K, V]
 }
 
 object ConsumerSettings {
@@ -342,7 +366,8 @@ object ConsumerSettings {
     override val pollTimeout: FiniteDuration,
     override val commitRecovery: CommitRecovery,
     override val consumerFactory: ConsumerFactory,
-    override val recordMetadata: ConsumerRecord[K, V] => String
+    override val recordMetadata: ConsumerRecord[K, V] => String,
+    override val maxPrefetchBatches: Int
   ) extends ConsumerSettings[K, V] {
     override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[K, V] =
       withProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -430,6 +455,9 @@ object ConsumerSettings {
     ): ConsumerSettings[K, V] =
       copy(recordMetadata = recordMetadata)
 
+    override def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[K, V] =
+      copy(maxPrefetchBatches = Math.max(2, maxPrefetchBatches))
+
     override def toString: String =
       Show[ConsumerSettings[K, V]].show(this)
   }
@@ -449,7 +477,8 @@ object ConsumerSettings {
     pollTimeout = 50.millis,
     commitRecovery = CommitRecovery.Default,
     consumerFactory = ConsumerFactory.Default,
-    recordMetadata = _ => OffsetFetchResponse.NO_METADATA
+    recordMetadata = _ => OffsetFetchResponse.NO_METADATA,
+    maxPrefetchBatches = 2
   )
 
   /**

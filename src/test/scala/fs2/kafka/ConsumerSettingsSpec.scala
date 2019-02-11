@@ -208,6 +208,26 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
+    it("should provide withMaxPrefetchBatches") {
+      assert {
+        settings
+          .withMaxPrefetchBatches(3)
+          .maxPrefetchBatches == 3
+      }
+
+      assert {
+        settings
+          .withMaxPrefetchBatches(2)
+          .maxPrefetchBatches == 2
+      }
+
+      assert {
+        settings
+          .withMaxPrefetchBatches(1)
+          .maxPrefetchBatches == 2
+      }
+    }
+
     it("should have a Show instance and matching toString") {
       assert {
         settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default, consumerFactory = Default)" &&
