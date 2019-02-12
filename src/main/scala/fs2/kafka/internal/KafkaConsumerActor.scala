@@ -45,6 +45,21 @@ import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
+/**
+  * [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to
+  * a traditional actor, in the sense that it receives requests one at-a-time
+  * via a queue, which are received as calls to the `handle` function. `Poll`
+  * requests are scheduled at a fixed interval and, when handled, calls the
+  * `KafkaConsumer#poll` function, allowing the Java consumer to perform
+  * necessary background functions, and to return fetched records.<br>
+  * <br>
+  * The actor receives `Fetch` requests for topic-partitions for which there
+  * is demand. The actor then attempts to fetch records for topic-partitions
+  * where there is a `Fetch` request. For topic-partitions where there is no
+  * request, no attempt to fetch records is made. This effectively enables
+  * backpressure, as long as `Fetch` requests are only issued when there
+  * is more demand.
+  */
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[K, V],
   executionContext: ExecutionContext,
