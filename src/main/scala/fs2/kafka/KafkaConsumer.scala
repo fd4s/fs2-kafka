@@ -282,6 +282,7 @@ private[kafka] object KafkaConsumer {
 
   private[this] def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
+    settings: ConsumerSettings[K, V],
     actor: Fiber[F, Unit],
     polls: Fiber[F, Unit]
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
@@ -304,7 +305,7 @@ private[kafka] object KafkaConsumer {
 
       override def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableMessage[F, K, V]]]]] =
-          Queue.bounded[F, Option[Chunk[CommittableMessage[F, K, V]]]](1)
+          Queue.bounded(settings.maxPrefetchBatches - 1)
 
         type PartitionRequest =
           (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)
@@ -517,7 +518,7 @@ private[kafka] object KafkaConsumer {
 
                 startConsumerActor(requests, polls, actor).flatMap { actor =>
                   startPollScheduler(polls, settings.pollInterval).map { polls =>
-                    createKafkaConsumer(requests, actor, polls)
+                    createKafkaConsumer(requests, settings, actor, polls)
                   }
                 }
               }
