@@ -16,18 +16,17 @@
 
 package fs2.kafka.internal
 
+import cats.{Foldable, Show}
+import cats.effect.{CancelToken, Concurrent, Sync}
+import cats.syntax.foldable._
+import cats.syntax.show._
+import fs2.kafka.{Header, Headers, KafkaHeaders}
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util
 import java.util.concurrent.{CancellationException, CompletionException, TimeUnit}
-
-import cats.effect.{CancelToken, Concurrent, Sync}
-import cats.syntax.foldable._
-import cats.syntax.show._
-import cats.{Foldable, Show}
 import org.apache.kafka.common.KafkaFuture
 import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
-
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
@@ -189,6 +188,17 @@ private[kafka] object syntax {
             }
           })
           .cancelToken
+      }
+  }
+
+  implicit final class KafkaHeadersSyntax(
+    private val headers: KafkaHeaders
+  ) extends AnyVal {
+    def asScala: Headers =
+      Headers.fromSeq {
+        headers.toArray.map { header =>
+          Header(header.key, header.value)
+        }
       }
   }
 }

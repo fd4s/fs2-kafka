@@ -5,6 +5,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.{Arbitrary, Gen}
+import java.nio.charset._
 
 trait BaseGenerators {
   val genTopicPartition: Gen[TopicPartition] =
@@ -53,4 +54,86 @@ trait BaseGenerators {
     implicit F: Applicative[F]
   ): Arbitrary[CommittableOffsetBatch[F]] =
     Arbitrary(genCommittableOffsetBatch[F])
+
+  val genCharset: Gen[Charset] =
+    Gen.oneOf(
+      StandardCharsets.US_ASCII,
+      StandardCharsets.ISO_8859_1,
+      StandardCharsets.UTF_8,
+      StandardCharsets.UTF_16BE,
+      StandardCharsets.UTF_16LE,
+      StandardCharsets.UTF_16
+    )
+
+  implicit val arbCharset: Arbitrary[Charset] =
+    Arbitrary(genCharset)
+
+  val genDeserializerString: Gen[Deserializer[String]] =
+    genCharset.map(Deserializer.string)
+
+  implicit val arbDeserializerString: Arbitrary[Deserializer[String]] =
+    Arbitrary(genDeserializerString)
+
+  implicit def arbDeserializerCombine[A, B](
+    implicit arbB: Arbitrary[Deserializer[B]],
+    arbABA: Arbitrary[(A, B) => A]
+  ): Arbitrary[Deserializer[A => A]] =
+    Arbitrary {
+      for {
+        deserializer <- arbitrary[Deserializer[B]]
+        combine <- arbitrary[(A, B) => A]
+      } yield {
+        Deserializer.instance { (topic, headers, bytes) => (a: A) =>
+          combine(a, deserializer.deserialize(topic, headers, bytes))
+        }
+      }
+    }
+
+  val genSerializerString: Gen[Serializer[String]] =
+    genCharset.map(Serializer.string)
+
+  implicit val arbSerializerString: Arbitrary[Serializer[String]] =
+    Arbitrary(genSerializerString)
+
+  val genHeader: Gen[Header] =
+    for {
+      key <- arbitrary[String]
+      value <- arbitrary[Array[Byte]]
+    } yield Header(key, value)
+
+  implicit val arbHeader: Arbitrary[Header] =
+    Arbitrary(genHeader)
+
+  val genHeaders: Gen[Headers] =
+    Gen.listOf(genHeader).map(Headers.fromSeq)
+
+  implicit val arbHeaders: Arbitrary[Headers] =
+    Arbitrary(genHeaders)
+
+  val genHeaderSerializerString: Gen[HeaderSerializer[String]] =
+    genCharset.map(HeaderSerializer.string)
+
+  implicit val arbHeaderSerializerString: Arbitrary[HeaderSerializer[String]] =
+    Arbitrary(genHeaderSerializerString)
+
+  val genHeaderDeserializerString: Gen[HeaderDeserializer[String]] =
+    genCharset.map(HeaderDeserializer.string)
+
+  implicit val arbHeaderDeserializerString: Arbitrary[HeaderDeserializer[String]] =
+    Arbitrary(genHeaderDeserializerString)
+
+  implicit def arbHeaderDeserializerCombine[A, B](
+    implicit arbB: Arbitrary[HeaderDeserializer[B]],
+    arbABA: Arbitrary[(A, B) => A]
+  ): Arbitrary[HeaderDeserializer[A => A]] =
+    Arbitrary {
+      for {
+        deserializer <- arbitrary[HeaderDeserializer[B]]
+        combine <- arbitrary[(A, B) => A]
+      } yield {
+        HeaderDeserializer.instance { bytes => (a: A) =>
+          combine(a, deserializer.deserialize(bytes))
+        }
+      }
+    }
 }

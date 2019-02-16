@@ -18,8 +18,6 @@ package fs2.kafka
 
 import cats.Show
 import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.Serializer
-
 import scala.concurrent.duration._
 
 /**
@@ -33,19 +31,19 @@ import scala.concurrent.duration._
   * [[ProducerSettings]] instances are immutable and all modification functions
   * return a new [[ProducerSettings]] instance.<br>
   * <br>
-  * Use [[ProducerSettings#apply]] to create a new instance.
+  * Use `ProducerSettings#apply` to create a new instance.
   */
 sealed abstract class ProducerSettings[K, V] {
 
   /**
     * The `Serializer` to use for serializing record keys.
     */
-  def keySerializer: Serializer[K]
+  def keySerializer: KafkaSerializer[K]
 
   /**
     * The `Serializer` to use for serializing record values.
     */
-  def valueSerializer: Serializer[V]
+  def valueSerializer: KafkaSerializer[V]
 
   /**
     * Properties which can be provided when creating a Java `KafkaProducer`
@@ -230,8 +228,8 @@ sealed abstract class ProducerSettings[K, V] {
 
 object ProducerSettings {
   private[this] final case class ProducerSettingsImpl[K, V](
-    override val keySerializer: Serializer[K],
-    override val valueSerializer: Serializer[V],
+    override val keySerializer: KafkaSerializer[K],
+    override val valueSerializer: KafkaSerializer[V],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val producerFactory: ProducerFactory
@@ -294,12 +292,9 @@ object ProducerSettings {
       Show[ProducerSettings[K, V]].show(this)
   }
 
-  /**
-    * Creates a new [[ProducerSettings]] instance using the specified settings.
-    */
-  def apply[K, V](
-    keySerializer: Serializer[K],
-    valueSerializer: Serializer[V]
+  private[this] def create[K, V](
+    keySerializer: KafkaSerializer[K],
+    valueSerializer: KafkaSerializer[V]
   ): ProducerSettings[K, V] =
     ProducerSettingsImpl(
       keySerializer = keySerializer,
@@ -308,6 +303,30 @@ object ProducerSettings {
       closeTimeout = 60.seconds,
       producerFactory = ProducerFactory.Default
     )
+
+  /**
+    * Creates a new [[ProducerSettings]] instance using
+    * the specified serializers for the key and value.
+    */
+  def apply[K, V](
+    keySerializer: KafkaSerializer[K],
+    valueSerializer: KafkaSerializer[V]
+  ): ProducerSettings[K, V] = create(
+    keySerializer = keySerializer,
+    valueSerializer = valueSerializer
+  )
+
+  /**
+    * Creates a new [[ProducerSettings]] instance using
+    * implicit [[Serializer]]s for the key and value.
+    */
+  def apply[K, V](
+    implicit keySerializer: Serializer[K],
+    valueSerializer: Serializer[V]
+  ): ProducerSettings[K, V] = create(
+    keySerializer = keySerializer,
+    valueSerializer = valueSerializer
+  )
 
   implicit def producerSettingsShow[K, V]: Show[ProducerSettings[K, V]] =
     Show.show { s =>

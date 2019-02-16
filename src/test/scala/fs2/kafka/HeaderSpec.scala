@@ -25,5 +25,19 @@ final class HeaderSpec extends BaseSpec {
       val value = Array[Byte]()
       assert(Header("key", value).value == value)
     }
+
+    it("should deserialize with as") {
+      forAll { s: String =>
+        val header = Header("key", s.getBytes)
+        assert(header.as[String] == s)
+      }
+    }
+
+    it("should deserialize with attemptAs") {
+      forAll { i: Int =>
+        val header = Header.serialize("key", i)
+        assert(header.attemptAs[Int] == Right(i))
+      }
+    }
   }
 }
