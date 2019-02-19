@@ -26,7 +26,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 package object kafka {
-  private[kafka] type Id[+A] = A
+  type Id[+A] = A
 
   /**
     * Commits offsets in batches determined by the `Chunk`s of the
