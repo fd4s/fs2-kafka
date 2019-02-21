@@ -8,16 +8,15 @@ import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer => KConsumer}
 import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization._
 
 import scala.collection.JavaConverters._
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
-  implicit final val stringSerializer: Serializer[String] =
-    new StringSerializer
+  implicit final val stringSerializer: KafkaSerializer[String] =
+    new org.apache.kafka.common.serialization.StringSerializer
 
-  implicit final val stringDeserializer: Deserializer[String] =
-    new StringDeserializer
+  implicit final val stringDeserializer: KafkaDeserializer[String] =
+    new org.apache.kafka.common.serialization.StringDeserializer
 
   final def adminClientSettings(
     config: EmbeddedKafkaConfig
@@ -28,31 +27,24 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
   final def consumerSettings(
     config: EmbeddedKafkaConfig
   ): ConsumerSettings[String, String] =
-    ConsumerSettings(
-      keyDeserializer = new StringDeserializer,
-      valueDeserializer = new StringDeserializer
-    ).withProperties(consumerProperties(config))
+    ConsumerSettings[String, String]
+      .withProperties(consumerProperties(config))
       .withRecordMetadata(_.timestamp.toString)
 
   final def consumerSettingsExecutionContext(
     config: EmbeddedKafkaConfig
   ): Stream[IO, ConsumerSettings[String, String]] =
     consumerExecutionContextStream[IO].map { executionContext =>
-      ConsumerSettings(
-        keyDeserializer = new StringDeserializer,
-        valueDeserializer = new StringDeserializer,
-        executionContext = executionContext
-      ).withProperties(consumerProperties(config))
+      ConsumerSettings[String, String](executionContext)
+        .withProperties(consumerProperties(config))
         .withRecordMetadata(_.timestamp.toString)
     }
 
   final def producerSettings(
     config: EmbeddedKafkaConfig
   ): ProducerSettings[String, String] =
-    ProducerSettings(
-      keySerializer = new StringSerializer,
-      valueSerializer = new StringSerializer
-    ).withProperties(producerProperties(config))
+    ProducerSettings[String, String]
+      .withProperties(producerProperties(config))
 
   final def adminClientProperties(config: EmbeddedKafkaConfig): Map[String, String] =
     Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}")

@@ -19,10 +19,8 @@ package fs2.kafka
 import cats.Show
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.common.requests.OffsetFetchResponse
-import org.apache.kafka.common.serialization.Deserializer
-
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 /**
   * [[ConsumerSettings]] contain settings necessary to create a
@@ -44,12 +42,12 @@ sealed abstract class ConsumerSettings[K, V] {
   /**
     * The `Deserializer` to use for deserializing record keys.
     */
-  def keyDeserializer: Deserializer[K]
+  def keyDeserializer: KafkaDeserializer[K]
 
   /**
     * The `Deserializer` to use for deserializing record values.
     */
-  def valueDeserializer: Deserializer[V]
+  def valueDeserializer: KafkaDeserializer[V]
 
   /**
     * The `ExecutionContext` on which to run blocking Kafka operations.
@@ -356,8 +354,8 @@ sealed abstract class ConsumerSettings[K, V] {
 
 object ConsumerSettings {
   private[this] final case class ConsumerSettingsImpl[K, V](
-    override val keyDeserializer: Deserializer[K],
-    override val valueDeserializer: Deserializer[V],
+    override val keyDeserializer: KafkaDeserializer[K],
+    override val valueDeserializer: KafkaDeserializer[V],
     override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
@@ -463,8 +461,8 @@ object ConsumerSettings {
   }
 
   private[this] def create[K, V](
-    keyDeserializer: Deserializer[K],
-    valueDeserializer: Deserializer[V],
+    keyDeserializer: KafkaDeserializer[K],
+    valueDeserializer: KafkaDeserializer[V],
     executionContext: Option[ExecutionContext]
   ): ConsumerSettings[K, V] = ConsumerSettingsImpl(
     keyDeserializer = keyDeserializer,
@@ -495,7 +493,20 @@ object ConsumerSettings {
     * a `consumerExecutionContextResource` with `1` thread.
     */
   def apply[K, V](
-    keyDeserializer: Deserializer[K],
+    keyDeserializer: KafkaDeserializer[K],
+    valueDeserializer: KafkaDeserializer[V]
+  ): ConsumerSettings[K, V] = create(
+    keyDeserializer = keyDeserializer,
+    valueDeserializer = valueDeserializer,
+    executionContext = None
+  )
+
+  /**
+    * Creates a new [[ConsumerSettings]] instance using
+    * implicit [[Deserializer]]s for the key and value.
+    */
+  def apply[K, V](
+    implicit keyDeserializer: Deserializer[K],
     valueDeserializer: Deserializer[V]
   ): ConsumerSettings[K, V] = create(
     keyDeserializer = keyDeserializer,
@@ -522,9 +533,23 @@ object ConsumerSettings {
     *   `consumerExecutionContextResource` with `1` thread.
     */
   def apply[K, V](
-    keyDeserializer: Deserializer[K],
-    valueDeserializer: Deserializer[V],
+    keyDeserializer: KafkaDeserializer[K],
+    valueDeserializer: KafkaDeserializer[V],
     executionContext: ExecutionContext
+  ): ConsumerSettings[K, V] = create(
+    keyDeserializer = keyDeserializer,
+    valueDeserializer = valueDeserializer,
+    executionContext = Some(executionContext)
+  )
+
+  /**
+    * Creates a new [[ConsumerSettings]] instance using
+    * the specified `ExecutionContext` and implicit
+    * [[Deserializer]]s for the key and value.
+    */
+  def apply[K, V](executionContext: ExecutionContext)(
+    implicit keyDeserializer: Deserializer[K],
+    valueDeserializer: Deserializer[V]
   ): ConsumerSettings[K, V] = create(
     keyDeserializer = keyDeserializer,
     valueDeserializer = valueDeserializer,

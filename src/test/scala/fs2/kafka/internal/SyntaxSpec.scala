@@ -1,10 +1,10 @@
 package fs2.kafka.internal
 
-import java.time.temporal.ChronoUnit.MICROS
-
+import fs2.kafka._
 import fs2.kafka.BaseSpec
 import fs2.kafka.internal.syntax._
-
+import java.time.temporal.ChronoUnit.MICROS
+import org.apache.kafka.common.header.internals.RecordHeaders
 import scala.concurrent.duration._
 
 final class SyntaxSpec extends BaseSpec {
@@ -24,6 +24,29 @@ final class SyntaxSpec extends BaseSpec {
         assert {
           m.filterKeysStrictValuesList(p) == m.filterKeys(p).values.toList
         }
+      }
+    }
+  }
+
+  describe("KafkaHeaders#asScala") {
+    it("should convert empty") {
+      val kafkaHeaders: KafkaHeaders =
+        new RecordHeaders()
+
+      assert(kafkaHeaders.asScala == Headers.empty)
+    }
+
+    it("should convert non-empty") {
+      val kafkaHeaders: KafkaHeaders = {
+        val recordHeaders = new RecordHeaders()
+        recordHeaders.add("key", Array())
+        recordHeaders
+      }
+
+      assert {
+        val headers = kafkaHeaders.asScala
+        headers.toChain.size == 1 &&
+        headers("key").map(_.value.size) == Some(0)
       }
     }
   }

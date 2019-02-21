@@ -14,7 +14,6 @@ import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
 import fs2.kafka._
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import scala.concurrent.duration._
 
 object Main extends IOApp {
@@ -23,20 +22,14 @@ object Main extends IOApp {
       IO.pure(record.key -> record.value)
 
     val consumerSettings =
-      ConsumerSettings(
-        keyDeserializer = new StringDeserializer,
-        valueDeserializer = new StringDeserializer
-      )
-      .withAutoOffsetReset(AutoOffsetReset.Earliest)
-      .withBootstrapServers("localhost")
-      .withGroupId("group")
+      ConsumerSettings[String, String]
+        .withAutoOffsetReset(AutoOffsetReset.Earliest)
+        .withBootstrapServers("localhost")
+        .withGroupId("group")
 
     val producerSettings =
-      ProducerSettings(
-        keySerializer = new StringSerializer,
-        valueSerializer = new StringSerializer
-      )
-      .withBootstrapServers("localhost")
+      ProducerSettings[String, String]
+        .withBootstrapServers("localhost")
 
     val stream =
       producerStream[IO]

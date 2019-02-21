@@ -28,6 +28,18 @@ import scala.concurrent.duration.FiniteDuration
 package object kafka {
   type Id[+A] = A
 
+  private[kafka] type KafkaDeserializer[A] =
+    org.apache.kafka.common.serialization.Deserializer[A]
+
+  private[kafka] type KafkaSerializer[A] =
+    org.apache.kafka.common.serialization.Serializer[A]
+
+  private[kafka] type KafkaHeader =
+    org.apache.kafka.common.header.Header
+
+  private[kafka] type KafkaHeaders =
+    org.apache.kafka.common.header.Headers
+
   /**
     * Commits offsets in batches determined by the `Chunk`s of the
     * underlying `Stream`. If you want more explicit control over

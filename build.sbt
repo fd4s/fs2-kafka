@@ -36,6 +36,7 @@ lazy val dependencySettings = Seq(
   ),
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % "3.0.5",
+    "org.typelevel" %% "cats-testkit" % "1.6.0",
     "org.scalacheck" %% "scalacheck" % "1.14.0",
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.0"
@@ -143,7 +144,10 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withMaxPrefetchBatches"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.maxPrefetchBatches"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.copy"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this")
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.asJava"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.withKey"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.concat")
     )
     // format: on
   }

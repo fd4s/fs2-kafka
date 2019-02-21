@@ -140,17 +140,8 @@ private[kafka] object KafkaProducer {
             else null,
             record.key,
             record.value,
-            asJavaHeaders(record.headers)
+            record.headers.asJava
           )
-
-        private[this] def asJavaHeaders(
-          headers: Headers
-        ): org.apache.kafka.common.header.Headers = {
-          val empty: org.apache.kafka.common.header.Headers =
-            new org.apache.kafka.common.header.internals.RecordHeaders()
-
-          headers.toChain.foldLeft(empty)(_ add _)
-        }
 
         private[this] def callback(f: (RecordMetadata, Throwable) => Unit): Callback =
           new Callback {
