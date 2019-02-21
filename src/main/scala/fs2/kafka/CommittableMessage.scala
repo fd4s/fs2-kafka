@@ -18,8 +18,6 @@ package fs2.kafka
 
 import cats.Show
 import cats.syntax.show._
-import fs2.kafka.internal.instances._
-import org.apache.kafka.clients.consumer.ConsumerRecord
 
 /**
   * [[CommittableMessage]] is a Kafka record along with an instance of
@@ -33,7 +31,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
   * While normally not necessary, [[CommittableMessage#apply]] can be
   * used to create a new instance.
   */
-sealed abstract class CommittableMessage[F[_], K, V] {
+sealed abstract class CommittableMessage[F[_], +K, +V] {
 
   /**
     * The Kafka record for the [[CommittableMessage]]. If you are not
@@ -53,7 +51,7 @@ sealed abstract class CommittableMessage[F[_], K, V] {
 }
 
 object CommittableMessage {
-  private[this] final class CommittableMessageImpl[F[_], K, V](
+  private[this] final class CommittableMessageImpl[F[_], +K, +V](
     override val record: ConsumerRecord[K, V],
     override val committableOffset: CommittableOffset[F]
   ) extends CommittableMessage[F, K, V] {
