@@ -1,5 +1,7 @@
 package fs2.kafka
+
 import cats.data.Chain
+import scala.collection.JavaConverters._
 
 final class HeadersSpec extends BaseSpec {
   describe("Headers#empty") {
@@ -32,10 +34,6 @@ final class HeadersSpec extends BaseSpec {
       assert(Headers.empty.toChain.isEmpty)
     }
 
-    it("should return empty from asJava") {
-      assert(Headers.empty.asJava.toArray.isEmpty)
-    }
-
     it("should create a new Headers from append(Header)") {
       assert {
         val header = Header("key", Array())
@@ -50,7 +48,114 @@ final class HeadersSpec extends BaseSpec {
     }
   }
 
-  describe("Headers (non-empty)") {
+  describe("Headers#empty.asJava") {
+    val empty = Headers.empty.asJava
+
+    it("add(header) throws IllegalStateException") {
+      a[IllegalStateException] should be thrownBy {
+        empty.add(Header("key", Array()))
+      }
+    }
+
+    it("add(key, value) throws IllegalStateException") {
+      a[IllegalStateException] should be thrownBy {
+        empty.add("key", Array())
+      }
+    }
+
+    it("remove throws IllegalStateException") {
+      a[IllegalStateException] should be thrownBy {
+        empty.remove("key")
+      }
+    }
+
+    it("lastHeader returns null") {
+      empty.lastHeader("key") shouldBe null
+    }
+
+    it("headers returns empty iterable") {
+      assert(!empty.headers("key").iterator.hasNext)
+
+      a[NoSuchElementException] should be thrownBy {
+        empty.headers("key").iterator.next()
+      }
+    }
+
+    it("toArray returns empty array") {
+      assert(empty.toArray.isEmpty)
+    }
+
+    it("iterator.next throws NoSuchElementException") {
+      a[NoSuchElementException] should be thrownBy {
+        empty.iterator.next()
+      }
+    }
+
+    it("iterator.hasNext returns false") {
+      assert(!empty.iterator.hasNext)
+    }
+  }
+
+  describe("Headers#nonEmpty.asJava") {
+    val header = Header("key", Array())
+    val headers = header.headers.asJava
+
+    it("add(header) throws IllegalStateException") {
+      a[IllegalStateException] should be thrownBy {
+        headers.add(Header("key", Array()))
+      }
+    }
+
+    it("add(key, value) throws IllegalStateException") {
+      a[IllegalStateException] should be thrownBy {
+        headers.add("key", Array())
+      }
+    }
+
+    it("remove throws IllegalStateException") {
+      a[IllegalStateException] should be thrownBy {
+        headers.remove("key")
+      }
+    }
+
+    it("lastHeader returns last header") {
+      val first = Header("key", Array(0))
+      val second = Header("key", Array(1))
+      val multiple = Headers(first, second)
+
+      multiple.asJava.lastHeader("key") shouldBe second
+    }
+
+    it("lastHeaders returns existing header") {
+      headers.lastHeader("key") shouldBe header
+    }
+
+    it("lastHeader returns null for missing key") {
+      headers.lastHeader("") shouldBe null
+    }
+
+    it("headers returns matching headers") {
+      val list = headers.headers("key").iterator.asScala.toList
+      assert(list.size == 1 && list.head == header)
+    }
+
+    it("headers returns empty if no matching headers") {
+      val list = headers.headers("").iterator.asScala.toList
+      assert(list.isEmpty)
+    }
+
+    it("toArray returns elements") {
+      val array = headers.toArray
+      assert(array.size == 1 && array.head == header)
+    }
+
+    it("iterator returns elements") {
+      val list = headers.iterator.asScala.toList
+      assert(list.size == 1 && list.head == header)
+    }
+  }
+
+  describe("Headers#nonEmpty") {
     it("should not be empty") {
       assert(!Headers(Header("key", Array())).isEmpty)
     }
@@ -71,10 +176,6 @@ final class HeadersSpec extends BaseSpec {
         )
 
       assert(headers("key").map(_.value.head) == Some(1.toByte))
-    }
-
-    it("should return non-empty from asJava") {
-      assert(Headers(Header("key", Array())).asJava.toArray.size == 1)
     }
 
     it("should concat empty") {

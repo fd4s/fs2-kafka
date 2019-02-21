@@ -1,6 +1,11 @@
 package fs2.kafka
 
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.{Assertions, FunSpec}
+import org.scalatest._
+import org.scalatest.prop._
 
-abstract class BaseSpec extends FunSpec with Assertions with PropertyChecks with BaseGenerators
+abstract class BaseSpec
+    extends FunSpec
+    with Assertions
+    with Matchers
+    with PropertyChecks
+    with BaseGenerators
