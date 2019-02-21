@@ -1,7 +1,7 @@
 package fs2.kafka
 
 import cats.implicits._
-import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
 
 import scala.concurrent.ExecutionContext
@@ -198,7 +198,7 @@ final class ConsumerSettingsSpec extends BaseSpec {
     }
 
     it("should provide withRecordMetadata") {
-      val record = new ConsumerRecord("topic", 0, 0L, "key", "value")
+      val record = ConsumerRecord("topic", 0, 0L, "key", "value")
 
       assert {
         settings.recordMetadata(record) == "" &&

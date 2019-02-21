@@ -129,8 +129,8 @@ private[kafka] object KafkaProducer {
 
         private[this] def asJavaRecord(
           record: ProducerRecord[K, V]
-        ): org.apache.kafka.clients.producer.ProducerRecord[K, V] =
-          new org.apache.kafka.clients.producer.ProducerRecord[K, V](
+        ): KafkaProducerRecord[K, V] =
+          new KafkaProducerRecord[K, V](
             record.topic,
             if (record.partition.isDefined)
               record.partition.get: java.lang.Integer

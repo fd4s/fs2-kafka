@@ -16,38 +16,19 @@
 
 package fs2.kafka.internal
 
-import java.util
-
 import cats.instances.int._
 import cats.instances.long._
 import cats.instances.string._
 import cats.instances.tuple._
 import cats.syntax.show._
 import cats.{Order, Semigroup, Show}
-import org.apache.kafka.clients.consumer.{ConsumerRecord, OffsetAndMetadata}
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.header.{Header, Headers}
-import org.apache.kafka.common.record.TimestampType
 
 import scala.collection.mutable.ArrayBuffer
 
 private[kafka] object instances {
-  implicit def consumerRecordShow[K, V](
-    implicit
-    K: Show[K],
-    V: Show[V]
-  ): Show[ConsumerRecord[K, V]] = Show.show { cr =>
-    val leaderEpoch = if (cr.leaderEpoch.isPresent) (cr.leaderEpoch.get: Int).show else "null"
-    show"ConsumerRecord(topic = ${cr.topic}, partition = ${cr.partition}, leaderEpoch = $leaderEpoch, offset = ${cr.offset}, ${cr.timestampType} = ${cr.timestamp}, serialized key size = ${cr.serializedKeySize}, serialized value size = ${cr.serializedValueSize}, headers = ${cr.headers}, key = ${cr.key}, value = ${cr.value})"
-  }
-
-  implicit val headerShow: Show[Header] =
-    Show.show(h => show"${h.key} -> ${util.Arrays.toString(h.value)}")
-
-  implicit val headersShow: Show[Headers] =
-    Show.show(hs => hs.toArray.map(_.show).mkString("Headers(", ", ", ")"))
-
   implicit val offsetAndMetadataOrder: Order[OffsetAndMetadata] =
     Order.by(oam => (oam.offset, oam.metadata))
 
@@ -63,9 +44,6 @@ private[kafka] object instances {
 
   implicit val recordMetadataShow: Show[RecordMetadata] =
     Show.show(rm => show"${rm.topic}-${rm.partition}@${rm.offset}")
-
-  implicit val timestampTypeShow: Show[TimestampType] =
-    Show.show(_.name)
 
   implicit val topicPartitionOrder: Order[TopicPartition] =
     Order.by(tp => (tp.topic, tp.partition))
