@@ -24,7 +24,7 @@ import fs2.kafka.KafkaAdminClient._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
-import org.apache.kafka.common.{KafkaFuture, TopicPartition}
+import org.apache.kafka.common.{KafkaFuture, Node, TopicPartition}
 
 /**
   * [[KafkaAdminClient]] represents an admin client for Kafka, which is able to
@@ -34,6 +34,21 @@ import org.apache.kafka.common.{KafkaFuture, TopicPartition}
   * Use [[adminClientResource]] or [[adminClientStream]] to create an instance.
   */
 sealed abstract class KafkaAdminClient[F[_]] {
+
+  /**
+    * Create a new topic.
+    *
+    * NOTE: Kafka's base [[AdminClient]] supports creating multiple topics in a
+    * single request, but the result isn't transactional. We limit to a single
+    * topic-per-request to avoid complications in error reporting for cases when
+    * some topic creations fail and others succeed.
+    */
+  def createTopic(topic: NewTopic): CreateTopic[F]
+
+  /**
+    * Describes nodes in the current cluster.
+    */
+  def describeCluster: DescribeCluster[F]
 
   /**
     * Describes the consumer groups with the specified group ids, returning a
@@ -113,6 +128,32 @@ sealed abstract class KafkaAdminClient[F[_]] {
 }
 
 object KafkaAdminClient {
+
+  sealed abstract class CreateTopic[F[_]] {
+
+    /** Name of the topic being created. */
+    def topicName: String
+
+    /** Empty marker completed when the creation request succeeds. */
+    def value: F[Unit]
+  }
+
+  private[this] def createTopicWith[F[_]](
+    client: Client[F],
+    topic: NewTopic
+  ): CreateTopic[F] =
+    new CreateTopic[F] {
+      override def topicName: String = topic.name
+      override def value: F[Unit] =
+        client { admin =>
+          admin
+            .createTopics(java.util.Collections.singleton(topic))
+            .values
+            .get(topic.name())
+            .map(_ => ())
+        }
+    }
+
   private[this] def describeConsumerGroupsWith[F[_], G[_]](
     client: Client[F],
     groupIds: G[String]
@@ -124,6 +165,32 @@ object KafkaAdminClient {
     topics: G[String]
   )(implicit G: Foldable[G]): F[Map[String, TopicDescription]] =
     client(_.describeTopics(topics.asJava).all.map(_.toMap))
+
+  sealed abstract class DescribeCluster[F[_]] {
+
+    /** Lists nodes in cluster. */
+    def nodes: F[Set[Node]]
+
+    /** Node in cluster acting as the current controller. */
+    def controller: F[Node]
+
+    /** Current cluster ID. */
+    def clusterId: F[String]
+  }
+
+  private[this] def describeClusterWith[F[_]](
+    client: Client[F]
+  ): DescribeCluster[F] =
+    new DescribeCluster[F] {
+      override def nodes: F[Set[Node]] =
+        client(_.describeCluster().nodes().map(_.toSet))
+
+      override def controller: F[Node] =
+        client(_.describeCluster().controller())
+
+      override def clusterId: F[String] =
+        client(_.describeCluster().clusterId())
+    }
 
   sealed abstract class ListTopics[F[_]] {
 
@@ -306,6 +373,12 @@ object KafkaAdminClient {
   )(implicit F: Concurrent[F]): Resource[F, KafkaAdminClient[F]] =
     createAdminClient(settings).map { client =>
       new KafkaAdminClient[F] {
+        def createTopic(topic: NewTopic): CreateTopic[F] =
+          createTopicWith(client, topic)
+
+        def describeCluster: DescribeCluster[F] =
+          describeClusterWith(client)
+
         def describeConsumerGroups[G[_]](groupIds: G[String])(
           implicit G: Foldable[G]
         ): F[Map[String, ConsumerGroupDescription]] =

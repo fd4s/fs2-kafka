@@ -2,6 +2,7 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.implicits._
+import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.common.TopicPartition
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
@@ -25,6 +26,12 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
 
         adminClientResource[IO](adminClientSettings(config)).use { adminClient =>
           for {
+            clusterNodes <- adminClient.describeCluster.nodes
+            _ <- IO(assert(clusterNodes.size == 1))
+            clusterController <- adminClient.describeCluster.controller
+            _ <- IO(assert(!clusterController.isEmpty))
+            clusterId <- adminClient.describeCluster.clusterId
+            _ <- IO(assert(clusterId.nonEmpty))
             consumerGroupIds <- adminClient.listConsumerGroups.groupIds
             _ <- IO(assert(consumerGroupIds.size == 1))
             consumerGroupListings <- adminClient.listConsumerGroups.listings
@@ -85,6 +92,14 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                 .forPartitions(List(new TopicPartition("topic", 0)))
                 .toString shouldBe "ListConsumerGroupOffsetsForPartitions(groupId = group, partitions = List(topic-0))"
             }
+            newTopic = new NewTopic("new-test-topic", 1, 1)
+            createRequest = adminClient.createTopic(newTopic)
+            _ <- IO(assert(createRequest.topicName == newTopic.name))
+            preCreateNames <- adminClient.listTopics.names
+            _ <- IO(assert(!preCreateNames.contains(newTopic.name)))
+            _ <- createRequest.value
+            postCreateNames <- adminClient.listTopics.names
+            _ <- IO(assert(postCreateNames.contains(newTopic.name)))
           } yield ()
         }.unsafeRunSync
       }
