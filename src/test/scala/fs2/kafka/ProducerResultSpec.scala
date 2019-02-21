@@ -16,13 +16,16 @@ final class ProducerResultSpec extends BaseSpec {
 
       val one: List[(ProducerRecord[String, String], RecordMetadata)] =
         List(
-          ProducerRecord("topic", "key", "value").withPartition(1).withTimestamp(0L) ->
+          ProducerRecord("topic", "key", "value")
+            .withPartition(1)
+            .withTimestamp(0L)
+            .withHeaders(Header("key", Array()).headers) ->
             new RecordMetadata(new TopicPartition("topic", 0), 0L, 0L, 0L, 0L, 0, 0)
         )
 
       assert {
-        ProducerResult(one, 123).toString == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value), 123)" &&
-        ProducerResult(one, 123).show == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value), 123)"
+        ProducerResult(one, 123).toString == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value, headers = Headers(key -> [])), 123)" &&
+        ProducerResult(one, 123).show == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value, headers = Headers(key -> [])), 123)"
       }
 
       val two: List[(ProducerRecord[String, String], RecordMetadata)] =
