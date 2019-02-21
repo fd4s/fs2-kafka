@@ -17,7 +17,7 @@
 package fs2.kafka
 
 import cats.Show
-import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext

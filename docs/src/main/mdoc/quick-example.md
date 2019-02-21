@@ -13,7 +13,6 @@ Following is an example showing how to:
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
 import fs2.kafka._
-import org.apache.kafka.clients.consumer.ConsumerRecord
 import scala.concurrent.duration._
 
 object Main extends IOApp {

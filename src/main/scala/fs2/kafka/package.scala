@@ -40,6 +40,12 @@ package object kafka {
   private[kafka] type KafkaHeaders =
     org.apache.kafka.common.header.Headers
 
+  private[kafka] type KafkaConsumerRecord[K, V] =
+    org.apache.kafka.clients.consumer.ConsumerRecord[K, V]
+
+  private[kafka] type KafkaProducerRecord[K, V] =
+    org.apache.kafka.clients.producer.ProducerRecord[K, V]
+
   /**
     * Commits offsets in batches determined by the `Chunk`s of the
     * underlying `Stream`. If you want more explicit control over

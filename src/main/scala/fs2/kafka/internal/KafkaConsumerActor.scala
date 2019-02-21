@@ -36,7 +36,7 @@ import fs2.kafka._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
-import org.apache.kafka.clients.consumer._
+import org.apache.kafka.clients.consumer.{ConsumerRecord => _, _}
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
@@ -341,7 +341,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         val partitionMessages = new ArrayBuffer[CommittableMessage[F, K, V]](records.size)
 
         val it = records.iterator
-        while (it.hasNext) partitionMessages += message(it.next, partition)
+        while (it.hasNext) {
+          val next = ConsumerRecord.fromJava(it.next)
+          partitionMessages += message(next, partition)
+        }
 
         messages = messages.updated(partition, partitionMessages)
       }
