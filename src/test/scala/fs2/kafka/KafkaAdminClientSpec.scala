@@ -68,6 +68,9 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
             describedTopics <- adminClient.describeTopics(topicNames.toList)
             _ <- IO(assert(describedTopics.size == 1))
             _ <- IO {
+              adminClient.describeCluster.toString should startWith("DescribeCluster$")
+            }
+            _ <- IO {
               adminClient.toString should startWith("KafkaAdminClient$")
             }
             _ <- IO {
@@ -97,6 +100,8 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
             _ <- IO(assert(!preCreateNames.contains(newTopic.name)))
             _ <- adminClient.createTopic(newTopic)
             postCreateNames <- adminClient.listTopics.names
+            createAgain <- adminClient.createTopics(List(newTopic)).attempt
+            _ <- IO(assert(createAgain.isLeft))
             _ <- IO(assert(postCreateNames.contains(newTopic.name)))
           } yield ()
         }.unsafeRunSync
