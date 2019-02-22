@@ -93,11 +93,9 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                 .toString shouldBe "ListConsumerGroupOffsetsForPartitions(groupId = group, partitions = List(topic-0))"
             }
             newTopic = new NewTopic("new-test-topic", 1, 1)
-            createRequest = adminClient.createTopic(newTopic)
-            _ <- IO(assert(createRequest.topicName == newTopic.name))
             preCreateNames <- adminClient.listTopics.names
             _ <- IO(assert(!preCreateNames.contains(newTopic.name)))
-            _ <- createRequest.value
+            _ <- adminClient.createTopic(newTopic)
             postCreateNames <- adminClient.listTopics.names
             _ <- IO(assert(postCreateNames.contains(newTopic.name)))
           } yield ()
