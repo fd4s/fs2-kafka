@@ -39,7 +39,8 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "cats-testkit" % "1.6.0",
     "org.scalacheck" %% "scalacheck" % "1.14.0",
     "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.0"
+    "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.0",
+    "org.apache.kafka" %% "kafka" % kafkaVersion
   ).map(_ % Test)
 )
 
