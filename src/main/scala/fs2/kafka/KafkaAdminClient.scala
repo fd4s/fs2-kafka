@@ -36,17 +36,35 @@ import org.apache.kafka.common.{KafkaFuture, Node, TopicPartition}
 sealed abstract class KafkaAdminClient[F[_]] {
 
   /**
-    * Create a new topic.
-    *
-    * NOTE: Kafka's base [[AdminClient]] supports creating multiple topics in a
-    * single request, but the result isn't transactional. We limit to a single
-    * topic-per-request to avoid complications in error reporting for cases when
-    * some topic creations fail and others succeed.
+    * Creates the specified topic.
     */
-  def createTopic(topic: NewTopic): CreateTopic[F]
+  def createTopic(topic: NewTopic): F[Unit]
 
   /**
-    * Describes nodes in the current cluster.
+    * Creates the specified topics.
+    */
+  def createTopics[G[_]](topics: G[NewTopic])(
+    implicit G: Foldable[G]
+  ): F[Unit]
+
+  /**
+    * Describes the cluster. Returns nodes using:
+    *
+    * {{{
+    * describeCluster.nodes
+    * }}}
+    *
+    * or the controller node using:
+    *
+    * {{{
+    * describeCluster.controller
+    * }}}
+    *
+    * or the cluster ID using the following.
+    *
+    * {{{
+    * describeCluster.clusterId
+    * }}}
     */
   def describeCluster: DescribeCluster[F]
 
@@ -128,31 +146,17 @@ sealed abstract class KafkaAdminClient[F[_]] {
 }
 
 object KafkaAdminClient {
-
-  sealed abstract class CreateTopic[F[_]] {
-
-    /** Name of the topic being created. */
-    def topicName: String
-
-    /** Empty marker completed when the creation request succeeds. */
-    def value: F[Unit]
-  }
-
   private[this] def createTopicWith[F[_]](
     client: Client[F],
     topic: NewTopic
-  ): CreateTopic[F] =
-    new CreateTopic[F] {
-      override def topicName: String = topic.name
-      override def value: F[Unit] =
-        client { admin =>
-          admin
-            .createTopics(java.util.Collections.singleton(topic))
-            .values
-            .get(topic.name())
-            .map(_ => ())
-        }
-    }
+  ): F[Unit] =
+    client(_.createTopics(java.util.Collections.singleton(topic)).all.void)
+
+  private[this] def createTopicsWith[F[_], G[_]](
+    client: Client[F],
+    topics: G[NewTopic]
+  )(implicit G: Foldable[G]): F[Unit] =
+    client(_.createTopics(topics.asJava).all.void)
 
   private[this] def describeConsumerGroupsWith[F[_], G[_]](
     client: Client[F],
@@ -168,10 +172,10 @@ object KafkaAdminClient {
 
   sealed abstract class DescribeCluster[F[_]] {
 
-    /** Lists nodes in cluster. */
+    /** Lists available nodes in the cluster. */
     def nodes: F[Set[Node]]
 
-    /** Node in cluster acting as the current controller. */
+    /** The node in the cluster acting as the current controller. */
     def controller: F[Node]
 
     /** Current cluster ID. */
@@ -183,13 +187,16 @@ object KafkaAdminClient {
   ): DescribeCluster[F] =
     new DescribeCluster[F] {
       override def nodes: F[Set[Node]] =
-        client(_.describeCluster().nodes().map(_.toSet))
+        client(_.describeCluster.nodes.map(_.toSet))
 
       override def controller: F[Node] =
-        client(_.describeCluster().controller())
+        client(_.describeCluster.controller)
 
       override def clusterId: F[String] =
-        client(_.describeCluster().clusterId())
+        client(_.describeCluster.clusterId)
+
+      override def toString: String =
+        "DescribeCluster$" + System.identityHashCode(this)
     }
 
   sealed abstract class ListTopics[F[_]] {
@@ -373,18 +380,23 @@ object KafkaAdminClient {
   )(implicit F: Concurrent[F]): Resource[F, KafkaAdminClient[F]] =
     createAdminClient(settings).map { client =>
       new KafkaAdminClient[F] {
-        def createTopic(topic: NewTopic): CreateTopic[F] =
+        override def createTopic(topic: NewTopic): F[Unit] =
           createTopicWith(client, topic)
 
-        def describeCluster: DescribeCluster[F] =
+        override def createTopics[G[_]](topics: G[NewTopic])(
+          implicit G: Foldable[G]
+        ): F[Unit] =
+          createTopicsWith(client, topics)
+
+        override def describeCluster: DescribeCluster[F] =
           describeClusterWith(client)
 
-        def describeConsumerGroups[G[_]](groupIds: G[String])(
+        override def describeConsumerGroups[G[_]](groupIds: G[String])(
           implicit G: Foldable[G]
         ): F[Map[String, ConsumerGroupDescription]] =
           describeConsumerGroupsWith(client, groupIds)
 
-        def describeTopics[G[_]](topics: G[String])(
+        override def describeTopics[G[_]](topics: G[String])(
           implicit G: Foldable[G]
         ): F[Map[String, TopicDescription]] =
           describeTopicsWith(client, topics)

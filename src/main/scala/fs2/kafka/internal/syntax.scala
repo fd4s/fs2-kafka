@@ -172,6 +172,9 @@ private[kafka] object syntax {
     def map[B](f: A => B): KafkaFuture[B] =
       future.thenApply(baseFunction(f))
 
+    def void: KafkaFuture[Unit] =
+      map(_ => ())
+
     def cancelToken[F[_]](implicit F: Sync[F]): CancelToken[F] =
       F.delay { future.cancel(true); () }
 

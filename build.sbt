@@ -147,7 +147,10 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.asJava"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.withKey"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.concat")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.concat"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.createTopic"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.createTopics"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.describeCluster")
     )
     // format: on
   }
