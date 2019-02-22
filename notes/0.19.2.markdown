@@ -42,3 +42,5 @@
 [#88]: https://github.com/ovotech/fs2-kafka/pull/88
 [#90]: https://github.com/ovotech/fs2-kafka/pull/90
 [#91]: https://github.com/ovotech/fs2-kafka/pull/91
+
+Released on 2019-02-22.
