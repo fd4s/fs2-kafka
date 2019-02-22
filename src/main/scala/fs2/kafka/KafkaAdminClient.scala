@@ -24,7 +24,7 @@ import fs2.kafka.KafkaAdminClient._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
-import org.apache.kafka.common.{KafkaFuture, TopicPartition}
+import org.apache.kafka.common.{KafkaFuture, Node, TopicPartition}
 
 /**
   * [[KafkaAdminClient]] represents an admin client for Kafka, which is able to
@@ -34,6 +34,39 @@ import org.apache.kafka.common.{KafkaFuture, TopicPartition}
   * Use [[adminClientResource]] or [[adminClientStream]] to create an instance.
   */
 sealed abstract class KafkaAdminClient[F[_]] {
+
+  /**
+    * Creates the specified topic.
+    */
+  def createTopic(topic: NewTopic): F[Unit]
+
+  /**
+    * Creates the specified topics.
+    */
+  def createTopics[G[_]](topics: G[NewTopic])(
+    implicit G: Foldable[G]
+  ): F[Unit]
+
+  /**
+    * Describes the cluster. Returns nodes using:
+    *
+    * {{{
+    * describeCluster.nodes
+    * }}}
+    *
+    * or the controller node using:
+    *
+    * {{{
+    * describeCluster.controller
+    * }}}
+    *
+    * or the cluster ID using the following.
+    *
+    * {{{
+    * describeCluster.clusterId
+    * }}}
+    */
+  def describeCluster: DescribeCluster[F]
 
   /**
     * Describes the consumer groups with the specified group ids, returning a
@@ -113,6 +146,18 @@ sealed abstract class KafkaAdminClient[F[_]] {
 }
 
 object KafkaAdminClient {
+  private[this] def createTopicWith[F[_]](
+    client: Client[F],
+    topic: NewTopic
+  ): F[Unit] =
+    client(_.createTopics(java.util.Collections.singleton(topic)).all.void)
+
+  private[this] def createTopicsWith[F[_], G[_]](
+    client: Client[F],
+    topics: G[NewTopic]
+  )(implicit G: Foldable[G]): F[Unit] =
+    client(_.createTopics(topics.asJava).all.void)
+
   private[this] def describeConsumerGroupsWith[F[_], G[_]](
     client: Client[F],
     groupIds: G[String]
@@ -124,6 +169,35 @@ object KafkaAdminClient {
     topics: G[String]
   )(implicit G: Foldable[G]): F[Map[String, TopicDescription]] =
     client(_.describeTopics(topics.asJava).all.map(_.toMap))
+
+  sealed abstract class DescribeCluster[F[_]] {
+
+    /** Lists available nodes in the cluster. */
+    def nodes: F[Set[Node]]
+
+    /** The node in the cluster acting as the current controller. */
+    def controller: F[Node]
+
+    /** Current cluster ID. */
+    def clusterId: F[String]
+  }
+
+  private[this] def describeClusterWith[F[_]](
+    client: Client[F]
+  ): DescribeCluster[F] =
+    new DescribeCluster[F] {
+      override def nodes: F[Set[Node]] =
+        client(_.describeCluster.nodes.map(_.toSet))
+
+      override def controller: F[Node] =
+        client(_.describeCluster.controller)
+
+      override def clusterId: F[String] =
+        client(_.describeCluster.clusterId)
+
+      override def toString: String =
+        "DescribeCluster$" + System.identityHashCode(this)
+    }
 
   sealed abstract class ListTopics[F[_]] {
 
@@ -306,12 +380,23 @@ object KafkaAdminClient {
   )(implicit F: Concurrent[F]): Resource[F, KafkaAdminClient[F]] =
     createAdminClient(settings).map { client =>
       new KafkaAdminClient[F] {
-        def describeConsumerGroups[G[_]](groupIds: G[String])(
+        override def createTopic(topic: NewTopic): F[Unit] =
+          createTopicWith(client, topic)
+
+        override def createTopics[G[_]](topics: G[NewTopic])(
+          implicit G: Foldable[G]
+        ): F[Unit] =
+          createTopicsWith(client, topics)
+
+        override def describeCluster: DescribeCluster[F] =
+          describeClusterWith(client)
+
+        override def describeConsumerGroups[G[_]](groupIds: G[String])(
           implicit G: Foldable[G]
         ): F[Map[String, ConsumerGroupDescription]] =
           describeConsumerGroupsWith(client, groupIds)
 
-        def describeTopics[G[_]](topics: G[String])(
+        override def describeTopics[G[_]](topics: G[String])(
           implicit G: Foldable[G]
         ): F[Map[String, TopicDescription]] =
           describeTopicsWith(client, topics)

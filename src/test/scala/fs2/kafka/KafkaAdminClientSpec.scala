@@ -2,6 +2,7 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.implicits._
+import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.common.TopicPartition
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
@@ -25,6 +26,12 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
 
         adminClientResource[IO](adminClientSettings(config)).use { adminClient =>
           for {
+            clusterNodes <- adminClient.describeCluster.nodes
+            _ <- IO(assert(clusterNodes.size == 1))
+            clusterController <- adminClient.describeCluster.controller
+            _ <- IO(assert(!clusterController.isEmpty))
+            clusterId <- adminClient.describeCluster.clusterId
+            _ <- IO(assert(clusterId.nonEmpty))
             consumerGroupIds <- adminClient.listConsumerGroups.groupIds
             _ <- IO(assert(consumerGroupIds.size == 1))
             consumerGroupListings <- adminClient.listConsumerGroups.listings
@@ -61,6 +68,9 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
             describedTopics <- adminClient.describeTopics(topicNames.toList)
             _ <- IO(assert(describedTopics.size == 1))
             _ <- IO {
+              adminClient.describeCluster.toString should startWith("DescribeCluster$")
+            }
+            _ <- IO {
               adminClient.toString should startWith("KafkaAdminClient$")
             }
             _ <- IO {
@@ -85,6 +95,14 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                 .forPartitions(List(new TopicPartition("topic", 0)))
                 .toString shouldBe "ListConsumerGroupOffsetsForPartitions(groupId = group, partitions = List(topic-0))"
             }
+            newTopic = new NewTopic("new-test-topic", 1, 1)
+            preCreateNames <- adminClient.listTopics.names
+            _ <- IO(assert(!preCreateNames.contains(newTopic.name)))
+            _ <- adminClient.createTopic(newTopic)
+            postCreateNames <- adminClient.listTopics.names
+            createAgain <- adminClient.createTopics(List(newTopic)).attempt
+            _ <- IO(assert(createAgain.isLeft))
+            _ <- IO(assert(postCreateNames.contains(newTopic.name)))
           } yield ()
         }.unsafeRunSync
       }
