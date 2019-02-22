@@ -2,7 +2,7 @@ import ReleaseTransformations._
 
 val fs2Version = "1.0.3"
 
-val kafkaVersion = "2.1.0"
+val kafkaVersion = "2.1.1"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
