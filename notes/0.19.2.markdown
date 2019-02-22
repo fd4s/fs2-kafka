@@ -1,0 +1,44 @@
+### Additions
+
+- Add `describeCluster` and `createTopics` to `KafkaAdminClient`. Thanks [@danxmoran](https://github.com/danxmoran)! ([#88][#88])
+- Add `maxPrefetchBatches` to `ConsumerSettings`. ([#83][#83])
+  - Controls prefetching behaviour before backpressure kicks in.
+  - Use `withMaxPrefetchBatches` to change the default setting.
+- Add several constructs for working with record headers. ([#85][#85])
+  - Add `HeaderDeserializer` for deserialization of record header values.
+  - Add `HeaderSerializer` for serializing values to use as header values.
+  - Add `Header.serialize` for serializing a value and creating a `Header`.
+  - Add `Header#headers` for creating a `Headers` with a single `Header`.
+  - Add `Header#as` and `attemptAs` for deserializing header values.
+  - Add `Headers#withKey` and alias `apply` for extracting a single `Header`.
+  - Add `Headers#concat` for concatenating another `Headers` instance.
+  - Add `Headers#asJava` for converting to Java Kafka-compatible headers.
+  - Add `Headers.fromIterable` to create `Headers` from `Iterable[Header]`.
+  - Add `Headers.fromSeq` to create `Headers` from `Seq[Header]`.
+- Add several constructs for working with record serialization. ([#85][#85])
+  - Add a custom `Serializer` to make it easier to create and compose serializers.
+  - Add a custom `Deserializer` to make it easier to create and compose deserializers.
+  - Add `ProducerSettings.apply` for using implicit `Serializer`s for the key and value.
+  - Add `ConsumerSettings.apply` for using implicit `Deserializer`s for the key and value.
+
+### Changes
+
+- Change to make `fs2.kafka.Id` public. Thanks [@chenharryhua](https://github.com/chenharryhua)! ([#86][#86], [#87][#87])
+
+### Updates
+
+- Update Kafka to 2.1.1. Thanks [@sebastianvoss](https://github.com/sebastianvoss)! ([#90][#90], [#91][#91])
+
+### Documentation
+
+- Add a [technical details](https://ovotech.github.io/fs2-kafka/docs/technical-details) section explaining backpressure. Thanks [@backuitist](https://github.com/backuitist)! ([#82][#82], [#84][#84])
+
+[#82]: https://github.com/ovotech/fs2-kafka/pull/82
+[#83]: https://github.com/ovotech/fs2-kafka/pull/83
+[#84]: https://github.com/ovotech/fs2-kafka/pull/84
+[#85]: https://github.com/ovotech/fs2-kafka/pull/85
+[#86]: https://github.com/ovotech/fs2-kafka/pull/86
+[#87]: https://github.com/ovotech/fs2-kafka/pull/87
+[#88]: https://github.com/ovotech/fs2-kafka/pull/88
+[#90]: https://github.com/ovotech/fs2-kafka/pull/90
+[#91]: https://github.com/ovotech/fs2-kafka/pull/91
