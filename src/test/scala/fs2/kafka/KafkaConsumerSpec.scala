@@ -95,16 +95,20 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
     it("should fail to read from a negative offset") {
       withKafka {
-        an[IllegalArgumentException] should be thrownBy seekTest(numMessages = 100,
-                                                                 readOffset = -1)(_, _)
+        an[IllegalArgumentException] should be thrownBy seekTest(
+          numMessages = 100,
+          readOffset = -1
+        )(_, _)
       }
     }
 
     it("should fail to read from a partition not assigned to this consumer") {
       withKafka {
-        an[IllegalStateException] should be thrownBy seekTest(numMessages = 100,
-                                                              readOffset = 90,
-                                                              partition = Some(123))(_, _)
+        an[IllegalStateException] should be thrownBy seekTest(
+          numMessages = 100,
+          readOffset = 90,
+          partition = Some(123)
+        )(_, _)
       }
     }
 
@@ -239,7 +243,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
-    it("should be able to retrieve offsets") {
+    it("should be able to work with offsets") {
       withKafka { (config, topic) =>
         createCustomTopic(topic, partitions = 1)
         val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
@@ -270,7 +274,26 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               end <- consumer.endOffsets(topicPartitions)
               endTimeout <- consumer.endOffsets(topicPartitions, timeout)
               _ <- IO(
-                assert(end == endTimeout && end == Map(topicPartition -> produced.size.toLong)))
+                assert(end == endTimeout && end == Map(topicPartition -> produced.size.toLong))
+              )
+            } yield ()
+          }
+          .evalTap { consumer =>
+            for {
+              assigned <- consumer.assignment
+              _ <- IO(assert(assigned.nonEmpty))
+              _ <- consumer.seekToBeginning(assigned)
+              start <- assigned.toList.parTraverse(consumer.position)
+              _ <- IO(start.forall(_ === 0))
+              _ <- consumer.seekToEnd(assigned)
+              end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
+              _ <- IO(end.sum === produced.size)
+              _ <- consumer.seekToBeginning
+              start <- assigned.toList.parTraverse(consumer.position)
+              _ <- IO(start.forall(_ === 0))
+              _ <- consumer.seekToEnd
+              end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
+              _ <- IO(end.sum === produced.size)
             } yield ()
           }
           .compile
@@ -281,10 +304,11 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
     def seekTest(numMessages: Long, readOffset: Long, partition: Option[Int] = None)(
       config: EmbeddedKafkaConfig,
-      topic: String) = {
+      topic: String
+    ) = {
       createCustomTopic(topic)
 
-      val produced = (0l until numMessages).map(n => s"key-$n" -> s"value->$n")
+      val produced = (0L until numMessages).map(n => s"key-$n" -> s"value->$n")
       publishToKafka(topic, produced)
 
       val consumed =
