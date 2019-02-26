@@ -83,7 +83,7 @@ sealed abstract class Deserializer[A] extends KafkaDeserializer[A] {
     * Creates a new [[Deserializer]] which catches any non-fatal
     * exceptions during deserialization with this [[Deserializer]].
     */
-  final def attempt: Deserializer[Either[Throwable, A]] =
+  final def attempt: Deserializer.Attempt[A] =
     Deserializer.instance { (topic, headers, bytes) =>
       Either.catchNonFatal(deserialize(topic, headers, bytes))
     }
@@ -104,13 +104,17 @@ sealed abstract class Deserializer[A] extends KafkaDeserializer[A] {
 }
 
 object Deserializer {
+
+  /** Alias for `Deserializer[Either[Throwable, A]]`. */
+  type Attempt[A] = Deserializer[Either[Throwable, A]]
+
   def apply[A](
     implicit deserializer: Deserializer[A]
   ): Deserializer[A] = deserializer
 
   def attempt[A](
-    implicit deserializer: Deserializer[Either[Throwable, A]]
-  ): Deserializer[Either[Throwable, A]] = deserializer
+    implicit deserializer: Deserializer.Attempt[A]
+  ): Deserializer.Attempt[A] = deserializer
 
   /**
     * Creates a new [[Deserializer]] which deserializes
@@ -185,7 +189,7 @@ object Deserializer {
     * values using the specified `Charset` as `UUID`s. Note that
     * the default `UUID` deserializer uses `UTF-8`.
     */
-  def uuid(charset: Charset): Deserializer[Either[Throwable, UUID]] =
+  def uuid(charset: Charset): Deserializer.Attempt[UUID] =
     Deserializer.string(charset).map(UUID.fromString).attempt
 
   /**
@@ -231,31 +235,31 @@ object Deserializer {
   implicit val bytes: Deserializer[Bytes] =
     Deserializer.identity.map(bytes => new Bytes(bytes))
 
-  implicit val double: Deserializer[Either[Throwable, Double]] =
+  implicit val double: Deserializer.Attempt[Double] =
     Deserializer.delegate {
       (new org.apache.kafka.common.serialization.DoubleDeserializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Double]]
     }.attempt
 
-  implicit val float: Deserializer[Either[Throwable, Float]] =
+  implicit val float: Deserializer.Attempt[Float] =
     Deserializer.delegate {
       (new org.apache.kafka.common.serialization.FloatDeserializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Float]]
     }.attempt
 
-  implicit val int: Deserializer[Either[Throwable, Int]] =
+  implicit val int: Deserializer.Attempt[Int] =
     Deserializer.delegate {
       (new org.apache.kafka.common.serialization.IntegerDeserializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Int]]
     }.attempt
 
-  implicit val long: Deserializer[Either[Throwable, Long]] =
+  implicit val long: Deserializer.Attempt[Long] =
     Deserializer.delegate {
       (new org.apache.kafka.common.serialization.LongDeserializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Long]]
     }.attempt
 
-  implicit val short: Deserializer[Either[Throwable, Short]] =
+  implicit val short: Deserializer.Attempt[Short] =
     Deserializer.delegate {
       (new org.apache.kafka.common.serialization.ShortDeserializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Short]]
@@ -264,6 +268,6 @@ object Deserializer {
   implicit val string: Deserializer[String] =
     Deserializer.string(StandardCharsets.UTF_8)
 
-  implicit val uuid: Deserializer[Either[Throwable, UUID]] =
+  implicit val uuid: Deserializer.Attempt[UUID] =
     Deserializer.string.map(UUID.fromString).attempt
 }
