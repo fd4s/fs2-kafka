@@ -1,0 +1,14 @@
+### Additions
+
+- Add functions for working with consumer offsets. Thanks [@backuitist](https://github.com/backuitist)! ([#92][#92], [#93][#93])
+  - Add `KafkaConsumer#assignment`.
+  - Add `KafkaConsumer#position`.
+  - Add `KafkaConsumer#seekToBeginning`.
+  - Add `KafkaConsumer#seekToEnd`.
+- Add `Attempt[A]` aliases for deserializers. ([#95][#95])
+  - Add `Deserializer.Attempt[A] = Deserializer[Either[Throwable, A]]`.
+  - Add `HeaderDeserializer.Attempt[A] = HeaderDeserializer[Either[Throwable, A]]`.
+
+[#92]: https://github.com/ovotech/fs2-kafka/pull/92
+[#93]: https://github.com/ovotech/fs2-kafka/pull/93
+[#95]: https://github.com/ovotech/fs2-kafka/pull/95
