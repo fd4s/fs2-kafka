@@ -16,19 +16,12 @@
 
 package fs2.kafka
 
-import cats.Reducible
+import cats.{Foldable, Reducible}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref}
-import cats.effect.syntax.concurrent._
-import cats.instances.unit._
-import cats.syntax.applicativeError._
-import cats.syntax.flatMap._
-import cats.syntax.foldable._
-import cats.syntax.functor._
-import cats.syntax.monadError._
-import cats.syntax.reducible._
-import cats.syntax.semigroup._
+import cats.effect.implicits._
+import cats.implicits._
 import fs2.concurrent.Queue
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.instances._
@@ -109,12 +102,74 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
   def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]]
 
   /**
+    * Returns the set of partitions currently assigned to this consumer.
+    */
+  def assignment: F[SortedSet[TopicPartition]]
+
+  /**
     * Overrides the fetch offsets that the consumer will use when reading the
     * next message. If this API is invoked for the same partition more than once,
     * the latest offset will be used. Note that you may lose data if this API is
     * arbitrarily used in the middle of consumption to reset the fetch offsets.
     */
   def seek(partition: TopicPartition, offset: Long): F[Unit]
+
+  /**
+    * Seeks to the first offset for each currently assigned partition.
+    * This is equivalent to using `seekToBeginning` with an empty set
+    * of partitions.<br>
+    * <br>
+    * Note that this seek evaluates lazily, and only on the next call
+    * to `poll` or `position`.
+    */
+  def seekToBeginning: F[Unit]
+
+  /**
+    * Seeks to the first offset for each of the specified partitions.
+    * If no partitions are provided, seeks to the first offset for
+    * all currently assigned partitions.<br>
+    * <br>
+    * Note that this seek evaluates lazily, and only on the next call
+    * to `poll` or `position`.
+    */
+  def seekToBeginning[G[_]](partitions: G[TopicPartition])(
+    implicit G: Foldable[G]
+  ): F[Unit]
+
+  /**
+    * Seeks to the last offset for each currently assigned partition.
+    * This is equivalent to using `seekToEnd` with an empty set of
+    * partitions.<br>
+    * <br>
+    * Note that this seek evaluates lazily, and only on the next call
+    * to `poll` or `position`.
+    */
+  def seekToEnd: F[Unit]
+
+  /**
+    * Seeks to the last offset for each of the specified partitions.
+    * If no partitions are provided, seeks to the last offset for
+    * all currently assigned partitions.<br>
+    * <br>
+    * Note that this seek evaluates lazily, and only on the next call
+    * to `poll` or `position`.
+    */
+  def seekToEnd[G[_]](partitions: G[TopicPartition])(
+    implicit G: Foldable[G]
+  ): F[Unit]
+
+  /**
+    * Returns the offset of the next record that will be fetched.<br>
+    * <br>
+    * Timeout is determined by `default.api.timeout.ms`, which
+    * is set using [[ConsumerSettings#withDefaultApiTimeout]].
+    */
+  def position(partition: TopicPartition): F[Long]
+
+  /**
+    * Returns the offset of the next record that will be fetched.
+    */
+  def position(partition: TopicPartition, timeout: FiniteDuration): F[Long]
 
   /**
     * Subscribes the consumer to the specified topics. Note that you have to
@@ -416,11 +471,63 @@ private[kafka] object KafkaConsumer {
             }
         }
 
+      override def assignment: F[SortedSet[TopicPartition]] =
+        request { deferred =>
+          Request.Assignment(
+            deferred = deferred,
+            onRebalance = None
+          )
+        }
+
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
         request { deferred =>
           Request.Seek(
             partition = partition,
             offset = offset,
+            deferred = deferred
+          )
+        }
+
+      override def seekToBeginning: F[Unit] =
+        seekToBeginning(List.empty[TopicPartition])
+
+      override def seekToBeginning[G[_]](partitions: G[TopicPartition])(
+        implicit G: Foldable[G]
+      ): F[Unit] =
+        request { deferred =>
+          Request.SeekToBeginning(
+            partitions = partitions.toList,
+            deferred = deferred
+          )
+        }
+
+      override def seekToEnd: F[Unit] =
+        seekToEnd(List.empty[TopicPartition])
+
+      override def seekToEnd[G[_]](
+        partitions: G[TopicPartition]
+      )(implicit G: Foldable[G]): F[Unit] =
+        request { deferred =>
+          Request.SeekToEnd(
+            partitions = partitions.toList,
+            deferred = deferred
+          )
+        }
+
+      override def position(partition: TopicPartition): F[Long] =
+        request { deferred =>
+          Request.Position(
+            partition = partition,
+            timeout = None,
+            deferred = deferred
+          )
+        }
+
+      override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
+        request { deferred =>
+          Request.Position(
+            partition = partition,
+            timeout = Some(timeout),
             deferred = deferred
           )
         }
