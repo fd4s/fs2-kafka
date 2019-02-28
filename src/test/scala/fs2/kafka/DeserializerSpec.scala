@@ -72,6 +72,23 @@ final class DeserializerSpec extends BaseCatsSpec {
     }
   }
 
+  test("Deserializer#option") {
+    val deserializer =
+      Deserializer[Option[String]]
+
+    deserializer.deserialize("topic", null) shouldBe None
+
+    forAll { s: String =>
+      deserializer.deserialize("topic", s.getBytes) shouldBe Some(s)
+    }
+  }
+
+  test("Deserializer#unit") {
+    forAll { bytes: Array[Byte] =>
+      Deserializer[Unit].deserialize("topic", bytes) shouldBe (())
+    }
+  }
+
   test("Deserializer#toString") {
     assert(Deserializer[String].toString startsWith "Deserializer$")
   }

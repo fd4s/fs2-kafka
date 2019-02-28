@@ -88,6 +88,19 @@ sealed abstract class Deserializer[A] extends KafkaDeserializer[A] {
       Either.catchNonFatal(deserialize(topic, headers, bytes))
     }
 
+  /**
+    * Creates a new [[Deserializer]] which returns `None` when the
+    * bytes are `null`, and otherwise returns the result of this
+    * [[Deserializer]] wrapped in `Some`.
+    */
+  final def option: Deserializer[Option[A]] =
+    Deserializer.instance { (topic, headers, bytes) =>
+      if (bytes != null)
+        Some(deserialize(topic, headers, bytes))
+      else
+        None
+    }
+
   /** For interoperability with Kafka deserialization. */
   final override def deserialize(topic: String, bytes: Array[Byte]): A =
     deserialize(topic, Headers.empty, bytes)
@@ -199,6 +212,16 @@ object Deserializer {
   implicit val identity: Deserializer[Array[Byte]] =
     Deserializer.lift(bytes => bytes)
 
+  /**
+    * The option [[Deserializer]] returns `None` when the bytes are
+    * `null`, and otherwise deserializes using the deserializer for
+    * the type `A`, wrapping the result in `Some`.
+    */
+  implicit def option[A](
+    implicit deserializer: Deserializer[A]
+  ): Deserializer[Option[A]] =
+    deserializer.option
+
   implicit val monad: Monad[Deserializer] =
     new Monad[Deserializer] {
       override def pure[A](a: A): Deserializer[A] =
@@ -267,6 +290,9 @@ object Deserializer {
 
   implicit val string: Deserializer[String] =
     Deserializer.string(StandardCharsets.UTF_8)
+
+  implicit val unit: Deserializer[Unit] =
+    Deserializer.const(())
 
   implicit val uuid: Deserializer.Attempt[UUID] =
     Deserializer.string.map(UUID.fromString).attempt
