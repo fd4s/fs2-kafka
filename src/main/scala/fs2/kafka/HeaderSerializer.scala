@@ -52,10 +52,28 @@ sealed abstract class HeaderSerializer[A] {
     HeaderSerializer.instance { bytes =>
       f(serialize(bytes))
     }
+
+  /**
+    * Creates a new [[HeaderSerializer]] which serializes `Some`
+    * values using this [[HeaderSerializer]], and serializes
+    * `None` as `null`.
+    */
+  final def option: HeaderSerializer[Option[A]] =
+    HeaderSerializer.instance {
+      case Some(a) => serialize(a)
+      case None    => null
+    }
 }
 
 object HeaderSerializer {
   def apply[A](implicit serializer: HeaderSerializer[A]): HeaderSerializer[A] = serializer
+
+  /**
+    * Creates a new [[HeaderSerializer]] which
+    * serializes all values of type `A` as `null`.
+    */
+  def asNull[A]: HeaderSerializer[A] =
+    HeaderSerializer.const(null)
 
   /**
     * Creates a new [[HeaderSerializer]] which serializes
@@ -74,6 +92,13 @@ object HeaderSerializer {
     HeaderSerializer.instance { a =>
       serializer.serialize("", a)
     }
+
+  /**
+    * Creates a new [[HeaderSerializer]] which serializes
+    * all values of type `A` as the empty `Array[Byte]`.
+    */
+  def empty[A]: HeaderSerializer[A] =
+    HeaderSerializer.const(Array.emptyByteArray)
 
   /**
     * Creates a new [[HeaderSerializer]] from the specified function.
@@ -109,6 +134,15 @@ object HeaderSerializer {
     */
   implicit val identity: HeaderSerializer[Array[Byte]] =
     HeaderSerializer.instance(bytes => bytes)
+
+  /**
+    * The option [[HeaderSerializer]] serializes `None` as `null`,
+    * and serializes `Some` values using the serializer for type `A`.
+    */
+  implicit def option[A](
+    implicit serializer: HeaderSerializer[A]
+  ): HeaderSerializer[Option[A]] =
+    serializer.option
 
   implicit val contravariant: Contravariant[HeaderSerializer] =
     new Contravariant[HeaderSerializer] {
@@ -153,6 +187,9 @@ object HeaderSerializer {
 
   implicit val string: HeaderSerializer[String] =
     HeaderSerializer.string(StandardCharsets.UTF_8)
+
+  implicit val unit: HeaderSerializer[Unit] =
+    HeaderSerializer.const(null)
 
   implicit val uuid: HeaderSerializer[UUID] =
     HeaderSerializer.string.contramap(_.toString)
