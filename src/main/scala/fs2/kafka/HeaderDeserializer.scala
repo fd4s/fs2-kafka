@@ -83,6 +83,19 @@ sealed abstract class HeaderDeserializer[A] {
     HeaderDeserializer.instance { bytes =>
       Either.catchNonFatal(deserialize(bytes))
     }
+
+  /**
+    * Creates a new [[HeaderDeserializer]] which returns `None` when
+    * the bytes are `null`, and otherwise returns the result of this
+    * [[HeaderDeserializer]] wrapped in `Some`.
+    */
+  final def option: HeaderDeserializer[Option[A]] =
+    HeaderDeserializer.instance { bytes =>
+      if (bytes != null)
+        Some(deserialize(bytes))
+      else
+        None
+    }
 }
 
 object HeaderDeserializer {
@@ -152,6 +165,16 @@ object HeaderDeserializer {
     */
   implicit val identity: HeaderDeserializer[Array[Byte]] =
     HeaderDeserializer.instance(bytes => bytes)
+
+  /**
+    * The option [[HeaderDeserializer]] returns `None` when the bytes
+    * are `null`, and otherwise deserializes using the deserializer
+    * for the type `A`, wrapping the result in `Some`.
+    */
+  implicit def option[A](
+    implicit deserializer: HeaderDeserializer[A]
+  ): HeaderDeserializer[Option[A]] =
+    deserializer.option
 
   implicit val monad: Monad[HeaderDeserializer] =
     new Monad[HeaderDeserializer] {
@@ -223,6 +246,9 @@ object HeaderDeserializer {
 
   implicit val string: HeaderDeserializer[String] =
     HeaderDeserializer.string(StandardCharsets.UTF_8)
+
+  implicit val unit: HeaderDeserializer[Unit] =
+    HeaderDeserializer.const(())
 
   implicit val uuid: HeaderDeserializer.Attempt[UUID] =
     HeaderDeserializer.string.map(UUID.fromString).attempt
