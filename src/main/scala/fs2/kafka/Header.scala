@@ -44,7 +44,7 @@ sealed abstract class Header extends org.apache.kafka.common.header.Header {
 
   /** Attempts to deserialize the [[value]] to the specified type. */
   final def attemptAs[A](
-    implicit deserializer: HeaderDeserializer[Either[Throwable, A]]
+    implicit deserializer: HeaderDeserializer.Attempt[A]
   ): Either[Throwable, A] =
     deserializer.deserialize(value)
 }
@@ -58,37 +58,15 @@ object Header {
       s"Header($key -> ${java.util.Arrays.toString(value)})"
   }
 
-  private[this] def create(
-    key: String,
-    value: Array[Byte]
+  /**
+    * Creates a new [[Header]] instance using the specified
+    * `String` key and value of type `V`, which is going to
+    * be serialized with the implicit `HeaderSerializer`.
+    */
+  def apply[V](key: String, value: V)(
+    implicit serializer: HeaderSerializer[V]
   ): Header =
     new HeaderImpl(
-      key = key,
-      value = value
-    )
-
-  /**
-    * Creates a new [[Header]] instance using the specified
-    * `String` key and serialized `Array[Byte]` header value.
-    */
-  def apply(
-    key: String,
-    value: Array[Byte]
-  ): Header = create(
-    key = key,
-    value = value
-  )
-
-  /**
-    * Creates a new [[Header]] instance using the specified
-    * `String` key and value, where the value is serialized
-    * using an implicit serializer instance.
-    */
-  def serialize[A](
-    key: String,
-    value: A
-  )(implicit serializer: HeaderSerializer[A]): Header =
-    create(
       key = key,
       value = serializer.serialize(value)
     )

@@ -81,7 +81,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
 
   def roundtripAttempt[A: Arbitrary: Eq](
     serializer: HeaderSerializer[A],
-    deserializer: HeaderDeserializer[Either[Throwable, A]]
+    deserializer: HeaderDeserializer.Attempt[A]
   ): Assertion = forAll { a: A =>
     val serialized = serializer.serialize(a)
     val deserialized = deserializer.deserialize(serialized)

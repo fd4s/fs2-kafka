@@ -43,7 +43,7 @@ final class SerializerSpec extends BaseCatsSpec {
       }
 
     forAll { (topic: String, i: Int) =>
-      val headers = Header.serialize("format", "int").headers
+      val headers = Header("format", "int").headers
       val serialized = serializer.serialize(topic, headers, i)
       val expected = Serializer[Int].serialize(topic, i)
       serialized shouldBe expected
@@ -128,7 +128,7 @@ final class SerializerSpec extends BaseCatsSpec {
 
   def roundtripAttempt[A: Arbitrary: Eq](
     serializer: Serializer[A],
-    deserializer: Deserializer[Either[Throwable, A]]
+    deserializer: Deserializer.Attempt[A]
   ): Assertion = forAll { (topic: String, headers: Headers, a: A) =>
     val serialized = serializer.serialize(topic, headers, a)
     val deserialized = deserializer.deserialize(topic, headers, serialized)
