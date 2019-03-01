@@ -78,6 +78,41 @@ final class SerializerSpec extends BaseCatsSpec {
     }
   }
 
+  test("Serializer#asNull") {
+    val serializer =
+      Serializer.asNull[Int]
+
+    forAll { i: Int =>
+      val serialized = serializer.serialize("topic", i)
+      serialized shouldBe null
+    }
+  }
+
+  test("Serializer#empty") {
+    val serializer =
+      Serializer.empty[Int]
+
+    forAll { i: Int =>
+      val serialized = serializer.serialize("topic", i)
+      serialized shouldBe empty
+    }
+  }
+
+  test("Serializer#option") {
+    val serializer =
+      Serializer[Option[String]]
+
+    serializer.serialize("topic", None) shouldBe null
+
+    forAll { s: String =>
+      serializer.serialize("topic", Some(s)) shouldBe s.getBytes
+    }
+  }
+
+  test("Serializer#unit") {
+    Serializer[Unit].serialize("topic", ()) shouldBe null
+  }
+
   test("Serializer#toString") {
     assert(Serializer[Int].toString startsWith "Serializer$")
   }

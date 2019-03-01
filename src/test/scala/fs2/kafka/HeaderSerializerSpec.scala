@@ -31,6 +31,41 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
     }
   }
 
+  test("HeaderSerializer#asNull") {
+    val serializer =
+      HeaderSerializer.asNull[Int]
+
+    forAll { i: Int =>
+      val serialized = serializer.serialize(i)
+      serialized shouldBe null
+    }
+  }
+
+  test("HeaderSerializer#empty") {
+    val serializer =
+      HeaderSerializer.empty[Int]
+
+    forAll { i: Int =>
+      val serialized = serializer.serialize(i)
+      serialized shouldBe empty
+    }
+  }
+
+  test("HeaderSerializer#option") {
+    val serializer =
+      HeaderSerializer[Option[String]]
+
+    serializer.serialize(None) shouldBe null
+
+    forAll { s: String =>
+      serializer.serialize(Some(s)) shouldBe s.getBytes
+    }
+  }
+
+  test("HeaderSerializer#unit") {
+    HeaderSerializer[Unit].serialize(()) shouldBe null
+  }
+
   test("HeaderSerializer#toString") {
     assert(HeaderSerializer[Int].toString startsWith "HeaderSerializer$")
   }
@@ -60,7 +95,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
     )
   }
 
-  test("Serializer#uuid") {
+  test("HeaderSerializer#uuid") {
     roundtripAttempt(
       HeaderSerializer.uuid(StandardCharsets.UTF_8),
       HeaderDeserializer.uuid(StandardCharsets.UTF_8)

@@ -56,6 +56,16 @@ sealed abstract class Serializer[A] extends KafkaSerializer[A] {
       f(serialize(topic, headers, a))
     }
 
+  /**
+    * Creates a new [[Serializer]] which serializes `Some` values
+    * using this [[Serializer]], and serializes `None` as `null`.
+    */
+  final def option: Serializer[Option[A]] =
+    Serializer.instance {
+      case (topic, headers, Some(a)) => serialize(topic, headers, a)
+      case (_, _, None)              => null
+    }
+
   /** For interoperability with Kafka serialization. */
   final override def serialize(topic: String, a: A): Array[Byte] =
     serialize(topic, Headers.empty, a)
@@ -76,6 +86,13 @@ object Serializer {
 
   /**
     * Creates a new [[Serializer]] which serializes
+    * all values of type `A` as `null`.
+    */
+  def asNull[A]: Serializer[A] =
+    Serializer.const(null)
+
+  /**
+    * Creates a new [[Serializer]] which serializes
     * all values of type `A` to the specified `bytes`.
     */
   def const[A](bytes: Array[Byte]): Serializer[A] =
@@ -90,6 +107,13 @@ object Serializer {
     Serializer.instance { (topic, headers, a) =>
       serializer.serialize(topic, headers.asJava, a)
     }
+
+  /**
+    * Creates a new [[Serializer]] which serializes all
+    * values of type `A` as the empty `Array[Byte]`.
+    */
+  def empty[A]: Serializer[A] =
+    Serializer.const(Array.emptyByteArray)
 
   /**
     * Creates a new [[Serializer]] which can use different
@@ -157,6 +181,15 @@ object Serializer {
   implicit val identity: Serializer[Array[Byte]] =
     Serializer.lift(bytes => bytes)
 
+  /**
+    * The option [[Serializer]] serializes `None` as `null`, and
+    * serializes `Some` values using the serializer for type `A`.
+    */
+  implicit def option[A](
+    implicit serializer: Serializer[A]
+  ): Serializer[Option[A]] =
+    serializer.option
+
   implicit val contravariant: Contravariant[Serializer] =
     new Contravariant[Serializer] {
       override def contramap[A, B](serializer: Serializer[A])(f: B => A): Serializer[B] =
@@ -198,6 +231,9 @@ object Serializer {
 
   implicit val string: Serializer[String] =
     Serializer.string(StandardCharsets.UTF_8)
+
+  implicit val unit: Serializer[Unit] =
+    Serializer.const(null)
 
   implicit val uuid: Serializer[UUID] =
     Serializer.string.contramap(_.toString)

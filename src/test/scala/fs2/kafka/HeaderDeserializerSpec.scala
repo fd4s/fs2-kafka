@@ -22,6 +22,23 @@ final class HeaderDeserializerSpec extends BaseCatsSpec {
     assert(result.isEmpty)
   }
 
+  test("HeaderDeserializer#option") {
+    val deserializer =
+      HeaderDeserializer[Option[String]]
+
+    deserializer.deserialize(null) shouldBe None
+
+    forAll { s: String =>
+      deserializer.deserialize(s.getBytes) shouldBe Some(s)
+    }
+  }
+
+  test("HeaderDeserializer#unit") {
+    forAll { bytes: Array[Byte] =>
+      HeaderDeserializer[Unit].deserialize(bytes) shouldBe (())
+    }
+  }
+
   test("HeaderDeserializer#toString") {
     assert(HeaderDeserializer[String].toString startsWith "HeaderDeserializer$")
   }
