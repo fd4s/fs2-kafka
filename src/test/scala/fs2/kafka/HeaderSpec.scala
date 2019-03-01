@@ -18,7 +18,7 @@ final class HeaderSpec extends BaseSpec {
     }
 
     it("should return the key with key") {
-      assert(Header("key", Array()).key == "key")
+      assert(Header("key", Array[Byte]()).key == "key")
     }
 
     it("should return the value with value") {
@@ -35,7 +35,7 @@ final class HeaderSpec extends BaseSpec {
 
     it("should deserialize with attemptAs") {
       forAll { i: Int =>
-        val header = Header.serialize("key", i)
+        val header = Header("key", i)
         assert(header.attemptAs[Int] == Right(i))
       }
     }

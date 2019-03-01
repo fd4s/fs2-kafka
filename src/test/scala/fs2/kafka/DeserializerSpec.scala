@@ -37,7 +37,7 @@ final class DeserializerSpec extends BaseCatsSpec {
       }
 
     forAll { (topic: String, i: Int) =>
-      val headers = Header.serialize("format", "int").headers
+      val headers = Header("format", "int").headers
       val serialized = Serializer[Int].serialize(topic, i)
       val deserialized = deserializer.deserialize(topic, headers, serialized)
       deserialized shouldBe Right(i)
