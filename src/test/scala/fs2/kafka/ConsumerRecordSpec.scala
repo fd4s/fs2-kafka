@@ -110,7 +110,7 @@ final class ConsumerRecordSpec extends BaseSpec {
     it("should include headers when present") {
       val record =
         ConsumerRecord("topic", 0, 1, "key", "value")
-          .withHeaders(Header("key", Array()).headers)
+          .withHeaders(Header("key", Array[Byte]()).headers)
 
       val expected =
         "ConsumerRecord(topic = topic, partition = 0, offset = 1, key = key, value = value, headers = Headers(key -> []))"

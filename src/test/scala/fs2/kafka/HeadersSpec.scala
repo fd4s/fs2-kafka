@@ -26,7 +26,7 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("should concat non-empty") {
-      val headers = Header("key", Array()).headers
+      val headers = Header("key", Array[Byte]()).headers
       assert(Headers.empty.concat(headers).toChain.size == 1)
     }
 
@@ -36,7 +36,7 @@ final class HeadersSpec extends BaseSpec {
 
     it("should create a new Headers from append(Header)") {
       assert {
-        val header = Header("key", Array())
+        val header = Header("key", Array[Byte]())
         Headers.empty.append(header).toChain == Chain.one(header)
       }
     }
@@ -53,7 +53,7 @@ final class HeadersSpec extends BaseSpec {
 
     it("add(header) throws IllegalStateException") {
       a[IllegalStateException] should be thrownBy {
-        empty.add(Header("key", Array()))
+        empty.add(Header("key", Array[Byte]()))
       }
     }
 
@@ -97,12 +97,12 @@ final class HeadersSpec extends BaseSpec {
   }
 
   describe("Headers#nonEmpty.asJava") {
-    val header = Header("key", Array())
+    val header = Header("key", Array[Byte]())
     val headers = header.headers.asJava
 
     it("add(header) throws IllegalStateException") {
       a[IllegalStateException] should be thrownBy {
-        headers.add(Header("key", Array()))
+        headers.add(Header("key", Array[Byte]()))
       }
     }
 
@@ -119,8 +119,8 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("lastHeader returns last header") {
-      val first = Header("key", Array(0))
-      val second = Header("key", Array(1))
+      val first = Header("key", Array[Byte](0))
+      val second = Header("key", Array[Byte](1))
       val multiple = Headers(first, second)
 
       multiple.asJava.lastHeader("key") shouldBe second
@@ -157,51 +157,51 @@ final class HeadersSpec extends BaseSpec {
 
   describe("Headers#nonEmpty") {
     it("should not be empty") {
-      assert(!Headers(Header("key", Array())).isEmpty)
+      assert(!Headers(Header("key", Array[Byte]())).isEmpty)
     }
 
     it("should be non empty") {
-      assert(Headers(Header("key", Array())).nonEmpty)
+      assert(Headers(Header("key", Array[Byte]())).nonEmpty)
     }
 
     it("should find an existing key") {
-      assert(Headers(Header("key", Array()))("key").isDefined)
+      assert(Headers(Header("key", Array[Byte]()))("key").isDefined)
     }
 
     it("should find the first key") {
       val headers =
         Headers(
-          Header("key", Array(1)),
-          Header("key", Array(2))
+          Header("key", Array[Byte](1)),
+          Header("key", Array[Byte](2))
         )
 
       assert(headers("key").map(_.value.head) == Some(1.toByte))
     }
 
     it("should concat empty") {
-      val headers = Header("key", Array()).headers
+      val headers = Header("key", Array[Byte]()).headers
       assert(headers.concat(Headers.empty).toChain.size == 1)
     }
 
     it("should concat non-empty") {
-      val headers = Header("key", Array()).headers
+      val headers = Header("key", Array[Byte]()).headers
       assert(headers.concat(headers).toChain.size == 2)
     }
 
     it("should include the headers in toString") {
-      val headers = Chain(Header("key1", Array()), Header("key2", Array()))
+      val headers = Chain(Header("key1", Array[Byte]()), Header("key2", Array[Byte]()))
       assert(Headers.fromChain(headers).toString == "Headers(key1 -> [], key2 -> [])")
     }
 
     it("should append one more header with append(Header)") {
-      val header1 = Header("key1", Array())
-      val header2 = Header("key2", Array())
+      val header1 = Header("key1", Array[Byte]())
+      val header2 = Header("key2", Array[Byte]())
 
       assert(Headers(header1).append(header2).toChain.size == 2)
     }
 
     it("should append one more header with append(key, value)") {
-      assert(Headers(Header("key1", Array())).append("key2", Array()).toChain.size == 2)
+      assert(Headers(Header("key1", Array[Byte]())).append("key2", Array()).toChain.size == 2)
     }
   }
 
@@ -211,7 +211,7 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("returns non-empty for at least one header") {
-      val header = Header("key", Array())
+      val header = Header("key", Array[Byte]())
       assert(Headers(header).toChain == Chain.one(header))
     }
   }
@@ -222,7 +222,7 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("returns non-empty for non-empty chain") {
-      val headers = Chain(Header("key1", Array()), Header("key2", Array()))
+      val headers = Chain(Header("key1", Array[Byte]()), Header("key2", Array[Byte]()))
       assert(Headers.fromChain(headers).toChain == headers)
     }
   }
@@ -233,7 +233,7 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("returns non-empty for non-empty seq") {
-      val headers = Seq(Header("key1", Array()), Header("key2", Array()))
+      val headers = Seq(Header("key1", Array[Byte]()), Header("key2", Array[Byte]()))
       assert(Headers.fromSeq(headers).toChain == Chain.fromSeq(headers))
     }
   }
@@ -244,7 +244,7 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("returns non-empty for non-empty iterable") {
-      val headers = List(Header("key1", Array()), Header("key2", Array()))
+      val headers = List(Header("key1", Array[Byte]()), Header("key2", Array[Byte]()))
       assert(Headers.fromIterable(headers).toChain == Chain.fromSeq(headers))
     }
   }
