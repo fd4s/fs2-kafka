@@ -1,6 +1,6 @@
 import ReleaseTransformations._
 
-val fs2Version = "1.0.3"
+val fs2Version = "1.0.4"
 
 val kafkaVersion = "2.1.1"
 
