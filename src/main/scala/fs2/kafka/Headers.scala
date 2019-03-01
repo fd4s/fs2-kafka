@@ -54,7 +54,9 @@ sealed abstract class Headers {
     * Creates a new [[Headers]] instance including a
     * [[Header]] with the specified key and value.
     */
-  def append(key: String, value: Array[Byte]): Headers
+  def append[V](key: String, value: V)(
+    implicit serializer: HeaderSerializer[V]
+  ): Headers
 
   /**
     * Appends the specified [[Headers]] after these headers.
@@ -84,8 +86,9 @@ object Headers {
     override def append(header: Header): Headers =
       new HeadersImpl(headers.append(header))
 
-    override def append(key: String, value: Array[Byte]): Headers =
-      append(Header(key, value))
+    override def append[V](key: String, value: V)(
+      implicit serializer: HeaderSerializer[V]
+    ): Headers = append(Header(key, value))
 
     override def concat(that: Headers): Headers = {
       if (that.isEmpty) this
@@ -182,8 +185,9 @@ object Headers {
       override def append(header: Header): Headers =
         new HeadersImpl(NonEmptyChain.one(header))
 
-      override def append(key: String, value: Array[Byte]): Headers =
-        append(Header(key, value))
+      override def append[V](key: String, value: V)(
+        implicit serializer: HeaderSerializer[V]
+      ): Headers = append(Header(key, value))
 
       override def concat(that: Headers): Headers =
         that

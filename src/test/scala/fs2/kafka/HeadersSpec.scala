@@ -43,7 +43,7 @@ final class HeadersSpec extends BaseSpec {
 
     it("should create a new Headers from append(key, value)") {
       assert {
-        Headers.empty.append("key", Array()).toChain.size == 1
+        Headers.empty.append("key", Array[Byte]()).toChain.size == 1
       }
     }
   }
@@ -201,7 +201,7 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("should append one more header with append(key, value)") {
-      assert(Headers(Header("key1", Array[Byte]())).append("key2", Array()).toChain.size == 2)
+      assert(Headers(Header("key1", Array[Byte]())).append("key2", Array[Byte]()).toChain.size == 2)
     }
   }
 
