@@ -83,7 +83,7 @@ class Index extends React.Component {
     );
 
     const index =
-`[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v${latestVersion}-orange.svg)](https://index.scala-lang.org/ovotech/fs2-kafka)
+`[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Gitter](https://img.shields.io/gitter/room/ovotech/fs2-kafka.svg?colorB=36bc97)](https://gitter.im/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v${latestVersion}-orange.svg)](https://index.scala-lang.org/ovotech/fs2-kafka)
 
 Functional streams for Kafka with [FS2](https://fs2.io) and the official Apache Kafka client.  
 Project is under active development. Feedback and contributions welcome.
