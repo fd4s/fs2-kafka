@@ -28,11 +28,17 @@ package fs2.kafka
 sealed abstract class Acks
 
 object Acks {
-  private[kafka] case object ZeroAcks extends Acks
+  private[kafka] case object ZeroAcks extends Acks {
+    override def toString: String = "Zero"
+  }
 
-  private[kafka] case object OneAcks extends Acks
+  private[kafka] case object OneAcks extends Acks {
+    override def toString: String = "One"
+  }
 
-  private[kafka] case object AllAcks extends Acks
+  private[kafka] case object AllAcks extends Acks {
+    override def toString: String = "All"
+  }
 
   /**
     * Do not wait for any acknowledgement from the server when producing records.

@@ -28,11 +28,17 @@ package fs2.kafka
 sealed abstract class AutoOffsetReset
 
 object AutoOffsetReset {
-  private[kafka] case object EarliestOffsetReset extends AutoOffsetReset
+  private[kafka] case object EarliestOffsetReset extends AutoOffsetReset {
+    override def toString: String = "Earliest"
+  }
 
-  private[kafka] case object LatestOffsetReset extends AutoOffsetReset
+  private[kafka] case object LatestOffsetReset extends AutoOffsetReset {
+    override def toString: String = "Latest"
+  }
 
-  private[kafka] case object NoOffsetReset extends AutoOffsetReset
+  private[kafka] case object NoOffsetReset extends AutoOffsetReset {
+    override def toString: String = "None"
+  }
 
   /**
     * Reset to the earliest available offsets if no initial
