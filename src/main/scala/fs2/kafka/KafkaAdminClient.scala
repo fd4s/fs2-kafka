@@ -20,7 +20,6 @@ import cats.Foldable
 import cats.effect.syntax.concurrent._
 import cats.effect.{Concurrent, Resource}
 import cats.syntax.flatMap._
-import java.time.{Duration => JDuration}
 import fs2.kafka.KafkaAdminClient._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin._
@@ -359,12 +358,7 @@ object KafkaAdminClient {
           .create(settings)
       } { adminClient =>
         F.delay {
-            adminClient.close(
-              JDuration.of(
-                settings.closeTimeout.length,
-                settings.closeTimeout.unit.asTemporalUnit
-              )
-            )
+            adminClient.close(settings.closeTimeout.asJava)
           }
           .start
           .flatMap(_.join)

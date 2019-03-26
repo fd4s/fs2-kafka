@@ -22,13 +22,11 @@ import cats.syntax.foldable._
 import cats.syntax.show._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import java.time.Duration
-import java.time.temporal.{ChronoUnit, TemporalUnit}
+import java.time.temporal.ChronoUnit
 import java.util
 import java.util.concurrent.{CancellationException, CompletionException, TimeUnit}
-
 import org.apache.kafka.common.KafkaFuture
 import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
-
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
@@ -48,22 +46,6 @@ private[kafka] object syntax {
           case TimeUnit.MICROSECONDS => Duration.of(duration.length, ChronoUnit.MICROS)
           case TimeUnit.NANOSECONDS  => Duration.ofNanos(duration.length)
         }
-  }
-
-  implicit final class TimeUnitSyntax(
-    private val timeUnit: TimeUnit,
-  ) extends AnyVal {
-    def asTemporalUnit: TemporalUnit = {
-      timeUnit match {
-        case TimeUnit.NANOSECONDS => ChronoUnit.NANOS
-        case TimeUnit.MICROSECONDS => ChronoUnit.MICROS
-        case TimeUnit.MILLISECONDS => ChronoUnit.MILLIS
-        case TimeUnit.SECONDS => ChronoUnit.SECONDS
-        case TimeUnit.MINUTES => ChronoUnit.MINUTES
-        case TimeUnit.HOURS => ChronoUnit.HOURS
-        case TimeUnit.DAYS => ChronoUnit.DAYS
-      }
-    }
   }
 
   implicit final class FoldableSyntax[F[_], A](
