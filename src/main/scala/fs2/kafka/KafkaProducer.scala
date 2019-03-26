@@ -21,6 +21,8 @@ import cats.effect._
 import cats.effect.concurrent.Deferred
 import cats.effect.syntax.concurrent._
 import cats.implicits._
+import java.time.{Duration => JDuration}
+import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.producer.{Callback, Producer, RecordMetadata}
 
 /**
@@ -68,8 +70,10 @@ private[kafka] object KafkaProducer {
     } { producer =>
       F.delay {
           producer.close(
-            settings.closeTimeout.length,
-            settings.closeTimeout.unit
+            JDuration.of(
+              settings.closeTimeout.length,
+              settings.closeTimeout.unit.asTemporalUnit
+            )
           )
         }
         .start
