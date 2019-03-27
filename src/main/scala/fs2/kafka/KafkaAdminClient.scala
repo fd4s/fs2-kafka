@@ -358,10 +358,7 @@ object KafkaAdminClient {
           .create(settings)
       } { adminClient =>
         F.delay {
-            adminClient.close(
-              settings.closeTimeout.length,
-              settings.closeTimeout.unit
-            )
+            adminClient.close(settings.closeTimeout.asJava)
           }
           .start
           .flatMap(_.join)

@@ -21,6 +21,7 @@ import cats.effect._
 import cats.effect.concurrent.Deferred
 import cats.effect.syntax.concurrent._
 import cats.implicits._
+import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.producer.{Callback, Producer, RecordMetadata}
 
 /**
@@ -67,10 +68,7 @@ private[kafka] object KafkaProducer {
         .create(settings)
     } { producer =>
       F.delay {
-          producer.close(
-            settings.closeTimeout.length,
-            settings.closeTimeout.unit
-          )
+          producer.close(settings.closeTimeout.asJava)
         }
         .start
         .flatMap(_.join)
