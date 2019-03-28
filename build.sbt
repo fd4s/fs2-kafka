@@ -140,6 +140,7 @@ lazy val mimaSettings = Seq(
     import com.typesafe.tools.mima.core._
     // format: off
     Seq(
+      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withDeliveryTimeout"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.apply"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withMaxPrefetchBatches"),
@@ -155,11 +156,7 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.assignment"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.position"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToBeginning"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToEnd"),
-      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.KafkaConsumerActor$Request$Revoked"),
-      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.KafkaConsumerActor$Request$Assigned$"),
-      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.KafkaConsumerActor$Request$Assigned"),
-      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.KafkaConsumerActor$Request$Revoked$")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToEnd")
     )
     // format: on
   }
