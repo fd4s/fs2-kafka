@@ -1,0 +1,5 @@
+### Changes
+- Fix a race condition which could result in duplicate records. Thanks [@backuitist](https://github.com/backuitist)! ([#105][#105], [#106][#106])
+
+[#105]: https://github.com/ovotech/fs2-kafka/pull/105
+[#106]: https://github.com/ovotech/fs2-kafka/pull/106
