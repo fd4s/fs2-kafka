@@ -16,6 +16,8 @@
 
 package fs2.kafka
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import cats.{Foldable, Reducible}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.effect._
@@ -359,7 +361,10 @@ private[kafka] object KafkaConsumer {
         actorFiber combine pollsFiber
       }
 
+      private val streamIdCounter = new AtomicInteger(0)
+
       override def partitionedStream: Stream[F, Stream[F, CommittableMessage[F, K, V]]] = {
+        val streamId = streamIdCounter.getAndIncrement()
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableMessage[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
@@ -382,7 +387,7 @@ private[kafka] object KafkaConsumer {
                             partitionRevoked.tryGet.flatMap {
                               case None =>
                                 Deferred[F, PartitionRequest].flatMap { deferred =>
-                                  val request = Request.Fetch(partition, deferred)
+                                  val request = Request.Fetch(partition, streamId, deferred)
                                   val fetch = requests.enqueue1(request) >> deferred.get
                                   F.race(shutdown, fetch).flatMap {
                                     case Left(()) => F.unit

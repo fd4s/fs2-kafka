@@ -20,7 +20,7 @@ import java.time.Duration
 import java.util
 import java.util.regex.Pattern
 
-import cats.data.{Chain, NonEmptyChain, NonEmptyList, NonEmptySet}
+import cats.data.{Chain, NonEmptyList, NonEmptySet}
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ConcurrentEffect, ContextShift, IO, Timer}
 import cats.instances.list._
@@ -256,6 +256,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private[this] def fetch(
     partition: TopicPartition,
+    streamId: Int,
     deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
   ): F[Unit] = {
     val assigned =
@@ -265,7 +266,16 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
     def storeFetch =
       ref
-        .updateAndGet(_.withFetch(partition, deferred))
+        .modify { state =>
+          val (newState, oldFetch) = state.withFetch(partition, streamId, deferred)
+          (newState, (newState, oldFetch))
+        }
+        .flatMap {
+          case (newState, None)           => F.pure(newState)
+          case (newState, Some(oldFetch)) =>
+            // TODO: Log warning
+            oldFetch.completeRevoked(Chunk.empty).as(newState)
+        }
         .log(StoredFetch(partition, deferred, _))
 
     def completeRevoked =
@@ -319,7 +329,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           state.fetches.filterKeysStrictList(withRecords).traverse {
             case (partition, partitionFetches) =>
               val records = Chunk.buffer(state.records(partition))
-              partitionFetches.traverse(_.completeRevoked(records))
+              partitionFetches.values.toList.traverse(_.completeRevoked(records))
           } >> ref
             .updateAndGet(_.withoutFetchesAndRecords(withRecords))
             .log(RevokedFetchesWithRecords(state.records.filterKeysStrict(withRecords), _))
@@ -329,7 +339,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         if (withoutRecords.nonEmpty) {
           state.fetches
             .filterKeysStrictValuesList(withoutRecords)
-            .traverse(_.traverse(_.completeRevoked(Chunk.empty))) >>
+            .traverse(_.values.toList.traverse(_.completeRevoked(Chunk.empty))) >>
             ref
               .updateAndGet(_.withoutFetches(withoutRecords))
               .log(RevokedFetchesWithoutRecords(withoutRecords, _))
@@ -472,7 +482,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
                 state.fetches.filterKeysStrictList(canBeCompleted).traverse {
                   case (partition, fetches) =>
                     val records = Chunk.buffer(allRecords(partition))
-                    fetches.traverse(_.completeRecords(records))
+                    fetches.values.toList.traverse(_.completeRecords(records))
                 } >> ref
                   .updateAndGet(_.withoutFetchesAndRecords(canBeCompleted))
                   .log(CompletedFetchesWithRecords(allRecords.filterKeysStrict(canBeCompleted), _))
@@ -509,7 +519,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Request.Poll()                                 => poll
       case Request.SubscribeTopics(topics, deferred)      => subscribe(topics, deferred)
       case Request.SubscribePattern(pattern, deferred)    => subscribe(pattern, deferred)
-      case Request.Fetch(partition, deferred)             => fetch(partition, deferred)
+      case Request.Fetch(partition, streamId, deferred)   => fetch(partition, streamId, deferred)
       case Request.Commit(offsets, deferred)              => commit(offsets, deferred)
       case Request.Seek(partition, offset, deferred)      => seek(partition, offset, deferred)
       case Request.SeekToBeginning(partitions, deferred)  => seekToBeginning(partitions, deferred)
@@ -532,8 +542,10 @@ private[kafka] object KafkaConsumerActor {
       "FetchRequest$" + System.identityHashCode(this)
   }
 
+  type StreamId = Int
+
   final case class State[F[_], K, V](
-    fetches: Map[TopicPartition, NonEmptyChain[FetchRequest[F, K, V]]],
+    fetches: Map[TopicPartition, Map[StreamId, FetchRequest[F, K, V]]],
     records: Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]],
     onRebalances: Chain[OnRebalance[F, K, V]],
     subscribed: Boolean
@@ -541,12 +553,21 @@ private[kafka] object KafkaConsumerActor {
     def withOnRebalance(onRebalance: OnRebalance[F, K, V]): State[F, K, V] =
       copy(onRebalances = onRebalances append onRebalance)
 
+    /**
+      * @return (new-state, old-fetch-to-revoke)
+      */
     def withFetch(
       partition: TopicPartition,
+      streamId: Int,
       deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
-    ): State[F, K, V] = {
-      val fetch = NonEmptyChain.one(FetchRequest(deferred))
-      copy(fetches = fetches combine Map(partition -> fetch))
+    ): (State[F, K, V], Option[FetchRequest[F, K, V]]) = {
+
+      val maybeFetchesForPartition = fetches.get(partition)
+      val existing = maybeFetchesForPartition.flatMap(_.get(streamId))
+
+      val fetchesForPartition =
+        maybeFetchesForPartition.getOrElse(Map.empty).updated(streamId, FetchRequest(deferred))
+      (copy(fetches = fetches.updated(partition, fetchesForPartition)), existing)
     }
 
     def withoutFetches(partitions: Set[TopicPartition]): State[F, K, V] =
@@ -640,6 +661,7 @@ private[kafka] object KafkaConsumerActor {
 
     final case class Fetch[F[_], K, V](
       partition: TopicPartition,
+      streamId: Int,
       deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
     ) extends Request[F, K, V]
 
