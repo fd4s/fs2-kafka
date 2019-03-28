@@ -423,7 +423,7 @@ private[kafka] object KafkaConsumer {
         def onRebalance(
           partitions: Queue[F, Stream[F, CommittableMessage[F, K, V]]]
         ): OnRebalance[F, K, V] = OnRebalance(
-          onAssigned = assigned => enqueueStreams(assigned.partitions, partitions),
+          onAssigned = assigned => enqueueStreams(assigned, partitions),
           onRevoked = _ => F.unit
         )
 
