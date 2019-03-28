@@ -85,16 +85,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         if (partitions.isEmpty) ()
         else {
           val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
-          val revoked = requests.enqueue1(Request.Revoked(nonEmpty))
-          F.runAsync(revoked)(_ => IO.unit).unsafeRunSync
+          F.toIO(revoked(nonEmpty)).unsafeRunSync
         }
 
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
         if (partitions.isEmpty) ()
         else {
           val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
-          val assigned = requests.enqueue1(Request.Assigned(nonEmpty))
-          F.runAsync(assigned)(_ => IO.unit).unsafeRunSync
+          F.toIO(assigned(nonEmpty)).unsafeRunSync
         }
     }
 
@@ -286,15 +284,15 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     }
 
-  private[this] def assigned(assigned: Request.Assigned[F, K, V]): F[Unit] =
+  private[this] def assigned(assigned: NonEmptySet[TopicPartition]): F[Unit] =
     ref.get.flatMap(_.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned)))
 
-  private[this] def revoked(revoked: Request.Revoked[F, K, V]): F[Unit] =
+  private[this] def revoked(revoked: NonEmptySet[TopicPartition]): F[Unit] =
     ref.get.flatMap { state =>
       val fetches = state.fetches.keySetStrict
       val records = state.records.keySetStrict
 
-      val revokedFetches = revoked.partitions.toSortedSet intersect fetches
+      val revokedFetches = revoked.toSortedSet intersect fetches
       val withRecords = records intersect revokedFetches
       val withoutRecords = revokedFetches diff records
 
@@ -462,7 +460,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   def handle(request: Request[F, K, V]): F[Unit] =
     request match {
       case Request.Assignment(deferred, onRebalance) => assignment(deferred, onRebalance)
-      case request @ Request.Assigned(_)             => assigned(request)
       case Request.BeginningOffsets(partitions, timeout, deferred) =>
         beginningOffsets(partitions, timeout, deferred)
       case Request.EndOffsets(partitions, timeout, deferred) =>
@@ -472,7 +469,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Request.SubscribePattern(pattern, deferred)    => subscribe(pattern, deferred)
       case Request.Fetch(partition, deferred)             => fetch(partition, deferred)
       case Request.Commit(offsets, deferred)              => commit(offsets, deferred)
-      case request @ Request.Revoked(_)                   => revoked(request)
       case Request.Seek(partition, offset, deferred)      => seek(partition, offset, deferred)
       case Request.SeekToBeginning(partitions, deferred)  => seekToBeginning(partitions, deferred)
       case Request.SeekToEnd(partitions, deferred)        => seekToEnd(partitions, deferred)
@@ -550,8 +546,8 @@ private[kafka] object KafkaConsumerActor {
   }
 
   final case class OnRebalance[F[_], K, V](
-    onAssigned: Request.Assigned[F, K, V] => F[Unit],
-    onRevoked: Request.Revoked[F, K, V] => F[Unit]
+    onAssigned: NonEmptySet[TopicPartition] => F[Unit],
+    onRevoked: NonEmptySet[TopicPartition] => F[Unit]
   )
 
   sealed abstract class Request[F[_], K, V]
@@ -560,14 +556,6 @@ private[kafka] object KafkaConsumerActor {
     final case class Assignment[F[_], K, V](
       deferred: Deferred[F, Either[Throwable, SortedSet[TopicPartition]]],
       onRebalance: Option[OnRebalance[F, K, V]]
-    ) extends Request[F, K, V]
-
-    final case class Assigned[F[_], K, V](
-      partitions: NonEmptySet[TopicPartition]
-    ) extends Request[F, K, V]
-
-    final case class Revoked[F[_], K, V](
-      partitions: NonEmptySet[TopicPartition]
     ) extends Request[F, K, V]
 
     final case class Poll[F[_], K, V]() extends Request[F, K, V]

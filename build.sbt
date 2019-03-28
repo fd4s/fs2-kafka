@@ -155,7 +155,11 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.assignment"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.position"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToBeginning"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToEnd")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToEnd"),
+      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.KafkaConsumerActor$Request$Revoked"),
+      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.KafkaConsumerActor$Request$Assigned$"),
+      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.KafkaConsumerActor$Request$Assigned"),
+      ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.KafkaConsumerActor$Request$Revoked$")
     )
     // format: on
   }
