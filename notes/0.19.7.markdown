@@ -2,3 +2,5 @@
 - Fix to include state changes during poll when handling records. ([#109][#109])
 
 [#109]: https://github.com/ovotech/fs2-kafka/pull/109
+
+Released on 2019-03-29.
