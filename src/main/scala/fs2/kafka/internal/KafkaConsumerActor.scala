@@ -411,8 +411,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           val resume = (requested intersect assigned) diff available
           val pause = assigned diff resume
 
-          consumer.pause(pause.asJava)
-          consumer.resume(resume.asJava)
+          if (pause.nonEmpty)
+            consumer.pause(pause.asJava)
+
+          if (resume.nonEmpty)
+            consumer.resume(resume.asJava)
+
           consumer.poll(pollTimeout)
         }
       }
