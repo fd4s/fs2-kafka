@@ -371,31 +371,39 @@ private[kafka] object KafkaConsumer {
         ): F[Unit] =
           chunkQueue.flatMap { chunks =>
             Deferred[F, Unit].flatMap { dequeueDone =>
-              Deferred[F, Unit].flatMap { partitionRevoked =>
+              Deferred.tryable[F, Unit].flatMap { partitionRevoked =>
                 val shutdown = F.race(fiber.join.attempt, dequeueDone.get).void
                 partitions.enqueue1 {
                   Stream.eval {
                     F.guarantee {
                         Stream
                           .repeatEval {
-                            Deferred[F, PartitionRequest].flatMap { deferred =>
-                              val request = Request.Fetch(partition, deferred)
-                              val fetch = requests.enqueue1(request) >> deferred.get
-                              F.race(shutdown, fetch).flatMap {
-                                case Left(()) => F.unit
-                                case Right((chunk, reason)) =>
-                                  val enqueueChunk =
-                                    if (chunk.nonEmpty)
-                                      chunks.enqueue1(Some(chunk))
-                                    else F.unit
+                            partitionRevoked.tryGet.flatMap {
+                              case None =>
+                                Deferred[F, PartitionRequest].flatMap { deferred =>
+                                  val request = Request.Fetch(partition, deferred)
+                                  val fetch = requests.enqueue1(request) >> deferred.get
+                                  F.race(shutdown, fetch).flatMap {
+                                    case Left(()) => F.unit
+                                    case Right((chunk, reason)) =>
+                                      val enqueueChunk =
+                                        if (chunk.nonEmpty)
+                                          chunks.enqueue1(Some(chunk))
+                                        else F.unit
 
-                                  val completeRevoked =
-                                    if (reason.topicPartitionRevoked)
-                                      partitionRevoked.complete(())
-                                    else F.unit
+                                      val completeRevoked =
+                                        if (reason.topicPartitionRevoked)
+                                          partitionRevoked.complete(())
+                                        else F.unit
 
-                                  enqueueChunk >> completeRevoked
-                              }
+                                      enqueueChunk >> completeRevoked
+                                  }
+                                }
+
+                              case Some(()) =>
+                                // Prevent issuing additional requests after partition is
+                                // revoked, in case stream interruption isn't fast enough
+                                F.unit
                             }
                           }
                           .interruptWhen(F.race(shutdown, partitionRevoked.get).void.attempt)

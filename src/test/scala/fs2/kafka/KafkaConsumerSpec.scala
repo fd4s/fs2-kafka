@@ -58,7 +58,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         (for {
           queue <- Stream.eval(Queue.unbounded[IO, CommittableMessage[IO, String, String]])
-          ref <- Stream.eval(Ref.of[IO, Set[String]](Set.empty))
+          ref <- Stream.eval(Ref.of[IO, Map[String, Int]](Map.empty))
           _ <- consumer(queue)
           _ <- Stream.eval(IO.sleep(5.seconds))
           _ <- Stream.eval(IO(publishToKafka(topic, produced1)))
@@ -68,9 +68,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- Stream.eval {
             queue.dequeue
               .evalMap { message =>
-                ref.modify { keys =>
-                  val newKeys = keys + message.record.key
-                  (newKeys, newKeys)
+                ref.modify { counts =>
+                  val key = message.record.key
+                  val newCounts = counts.updated(key, counts.get(key).getOrElse(0) + 1)
+                  (newCounts, newCounts)
                 }
               }
               .takeWhile(_.size < 200)
@@ -80,7 +81,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           keys <- Stream.eval(ref.get)
           _ <- Stream.eval(IO(assert {
             keys.size.toLong == producedTotal && {
-              keys == (0 until 200).map(n => s"key-$n").toSet
+              keys == (0 until 200).map { n =>
+                s"key-$n" -> (if (n < 100) 2 else 1)
+              }.toMap
             }
           }))
         } yield ()).compile.drain.unsafeRunSync
