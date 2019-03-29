@@ -358,7 +358,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .log(StoredOnRebalance(on, _))
         }
 
-      assigned.flatMap(deferred.complete) >> withOnRebalance
+      val asStreaming =
+        ref.update(_.asStreaming)
+
+      assigned.flatMap(deferred.complete) >> withOnRebalance >> asStreaming
     }
 
   private[this] val messageCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
@@ -492,7 +495,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
 
     ref.get.flatMap { state =>
-      if (state.subscribed) {
+      if (state.subscribed && state.streaming) {
         pollConsumer(state)
           .flatMap(handleBatch)
       } else F.unit
@@ -536,7 +539,8 @@ private[kafka] object KafkaConsumerActor {
     fetches: Map[TopicPartition, NonEmptyChain[FetchRequest[F, K, V]]],
     records: Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]],
     onRebalances: Chain[OnRebalance[F, K, V]],
-    subscribed: Boolean
+    subscribed: Boolean,
+    streaming: Boolean
   ) {
     def withOnRebalance(onRebalance: OnRebalance[F, K, V]): State[F, K, V] =
       copy(onRebalances = onRebalances append onRebalance)
@@ -566,6 +570,9 @@ private[kafka] object KafkaConsumerActor {
     def asSubscribed: State[F, K, V] =
       if (subscribed) this else copy(subscribed = true)
 
+    def asStreaming: State[F, K, V] =
+      if (streaming) this else copy(streaming = true)
+
     override def toString: String = {
       val fetchesString =
         fetches.toList
@@ -577,7 +584,7 @@ private[kafka] object KafkaConsumerActor {
               append(fs.mkString("[", ", ", "]"))
           }("", ", ", "")
 
-      s"State(fetches = Map($fetchesString), records = Map(${recordsString(records)}), onRebalances = $onRebalances, subscribed = $subscribed)"
+      s"State(fetches = Map($fetchesString), records = Map(${recordsString(records)}), onRebalances = $onRebalances, subscribed = $subscribed, streaming = $streaming)"
     }
   }
 
@@ -587,7 +594,8 @@ private[kafka] object KafkaConsumerActor {
         fetches = Map.empty,
         records = Map.empty,
         onRebalances = Chain.empty,
-        subscribed = false
+        subscribed = false,
+        streaming = false
       )
   }
 
