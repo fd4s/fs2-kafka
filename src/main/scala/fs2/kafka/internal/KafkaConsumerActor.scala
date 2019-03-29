@@ -417,42 +417,44 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         }
       }
 
-    def handleBatch(state: State[F, K, V], batch: ConsumerRecords[K, V]): F[Unit] =
-      if (state.fetches.isEmpty) {
-        if (batch.isEmpty) F.unit
-        else ref.update(_.withRecords(records(batch)))
-      } else {
-        val newRecords = records(batch)
-        val allRecords = state.records combine newRecords
+    def handleBatch(batch: ConsumerRecords[K, V]): F[Unit] =
+      ref.get.flatMap { state =>
+        if (state.fetches.isEmpty) {
+          if (batch.isEmpty) F.unit
+          else ref.update(_.withRecords(records(batch)))
+        } else {
+          val newRecords = records(batch)
+          val allRecords = state.records combine newRecords
 
-        if (allRecords.nonEmpty) {
-          val requested = state.fetches.keySetStrict
+          if (allRecords.nonEmpty) {
+            val requested = state.fetches.keySetStrict
 
-          val canBeCompleted = allRecords.keySetStrict intersect requested
-          val canBeStored = newRecords.keySetStrict diff canBeCompleted
+            val canBeCompleted = allRecords.keySetStrict intersect requested
+            val canBeStored = newRecords.keySetStrict diff canBeCompleted
 
-          val complete =
-            if (canBeCompleted.nonEmpty) {
-              state.fetches.filterKeysStrictList(canBeCompleted).traverse {
-                case (partition, fetches) =>
-                  val records = Chunk.buffer(allRecords(partition))
-                  fetches.traverse(_.completeRecords(records))
-              } >> ref.update(_.withoutFetchesAndRecords(canBeCompleted))
-            } else F.unit
+            val complete =
+              if (canBeCompleted.nonEmpty) {
+                state.fetches.filterKeysStrictList(canBeCompleted).traverse {
+                  case (partition, fetches) =>
+                    val records = Chunk.buffer(allRecords(partition))
+                    fetches.traverse(_.completeRecords(records))
+                } >> ref.update(_.withoutFetchesAndRecords(canBeCompleted))
+              } else F.unit
 
-          val store =
-            if (canBeStored.nonEmpty) {
-              ref.update(_.withRecords(newRecords.filterKeysStrict(canBeStored)))
-            } else F.unit
+            val store =
+              if (canBeStored.nonEmpty) {
+                ref.update(_.withRecords(newRecords.filterKeysStrict(canBeStored)))
+              } else F.unit
 
-          complete >> store
-        } else F.unit
+            complete >> store
+          } else F.unit
+        }
       }
 
     ref.get.flatMap { state =>
       if (state.subscribed) {
         pollConsumer(state)
-          .flatMap(handleBatch(state, _))
+          .flatMap(handleBatch)
       } else F.unit
     }
   }
