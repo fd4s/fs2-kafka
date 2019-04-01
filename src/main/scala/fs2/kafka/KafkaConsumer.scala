@@ -26,7 +26,7 @@ import fs2.concurrent.Queue
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
-import fs2.kafka.internal.{KafkaConsumerActor, Synchronized}
+import fs2.kafka.internal._
 import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.TopicPartition
@@ -339,7 +339,8 @@ private[kafka] object KafkaConsumer {
     requests: Queue[F, Request[F, K, V]],
     settings: ConsumerSettings[K, V],
     actor: Fiber[F, Unit],
-    polls: Fiber[F, Unit]
+    polls: Fiber[F, Unit],
+    id: Int
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
       override val fiber: Fiber[F, Unit] = {
@@ -606,7 +607,7 @@ private[kafka] object KafkaConsumer {
         }
 
       override def toString: String =
-        "KafkaConsumer$" + System.identityHashCode(this)
+        "KafkaConsumer$" + id
     }
 
   def consumerResource[F[_], K, V](
@@ -620,20 +621,24 @@ private[kafka] object KafkaConsumer {
       Resource.liftF(Queue.bounded[F, Request[F, K, V]](1)).flatMap { polls =>
         Resource.liftF(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
           Resource.liftF(Jitter.default[F]).flatMap { implicit jitter =>
-            executionContextResource(settings).flatMap { executionContext =>
-              createConsumer(settings, executionContext).flatMap { synchronized =>
-                val actor =
-                  new KafkaConsumerActor(
-                    settings = settings,
-                    executionContext = executionContext,
-                    ref = ref,
-                    requests = requests,
-                    synchronized = synchronized
-                  )
+            Resource.liftF(F.delay(new Object().hashCode)).flatMap { id =>
+              Resource.liftF(Logging.default[F](id)).flatMap { implicit logging =>
+                executionContextResource(settings).flatMap { executionContext =>
+                  createConsumer(settings, executionContext).flatMap { synchronized =>
+                    val actor =
+                      new KafkaConsumerActor(
+                        settings = settings,
+                        executionContext = executionContext,
+                        ref = ref,
+                        requests = requests,
+                        synchronized = synchronized
+                      )
 
-                startConsumerActor(requests, polls, actor).flatMap { actor =>
-                  startPollScheduler(polls, settings.pollInterval).map { polls =>
-                    createKafkaConsumer(requests, settings, actor, polls)
+                    startConsumerActor(requests, polls, actor).flatMap { actor =>
+                      startPollScheduler(polls, settings.pollInterval).map { polls =>
+                        createKafkaConsumer(requests, settings, actor, polls, id)
+                      }
+                    }
                   }
                 }
               }
