@@ -23,13 +23,7 @@ import java.util.regex.Pattern
 import cats.data.{Chain, NonEmptyList, NonEmptySet}
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ConcurrentEffect, ContextShift, IO, Timer}
-import cats.instances.list._
-import cats.instances.map._
-import cats.syntax.applicativeError._
-import cats.syntax.flatMap._
-import cats.syntax.monadError._
-import cats.syntax.semigroup._
-import cats.syntax.traverse._
+import cats.implicits._
 import fs2.Chunk
 import fs2.concurrent.Queue
 import fs2.kafka._
@@ -267,16 +261,18 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     def storeFetch =
       ref
         .modify { state =>
-          val (newState, oldFetch) = state.withFetch(partition, streamId, deferred)
+          val (newState, oldFetch) =
+            state.withFetch(partition, streamId, deferred)
           (newState, (newState, oldFetch))
         }
         .flatMap {
-          case (newState, None)           => F.pure(newState)
-          case (newState, Some(oldFetch)) =>
-            // TODO: Log warning
-            oldFetch.completeRevoked(Chunk.empty).as(newState)
+          case (newState, oldFetch) =>
+            log(StoredFetch(partition, deferred, newState)) >>
+              oldFetch.fold(F.unit) { fetch =>
+                fetch.completeRevoked(Chunk.empty) >>
+                  log(RevokedPreviousFetch(partition, streamId))
+              }
         }
-        .log(StoredFetch(partition, deferred, _))
 
     def completeRevoked =
       deferred.complete((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
@@ -561,13 +557,21 @@ private[kafka] object KafkaConsumerActor {
       streamId: Int,
       deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
     ): (State[F, K, V], Option[FetchRequest[F, K, V]]) = {
+      val oldPartitionFetches =
+        fetches.get(partition)
 
-      val maybeFetchesForPartition = fetches.get(partition)
-      val existing = maybeFetchesForPartition.flatMap(_.get(streamId))
+      val oldPartitionFetch =
+        oldPartitionFetches.flatMap(_.get(streamId))
 
-      val fetchesForPartition =
-        maybeFetchesForPartition.getOrElse(Map.empty).updated(streamId, FetchRequest(deferred))
-      (copy(fetches = fetches.updated(partition, fetchesForPartition)), existing)
+      val newPartitionFetches =
+        oldPartitionFetches
+          .getOrElse(Map.empty)
+          .updated(streamId, FetchRequest(deferred))
+
+      val newFetches =
+        fetches.updated(partition, newPartitionFetches)
+
+      (copy(fetches = newFetches), oldPartitionFetch)
     }
 
     def withoutFetches(partitions: Set[TopicPartition]): State[F, K, V] =

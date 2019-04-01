@@ -1,6 +1,5 @@
 package fs2.kafka
 
-
 import cats.effect.IO
 import cats.effect.concurrent.Ref
 import cats.implicits._
@@ -30,7 +29,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .using(consumerSettings(config))
             .evalTap(_.subscribeTo(topic))
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
-            .evalMap(c => IO.sleep(3.seconds) *>  IO.pure(c)) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(IO.sleep(3.seconds).as) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
             .map(message => message.record.key -> message.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records

@@ -126,6 +126,15 @@ private[kafka] object LogEntry {
       s"Stored records for partitions [${recordsString(records)}]. Current state [$state]."
   }
 
+  final case class RevokedPreviousFetch(
+    partition: TopicPartition,
+    streamId: Int
+  ) extends LogEntry {
+    override def level: LogLevel = Warn
+    override def message: String =
+      s"Revoked previous fetch for partition [$partition] in stream with id [$streamId]."
+  }
+
   def recordsString[F[_], K, V](
     records: Records[F, K, V]
   ): String =
