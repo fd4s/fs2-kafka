@@ -632,36 +632,25 @@ private[kafka] object KafkaConsumer {
     context: ContextShift[F],
     timer: Timer[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
-    Resource.liftF(Queue.unbounded[F, Request[F, K, V]]).flatMap { requests =>
-      Resource.liftF(Queue.bounded[F, Request[F, K, V]](1)).flatMap { polls =>
-        Resource.liftF(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
-          Resource.liftF(Jitter.default[F]).flatMap { implicit jitter =>
-            Resource.liftF(F.delay(new Object().hashCode)).flatMap { id =>
-              Resource.liftF(Logging.default[F](id)).flatMap { implicit logging =>
-                Resource.liftF(Ref.of[F, Int](0)).flatMap { streamId =>
-                  executionContextResource(settings).flatMap { executionContext =>
-                    createConsumer(settings, executionContext).flatMap { synchronized =>
-                      val actor =
-                        new KafkaConsumerActor(
-                          settings = settings,
-                          executionContext = executionContext,
-                          ref = ref,
-                          requests = requests,
-                          synchronized = synchronized
-                        )
-
-                      startConsumerActor(requests, polls, actor).flatMap { actor =>
-                        startPollScheduler(polls, settings.pollInterval).map { polls =>
-                          createKafkaConsumer(requests, settings, actor, polls, streamId, id)
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+    for {
+      id       <- Resource.liftF(F.delay(new Object().hashCode))
+      implicit0(jitter: Jitter[F])    <- Resource.liftF(Jitter.default[F])
+      implicit0(logging: Logging[F])  <- Resource.liftF(Logging.default[F](id))
+      requests <- Resource.liftF(Queue.unbounded[F, Request[F, K, V]])
+      polls    <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
+      ref      <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
+      streamId <- Resource.liftF(Ref.of[F, Int](0))
+      ec       <- executionContextResource(settings)
+      sync     <- createConsumer(settings, ec)
+      actor =
+        new KafkaConsumerActor(
+          settings = settings,
+          executionContext = ec,
+          ref = ref,
+          requests = requests,
+          synchronized = sync
+        )
+      actor     <- startConsumerActor(requests, polls, actor)
+      polls     <- startPollScheduler(polls, settings.pollInterval)
+    } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id)
 }
