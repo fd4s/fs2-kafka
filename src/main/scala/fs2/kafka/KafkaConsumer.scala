@@ -473,12 +473,13 @@ private[kafka] object KafkaConsumer {
         val partitionQueue: F[Queue[F, Stream[F, CommittableMessage[F, K, V]]]] =
           Queue.unbounded[F, Stream[F, CommittableMessage[F, K, V]]]
 
-        Stream.eval(partitionQueue).flatMap { partitions =>
-          Stream.eval(streamIdRef.modify(n => (n + 1, n))).flatMap { streamId =>
-            Stream.eval(initialEnqueue(streamId, partitions)) >>
-              partitions.dequeue.interruptWhen(fiber.join.attempt)
-          }
-        }
+
+        for {
+          partitions <- Stream.eval(partitionQueue)
+          streamId   <- Stream.eval(streamIdRef.modify(n => (n + 1, n)))
+          _          <- Stream.eval(initialEnqueue(streamId, partitions))
+          out        <- partitions.dequeue.interruptWhen(fiber.join.attempt)
+        } yield out
       }
 
       override def stream: Stream[F, CommittableMessage[F, K, V]] =
