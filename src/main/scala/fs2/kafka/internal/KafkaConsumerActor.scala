@@ -283,20 +283,21 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] def commitAsync(request: Request.Commit[F, K, V]): F[Unit] =
     withConsumer { consumer =>
       F.delay {
-        consumer.commitAsync(
-          request.offsets.asJava,
-          new OffsetCommitCallback {
-            override def onComplete(
-              offsets: util.Map[TopicPartition, OffsetAndMetadata],
-              exception: Exception
-            ): Unit = {
-              val result = Option(exception).toLeft(())
-              val complete = request.deferred.complete(result)
-              F.runAsync(complete)(_ => IO.unit).unsafeRunSync
+          consumer.commitAsync(
+            request.offsets.asJava,
+            new OffsetCommitCallback {
+              override def onComplete(
+                offsets: util.Map[TopicPartition, OffsetAndMetadata],
+                exception: Exception
+              ): Unit = {
+                val result = Option(exception).toLeft(())
+                val complete = request.deferred.complete(result)
+                F.runAsync(complete)(_ => IO.unit).unsafeRunSync
+              }
             }
-          }
-        )
-      }
+          )
+        }
+        .handleErrorWith(e => request.deferred.complete(Left(e)))
     }
 
   private[this] def commit(request: Request.Commit[F, K, V]): F[Unit] =
