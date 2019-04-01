@@ -16,10 +16,10 @@
 
 package fs2.kafka.internal
 
-import cats.{Foldable, Show}
+import cats.{FlatMap, Foldable, Show}
 import cats.effect.{CancelToken, Concurrent, Sync}
-import cats.syntax.foldable._
-import cats.syntax.show._
+import cats.effect.concurrent.Ref
+import cats.implicits._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import java.time.Duration
 import java.time.temporal.ChronoUnit
@@ -31,6 +31,26 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
 private[kafka] object syntax {
+  implicit final class LoggingSyntax[F[_], A](
+    private val fa: F[A]
+  ) extends AnyVal {
+    def log(f: A => LogEntry)(
+      implicit F: FlatMap[F],
+      logging: Logging[F]
+    ): F[Unit] =
+      fa.flatMap(a => logging.log(f(a)))
+  }
+
+  implicit final class RefSyntax[F[_], A](
+    private val ref: Ref[F, A]
+  ) extends AnyVal {
+    def updateAndGet(f: A => A): F[A] =
+      ref.modify { a =>
+        val fa = f(a)
+        (fa, fa)
+      }
+  }
+
   implicit final class FiniteDurationSyntax(
     private val duration: FiniteDuration
   ) extends AnyVal {
