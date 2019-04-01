@@ -58,7 +58,8 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
     serializer.serialize(None) shouldBe null
 
     forAll { s: String =>
-      serializer.serialize(Some(s)) shouldBe s.getBytes
+      serializer.serialize(Some(s)) shouldBe
+        HeaderSerializer[String].serialize(s)
     }
   }
 

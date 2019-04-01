@@ -79,7 +79,8 @@ final class DeserializerSpec extends BaseCatsSpec {
     deserializer.deserialize("topic", null) shouldBe None
 
     forAll { s: String =>
-      deserializer.deserialize("topic", s.getBytes) shouldBe Some(s)
+      val serialized = Serializer[String].serialize("topic", s)
+      deserializer.deserialize("topic", serialized) shouldBe Some(s)
     }
   }
 

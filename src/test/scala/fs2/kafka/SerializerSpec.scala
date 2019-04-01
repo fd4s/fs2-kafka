@@ -105,7 +105,8 @@ final class SerializerSpec extends BaseCatsSpec {
     serializer.serialize("topic", None) shouldBe null
 
     forAll { s: String =>
-      serializer.serialize("topic", Some(s)) shouldBe s.getBytes
+      serializer.serialize("topic", Some(s)) shouldBe
+        Serializer[String].serialize("topic", s)
     }
   }
 
