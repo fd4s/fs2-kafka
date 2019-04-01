@@ -280,21 +280,18 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     assigned.ifM(storeFetch, completeRevoked)
   }
 
-  private[this] def commit(
-    offsets: Map[TopicPartition, OffsetAndMetadata],
-    deferred: Deferred[F, Either[Throwable, Unit]]
-  ): F[Unit] =
+  private[this] def commitAsync(request: Request.Commit[F, K, V]): F[Unit] =
     withConsumer { consumer =>
       F.delay {
         consumer.commitAsync(
-          offsets.asJava,
+          request.offsets.asJava,
           new OffsetCommitCallback {
             override def onComplete(
               offsets: util.Map[TopicPartition, OffsetAndMetadata],
               exception: Exception
             ): Unit = {
               val result = Option(exception).toLeft(())
-              val complete = deferred.complete(result)
+              val complete = request.deferred.complete(result)
               F.runAsync(complete)(_ => IO.unit).unsafeRunSync
             }
           }
@@ -302,50 +299,67 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     }
 
-  private[this] def assigned(assigned: NonEmptySet[TopicPartition]): F[Unit] =
+  private[this] def commit(request: Request.Commit[F, K, V]): F[Unit] =
     ref.get.flatMap { state =>
-      log(AssignedPartitions(assigned, state)) >>
-        state.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned))
+      if (state.rebalancing) {
+        ref
+          .updateAndGet(_.withPendingCommit(request))
+          .log(StoredPendingCommit(request, _))
+      } else commitAsync(request)
     }
+
+  private[this] def assigned(assigned: NonEmptySet[TopicPartition]): F[Unit] =
+    ref
+      .updateAndGet(_.withRebalancing(false))
+      .flatMap { state =>
+        log(AssignedPartitions(assigned, state)) >>
+          state.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned)) >>
+          state.pendingCommits.foldLeft(F.unit)(_ >> commitAsync(_)) >>
+          ref
+            .updateAndGet(_.withoutPendingCommits)
+            .log(CommittedPendingCommits(state.pendingCommits, _))
+      }
 
   private[this] def revoked(revoked: NonEmptySet[TopicPartition]): F[Unit] =
-    ref.get.flatMap { state =>
-      val fetches = state.fetches.keySetStrict
-      val records = state.records.keySetStrict
+    ref
+      .updateAndGet(_.withRebalancing(true))
+      .flatMap { state =>
+        val fetches = state.fetches.keySetStrict
+        val records = state.records.keySetStrict
 
-      val revokedFetches = revoked.toSortedSet intersect fetches
-      val withRecords = records intersect revokedFetches
-      val withoutRecords = revokedFetches diff records
+        val revokedFetches = revoked.toSortedSet intersect fetches
+        val withRecords = records intersect revokedFetches
+        val withoutRecords = revokedFetches diff records
 
-      val logRevoked =
-        log(RevokedPartitions(revoked, state))
+        val logRevoked =
+          log(RevokedPartitions(revoked, state))
 
-      val completeWithRecords =
-        if (withRecords.nonEmpty) {
-          state.fetches.filterKeysStrictList(withRecords).traverse {
-            case (partition, partitionFetches) =>
-              val records = Chunk.buffer(state.records(partition))
-              partitionFetches.values.toList.traverse(_.completeRevoked(records))
-          } >> ref
-            .updateAndGet(_.withoutFetchesAndRecords(withRecords))
-            .log(RevokedFetchesWithRecords(state.records.filterKeysStrict(withRecords), _))
-        } else F.unit
+        val completeWithRecords =
+          if (withRecords.nonEmpty) {
+            state.fetches.filterKeysStrictList(withRecords).traverse {
+              case (partition, partitionFetches) =>
+                val records = Chunk.buffer(state.records(partition))
+                partitionFetches.values.toList.traverse(_.completeRevoked(records))
+            } >> ref
+              .updateAndGet(_.withoutFetchesAndRecords(withRecords))
+              .log(RevokedFetchesWithRecords(state.records.filterKeysStrict(withRecords), _))
+          } else F.unit
 
-      val completeWithoutRecords =
-        if (withoutRecords.nonEmpty) {
-          state.fetches
-            .filterKeysStrictValuesList(withoutRecords)
-            .traverse(_.values.toList.traverse(_.completeRevoked(Chunk.empty))) >>
-            ref
-              .updateAndGet(_.withoutFetches(withoutRecords))
-              .log(RevokedFetchesWithoutRecords(withoutRecords, _))
-        } else F.unit
+        val completeWithoutRecords =
+          if (withoutRecords.nonEmpty) {
+            state.fetches
+              .filterKeysStrictValuesList(withoutRecords)
+              .traverse(_.values.toList.traverse(_.completeRevoked(Chunk.empty))) >>
+              ref
+                .updateAndGet(_.withoutFetches(withoutRecords))
+                .log(RevokedFetchesWithoutRecords(withoutRecords, _))
+          } else F.unit
 
-      val onRevoked =
-        state.onRebalances.foldLeft(F.unit)(_ >> _.onRevoked(revoked))
+        val onRevoked =
+          state.onRebalances.foldLeft(F.unit)(_ >> _.onRevoked(revoked))
 
-      logRevoked >> completeWithRecords >> completeWithoutRecords >> onRevoked
-    }
+        logRevoked >> completeWithRecords >> completeWithoutRecords >> onRevoked
+      }
 
   private[this] def assignment(
     deferred: Deferred[F, Either[Throwable, SortedSet[TopicPartition]]],
@@ -519,7 +533,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Request.SubscribeTopics(topics, deferred)      => subscribe(topics, deferred)
       case Request.SubscribePattern(pattern, deferred)    => subscribe(pattern, deferred)
       case Request.Fetch(partition, streamId, deferred)   => fetch(partition, streamId, deferred)
-      case Request.Commit(offsets, deferred)              => commit(offsets, deferred)
+      case request @ Request.Commit(_, _)                 => commit(request)
       case Request.Seek(partition, offset, deferred)      => seek(partition, offset, deferred)
       case Request.SeekToBeginning(partitions, deferred)  => seekToBeginning(partitions, deferred)
       case Request.SeekToEnd(partitions, deferred)        => seekToEnd(partitions, deferred)
@@ -546,7 +560,9 @@ private[kafka] object KafkaConsumerActor {
   final case class State[F[_], K, V](
     fetches: Map[TopicPartition, Map[StreamId, FetchRequest[F, K, V]]],
     records: Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]],
+    pendingCommits: Chain[Request.Commit[F, K, V]],
     onRebalances: Chain[OnRebalance[F, K, V]],
+    rebalancing: Boolean,
     subscribed: Boolean,
     streaming: Boolean
   ) {
@@ -592,6 +608,15 @@ private[kafka] object KafkaConsumerActor {
         records = records.filterKeysStrict(!partitions.contains(_))
       )
 
+    def withPendingCommit(pendingCommit: Request.Commit[F, K, V]): State[F, K, V] =
+      copy(pendingCommits = pendingCommits append pendingCommit)
+
+    def withoutPendingCommits: State[F, K, V] =
+      if (pendingCommits.isEmpty) this else copy(pendingCommits = Chain.empty)
+
+    def withRebalancing(rebalancing: Boolean): State[F, K, V] =
+      if (this.rebalancing == rebalancing) this else copy(rebalancing = rebalancing)
+
     def asSubscribed: State[F, K, V] =
       if (subscribed) this else copy(subscribed = true)
 
@@ -609,7 +634,7 @@ private[kafka] object KafkaConsumerActor {
               append(fs.mkString("[", ", ", "]"))
           }("", ", ", "")
 
-      s"State(fetches = Map($fetchesString), records = Map(${recordsString(records)}), onRebalances = $onRebalances, subscribed = $subscribed, streaming = $streaming)"
+      s"State(fetches = Map($fetchesString), records = Map(${recordsString(records)}), pendingCommits = $pendingCommits, onRebalances = $onRebalances, rebalancing = $rebalancing, subscribed = $subscribed, streaming = $streaming)"
     }
   }
 
@@ -618,7 +643,9 @@ private[kafka] object KafkaConsumerActor {
       State(
         fetches = Map.empty,
         records = Map.empty,
+        pendingCommits = Chain.empty,
         onRebalances = Chain.empty,
+        rebalancing = false,
         subscribed = false,
         streaming = false
       )

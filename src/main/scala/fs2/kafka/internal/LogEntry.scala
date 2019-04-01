@@ -16,12 +16,12 @@
 
 package fs2.kafka.internal
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.{Chain, NonEmptyList, NonEmptySet}
 import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2.kafka.CommittableMessage
 import fs2.kafka.internal.instances._
-import fs2.kafka.internal.KafkaConsumerActor.{OnRebalance, State}
+import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogLevel._
 import fs2.kafka.internal.syntax._
 import java.util.regex.Pattern
@@ -133,6 +133,24 @@ private[kafka] object LogEntry {
     override def level: LogLevel = Warn
     override def message: String =
       s"Revoked previous fetch for partition [$partition] in stream with id [$streamId]."
+  }
+
+  final case class StoredPendingCommit[F[_], K, V](
+    commit: Request.Commit[F, K, V],
+    state: State[F, K, V]
+  ) extends LogEntry {
+    override def level: LogLevel = Debug
+    override def message: String =
+      s"Stored pending commit [$commit] as rebalance is in-progress. Current state [$state]."
+  }
+
+  final case class CommittedPendingCommits[F[_], K, V](
+    pendingCommits: Chain[Request.Commit[F, K, V]],
+    state: State[F, K, V]
+  ) extends LogEntry {
+    override def level: LogLevel = Debug
+    override def message: String =
+      s"Committed pending commits [$pendingCommits]. Current state [$state]."
   }
 
   def recordsString[F[_], K, V](
