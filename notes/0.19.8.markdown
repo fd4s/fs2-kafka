@@ -1,0 +1,18 @@
+### Additions
+
+- Add initial debug logging using SLF4J. Thanks [@backuitist](https://github.com/backuitist)! ([#108][#108], [#113][#113])
+
+### Changes
+
+- Change to only pause/resume partitions when necessary. ([#112][#112])
+- Change to only start polling after streaming has started. Thanks [@Krever](https://github.com/Krever)! ([#110][#110], [#114][#114])
+- Change to revoke previous duplicate fetch and issue warning log. Thanks [@backuitist](https://github.com/backuitist)! ([#107][#107])
+- Fix race condition which could cause duplicate records. ([#111][#111])
+
+[#107]: https://github.com/ovotech/fs2-kafka/pull/107
+[#108]: https://github.com/ovotech/fs2-kafka/issues/108
+[#110]: https://github.com/ovotech/fs2-kafka/issues/110
+[#111]: https://github.com/ovotech/fs2-kafka/pull/111
+[#112]: https://github.com/ovotech/fs2-kafka/pull/112
+[#113]: https://github.com/ovotech/fs2-kafka/pull/113
+[#114]: https://github.com/ovotech/fs2-kafka/pull/114
