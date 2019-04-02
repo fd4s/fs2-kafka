@@ -283,24 +283,31 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] def commit(
     offsets: Map[TopicPartition, OffsetAndMetadata],
     deferred: Deferred[F, Either[Throwable, Unit]]
-  ): F[Unit] =
-    withConsumer { consumer =>
-      F.delay {
-        consumer.commitAsync(
-          offsets.asJava,
-          new OffsetCommitCallback {
-            override def onComplete(
-              offsets: util.Map[TopicPartition, OffsetAndMetadata],
-              exception: Exception
-            ): Unit = {
-              val result = Option(exception).toLeft(())
-              val complete = deferred.complete(result)
-              F.runAsync(complete)(_ => IO.unit).unsafeRunSync
+  ): F[Unit] = {
+    val commit =
+      withConsumer { consumer =>
+        F.delay {
+          consumer.commitAsync(
+            offsets.asJava,
+            new OffsetCommitCallback {
+              override def onComplete(
+                offsets: util.Map[TopicPartition, OffsetAndMetadata],
+                exception: Exception
+              ): Unit = {
+                val result = Option(exception).toLeft(())
+                val complete = deferred.complete(result)
+                F.runAsync(complete)(_ => IO.unit).unsafeRunSync
+              }
             }
-          }
-        )
+          )
+        }.attempt
       }
+
+    commit.flatMap {
+      case Right(()) => F.unit
+      case Left(e)   => deferred.complete(Left(e))
     }
+  }
 
   private[this] def assigned(assigned: NonEmptySet[TopicPartition]): F[Unit] =
     ref.get.flatMap { state =>
