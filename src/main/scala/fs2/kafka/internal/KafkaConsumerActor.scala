@@ -20,7 +20,7 @@ import java.time.Duration
 import java.util
 import java.util.regex.Pattern
 
-import cats.data.{Chain, NonEmptyList, NonEmptySet}
+import cats.data.{Chain, NonEmptyList}
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ConcurrentEffect, ContextShift, IO, Timer}
 import cats.implicits._
@@ -80,18 +80,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
       override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
-        if (partitions.isEmpty) ()
-        else {
-          val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
-          F.toIO(revoked(nonEmpty)).unsafeRunSync
-        }
+        F.toIO(revoked(partitions.toSortedSet)).unsafeRunSync
 
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
-        if (partitions.isEmpty) ()
-        else {
-          val nonEmpty = NonEmptySet.fromSetUnsafe(partitions.toSortedSet)
-          F.toIO(assigned(nonEmpty)).unsafeRunSync
-        }
+        F.toIO(assigned(partitions.toSortedSet)).unsafeRunSync
     }
 
   private[this] def beginningOffsets(
@@ -280,9 +272,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     assigned.ifM(storeFetch, completeRevoked)
   }
 
-  private[this] def commitAsync(request: Request.Commit[F, K, V]): F[Unit] =
-    withConsumer { consumer =>
-      F.delay {
+  private[this] def commitAsync(request: Request.Commit[F, K, V]): F[Unit] = {
+    val commit =
+      withConsumer { consumer =>
+        F.delay {
           consumer.commitAsync(
             request.offsets.asJava,
             new OffsetCommitCallback {
@@ -296,9 +289,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               }
             }
           )
-        }
-        .handleErrorWith(e => request.deferred.complete(Left(e)))
+        }.attempt
+      }
+
+    commit.flatMap {
+      case Right(()) => F.unit
+      case Left(e)   => request.deferred.complete(Left(e))
     }
+  }
 
   private[this] def commit(request: Request.Commit[F, K, V]): F[Unit] =
     ref.get.flatMap { state =>
@@ -309,26 +307,22 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       } else commitAsync(request)
     }
 
-  private[this] def assigned(assigned: NonEmptySet[TopicPartition]): F[Unit] =
+  private[this] def assigned(assigned: SortedSet[TopicPartition]): F[Unit] =
     ref
       .updateAndGet(_.withRebalancing(false))
       .flatMap { state =>
         log(AssignedPartitions(assigned, state)) >>
-          state.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned)) >>
-          state.pendingCommits.foldLeft(F.unit)(_ >> commitAsync(_)) >>
-          ref
-            .updateAndGet(_.withoutPendingCommits)
-            .log(CommittedPendingCommits(state.pendingCommits, _))
+          state.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned))
       }
 
-  private[this] def revoked(revoked: NonEmptySet[TopicPartition]): F[Unit] =
+  private[this] def revoked(revoked: SortedSet[TopicPartition]): F[Unit] =
     ref
       .updateAndGet(_.withRebalancing(true))
       .flatMap { state =>
         val fetches = state.fetches.keySetStrict
         val records = state.records.keySetStrict
 
-        val revokedFetches = revoked.toSortedSet intersect fetches
+        val revokedFetches = revoked intersect fetches
         val withRecords = records intersect revokedFetches
         val withoutRecords = revokedFetches diff records
 
@@ -515,10 +509,27 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         }
       }
 
+    def handlePendingCommits(initialRebalancing: Boolean): F[Unit] =
+      ref.get.flatMap { state =>
+        val currentRebalancing = state.rebalancing
+        if (initialRebalancing && !currentRebalancing && state.pendingCommits.nonEmpty) {
+          val commitPendingCommits =
+            state.pendingCommits.foldLeft(F.unit)(_ >> commitAsync(_))
+
+          val removePendingCommits =
+            ref
+              .updateAndGet(_.withoutPendingCommits)
+              .log(CommittedPendingCommits(state.pendingCommits, _))
+
+          commitPendingCommits >> removePendingCommits
+        } else F.unit
+      }
+
     ref.get.flatMap { state =>
       if (state.subscribed && state.streaming) {
-        pollConsumer(state)
-          .flatMap(handleBatch)
+        val initialRebalancing = state.rebalancing
+        pollConsumer(state).flatMap(handleBatch) >>
+          handlePendingCommits(initialRebalancing)
       } else F.unit
     }
   }
@@ -666,8 +677,8 @@ private[kafka] object KafkaConsumerActor {
   }
 
   final case class OnRebalance[F[_], K, V](
-    onAssigned: NonEmptySet[TopicPartition] => F[Unit],
-    onRevoked: NonEmptySet[TopicPartition] => F[Unit]
+    onAssigned: SortedSet[TopicPartition] => F[Unit],
+    onRevoked: SortedSet[TopicPartition] => F[Unit]
   ) {
     override def toString: String =
       "OnRebalance$" + System.identityHashCode(this)
