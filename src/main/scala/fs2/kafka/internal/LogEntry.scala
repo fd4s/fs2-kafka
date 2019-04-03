@@ -16,16 +16,17 @@
 
 package fs2.kafka.internal
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.{Chain, NonEmptyList}
 import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2.kafka.CommittableMessage
 import fs2.kafka.internal.instances._
-import fs2.kafka.internal.KafkaConsumerActor.{OnRebalance, State}
+import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogLevel._
 import fs2.kafka.internal.syntax._
 import java.util.regex.Pattern
 import org.apache.kafka.common.TopicPartition
+import scala.collection.immutable.SortedSet
 import scala.collection.mutable.ArrayBuffer
 
 private[kafka] sealed abstract class LogEntry {
@@ -73,21 +74,21 @@ private[kafka] object LogEntry {
   }
 
   final case class AssignedPartitions[F[_], K, V](
-    partitions: NonEmptySet[TopicPartition],
+    partitions: SortedSet[TopicPartition],
     state: State[F, K, V]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
-      s"Assigned partitions [${partitions.toSortedSet.mkString(", ")}]. Current state [$state]."
+      s"Assigned partitions [${partitions.mkString(", ")}]. Current state [$state]."
   }
 
   final case class RevokedPartitions[F[_], K, V](
-    partitions: NonEmptySet[TopicPartition],
+    partitions: SortedSet[TopicPartition],
     state: State[F, K, V]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
-      s"Revoked partitions [${partitions.toSortedSet.mkString(", ")}]. Current state [$state]."
+      s"Revoked partitions [${partitions.mkString(", ")}]. Current state [$state]."
   }
 
   final case class CompletedFetchesWithRecords[F[_], K, V](
@@ -133,6 +134,24 @@ private[kafka] object LogEntry {
     override def level: LogLevel = Warn
     override def message: String =
       s"Revoked previous fetch for partition [$partition] in stream with id [$streamId]."
+  }
+
+  final case class StoredPendingCommit[F[_], K, V](
+    commit: Request.Commit[F, K, V],
+    state: State[F, K, V]
+  ) extends LogEntry {
+    override def level: LogLevel = Debug
+    override def message: String =
+      s"Stored pending commit [$commit] as rebalance is in-progress. Current state [$state]."
+  }
+
+  final case class CommittedPendingCommits[F[_], K, V](
+    pendingCommits: Chain[Request.Commit[F, K, V]],
+    state: State[F, K, V]
+  ) extends LogEntry {
+    override def level: LogLevel = Debug
+    override def message: String =
+      s"Committed pending commits [$pendingCommits]. Current state [$state]."
   }
 
   def recordsString[F[_], K, V](
