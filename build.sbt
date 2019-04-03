@@ -101,11 +101,9 @@ lazy val publishSettings =
         "scm:git@github.com:ovotech/fs2-kafka.git"
       )
     ),
-    useGpg := true,
     releaseCrossBuild := true,
     releaseUseGlobalVersion := true,
     releaseTagName := s"v${(version in ThisBuild).value}",
-    releasePublishArtifactsAction := PgpKeys.publishSigned.value,
     releaseTagComment := s"Release version ${(version in ThisBuild).value}",
     releaseCommitMessage := s"Set version to ${(version in ThisBuild).value}",
     releaseProcess := Seq[ReleaseStep](
