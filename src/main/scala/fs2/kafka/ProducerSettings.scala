@@ -16,9 +16,14 @@
 
 package fs2.kafka
 
+import cats.effect.Sync
 import cats.Show
+import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.serialization.ByteArraySerializer
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 /**
   * [[ProducerSettings]] contain settings necessary to create a [[KafkaProducer]].
@@ -33,17 +38,24 @@ import scala.concurrent.duration._
   * <br>
   * Use `ProducerSettings#apply` to create a new instance.
   */
-sealed abstract class ProducerSettings[K, V] {
+sealed abstract class ProducerSettings[F[_], K, V] {
 
   /**
     * The `Serializer` to use for serializing record keys.
     */
-  def keySerializer: KafkaSerializer[K]
+  def keySerializer: Serializer[F, K]
 
   /**
     * The `Serializer` to use for serializing record values.
     */
-  def valueSerializer: KafkaSerializer[V]
+  def valueSerializer: Serializer[F, V]
+
+  /**
+    * The `ExecutionContext` on which to run blocking Kafka operations.
+    * If not explicitly provided, a default `ExecutionContext` will be
+    * instantiated when creating a `KafkaProducer` instance.
+    */
+  def executionContext: Option[ExecutionContext]
 
   /**
     * Properties which can be provided when creating a Java `KafkaProducer`
@@ -61,7 +73,7 @@ sealed abstract class ProducerSettings[K, V] {
     * ProducerConfig.BOOTSTRAP_SERVERS_CONFIG
     * }}}
     */
-  def withBootstrapServers(bootstrapServers: String): ProducerSettings[K, V]
+  def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V]
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -73,7 +85,7 @@ sealed abstract class ProducerSettings[K, V] {
     * ProducerConfig.ACKS_CONFIG
     * }}}
     */
-  def withAcks(acks: Acks): ProducerSettings[K, V]
+  def withAcks(acks: Acks): ProducerSettings[F, K, V]
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -85,7 +97,7 @@ sealed abstract class ProducerSettings[K, V] {
     * ProducerConfig.BATCH_SIZE_CONFIG
     * }}}
     */
-  def withBatchSize(batchSize: Int): ProducerSettings[K, V]
+  def withBatchSize(batchSize: Int): ProducerSettings[F, K, V]
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -96,7 +108,7 @@ sealed abstract class ProducerSettings[K, V] {
     * ProducerConfig.CLIENT_ID_CONFIG
     * }}}
     */
-  def withClientId(clientId: String): ProducerSettings[K, V]
+  def withClientId(clientId: String): ProducerSettings[F, K, V]
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -108,7 +120,7 @@ sealed abstract class ProducerSettings[K, V] {
     * ProducerConfig.RETRIES_CONFIG
     * }}}
     */
-  def withRetries(retries: Int): ProducerSettings[K, V]
+  def withRetries(retries: Int): ProducerSettings[F, K, V]
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -123,7 +135,7 @@ sealed abstract class ProducerSettings[K, V] {
     */
   def withMaxInFlightRequestsPerConnection(
     maxInFlightRequestsPerConnection: Int
-  ): ProducerSettings[K, V]
+  ): ProducerSettings[F, K, V]
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -135,7 +147,7 @@ sealed abstract class ProducerSettings[K, V] {
     * ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG
     * }}}
     */
-  def withEnableIdempotence(enableIdempotence: Boolean): ProducerSettings[K, V]
+  def withEnableIdempotence(enableIdempotence: Boolean): ProducerSettings[F, K, V]
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -147,7 +159,7 @@ sealed abstract class ProducerSettings[K, V] {
     * ProducerConfig.LINGER_MS_CONFIG
     * }}}
     */
-  def withLinger(linger: FiniteDuration): ProducerSettings[K, V]
+  def withLinger(linger: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -159,7 +171,7 @@ sealed abstract class ProducerSettings[K, V] {
     * ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG
     * }}}
     */
-  def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings[K, V]
+  def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -171,28 +183,28 @@ sealed abstract class ProducerSettings[K, V] {
     * ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG
     * }}}
     */
-  def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[K, V]
+  def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
     * Includes a property with the specified `key` and `value`.
     * The key should be one of the keys in `ProducerConfig`,
     * and the value should be a valid choice for the key.
     */
-  def withProperty(key: String, value: String): ProducerSettings[K, V]
+  def withProperty(key: String, value: String): ProducerSettings[F, K, V]
 
   /**
     * Includes the specified keys and values as properties. The
     * keys should be part of the `ProducerConfig` keys, and
     * the values should be valid choices for the keys.
     */
-  def withProperties(properties: (String, String)*): ProducerSettings[K, V]
+  def withProperties(properties: (String, String)*): ProducerSettings[F, K, V]
 
   /**
     * Includes the specified keys and values as properties. The
     * keys should be part of the `ProducerConfig` keys, and
     * the values should be valid choices for the keys.
     */
-  def withProperties(properties: Map[String, String]): ProducerSettings[K, V]
+  def withProperties(properties: Map[String, String]): ProducerSettings[F, K, V]
 
   /**
     * The time to wait for the Java `KafkaProducer` to shutdown.<br>
@@ -204,132 +216,206 @@ sealed abstract class ProducerSettings[K, V] {
   /**
     * Creates a new [[ProducerSettings]] with the specified [[closeTimeout]].
     */
-  def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[K, V]
+  def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
-    * The [[ProducerFactory]] for creating the Java `Producer`.
-    * The default is [[ProducerFactory#Default]]. Note that you
-    * normally don't need to have a custom [[ProducerFactory]],
-    * and you should instead prefer to create a custom trait or
-    * class similar to [[KafkaProducer]] for testing purposes.
+    * Whether serialization should be run on [[executionContext]] or not.
+    * When `true`, we will shift to run on the [[executionContext]] for
+    * the duration of serialization. When `false`, no such shifting
+    * will take place.<br>
+    * <br>
+    * Serialization is shifted to [[executionContext]] by default, in
+    * order to support blocking serializers. If your serializers aren't
+    * blocking, then this can safely be set to `false`.<br>
+    * <br>
+    * The default value is `true`.
     */
-  def producerFactory: ProducerFactory
+  def shiftSerialization: Boolean
 
   /**
-    * Creates a new [[ProducerSettings]] with the specified
-    * [[ProducerFactory]] as the [[producerFactory]] to use.
-    * Note that under normal usage you don't need to have a
-    * custom [[ProducerFactory]] instance. For testing, you
-    * should prefer to create a custom trait or class
-    * similar to [[KafkaProducer]].
+    * Creates a new [[ProducerSettings]] with the specified [[shiftSerialization]].
     */
-  def withProducerFactory(producerFactory: ProducerFactory): ProducerSettings[K, V]
+  def withShiftSerialization(shiftSerialization: Boolean): ProducerSettings[F, K, V]
+
+  /**
+    * Creates a new `Producer` using the [[properties]]. Note that this
+    * operation should be bracketed, using e.g. `Resource`, to ensure
+    * the `close` function on the producer is called.
+    */
+  def createProducer: F[Producer[Array[Byte], Array[Byte]]]
+
+  /**
+    * Creates a new [[ProducerSettings]] with the specified function for
+    * creating `Producer` instances in [[createProducer]]. The argument
+    * is the [[properties]] of the settings instance.
+    */
+  def withCreateProducer(
+    createProducer: Map[String, String] => F[Producer[Array[Byte], Array[Byte]]]
+  ): ProducerSettings[F, K, V]
 }
 
 object ProducerSettings {
-  private[this] final case class ProducerSettingsImpl[K, V](
-    override val keySerializer: KafkaSerializer[K],
-    override val valueSerializer: KafkaSerializer[V],
+  private[this] final case class ProducerSettingsImpl[F[_], K, V](
+    override val keySerializer: Serializer[F, K],
+    override val valueSerializer: Serializer[F, V],
+    override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
-    override val producerFactory: ProducerFactory
-  ) extends ProducerSettings[K, V] {
-    override def withBootstrapServers(bootstrapServers: String): ProducerSettings[K, V] =
+    override val shiftSerialization: Boolean,
+    val createProducerWith: Map[String, String] => F[Producer[Array[Byte], Array[Byte]]]
+  ) extends ProducerSettings[F, K, V] {
+    override def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
 
-    override def withAcks(acks: Acks): ProducerSettings[K, V] =
+    override def withAcks(acks: Acks): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.ACKS_CONFIG, acks match {
         case Acks.ZeroAcks => "0"
         case Acks.OneAcks  => "1"
         case Acks.AllAcks  => "all"
       })
 
-    override def withBatchSize(batchSize: Int): ProducerSettings[K, V] =
+    override def withBatchSize(batchSize: Int): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.BATCH_SIZE_CONFIG, batchSize.toString)
 
-    override def withClientId(clientId: String): ProducerSettings[K, V] =
+    override def withClientId(clientId: String): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.CLIENT_ID_CONFIG, clientId)
 
-    override def withRetries(retries: Int): ProducerSettings[K, V] =
+    override def withRetries(retries: Int): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.RETRIES_CONFIG, retries.toString)
 
     override def withMaxInFlightRequestsPerConnection(
       maxInFlightRequestsPerConnection: Int
-    ): ProducerSettings[K, V] =
+    ): ProducerSettings[F, K, V] =
       withProperty(
         ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION,
         maxInFlightRequestsPerConnection.toString
       )
 
-    override def withEnableIdempotence(enableIdempotence: Boolean): ProducerSettings[K, V] =
+    override def withEnableIdempotence(enableIdempotence: Boolean): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, enableIdempotence.toString)
 
-    override def withLinger(linger: FiniteDuration): ProducerSettings[K, V] =
+    override def withLinger(linger: FiniteDuration): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.LINGER_MS_CONFIG, linger.toMillis.toString)
 
-    override def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings[K, V] =
+    override def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, requestTimeout.toMillis.toString)
 
-    override def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[K, V] =
+    override def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeout.toMillis.toString)
 
-    override def withProperty(key: String, value: String): ProducerSettings[K, V] =
+    override def withProperty(key: String, value: String): ProducerSettings[F, K, V] =
       copy(properties = properties.updated(key, value))
 
-    override def withProperties(properties: (String, String)*): ProducerSettings[K, V] =
+    override def withProperties(properties: (String, String)*): ProducerSettings[F, K, V] =
       copy(properties = this.properties ++ properties.toMap)
 
-    override def withProperties(properties: Map[String, String]): ProducerSettings[K, V] =
+    override def withProperties(properties: Map[String, String]): ProducerSettings[F, K, V] =
       copy(properties = this.properties ++ properties)
 
-    override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[K, V] =
+    override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       copy(closeTimeout = closeTimeout)
 
-    override def withProducerFactory(producerFactory: ProducerFactory): ProducerSettings[K, V] =
-      copy(producerFactory = producerFactory)
+    override def withShiftSerialization(shiftSerialization: Boolean): ProducerSettings[F, K, V] =
+      copy(shiftSerialization = shiftSerialization)
+
+    override def createProducer: F[Producer[Array[Byte], Array[Byte]]] =
+      createProducerWith(properties)
+
+    override def withCreateProducer(
+      createProducerWith: Map[String, String] => F[Producer[Array[Byte], Array[Byte]]]
+    ): ProducerSettings[F, K, V] =
+      copy(createProducerWith = createProducerWith)
 
     override def toString: String =
-      Show[ProducerSettings[K, V]].show(this)
+      s"ProducerSettings(closeTimeout = $closeTimeout, shiftSerialization = $shiftSerialization)"
   }
 
-  private[this] def create[K, V](
-    keySerializer: KafkaSerializer[K],
-    valueSerializer: KafkaSerializer[V]
-  ): ProducerSettings[K, V] =
+  private[this] def create[F[_], K, V](
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V],
+    executionContext: Option[ExecutionContext]
+  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     ProducerSettingsImpl(
       keySerializer = keySerializer,
       valueSerializer = valueSerializer,
+      executionContext = executionContext,
       properties = Map.empty,
       closeTimeout = 60.seconds,
-      producerFactory = ProducerFactory.Default
+      shiftSerialization = true,
+      createProducerWith = properties =>
+        F.delay {
+          val byteArraySerializer = new ByteArraySerializer
+          new org.apache.kafka.clients.producer.KafkaProducer(
+            (properties: Map[String, AnyRef]).asJava,
+            byteArraySerializer,
+            byteArraySerializer
+          )
+      }
     )
 
   /**
     * Creates a new [[ProducerSettings]] instance using
     * the specified serializers for the key and value.
     */
-  def apply[K, V](
-    keySerializer: KafkaSerializer[K],
-    valueSerializer: KafkaSerializer[V]
-  ): ProducerSettings[K, V] = create(
-    keySerializer = keySerializer,
-    valueSerializer = valueSerializer
-  )
+  def apply[F[_], K, V](
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V]
+  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
+    create(
+      keySerializer = keySerializer,
+      valueSerializer = valueSerializer,
+      executionContext = None
+    )
+
+  /**
+    * Creates a new [[ProducerSettings]] instance using
+    * the specified serializers for the key and value,
+    * and `ExecutionContext` on which blocking Kafka
+    * operations should be executed.
+    */
+  def apply[F[_], K, V](
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V],
+    executionContext: ExecutionContext
+  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
+    create(
+      keySerializer = keySerializer,
+      valueSerializer = valueSerializer,
+      executionContext = Some(executionContext)
+    )
 
   /**
     * Creates a new [[ProducerSettings]] instance using
     * implicit [[Serializer]]s for the key and value.
     */
-  def apply[K, V](
-    implicit keySerializer: Serializer[K],
-    valueSerializer: Serializer[V]
-  ): ProducerSettings[K, V] = create(
-    keySerializer = keySerializer,
-    valueSerializer = valueSerializer
-  )
+  def apply[F[_], K, V](
+    implicit F: Sync[F],
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V]
+  ): ProducerSettings[F, K, V] =
+    create(
+      keySerializer = keySerializer,
+      valueSerializer = valueSerializer,
+      executionContext = None
+    )
 
-  implicit def producerSettingsShow[K, V]: Show[ProducerSettings[K, V]] =
-    Show.show { s =>
-      s"ProducerSettings(closeTimeout = ${s.closeTimeout}, producerFactory = ${s.producerFactory})"
-    }
+  /**
+    * Creates a new [[ProducerSettings]] instance using
+    * implicit [[Serializer]]s for the key and value,
+    * and `ExecutionContext` on which blocking Kafka
+    * operations should be executed.
+    */
+  def apply[F[_], K, V](executionContext: ExecutionContext)(
+    implicit F: Sync[F],
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V]
+  ): ProducerSettings[F, K, V] =
+    create(
+      keySerializer = keySerializer,
+      valueSerializer = valueSerializer,
+      executionContext = Some(executionContext)
+    )
+
+  implicit def producerSettingsShow[F[_], K, V]: Show[ProducerSettings[F, K, V]] =
+    Show.fromToString
 }

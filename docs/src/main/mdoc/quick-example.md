@@ -27,7 +27,7 @@ object Main extends IOApp {
         .withGroupId("group")
 
     val producerSettings =
-      ProducerSettings[String, String]
+      ProducerSettings[IO, String, String]
         .withBootstrapServers("localhost")
 
     val stream =

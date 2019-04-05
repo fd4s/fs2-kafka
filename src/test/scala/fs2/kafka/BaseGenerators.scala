@@ -89,10 +89,12 @@ trait BaseGenerators {
       }
     }
 
-  val genSerializerString: Gen[Serializer[String]] =
-    genCharset.map(Serializer.string)
+  def genSerializerString[F[_]](implicit F: Applicative[F]): Gen[Serializer[F, String]] =
+    genCharset.map(Serializer.string[F])
 
-  implicit val arbSerializerString: Arbitrary[Serializer[String]] =
+  implicit def arbSerializerString[F[_]](
+    implicit F: Applicative[F]
+  ): Arbitrary[Serializer[F, String]] =
     Arbitrary(genSerializerString)
 
   val genHeader: Gen[Header] =

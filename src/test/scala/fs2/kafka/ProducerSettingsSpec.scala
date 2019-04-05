@@ -1,13 +1,20 @@
 package fs2.kafka
 
+import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.StringSerializer
-
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 final class ProducerSettingsSpec extends BaseSpec {
   describe("ProducerSettings") {
+    it("should provide apply") {
+      ProducerSettings[IO, String, String]
+      ProducerSettings[IO, String, String](ExecutionContext.global)
+      ProducerSettings(Serializer[IO, String], Serializer[IO, String])
+      ProducerSettings(Serializer[IO, String], Serializer[IO, String], ExecutionContext.global)
+    }
+
     it("should provide withBootstrapServers") {
       assert {
         settings
@@ -110,6 +117,25 @@ final class ProducerSettingsSpec extends BaseSpec {
       }
     }
 
+    it("should provide withShiftSerialization") {
+      assert {
+        settings
+          .withShiftSerialization(false)
+          .shiftSerialization == false
+      }
+    }
+
+    it("should provide withCreateProducer") {
+      assert {
+        settings
+          .withCreateProducer(_ => IO.raiseError(new RuntimeException))
+          .createProducer
+          .attempt
+          .unsafeRunSync
+          .isLeft
+      }
+    }
+
     it("should provide withProperty/withProperties") {
       assert {
         settings.withProperty("a", "b").properties("a").contains("b") &&
@@ -122,25 +148,15 @@ final class ProducerSettingsSpec extends BaseSpec {
       assert(settings.withCloseTimeout(30.seconds).closeTimeout == 30.seconds)
     }
 
-    it("should provide withProducerFactory") {
-      assert(
-        settings
-          .withProducerFactory(ProducerFactory.Default)
-          .producerFactory == ProducerFactory.Default)
-    }
-
     it("should have a Show instance and matching toString") {
       val shown = settings.show
 
       assert(
-        shown == "ProducerSettings(closeTimeout = 60 seconds, producerFactory = Default)" &&
+        shown == "ProducerSettings(closeTimeout = 60 seconds, shiftSerialization = true)" &&
           shown == settings.toString
       )
     }
   }
 
-  val settings = ProducerSettings(
-    keySerializer = new StringSerializer,
-    valueSerializer = new StringSerializer
-  )
+  val settings = ProducerSettings[IO, String, String]
 }
