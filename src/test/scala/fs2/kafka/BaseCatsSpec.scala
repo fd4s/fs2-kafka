@@ -17,7 +17,7 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators {
       }.isSuccess
     }
 
-  implicit def serializerEq[A](implicit A: Arbitrary[A]): Eq[Serializer[A]] =
+  implicit def serializerEq[A](implicit A: Arbitrary[A]): Eq[Serializer[Id, A]] =
     Eq.instance { (s1, s2) =>
       Try {
         forAll { (topic: String, headers: Headers, a: A) =>

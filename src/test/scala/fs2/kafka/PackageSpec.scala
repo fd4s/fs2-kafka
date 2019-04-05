@@ -1,6 +1,6 @@
 package fs2.kafka
+
 import cats.effect.IO
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 
 final class PackageSpec extends BaseKafkaSpec {
   describe("creating admin clients") {
@@ -16,10 +16,7 @@ final class PackageSpec extends BaseKafkaSpec {
   describe("creating consumers") {
     it("should support defined syntax") {
       val settings =
-        ConsumerSettings(
-          keyDeserializer = new StringDeserializer,
-          valueDeserializer = new StringDeserializer
-        )
+        ConsumerSettings[String, String]
 
       consumerResource[IO, String, String](settings)
       consumerResource[IO].toString should startWith("ConsumerResource$")
@@ -34,10 +31,7 @@ final class PackageSpec extends BaseKafkaSpec {
   describe("creating producers") {
     it("should support defined syntax") {
       val settings =
-        ProducerSettings(
-          keySerializer = new StringSerializer,
-          valueSerializer = new StringSerializer
-        )
+        ProducerSettings[IO, String, String]
 
       producerResource[IO, String, String](settings)
       producerResource[IO].toString should startWith("ProducerResource$")
@@ -51,12 +45,21 @@ final class PackageSpec extends BaseKafkaSpec {
 
   describe("creating consumer execution contexts") {
     it("should support defined syntax") {
-
       consumerExecutionContextResource[IO]
       consumerExecutionContextResource[IO](1)
 
       consumerExecutionContextStream[IO]
       consumerExecutionContextStream[IO](1)
+    }
+  }
+
+  describe("creating producer execution contexts") {
+    it("should support defined syntax") {
+      producerExecutionContextResource[IO]
+      producerExecutionContextResource[IO](1)
+
+      producerExecutionContextStream[IO]
+      producerExecutionContextStream[IO](1)
     }
   }
 }

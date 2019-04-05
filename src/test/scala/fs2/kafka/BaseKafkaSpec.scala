@@ -2,7 +2,7 @@ package fs2.kafka
 
 import java.util.UUID
 
-import cats.effect.IO
+import cats.effect.{Sync, IO}
 import fs2.Stream
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.admin.AdminClientConfig
@@ -40,11 +40,19 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
         .withRecordMetadata(_.timestamp.toString)
     }
 
-  final def producerSettings(
+  final def producerSettings[F[_]](
     config: EmbeddedKafkaConfig
-  ): ProducerSettings[String, String] =
-    ProducerSettings[String, String]
+  )(implicit F: Sync[F]): ProducerSettings[F, String, String] =
+    ProducerSettings[F, String, String]
       .withProperties(producerProperties(config))
+
+  final def producerSettingsExecutionContext[F[_]](
+    config: EmbeddedKafkaConfig
+  ): Stream[IO, ProducerSettings[IO, String, String]] =
+    producerExecutionContextStream[IO].map { executionContext =>
+      ProducerSettings[IO, String, String](executionContext)
+        .withProperties(producerProperties(config))
+    }
 
   final def adminClientProperties(config: EmbeddedKafkaConfig): Map[String, String] =
     Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}")

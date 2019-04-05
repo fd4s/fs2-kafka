@@ -12,7 +12,8 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val produced =
         (for {
-          producer <- producerStream[IO].using(producerSettings(config))
+          settings <- producerSettingsExecutionContext(config)
+          producer <- producerStream[IO].using(settings)
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           message <- Stream.chunk(Chunk.seq(toProduce).map {
             case passthrough @ (key, value) =>

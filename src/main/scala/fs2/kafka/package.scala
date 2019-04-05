@@ -452,6 +452,57 @@ package object kafka {
   def consumerExecutionContextResource[F[_]](threads: Int)(
     implicit F: Sync[F]
   ): Resource[F, ExecutionContext] =
+    executionContextResource("fs2-kafka-consumer", threads)
+
+  /**
+    * Creates a new `ExecutionContext` backed by a single thread.
+    * This is suitable for use with a single `KafkaProducer`, and
+    * is required to be set when creating [[ProducerSettings]].<br>
+    * <br>
+    * If you already have an `ExecutionContext` for blocking code,
+    * then you might prefer to use that over explicitly creating
+    * one with this function.<br>
+    * <br>
+    * The thread created by this function will be of type daemon,
+    * and the `Resource` context will automatically shutdown the
+    * underlying `Executor` as part of finalization.<br>
+    * <br>
+    * You might prefer `producerExecutionContextStream`, which is
+    * returning a `Stream` instead of `Resource`. For convenience
+    * when working together with `Stream`s.
+    */
+  def producerExecutionContextResource[F[_]](
+    implicit F: Sync[F]
+  ): Resource[F, ExecutionContext] =
+    producerExecutionContextResource(1)
+
+  /**
+    * Creates a new `ExecutionContext` backed by the specified number
+    * of `threads`. This is suitable for use with the same number of
+    * `KafkaProducer`s, and is required to be set when creating a
+    * [[ProducerSettings]] instance.<br>
+    * <br>
+    * If you already have an `ExecutionContext` for blocking code,
+    * then you might prefer to use that over explicitly creating
+    * one with this function.<br>
+    * <br>
+    * The threads created by this function will be of type daemon,
+    * and the `Resource` context will automatically shutdown the
+    * underlying `Executor` as part of finalization.<br>
+    * <br>
+    * You might prefer `producerExecutionContextStream`, which is
+    * returning a `Stream` instead of `Resource`. For convenience
+    * when working together with `Stream`s.
+    */
+  def producerExecutionContextResource[F[_]](threads: Int)(
+    implicit F: Sync[F]
+  ): Resource[F, ExecutionContext] =
+    executionContextResource("fs2-kafka-producer", threads)
+
+  private[this] def executionContextResource[F[_]](
+    name: String,
+    threads: Int
+  )(implicit F: Sync[F]): Resource[F, ExecutionContext] =
     Resource
       .make {
         F.delay {
@@ -460,7 +511,7 @@ package object kafka {
             new ThreadFactory {
               override def newThread(runnable: Runnable): Thread = {
                 val thread = new Thread(runnable)
-                thread.setName(s"fs2-kafka-consumer-${thread.getId}")
+                thread.setName(s"$name-${thread.getId}")
                 thread.setDaemon(true)
                 thread
               }
@@ -491,6 +542,26 @@ package object kafka {
     Stream.resource(consumerExecutionContextResource(threads))
 
   /**
+    * Like `producerExecutionContextResource`, but returns a `Stream`
+    * rather than a `Resource`. This is for convenience when working
+    * together with `Stream`s.
+    */
+  def producerExecutionContextStream[F[_]](
+    implicit F: Sync[F]
+  ): Stream[F, ExecutionContext] =
+    Stream.resource(producerExecutionContextResource)
+
+  /**
+    * Like `producerExecutionContextResource`, but returns a `Stream`
+    * rather than a `Resource`. This is for convenience when working
+    * together with `Stream`s.
+    */
+  def producerExecutionContextStream[F[_]](threads: Int)(
+    implicit F: Sync[F]
+  ): Stream[F, ExecutionContext] =
+    Stream.resource(producerExecutionContextResource(threads))
+
+  /**
     * Creates a new [[KafkaProducer]] in the `Resource` context,
     * using the specified [[ProducerSettings]]. Note that there
     * is another version where `F[_]` is specified explicitly and
@@ -501,8 +572,9 @@ package object kafka {
     * producerResource[F].using(settings)
     * }}}
     */
-  def producerResource[F[_], K, V](settings: ProducerSettings[K, V])(
-    implicit F: ConcurrentEffect[F]
+  def producerResource[F[_], K, V](settings: ProducerSettings[F, K, V])(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F]
   ): Resource[F, KafkaProducer[F, K, V]] =
     KafkaProducer.producerResource(settings)
 
@@ -530,8 +602,9 @@ package object kafka {
     * producerStream[F].using(settings)
     * }}}
     */
-  def producerStream[F[_], K, V](settings: ProducerSettings[K, V])(
-    implicit F: ConcurrentEffect[F]
+  def producerStream[F[_], K, V](settings: ProducerSettings[F, K, V])(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F]
   ): Stream[F, KafkaProducer[F, K, V]] =
     Stream.resource(producerResource(settings))
 

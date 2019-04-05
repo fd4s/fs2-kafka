@@ -41,7 +41,8 @@ lazy val dependencySettings = Seq(
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.0",
     "org.apache.kafka" %% "kafka" % kafkaVersion
-  ).map(_ % Test)
+  ).map(_ % Test),
+  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.0" cross CrossVersion.binary)
 )
 
 lazy val mdocSettings = Seq(

@@ -38,13 +38,14 @@ final class DeserializerSpec extends BaseCatsSpec {
 
     forAll { (topic: String, i: Int) =>
       val headers = Header("format", "int").headers
-      val serialized = Serializer[Int].serialize(topic, i)
+      val serialized = Serializer[Id, Int].serialize(topic, Headers.empty, i)
       val deserialized = deserializer.deserialize(topic, headers, serialized)
       deserialized shouldBe Right(i)
     }
 
     forAll { (topic: String, i: Int) =>
-      val serialized = Serializer[String].contramap[Int](_.toString).serialize(topic, i)
+      val serialized =
+        Serializer[Id, String].contramap[Int](_.toString).serialize(topic, Headers.empty, i)
       val deserialized = Deserializer[String].map(_.toInt).attempt.deserialize(topic, serialized)
       deserialized shouldBe Right(i)
     }
@@ -58,14 +59,15 @@ final class DeserializerSpec extends BaseCatsSpec {
       }
 
     forAll { i: Int =>
-      val serialized = Serializer[Int].serialize("topic", i)
+      val serialized = Serializer[Id, Int].serialize("topic", Headers.empty, i)
       val deserialized = deserializer.deserialize("topic", serialized)
       deserialized shouldBe Right(i)
     }
 
     forAll { (topic: String, i: Int) =>
       whenever(topic != "topic") {
-        val serialized = Serializer[String].contramap[Int](_.toString).serialize(topic, i)
+        val serialized =
+          Serializer[Id, String].contramap[Int](_.toString).serialize(topic, Headers.empty, i)
         val deserialized = Deserializer[String].map(_.toInt).attempt.deserialize(topic, serialized)
         deserialized shouldBe Right(i)
       }
@@ -79,7 +81,7 @@ final class DeserializerSpec extends BaseCatsSpec {
     deserializer.deserialize("topic", null) shouldBe None
 
     forAll { s: String =>
-      val serialized = Serializer[String].serialize("topic", s)
+      val serialized = Serializer[Id, String].serialize("topic", Headers.empty, s)
       deserializer.deserialize("topic", serialized) shouldBe Some(s)
     }
   }
