@@ -371,63 +371,65 @@ private[kafka] object KafkaConsumer {
           streamId: Int,
           partition: TopicPartition,
           partitions: Queue[F, Stream[F, CommittableMessage[F, K, V]]]
-        ): F[Unit] =
-          chunkQueue.flatMap { chunks =>
-            Deferred[F, Unit].flatMap { dequeueDone =>
-              Deferred.tryable[F, Unit].flatMap { stopRequests =>
-                val shutdown = F.race(fiber.join.attempt, dequeueDone.get).void
-                partitions.enqueue1 {
-                  Stream.eval {
-                    F.guarantee {
-                        Stream
-                          .repeatEval {
-                            stopRequests.tryGet.flatMap {
-                              case None =>
-                                Deferred[F, PartitionRequest].flatMap { deferred =>
-                                  val request = Request.Fetch(partition, streamId, deferred)
-                                  val fetch = requests.enqueue1(request) >> deferred.get
-                                  F.race(shutdown, fetch).flatMap {
-                                    case Left(()) =>
-                                      stopRequests.complete(())
+        ): F[Unit] = {
+          for {
+            chunks <- chunkQueue
+            dequeueDone <- Deferred[F, Unit]
+            shutdown = F.race(fiber.join.attempt, dequeueDone.get).void
+            stopReqs <- Deferred.tryable[F, Unit]
+            _ <- partitions.enqueue1 {
+              Stream.eval {
+                def fetchPartition(deferred: Deferred[F, PartitionRequest]): F[Unit] = {
+                  val request = Request.Fetch(partition, streamId, deferred)
+                  val fetch = requests.enqueue1(request) >> deferred.get
+                  F.race(shutdown, fetch).flatMap {
+                    case Left(()) =>
+                      stopReqs.complete(())
 
-                                    case Right((chunk, reason)) =>
-                                      val enqueueChunk =
-                                        if (chunk.nonEmpty)
-                                          chunks.enqueue1(Some(chunk))
-                                        else F.unit
+                    case Right((chunk, reason)) =>
+                      val enqueueChunk =
+                        if (chunk.nonEmpty)
+                          chunks.enqueue1(Some(chunk))
+                        else F.unit
 
-                                      val completeRevoked =
-                                        if (reason.topicPartitionRevoked)
-                                          stopRequests.complete(())
-                                        else F.unit
+                      val completeRevoked =
+                        if (reason.topicPartitionRevoked)
+                          stopReqs.complete(())
+                        else F.unit
 
-                                      enqueueChunk >> completeRevoked
-                                  }
-                                }
-
-                              case Some(()) =>
-                                // Prevent issuing additional requests after partition is
-                                // revoked or shutdown happens, in case the stream isn't
-                                // interrupted fast enough
-                                F.unit
-                            }
-                          }
-                          .interruptWhen(F.race(shutdown, stopRequests.get).void.attempt)
-                          .compile
-                          .drain
-                      }(F.race(dequeueDone.get, chunks.enqueue1(None)).void)
-                      .start
-                      .as {
-                        chunks.dequeue.unNoneTerminate
-                          .flatMap(Stream.chunk)
-                          .covary[F]
-                          .onFinalize(dequeueDone.complete(()))
-                      }
-                  }.flatten
+                      enqueueChunk >> completeRevoked
+                  }
                 }
-              }
+
+                F.guarantee {
+                    Stream
+                      .repeatEval {
+                        stopReqs.tryGet.flatMap {
+                          case None =>
+                            Deferred[F, PartitionRequest] >>= fetchPartition
+
+                          case Some(()) =>
+                            // Prevent issuing additional requests after partition is
+                            // revoked or shutdown happens, in case the stream isn't
+                            // interrupted fast enough
+                            F.unit
+                        }
+                      }
+                      .interruptWhen(F.race(shutdown, stopReqs.get).void.attempt)
+                      .compile
+                      .drain
+                  }(F.race(dequeueDone.get, chunks.enqueue1(None)).void)
+                  .start
+                  .as {
+                    chunks.dequeue.unNoneTerminate
+                      .flatMap(Stream.chunk)
+                      .covary[F]
+                      .onFinalize(dequeueDone.complete(()))
+                  }
+              }.flatten
             }
-          }
+          } yield ()
+        }
 
         def enqueueStreams(
           streamId: Int,
@@ -473,12 +475,12 @@ private[kafka] object KafkaConsumer {
         val partitionQueue: F[Queue[F, Stream[F, CommittableMessage[F, K, V]]]] =
           Queue.unbounded[F, Stream[F, CommittableMessage[F, K, V]]]
 
-        Stream.eval(partitionQueue).flatMap { partitions =>
-          Stream.eval(streamIdRef.modify(n => (n + 1, n))).flatMap { streamId =>
-            Stream.eval(initialEnqueue(streamId, partitions)) >>
-              partitions.dequeue.interruptWhen(fiber.join.attempt)
-          }
-        }
+        for {
+          partitions <- Stream.eval(partitionQueue)
+          streamId <- Stream.eval(streamIdRef.modify(n => (n + 1, n)))
+          _ <- Stream.eval(initialEnqueue(streamId, partitions))
+          out <- partitions.dequeue.interruptWhen(fiber.join.attempt)
+        } yield out
       }
 
       override def stream: Stream[F, CommittableMessage[F, K, V]] =
@@ -632,36 +634,24 @@ private[kafka] object KafkaConsumer {
     context: ContextShift[F],
     timer: Timer[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
-    Resource.liftF(Queue.unbounded[F, Request[F, K, V]]).flatMap { requests =>
-      Resource.liftF(Queue.bounded[F, Request[F, K, V]](1)).flatMap { polls =>
-        Resource.liftF(Ref.of[F, State[F, K, V]](State.empty)).flatMap { ref =>
-          Resource.liftF(Jitter.default[F]).flatMap { implicit jitter =>
-            Resource.liftF(F.delay(new Object().hashCode)).flatMap { id =>
-              Resource.liftF(Logging.default[F](id)).flatMap { implicit logging =>
-                Resource.liftF(Ref.of[F, Int](0)).flatMap { streamId =>
-                  executionContextResource(settings).flatMap { executionContext =>
-                    createConsumer(settings, executionContext).flatMap { synchronized =>
-                      val actor =
-                        new KafkaConsumerActor(
-                          settings = settings,
-                          executionContext = executionContext,
-                          ref = ref,
-                          requests = requests,
-                          synchronized = synchronized
-                        )
-
-                      startConsumerActor(requests, polls, actor).flatMap { actor =>
-                        startPollScheduler(polls, settings.pollInterval).map { polls =>
-                          createKafkaConsumer(requests, settings, actor, polls, streamId, id)
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+    for {
+      id <- Resource.liftF(F.delay(new Object().hashCode))
+      implicit0(jitter: Jitter[F]) <- Resource.liftF(Jitter.default[F])
+      implicit0(logging: Logging[F]) <- Resource.liftF(Logging.default[F](id))
+      requests <- Resource.liftF(Queue.unbounded[F, Request[F, K, V]])
+      polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
+      ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
+      streamId <- Resource.liftF(Ref.of[F, Int](0))
+      ec <- executionContextResource(settings)
+      sync <- createConsumer(settings, ec)
+      actor = new KafkaConsumerActor(
+        settings = settings,
+        executionContext = ec,
+        ref = ref,
+        requests = requests,
+        synchronized = sync
+      )
+      actor <- startConsumerActor(requests, polls, actor)
+      polls <- startPollScheduler(polls, settings.pollInterval)
+    } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id)
 }
