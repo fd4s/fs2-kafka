@@ -8,6 +8,7 @@ import java.util.UUID
 import org.apache.kafka.common.utils.Bytes
 import org.scalacheck.Arbitrary
 import org.scalatest._
+import scala.util.Try
 
 final class SerializerSpec extends BaseCatsSpec {
   type IdSerializer[A] = Serializer[Id, A]
@@ -53,21 +54,42 @@ final class SerializerSpec extends BaseCatsSpec {
     }
   }
 
-  test("Serializer#delegateDelay") {
+  test("Serializer#defer") {
     val serializer =
-      Serializer.delegateDelay[IO, Int](
-        new KafkaSerializer[Int] {
-          override def close(): Unit = ()
-          override def configure(props: java.util.Map[String, _], isKey: Boolean): Unit = ()
-          override def serialize(topic: String, int: Int): Array[Byte] = throw new RuntimeException
-        }
-      )
+      Serializer
+        .delegate[Eval, Int](
+          new KafkaSerializer[Int] {
+            override def close(): Unit = ()
+            override def configure(props: java.util.Map[String, _], isKey: Boolean): Unit = ()
+            override def serialize(topic: String, int: Int): Array[Byte] =
+              throw new RuntimeException
+          }
+        )
+        .defer
+
+    forAll { (topic: String, headers: Headers, int: Int) =>
+      val serialized = serializer.serialize(topic, headers, int)
+      Try(serialized.value).isFailure shouldBe true
+    }
+  }
+
+  test("Serializer#suspend") {
+    val serializer =
+      Serializer
+        .delegate[IO, Int](
+          new KafkaSerializer[Int] {
+            override def close(): Unit = ()
+            override def configure(props: java.util.Map[String, _], isKey: Boolean): Unit = ()
+            override def serialize(topic: String, int: Int): Array[Byte] =
+              throw new RuntimeException
+          }
+        )
+        .suspend
 
     forAll { (topic: String, headers: Headers, int: Int) =>
       val serialized = serializer.serialize(topic, headers, int)
       serialized.attempt.unsafeRunSync shouldBe a[Left[_, _]]
     }
-
   }
 
   test("Serializer#headers") {

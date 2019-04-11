@@ -16,7 +16,7 @@
 
 package fs2.kafka
 
-import cats.{Applicative, Contravariant, Functor}
+import cats.{Applicative, Contravariant, Defer, Functor}
 import cats.effect.Sync
 import cats.syntax.functor._
 import java.nio.charset.{Charset, StandardCharsets}
@@ -65,6 +65,23 @@ sealed abstract class Serializer[F[_], A] {
       case (topic, headers, Some(a)) => serialize(topic, headers, a)
       case (_, _, None)              => F.pure(null)
     }
+
+  /**
+    * Creates a new [[Serializer]] which defers serialization.
+    */
+  final def defer(implicit F: Defer[F]): Serializer[F, A] =
+    Serializer.instance { (topic, headers, a) =>
+      F.defer(serialize(topic, headers, a))
+    }
+
+  /**
+    * Creates a new [[Serializer]] which suspends serialization,
+    * capturing any impure behaviours of this [[Serializer]].
+    */
+  final def suspend(implicit F: Sync[F]): Serializer[F, A] =
+    Serializer.instance { (topic, headers, a) =>
+      F.suspend(serialize(topic, headers, a))
+    }
 }
 
 object Serializer {
@@ -89,32 +106,15 @@ object Serializer {
     * to the specified Kafka `Serializer`. Note the `close` and
     * `configure` functions won't be called for the delegate.<br>
     * <br>
-    * It is assumed that the delegate `serialize` function is pure.
-    * If it's not pure, then use [[delegateDelay]] instead, so
-    * the impure behaviours can be captured properly.
+    * It is assumed the delegate `serialize` function is pure.
+    * If it's not pure, then use `suspend` after `delegate`,
+    * so the impure behaviours can be captured properly.
     */
   def delegate[F[_], A](serializer: KafkaSerializer[A])(
     implicit F: Applicative[F]
   ): Serializer[F, A] =
     Serializer.instance[F, A] { (topic, headers, a) =>
       F.pure(serializer.serialize(topic, headers.asJava, a))
-    }
-
-  /**
-    * Creates a new [[Serializer]] which delegates serialization
-    * to the specified Kafka `Serializer`, capturing any impure
-    * behaviours. Note the `close` and `configure` functions
-    * won't be called for the delegate.<br>
-    * <br>
-    * If the delegate `serialize` function is pure, then you
-    * can use [[delegate]] instead, to avoid trying to capture
-    * any impure behaviours.
-    */
-  def delegateDelay[F[_], A](serializer: KafkaSerializer[A])(
-    implicit F: Sync[F]
-  ): Serializer[F, A] =
-    Serializer.instance[F, A] { (topic, headers, a) =>
-      F.delay(serializer.serialize(topic, headers.asJava, a))
     }
 
   /**
