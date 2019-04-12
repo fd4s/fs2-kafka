@@ -1,6 +1,7 @@
 package fs2.kafka
 
-import cats.Applicative
+import cats.{Applicative, Functor}
+import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.scalacheck.Arbitrary.arbitrary
@@ -68,23 +69,28 @@ trait BaseGenerators {
   implicit val arbCharset: Arbitrary[Charset] =
     Arbitrary(genCharset)
 
-  val genDeserializerString: Gen[Deserializer[String]] =
-    genCharset.map(Deserializer.string)
+  def genDeserializerString[F[_]](implicit F: Applicative[F]): Gen[Deserializer[F, String]] =
+    genCharset.map(Deserializer.string[F])
 
-  implicit val arbDeserializerString: Arbitrary[Deserializer[String]] =
+  implicit def arbDeserializerString[F[_]](
+    implicit F: Applicative[F]
+  ): Arbitrary[Deserializer[F, String]] =
     Arbitrary(genDeserializerString)
 
-  implicit def arbDeserializerCombine[A, B](
-    implicit arbB: Arbitrary[Deserializer[B]],
+  implicit def arbDeserializerCombine[F[_], A, B](
+    implicit F: Functor[F],
+    arbB: Arbitrary[Deserializer[F, B]],
     arbABA: Arbitrary[(A, B) => A]
-  ): Arbitrary[Deserializer[A => A]] =
+  ): Arbitrary[Deserializer[F, A => A]] =
     Arbitrary {
       for {
-        deserializer <- arbitrary[Deserializer[B]]
+        deserializer <- arbitrary[Deserializer[F, B]]
         combine <- arbitrary[(A, B) => A]
       } yield {
-        Deserializer.instance { (topic, headers, bytes) => (a: A) =>
-          combine(a, deserializer.deserialize(topic, headers, bytes))
+        Deserializer.instance { (topic, headers, bytes) =>
+          deserializer
+            .deserialize(topic, headers, bytes)
+            .map(b => (a: A) => combine(a, b))
         }
       }
     }

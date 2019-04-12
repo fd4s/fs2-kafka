@@ -16,8 +16,8 @@
 
 package fs2.kafka
 
-import cats.Show
-import cats.syntax.show._
+import cats.{Apply, Show}
+import cats.implicits._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.ConsumerRecord.{NULL_SIZE, NO_TIMESTAMP}
 import org.apache.kafka.common.record.TimestampType.{CREATE_TIME, LOG_APPEND_TIME}
@@ -167,37 +167,55 @@ object ConsumerRecord {
       leaderEpoch = None
     )
 
-  private[kafka] def fromJava[K, V](
-    record: KafkaConsumerRecord[K, V]
-  ): ConsumerRecord[K, V] =
-    ConsumerRecordImpl(
-      topic = record.topic,
-      partition = record.partition,
-      offset = record.offset,
-      key = record.key,
-      value = record.value,
-      headers = record.headers.asScala,
-      timestamp = record.timestampType match {
-        case CREATE_TIME if record.timestamp != NO_TIMESTAMP =>
-          Timestamp.createTime(record.timestamp)
-        case LOG_APPEND_TIME if record.timestamp != NO_TIMESTAMP =>
-          Timestamp.logAppendTime(record.timestamp)
-        case _ =>
-          Timestamp.none
-      },
-      serializedKeySize =
-        if (record.serializedKeySize != NULL_SIZE)
-          Some(record.serializedKeySize)
-        else None,
-      serializedValueSize =
-        if (record.serializedValueSize != NULL_SIZE)
-          Some(record.serializedValueSize)
-        else None,
-      leaderEpoch =
-        if (record.leaderEpoch.isPresent)
-          Some(record.leaderEpoch.get)
-        else None
-    )
+  private[this] def deserializeFromBytes[F[_], K, V](
+    record: KafkaConsumerRecord,
+    headers: Headers,
+    keyDeserializer: Deserializer[F, K],
+    valueDeserializer: Deserializer[F, V]
+  )(implicit F: Apply[F]): F[(K, V)] = {
+    val key = keyDeserializer.deserialize(record.topic, headers, record.key)
+    val value = valueDeserializer.deserialize(record.topic, headers, record.value)
+    key.product(value)
+  }
+
+  private[kafka] def fromJava[F[_], K, V](
+    record: KafkaConsumerRecord,
+    keyDeserializer: Deserializer[F, K],
+    valueDeserializer: Deserializer[F, V]
+  )(implicit F: Apply[F]): F[ConsumerRecord[K, V]] = {
+    val headers = record.headers.asScala
+    deserializeFromBytes(record, headers, keyDeserializer, valueDeserializer).map {
+      case (key, value) =>
+        ConsumerRecordImpl(
+          topic = record.topic,
+          partition = record.partition,
+          offset = record.offset,
+          key = key,
+          value = value,
+          headers = headers,
+          timestamp = record.timestampType match {
+            case CREATE_TIME if record.timestamp != NO_TIMESTAMP =>
+              Timestamp.createTime(record.timestamp)
+            case LOG_APPEND_TIME if record.timestamp != NO_TIMESTAMP =>
+              Timestamp.logAppendTime(record.timestamp)
+            case _ =>
+              Timestamp.none
+          },
+          serializedKeySize =
+            if (record.serializedKeySize != NULL_SIZE)
+              Some(record.serializedKeySize)
+            else None,
+          serializedValueSize =
+            if (record.serializedValueSize != NULL_SIZE)
+              Some(record.serializedValueSize)
+            else None,
+          leaderEpoch =
+            if (record.leaderEpoch.isPresent)
+              Some(record.leaderEpoch.get)
+            else None
+        )
+    }
+  }
 
   implicit def consumerRecordShow[K, V](
     implicit

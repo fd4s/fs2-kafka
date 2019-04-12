@@ -21,7 +21,7 @@ object Main extends IOApp {
       IO.pure(record.key -> record.value)
 
     val consumerSettings =
-      ConsumerSettings[String, String]
+      ConsumerSettings[IO, String, String]
         .withAutoOffsetReset(AutoOffsetReset.Earliest)
         .withBootstrapServers("localhost")
         .withGroupId("group")

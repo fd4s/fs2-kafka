@@ -4,15 +4,12 @@ import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.producer.ProducerConfig
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
 
 final class ProducerSettingsSpec extends BaseSpec {
   describe("ProducerSettings") {
     it("should provide apply") {
       ProducerSettings[IO, String, String]
-      ProducerSettings[IO, String, String](ExecutionContext.global)
       ProducerSettings(Serializer[IO, String], Serializer[IO, String])
-      ProducerSettings(Serializer[IO, String], Serializer[IO, String], ExecutionContext.global)
     }
 
     it("should provide withBootstrapServers") {

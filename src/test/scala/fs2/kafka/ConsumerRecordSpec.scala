@@ -13,8 +13,20 @@ final class ConsumerRecordSpec extends BaseSpec {
         f: ConsumerRecord[String, String] => Assertion
       ): Assertion = {
         val record =
-          new KafkaConsumerRecord("topic", 0, 1, timestamp, timestampType, 2, 3, 4, "key", "value")
-        f(ConsumerRecord.fromJava(record))
+          new KafkaConsumerRecord(
+            "topic",
+            0,
+            1,
+            timestamp,
+            timestampType,
+            2,
+            3,
+            4,
+            "key".getBytes,
+            "value".getBytes
+          )
+
+        f(ConsumerRecord.fromJava(record, Deserializer[Id, String], Deserializer[Id, String]))
       }
 
       check(NO_TIMESTAMP, NO_TIMESTAMP_TYPE)(_.timestamp.isEmpty shouldBe true)
@@ -40,11 +52,11 @@ final class ConsumerRecordSpec extends BaseSpec {
             2,
             serializedKeySize,
             4,
-            "key",
-            "value"
+            "key".getBytes,
+            "value".getBytes
           )
 
-        f(ConsumerRecord.fromJava(record))
+        f(ConsumerRecord.fromJava(record, Deserializer[Id, String], Deserializer[Id, String]))
       }
 
       check(NULL_SIZE)(_.serializedKeySize shouldBe None)
@@ -65,11 +77,11 @@ final class ConsumerRecordSpec extends BaseSpec {
             2,
             3,
             serializedValueSize,
-            "key",
-            "value"
+            "key".getBytes,
+            "value".getBytes
           )
 
-        f(ConsumerRecord.fromJava(record))
+        f(ConsumerRecord.fromJava(record, Deserializer[Id, String], Deserializer[Id, String]))
       }
 
       check(NULL_SIZE)(_.serializedValueSize shouldBe None)
@@ -90,15 +102,15 @@ final class ConsumerRecordSpec extends BaseSpec {
             2,
             3,
             4,
-            "key",
-            "value",
+            "key".getBytes,
+            "value".getBytes,
             Headers.empty.asJava,
             if (leaderEpoch.nonEmpty)
               java.util.Optional.of[java.lang.Integer](leaderEpoch.get)
             else java.util.Optional.empty()
           )
 
-        f(ConsumerRecord.fromJava(record))
+        f(ConsumerRecord.fromJava(record, Deserializer[Id, String], Deserializer[Id, String]))
       }
 
       check(None)(_.leaderEpoch shouldBe None)

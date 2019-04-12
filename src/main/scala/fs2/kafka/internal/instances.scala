@@ -21,12 +21,10 @@ import cats.instances.long._
 import cats.instances.string._
 import cats.instances.tuple._
 import cats.syntax.show._
-import cats.{Order, Semigroup, Show}
+import cats.{Order, Show}
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
-
-import scala.collection.mutable.ArrayBuffer
 
 private[kafka] object instances {
   implicit val offsetAndMetadataOrder: Order[OffsetAndMetadata] =
@@ -53,7 +51,4 @@ private[kafka] object instances {
 
   implicit val topicPartitionShow: Show[TopicPartition] =
     Show.show(tp => show"${tp.topic}-${tp.partition}")
-
-  implicit def arrayBufferSemigroup[A]: Semigroup[ArrayBuffer[A]] =
-    Semigroup.instance(_ ++ _)
 }

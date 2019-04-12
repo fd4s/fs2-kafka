@@ -1,14 +1,13 @@
 package fs2.kafka
 
-import java.util.UUID
-
 import cats.effect.{Sync, IO}
 import fs2.Stream
+import java.util.UUID
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer => KConsumer}
 import org.apache.kafka.clients.producer.ProducerConfig
-
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import scala.collection.JavaConverters._
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
@@ -24,18 +23,19 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
     AdminClientSettings.Default
       .withProperties(adminClientProperties(config))
 
-  final def consumerSettings(
+  final def consumerSettings[F[_]](
     config: EmbeddedKafkaConfig
-  ): ConsumerSettings[String, String] =
-    ConsumerSettings[String, String]
+  )(implicit F: Sync[F]): ConsumerSettings[F, String, String] =
+    ConsumerSettings[F, String, String]
       .withProperties(consumerProperties(config))
       .withRecordMetadata(_.timestamp.toString)
 
   final def consumerSettingsExecutionContext(
     config: EmbeddedKafkaConfig
-  ): Stream[IO, ConsumerSettings[String, String]] =
+  ): Stream[IO, ConsumerSettings[IO, String, String]] =
     consumerExecutionContextStream[IO].map { executionContext =>
-      ConsumerSettings[String, String](executionContext)
+      ConsumerSettings[IO, String, String]
+        .withExecutionContext(executionContext)
         .withProperties(consumerProperties(config))
         .withRecordMetadata(_.timestamp.toString)
     }
@@ -50,7 +50,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
     config: EmbeddedKafkaConfig
   ): Stream[IO, ProducerSettings[IO, String, String]] =
     producerExecutionContextStream[IO].map { executionContext =>
-      ProducerSettings[IO, String, String](executionContext)
+      ProducerSettings[IO, String, String]
+        .withExecutionContext(executionContext)
         .withProperties(producerProperties(config))
     }
 
@@ -70,23 +71,20 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
   final def withKafka[A](f: (EmbeddedKafkaConfig, String) => A): A =
     withRunningKafkaOnFoundPort(EmbeddedKafkaConfig())(f(_, nextTopicName()))
 
-  final def withKafkaConsumer[K, V](
+  final def withKafkaConsumer(
     nativeSettings: Map[String, AnyRef]
-  ): WithKafkaConsumer[K, V] =
-    new WithKafkaConsumer[K, V](nativeSettings)
+  ): WithKafkaConsumer =
+    new WithKafkaConsumer(nativeSettings)
 
-  final class WithKafkaConsumer[K, V](
+  final class WithKafkaConsumer(
     nativeSettings: Map[String, AnyRef]
   ) {
-    def apply[A](f: KConsumer[K, V] => A)(
-      implicit keyDeserializer: Deserializer[K],
-      valueDeserializer: Deserializer[V]
-    ): A = {
-      val consumer: KConsumer[K, V] =
-        new KConsumer[K, V](
+    def apply[A](f: KConsumer[Array[Byte], Array[Byte]] => A): A = {
+      val consumer: KConsumer[Array[Byte], Array[Byte]] =
+        new KConsumer[Array[Byte], Array[Byte]](
           nativeSettings.asJava,
-          keyDeserializer,
-          valueDeserializer
+          new ByteArrayDeserializer,
+          new ByteArrayDeserializer
         )
 
       try f(consumer)

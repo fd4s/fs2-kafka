@@ -16,7 +16,7 @@
 
 package fs2.kafka.internal
 
-import cats.data.{Chain, NonEmptyList}
+import cats.data.{Chain, NonEmptyList, NonEmptyVector}
 import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2.kafka.CommittableMessage
@@ -27,7 +27,6 @@ import fs2.kafka.internal.syntax._
 import java.util.regex.Pattern
 import org.apache.kafka.common.TopicPartition
 import scala.collection.immutable.SortedSet
-import scala.collection.mutable.ArrayBuffer
 
 private[kafka] sealed abstract class LogEntry {
   def level: LogLevel
@@ -170,5 +169,5 @@ private[kafka] object LogEntry {
       }("", ", ", "")
 
   private[this] type Records[F[_], K, V] =
-    Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]]
+    Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]]
 }

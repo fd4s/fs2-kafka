@@ -154,6 +154,13 @@ private[kafka] object syntax {
       builder.result()
     }
 
+    def toVector: Vector[A] = {
+      val builder = Vector.newBuilder[A]
+      val it = collection.iterator()
+      while (it.hasNext) builder += it.next()
+      builder.result()
+    }
+
     def mapToList[B](f: A => B): List[B] = {
       val builder = List.newBuilder[B]
       val it = collection.iterator()

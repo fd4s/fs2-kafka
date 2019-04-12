@@ -6,7 +6,7 @@ import org.scalacheck._
 import scala.util.Try
 
 trait BaseCatsSpec extends CatsSuite with BaseGenerators {
-  implicit def deserializerEq[A](implicit A: Eq[A]): Eq[Deserializer[A]] =
+  implicit def deserializerEq[A](implicit A: Eq[A]): Eq[Deserializer[Id, A]] =
     Eq.instance { (d1, d2) =>
       Try {
         forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>

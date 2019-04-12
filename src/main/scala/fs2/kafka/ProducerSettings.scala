@@ -18,8 +18,7 @@ package fs2.kafka
 
 import cats.effect.Sync
 import cats.Show
-import org.apache.kafka.clients.producer.Producer
-import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.clients.producer.{Producer, ProducerConfig}
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -56,6 +55,14 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * instantiated when creating a `KafkaProducer` instance.
     */
   def executionContext: Option[ExecutionContext]
+
+  /**
+    * Returns a new [[ProducerSettings]] instance with the specified
+    * [[executionContext]] on which to run blocking Kafka operations.
+    */
+  def withExecutionContext(
+    executionContext: ExecutionContext
+  ): ProducerSettings[F, K, V]
 
   /**
     * Properties which can be provided when creating a Java `KafkaProducer`
@@ -264,6 +271,11 @@ object ProducerSettings {
     override val shiftSerialization: Boolean,
     val createProducerWith: Map[String, String] => F[Producer[Array[Byte], Array[Byte]]]
   ) extends ProducerSettings[F, K, V] {
+    override def withExecutionContext(
+      executionContext: ExecutionContext
+    ): ProducerSettings[F, K, V] =
+      copy(executionContext = Some(executionContext))
+
     override def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
 
@@ -332,13 +344,12 @@ object ProducerSettings {
 
   private[this] def create[F[_], K, V](
     keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
-    executionContext: Option[ExecutionContext]
+    valueSerializer: Serializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     ProducerSettingsImpl(
       keySerializer = keySerializer,
       valueSerializer = valueSerializer,
-      executionContext = executionContext,
+      executionContext = None,
       properties = Map.empty,
       closeTimeout = 60.seconds,
       shiftSerialization = true,
@@ -354,35 +365,20 @@ object ProducerSettings {
     )
 
   /**
-    * Creates a new [[ProducerSettings]] instance using
-    * the specified serializers for the key and value.
+    * Creates a new [[ProducerSettings]] instance using the
+    * specified serializers for the key and value.<br>
+    * <br>
+    * Since some Kafka operations are blocking, these should
+    * be run on a dedicated `ExecutionContext`. When not set
+    * with [[ProducerSettings#withExecutionContext]], there
+    * will be a default created. The default context is the
+    * same as `producerExecutionContextResource`.
     */
   def apply[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = keySerializer,
-      valueSerializer = valueSerializer,
-      executionContext = None
-    )
-
-  /**
-    * Creates a new [[ProducerSettings]] instance using
-    * the specified serializers for the key and value,
-    * and `ExecutionContext` on which blocking Kafka
-    * operations should be executed.
-    */
-  def apply[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
-    executionContext: ExecutionContext
-  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = keySerializer,
-      valueSerializer = valueSerializer,
-      executionContext = Some(executionContext)
-    )
+    create(keySerializer, valueSerializer)
 
   /**
     * Creates a new [[ProducerSettings]] instance using
@@ -393,28 +389,7 @@ object ProducerSettings {
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
   ): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = keySerializer,
-      valueSerializer = valueSerializer,
-      executionContext = None
-    )
-
-  /**
-    * Creates a new [[ProducerSettings]] instance using
-    * implicit [[Serializer]]s for the key and value,
-    * and `ExecutionContext` on which blocking Kafka
-    * operations should be executed.
-    */
-  def apply[F[_], K, V](executionContext: ExecutionContext)(
-    implicit F: Sync[F],
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
-  ): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = keySerializer,
-      valueSerializer = valueSerializer,
-      executionContext = Some(executionContext)
-    )
+    create(keySerializer, valueSerializer)
 
   implicit def producerSettingsShow[F[_], K, V]: Show[ProducerSettings[F, K, V]] =
     Show.fromToString

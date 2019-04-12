@@ -181,7 +181,7 @@ final class SerializerSpec extends BaseCatsSpec {
 
   def roundtrip[A: Arbitrary: Eq](
     serializer: Serializer[Id, A],
-    deserializer: Deserializer[A]
+    deserializer: Deserializer[Id, A]
   ): Assertion = forAll { (topic: String, headers: Headers, a: A) =>
     val serialized = serializer.serialize(topic, headers, a)
     val deserialized = deserializer.deserialize(topic, headers, serialized)
@@ -190,11 +190,11 @@ final class SerializerSpec extends BaseCatsSpec {
 
   def roundtripAttempt[A: Arbitrary: Eq](
     serializer: Serializer[Id, A],
-    deserializer: Deserializer.Attempt[A]
+    deserializer: Deserializer[IO, A]
   ): Assertion = forAll { (topic: String, headers: Headers, a: A) =>
     val serialized = serializer.serialize(topic, headers, a)
     val deserialized = deserializer.deserialize(topic, headers, serialized)
-    assert(deserialized.toOption === Option(a))
+    assert(deserialized.attempt.unsafeRunSync.toOption === Option(a))
   }
 
   test("Serializer#string") {
