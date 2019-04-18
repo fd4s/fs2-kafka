@@ -20,7 +20,7 @@ import java.time.Duration
 import java.util
 import java.util.regex.Pattern
 
-import cats.data.{Chain, NonEmptyList}
+import cats.data.{Chain, NonEmptyList, NonEmptyVector}
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ConcurrentEffect, ContextShift, IO, Timer}
 import cats.implicits._
@@ -31,12 +31,16 @@ import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.internal.LogEntry._
-import org.apache.kafka.clients.consumer.{ConsumerRecord => _, _}
+import org.apache.kafka.clients.consumer.{
+  Consumer,
+  ConsumerRebalanceListener,
+  OffsetCommitCallback,
+  OffsetAndMetadata
+}
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.SortedSet
-import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
@@ -56,11 +60,11 @@ import scala.concurrent.duration.FiniteDuration
   * is more demand.
   */
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
-  settings: ConsumerSettings[K, V],
+  settings: ConsumerSettings[F, K, V],
   executionContext: ExecutionContext,
   ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
-  synchronized: Synchronized[F, Consumer[K, V]]
+  synchronized: Synchronized[F, Consumer[Array[Byte], Array[Byte]]]
 )(
   implicit F: ConcurrentEffect[F],
   context: ContextShift[F],
@@ -70,7 +74,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 ) {
   import logging._
 
-  private[this] def withConsumer[A](f: Consumer[K, V] => F[A]): F[A] =
+  private[this] type ConsumerRecords =
+    Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]]
+
+  private[this] def withConsumer[A](f: Consumer[Array[Byte], Array[Byte]] => F[A]): F[A] =
     synchronized.use { consumer =>
       context.evalOn(executionContext) {
         f(consumer)
@@ -333,7 +340,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           if (withRecords.nonEmpty) {
             state.fetches.filterKeysStrictList(withRecords).traverse {
               case (partition, partitionFetches) =>
-                val records = Chunk.buffer(state.records(partition))
+                val records = Chunk.vector(state.records(partition).toVector)
                 partitionFetches.values.toList.traverse(_.completeRevoked(records))
             } >> ref
               .updateAndGet(_.withoutFetchesAndRecords(withRecords))
@@ -419,38 +426,31 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       )
     )
 
-  private[this] def records(
-    batch: ConsumerRecords[K, V]
-  ): Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]] =
-    if (batch.isEmpty) Map.empty
-    else {
-      var messages = Map.empty[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]]
-
-      val partitions = batch.partitions.iterator
-      while (partitions.hasNext) {
-        val partition = partitions.next
-        val records = batch.records(partition)
-        val partitionMessages = new ArrayBuffer[CommittableMessage[F, K, V]](records.size)
-
-        val it = records.iterator
-        while (it.hasNext) {
-          val next = ConsumerRecord.fromJava(it.next)
-          partitionMessages += message(next, partition)
-        }
-
-        messages = messages.updated(partition, partitionMessages)
+  private[this] def records(batch: KafkaConsumerRecords): F[ConsumerRecords] =
+    batch.partitions.toVector
+      .traverse { partition =>
+        NonEmptyVector
+          .fromVectorUnsafe(batch.records(partition).toVector)
+          .traverse { record =>
+            ConsumerRecord
+              .fromJava(
+                record = record,
+                keyDeserializer = settings.keyDeserializer,
+                valueDeserializer = settings.valueDeserializer
+              )
+              .map(message(_, partition))
+          }
+          .map((partition, _))
       }
-
-      messages
-    }
+      .map(_.toMap)
 
   private[this] val pollTimeout: Duration =
     settings.pollTimeout.asJava
 
   private[this] val poll: F[Unit] = {
-    def pollConsumer(state: State[F, K, V]): F[ConsumerRecords[K, V]] =
+    def pollConsumer(state: State[F, K, V]): F[ConsumerRecords] =
       withConsumer { consumer =>
-        F.delay {
+        F.suspend[Either[KafkaConsumerRecords, ConsumerRecords]] {
           val assigned = consumer.assignment.toSet
           val requested = state.fetches.keySetStrict
           val available = state.records.keySetStrict
@@ -464,22 +464,26 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           if (resume.nonEmpty)
             consumer.resume(resume.asJava)
 
-          consumer.poll(pollTimeout)
+          val batch = consumer.poll(pollTimeout)
+          if (settings.shiftDeserialization)
+            records(batch).map(_.asRight)
+          else F.pure(batch.asLeft)
         }
+      }.flatMap {
+        case Left(batch)    => records(batch)
+        case Right(records) => F.pure(records)
       }
 
-    def handleBatch(batch: ConsumerRecords[K, V]): F[Unit] =
+    def handleBatch(newRecords: ConsumerRecords): F[Unit] =
       ref.get.flatMap { state =>
         if (state.fetches.isEmpty) {
-          if (batch.isEmpty) F.unit
+          if (newRecords.isEmpty) F.unit
           else {
-            val storeRecords = records(batch)
             ref
-              .updateAndGet(_.withRecords(storeRecords))
-              .log(StoredRecords(storeRecords, _))
+              .updateAndGet(_.withRecords(newRecords))
+              .log(StoredRecords(newRecords, _))
           }
         } else {
-          val newRecords = records(batch)
           val allRecords = state.records combine newRecords
 
           if (allRecords.nonEmpty) {
@@ -492,11 +496,13 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               if (canBeCompleted.nonEmpty) {
                 state.fetches.filterKeysStrictList(canBeCompleted).traverse {
                   case (partition, fetches) =>
-                    val records = Chunk.buffer(allRecords(partition))
+                    val records = Chunk.vector(allRecords(partition).toVector)
                     fetches.values.toList.traverse(_.completeRecords(records))
                 } >> ref
                   .updateAndGet(_.withoutFetchesAndRecords(canBeCompleted))
-                  .log(CompletedFetchesWithRecords(allRecords.filterKeysStrict(canBeCompleted), _))
+                  .log(
+                    CompletedFetchesWithRecords(allRecords.filterKeysStrict(canBeCompleted), _)
+                  )
               } else F.unit
 
             val store =
@@ -574,7 +580,7 @@ private[kafka] object KafkaConsumerActor {
 
   final case class State[F[_], K, V](
     fetches: Map[TopicPartition, Map[StreamId, FetchRequest[F, K, V]]],
-    records: Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]],
+    records: Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]],
     pendingCommits: Chain[Request.Commit[F, K, V]],
     onRebalances: Chain[OnRebalance[F, K, V]],
     rebalancing: Boolean,
@@ -613,7 +619,7 @@ private[kafka] object KafkaConsumerActor {
       copy(fetches = fetches.filterKeysStrict(!partitions.contains(_)))
 
     def withRecords(
-      records: Map[TopicPartition, ArrayBuffer[CommittableMessage[F, K, V]]]
+      records: Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]]
     ): State[F, K, V] =
       copy(records = this.records combine records)
 

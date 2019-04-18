@@ -16,9 +16,12 @@
 
 package fs2.kafka
 
+import cats.effect.Sync
 import cats.Show
-import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.{Consumer, ConsumerConfig}
 import org.apache.kafka.common.requests.OffsetFetchResponse
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 
@@ -37,17 +40,17 @@ import scala.concurrent.ExecutionContext
   * <br>
   * Use `ConsumerSettings#apply` to create a new instance.
   */
-sealed abstract class ConsumerSettings[K, V] {
+sealed abstract class ConsumerSettings[F[_], K, V] {
 
   /**
     * The `Deserializer` to use for deserializing record keys.
     */
-  def keyDeserializer: KafkaDeserializer[K]
+  def keyDeserializer: Deserializer[F, K]
 
   /**
     * The `Deserializer` to use for deserializing record values.
     */
-  def valueDeserializer: KafkaDeserializer[V]
+  def valueDeserializer: Deserializer[F, V]
 
   /**
     * The `ExecutionContext` on which to run blocking Kafka operations.
@@ -55,6 +58,14 @@ sealed abstract class ConsumerSettings[K, V] {
     * instantiated when creating a `KafkaConsumer` instance.
     */
   def executionContext: Option[ExecutionContext]
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * [[executionContext]] on which to run blocking Kafka operations.
+    */
+  def withExecutionContext(
+    executionContext: ExecutionContext
+  ): ConsumerSettings[F, K, V]
 
   /**
     * Properties which can be provided when creating a Java `KafkaConsumer`
@@ -72,7 +83,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG
     * }}}
     */
-  def withBootstrapServers(bootstrapServers: String): ConsumerSettings[K, V]
+  def withBootstrapServers(bootstrapServers: String): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -84,7 +95,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.AUTO_OFFSET_RESET_CONFIG
     * }}}
     */
-  def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): ConsumerSettings[K, V]
+  def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -95,7 +106,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.CLIENT_ID_CONFIG
     * }}}
     */
-  def withClientId(clientId: String): ConsumerSettings[K, V]
+  def withClientId(clientId: String): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -106,7 +117,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.GROUP_ID_CONFIG
     * }}}
     */
-  def withGroupId(groupId: String): ConsumerSettings[K, V]
+  def withGroupId(groupId: String): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -118,7 +129,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.MAX_POLL_RECORDS_CONFIG
     * }}}
     */
-  def withMaxPollRecords(maxPollRecords: Int): ConsumerSettings[K, V]
+  def withMaxPollRecords(maxPollRecords: Int): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -130,7 +141,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG
     * }}}
     */
-  def withMaxPollInterval(maxPollInterval: FiniteDuration): ConsumerSettings[K, V]
+  def withMaxPollInterval(maxPollInterval: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -142,7 +153,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG
     * }}}
     */
-  def withSessionTimeout(sessionTimeout: FiniteDuration): ConsumerSettings[K, V]
+  def withSessionTimeout(sessionTimeout: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -154,7 +165,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG
     * }}}
     */
-  def withHeartbeatInterval(heartbeatInterval: FiniteDuration): ConsumerSettings[K, V]
+  def withHeartbeatInterval(heartbeatInterval: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -168,7 +179,7 @@ sealed abstract class ConsumerSettings[K, V] {
     *
     * Note that by default, this setting is set to `false`.
     */
-  def withEnableAutoCommit(enableAutoCommit: Boolean): ConsumerSettings[K, V]
+  def withEnableAutoCommit(enableAutoCommit: Boolean): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -180,7 +191,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG
     * }}}
     */
-  def withAutoCommitInterval(autoCommitInterval: FiniteDuration): ConsumerSettings[K, V]
+  def withAutoCommitInterval(autoCommitInterval: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -192,7 +203,7 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG
     * }}}
     */
-  def withRequestTimeout(requestTimeout: FiniteDuration): ConsumerSettings[K, V]
+  def withRequestTimeout(requestTimeout: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -204,28 +215,28 @@ sealed abstract class ConsumerSettings[K, V] {
     * ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
     * }}}
     */
-  def withDefaultApiTimeout(defaultApiTimeout: FiniteDuration): ConsumerSettings[K, V]
+  def withDefaultApiTimeout(defaultApiTimeout: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * Includes a property with the specified `key` and `value`.
     * The key should be one of the keys in `ConsumerConfig`,
     * and the value should be a valid choice for the key.
     */
-  def withProperty(key: String, value: String): ConsumerSettings[K, V]
+  def withProperty(key: String, value: String): ConsumerSettings[F, K, V]
 
   /**
     * Includes the specified keys and values as properties. The
     * keys should be part of the `ConsumerConfig` keys, and
     * the values should be valid choices for the keys.
     */
-  def withProperties(properties: (String, String)*): ConsumerSettings[K, V]
+  def withProperties(properties: (String, String)*): ConsumerSettings[F, K, V]
 
   /**
     * Includes the specified keys and values as properties. The
     * keys should be part of the `ConsumerConfig` keys, and
     * the values should be valid choices for the keys.
     */
-  def withProperties(properties: Map[String, String]): ConsumerSettings[K, V]
+  def withProperties(properties: Map[String, String]): ConsumerSettings[F, K, V]
 
   /**
     * The time to wait for the Java `KafkaConsumer` to shutdown.<br>
@@ -237,7 +248,7 @@ sealed abstract class ConsumerSettings[K, V] {
   /**
     * Creates a new [[ConsumerSettings]] with the specified [[closeTimeout]].
     */
-  def withCloseTimeout(closeTimeout: FiniteDuration): ConsumerSettings[K, V]
+  def withCloseTimeout(closeTimeout: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * The time to wait for offset commits to complete. If an offset commit
@@ -251,7 +262,7 @@ sealed abstract class ConsumerSettings[K, V] {
   /**
     * Creates a new [[ConsumerSettings]] with the specified [[commitTimeout]].
     */
-  def withCommitTimeout(commitTimeout: FiniteDuration): ConsumerSettings[K, V]
+  def withCommitTimeout(commitTimeout: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * How often we should attempt to call `poll` on the Java `KafkaConsumer`.<br>
@@ -263,7 +274,7 @@ sealed abstract class ConsumerSettings[K, V] {
   /**
     * Creates a new [[ConsumerSettings]] with the specified [[pollInterval]].
     */
-  def withPollInterval(pollInterval: FiniteDuration): ConsumerSettings[K, V]
+  def withPollInterval(pollInterval: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * How long we should allow the `poll` call to block for in the
@@ -276,7 +287,7 @@ sealed abstract class ConsumerSettings[K, V] {
   /**
     * Creates a new [[ConsumerSettings]] with the specified [[pollTimeout]].
     */
-  def withPollTimeout(pollTimeout: FiniteDuration): ConsumerSettings[K, V]
+  def withPollTimeout(pollTimeout: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * The [[CommitRecovery]] strategy for recovering from offset
@@ -290,26 +301,23 @@ sealed abstract class ConsumerSettings[K, V] {
     * Creates a new [[ConsumerSettings]] with the specified
     * [[CommitRecovery]] as the [[commitRecovery]] to use.
     */
-  def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[K, V]
+  def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[F, K, V]
 
   /**
-    * The [[ConsumerFactory]] for creating the Java `Consumer`.
-    * The default is [[ConsumerFactory#Default]]. Note that you
-    * normally don't need to have a custom [[ConsumerFactory]],
-    * and you should instead prefer to create a custom trait or
-    * class similar to [[KafkaConsumer]] for testing purposes.
+    * Creates a new `Consumer` using the [[properties]]. Note that this
+    * operation should be bracketed, using e.g. `Resource`, to ensure
+    * the `close` function on the consumer is called.
     */
-  def consumerFactory: ConsumerFactory
+  def createConsumer: F[Consumer[Array[Byte], Array[Byte]]]
 
   /**
-    * Creates a new [[ConsumerSettings]] with the specified
-    * [[ConsumerFactory]] as the [[consumerFactory]] to use.
-    * Note that under normal usage you don't need to have a
-    * custom [[ConsumerFactory]] instance. For testing, you
-    * should prefer to use a custom trait or class similar
-    * to [[KafkaConsumer]].
+    * Creates a new [[ConsumerSettings]] with the specified function for
+    * creating `Consumer` instances in [[createConsumer]]. The argument
+    * is the [[properties]] of the settings instance.
     */
-  def withConsumerFactory(consumerFactory: ConsumerFactory): ConsumerSettings[K, V]
+  def withCreateConsumer(
+    createConsumer: Map[String, String] => F[Consumer[Array[Byte], Array[Byte]]]
+  ): ConsumerSettings[F, K, V]
 
   /**
     * The function used to specify metadata for records. This
@@ -325,7 +333,7 @@ sealed abstract class ConsumerSettings[K, V] {
   /**
     * Creates a new [[ConsumerSettings]] with the specified [[recordMetadata]].
     */
-  def withRecordMetadata(recordMetadata: ConsumerRecord[K, V] => String): ConsumerSettings[K, V]
+  def withRecordMetadata(recordMetadata: ConsumerRecord[K, V] => String): ConsumerSettings[F, K, V]
 
   /**
     * The maximum number of record batches to prefetch per topic-partition.
@@ -349,13 +357,32 @@ sealed abstract class ConsumerSettings[K, V] {
     * the minimum `2` is specified, [[maxPrefetchBatches]] will
     * instead be set to `2` and not the specified value.
     */
-  def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[K, V]
+  def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V]
+
+  /**
+    * Whether deserialization should be run on [[executionContext]] or not.
+    * When `true`, we will shift to run on the [[executionContext]] for the
+    * duration of deserialization. When `false`, no such shifting will take
+    * place.<br>
+    * <br>
+    * Deserialization is shifted to [[executionContext]] by default, in
+    * order to support blocking deserializers. If your deserializers
+    * aren't blocking, then this can safely be set to `false`.<br>
+    * <br>
+    * The default value is `true`.
+    */
+  def shiftDeserialization: Boolean
+
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[shiftDeserialization]].
+    */
+  def withShiftDeserialization(shiftSerialization: Boolean): ConsumerSettings[F, K, V]
 }
 
 object ConsumerSettings {
-  private[this] final case class ConsumerSettingsImpl[K, V](
-    override val keyDeserializer: KafkaDeserializer[K],
-    override val valueDeserializer: KafkaDeserializer[V],
+  private[this] final case class ConsumerSettingsImpl[F[_], K, V](
+    override val keyDeserializer: Deserializer[F, K],
+    override val valueDeserializer: Deserializer[F, V],
     override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
@@ -363,14 +390,20 @@ object ConsumerSettings {
     override val pollInterval: FiniteDuration,
     override val pollTimeout: FiniteDuration,
     override val commitRecovery: CommitRecovery,
-    override val consumerFactory: ConsumerFactory,
     override val recordMetadata: ConsumerRecord[K, V] => String,
-    override val maxPrefetchBatches: Int
-  ) extends ConsumerSettings[K, V] {
-    override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[K, V] =
+    override val maxPrefetchBatches: Int,
+    override val shiftDeserialization: Boolean,
+    val createConsumerWith: Map[String, String] => F[Consumer[Array[Byte], Array[Byte]]]
+  ) extends ConsumerSettings[F, K, V] {
+    override def withExecutionContext(
+      executionContext: ExecutionContext
+    ): ConsumerSettings[F, K, V] =
+      copy(executionContext = Some(executionContext))
+
+    override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
 
-    override def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): ConsumerSettings[K, V] =
+    override def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): ConsumerSettings[F, K, V] =
       withProperty(
         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
         autoOffsetReset match {
@@ -380,184 +413,156 @@ object ConsumerSettings {
         }
       )
 
-    override def withClientId(clientId: String): ConsumerSettings[K, V] =
+    override def withClientId(clientId: String): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientId)
 
-    override def withGroupId(groupId: String): ConsumerSettings[K, V] =
+    override def withGroupId(groupId: String): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId)
 
-    override def withMaxPollRecords(maxPollRecords: Int): ConsumerSettings[K, V] =
+    override def withMaxPollRecords(maxPollRecords: Int): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords.toString)
 
-    override def withMaxPollInterval(maxPollInterval: FiniteDuration): ConsumerSettings[K, V] =
+    override def withMaxPollInterval(maxPollInterval: FiniteDuration): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, maxPollInterval.toMillis.toString)
 
-    override def withSessionTimeout(sessionTimeout: FiniteDuration): ConsumerSettings[K, V] =
+    override def withSessionTimeout(sessionTimeout: FiniteDuration): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sessionTimeout.toMillis.toString)
 
-    override def withHeartbeatInterval(heartbeatInterval: FiniteDuration): ConsumerSettings[K, V] =
+    override def withHeartbeatInterval(
+      heartbeatInterval: FiniteDuration
+    ): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, heartbeatInterval.toMillis.toString)
 
-    override def withEnableAutoCommit(enableAutoCommit: Boolean): ConsumerSettings[K, V] =
+    override def withEnableAutoCommit(enableAutoCommit: Boolean): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, enableAutoCommit.toString)
 
     override def withAutoCommitInterval(
       autoCommitInterval: FiniteDuration
-    ): ConsumerSettings[K, V] =
+    ): ConsumerSettings[F, K, V] =
       withProperty(
         ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
         autoCommitInterval.toMillis.toString
       )
 
-    override def withRequestTimeout(requestTimeout: FiniteDuration): ConsumerSettings[K, V] =
+    override def withRequestTimeout(requestTimeout: FiniteDuration): ConsumerSettings[F, K, V] =
       withProperty(
         ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG,
         requestTimeout.toMillis.toString
       )
 
-    override def withDefaultApiTimeout(defaultApiTimeout: FiniteDuration): ConsumerSettings[K, V] =
+    override def withDefaultApiTimeout(
+      defaultApiTimeout: FiniteDuration
+    ): ConsumerSettings[F, K, V] =
       withProperty(
         ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG,
         defaultApiTimeout.toMillis.toString
       )
 
-    override def withProperty(key: String, value: String): ConsumerSettings[K, V] =
+    override def withProperty(key: String, value: String): ConsumerSettings[F, K, V] =
       copy(properties = properties.updated(key, value))
 
-    override def withProperties(properties: (String, String)*): ConsumerSettings[K, V] =
+    override def withProperties(properties: (String, String)*): ConsumerSettings[F, K, V] =
       copy(properties = this.properties ++ properties.toMap)
 
-    override def withProperties(properties: Map[String, String]): ConsumerSettings[K, V] =
+    override def withProperties(properties: Map[String, String]): ConsumerSettings[F, K, V] =
       copy(properties = this.properties ++ properties)
 
-    override def withCloseTimeout(closeTimeout: FiniteDuration): ConsumerSettings[K, V] =
+    override def withCloseTimeout(closeTimeout: FiniteDuration): ConsumerSettings[F, K, V] =
       copy(closeTimeout = closeTimeout)
 
-    override def withCommitTimeout(commitTimeout: FiniteDuration): ConsumerSettings[K, V] =
+    override def withCommitTimeout(commitTimeout: FiniteDuration): ConsumerSettings[F, K, V] =
       copy(commitTimeout = commitTimeout)
 
-    override def withPollInterval(pollInterval: FiniteDuration): ConsumerSettings[K, V] =
+    override def withPollInterval(pollInterval: FiniteDuration): ConsumerSettings[F, K, V] =
       copy(pollInterval = pollInterval)
 
-    override def withPollTimeout(pollTimeout: FiniteDuration): ConsumerSettings[K, V] =
+    override def withPollTimeout(pollTimeout: FiniteDuration): ConsumerSettings[F, K, V] =
       copy(pollTimeout = pollTimeout)
 
-    override def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[K, V] =
+    override def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[F, K, V] =
       copy(commitRecovery = commitRecovery)
 
-    override def withConsumerFactory(consumerFactory: ConsumerFactory): ConsumerSettings[K, V] =
-      copy(consumerFactory = consumerFactory)
+    override def createConsumer: F[Consumer[Array[Byte], Array[Byte]]] =
+      createConsumerWith(properties)
+
+    override def withCreateConsumer(
+      createConsumerWith: Map[String, String] => F[Consumer[Array[Byte], Array[Byte]]]
+    ): ConsumerSettings[F, K, V] =
+      copy(createConsumerWith = createConsumerWith)
 
     override def withRecordMetadata(
       recordMetadata: ConsumerRecord[K, V] => String
-    ): ConsumerSettings[K, V] =
+    ): ConsumerSettings[F, K, V] =
       copy(recordMetadata = recordMetadata)
 
-    override def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[K, V] =
+    override def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V] =
       copy(maxPrefetchBatches = Math.max(2, maxPrefetchBatches))
 
+    override def withShiftDeserialization(shiftSerialization: Boolean): ConsumerSettings[F, K, V] =
+      copy(shiftDeserialization = shiftSerialization)
+
     override def toString: String =
-      Show[ConsumerSettings[K, V]].show(this)
+      s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery, shiftDeserialization = $shiftDeserialization)"
   }
 
-  private[this] def create[K, V](
-    keyDeserializer: KafkaDeserializer[K],
-    valueDeserializer: KafkaDeserializer[V],
-    executionContext: Option[ExecutionContext]
-  ): ConsumerSettings[K, V] = ConsumerSettingsImpl(
-    keyDeserializer = keyDeserializer,
-    valueDeserializer = valueDeserializer,
-    executionContext = executionContext,
-    properties = Map(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"),
-    closeTimeout = 20.seconds,
-    commitTimeout = 15.seconds,
-    pollInterval = 50.millis,
-    pollTimeout = 50.millis,
-    commitRecovery = CommitRecovery.Default,
-    consumerFactory = ConsumerFactory.Default,
-    recordMetadata = _ => OffsetFetchResponse.NO_METADATA,
-    maxPrefetchBatches = 2
-  )
+  private[this] def create[F[_], K, V](
+    keyDeserializer: Deserializer[F, K],
+    valueDeserializer: Deserializer[F, V]
+  )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
+    ConsumerSettingsImpl(
+      keyDeserializer = keyDeserializer,
+      valueDeserializer = valueDeserializer,
+      executionContext = None,
+      properties = Map(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"),
+      closeTimeout = 20.seconds,
+      commitTimeout = 15.seconds,
+      pollInterval = 50.millis,
+      pollTimeout = 50.millis,
+      commitRecovery = CommitRecovery.Default,
+      recordMetadata = _ => OffsetFetchResponse.NO_METADATA,
+      maxPrefetchBatches = 2,
+      shiftDeserialization = true,
+      createConsumerWith = properties =>
+        F.delay {
+          val byteArrayDeserializer = new ByteArrayDeserializer
+          new org.apache.kafka.clients.consumer.KafkaConsumer(
+            (properties: Map[String, AnyRef]).asJava,
+            byteArrayDeserializer,
+            byteArrayDeserializer
+          )
+      }
+    )
 
   /**
     * Creates a new [[ConsumerSettings]] instance using the
-    * specified settings. Since offset commits are managed
-    * manually, automatic commits are disabled by default.
-    * Automatic offset commits can be enabled again using
-    * [[ConsumerSettings#withEnableAutoCommit]].<br>
+    * specified deserializers for the key and value. Since
+    * offset commits are managed manually, automatic commits
+    * are disabled by default. Automatic offset commits can be
+    * enabled with [[ConsumerSettings#withEnableAutoCommit]].<br>
     * <br>
     * Since some Kafka operations are blocking, these should
-    * be run on a dedicated `ExecutionContext`. When no such
-    * `ExecutionContext` is specified, a default one will be
-    * used. The default `ExecutionContext` is equivalent to
-    * a `consumerExecutionContextResource` with `1` thread.
+    * be run on a dedicated `ExecutionContext`. When not set
+    * with [[ConsumerSettings#withExecutionContext]], there
+    * will be a default created. The default context is the
+    * same as `consumerExecutionContextResource`.
     */
-  def apply[K, V](
-    keyDeserializer: KafkaDeserializer[K],
-    valueDeserializer: KafkaDeserializer[V]
-  ): ConsumerSettings[K, V] = create(
-    keyDeserializer = keyDeserializer,
-    valueDeserializer = valueDeserializer,
-    executionContext = None
-  )
+  def apply[F[_], K, V](
+    keyDeserializer: Deserializer[F, K],
+    valueDeserializer: Deserializer[F, V]
+  )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
+    create(keyDeserializer, valueDeserializer)
 
   /**
     * Creates a new [[ConsumerSettings]] instance using
     * implicit [[Deserializer]]s for the key and value.
     */
-  def apply[K, V](
-    implicit keyDeserializer: Deserializer[K],
-    valueDeserializer: Deserializer[V]
-  ): ConsumerSettings[K, V] = create(
-    keyDeserializer = keyDeserializer,
-    valueDeserializer = valueDeserializer,
-    executionContext = None
-  )
+  def apply[F[_], K, V](
+    implicit F: Sync[F],
+    keyDeserializer: Deserializer[F, K],
+    valueDeserializer: Deserializer[F, V]
+  ): ConsumerSettings[F, K, V] =
+    create(keyDeserializer, valueDeserializer)
 
-  /**
-    * Creates a new [[ConsumerSettings]] instance using the
-    * specified settings. Since offset commits are managed
-    * manually, automatic commits are disabled by default.
-    * Automatic offset commits can be enabled again using
-    * [[ConsumerSettings#withEnableAutoCommit]].<br>
-    * <br>
-    * Since some Kafka operations are blocking, these should
-    * be run on a dedicated `ExecutionContext`. If you have
-    * a suitable context, you can specify it. Otherwise,
-    * you can:<br>
-    * <br>
-    * - use `consumerExecutionContextResource` to create one,<br>
-    * <br>
-    * - not specify an `ExecutionContext`, and a default one
-    *   will be used; the default context is equivalent to a
-    *   `consumerExecutionContextResource` with `1` thread.
-    */
-  def apply[K, V](
-    keyDeserializer: KafkaDeserializer[K],
-    valueDeserializer: KafkaDeserializer[V],
-    executionContext: ExecutionContext
-  ): ConsumerSettings[K, V] = create(
-    keyDeserializer = keyDeserializer,
-    valueDeserializer = valueDeserializer,
-    executionContext = Some(executionContext)
-  )
-
-  /**
-    * Creates a new [[ConsumerSettings]] instance using
-    * the specified `ExecutionContext` and implicit
-    * [[Deserializer]]s for the key and value.
-    */
-  def apply[K, V](executionContext: ExecutionContext)(
-    implicit keyDeserializer: Deserializer[K],
-    valueDeserializer: Deserializer[V]
-  ): ConsumerSettings[K, V] = create(
-    keyDeserializer = keyDeserializer,
-    valueDeserializer = valueDeserializer,
-    executionContext = Some(executionContext)
-  )
-
-  implicit def consumerSettingsShow[K, V]: Show[ConsumerSettings[K, V]] =
-    Show.show { s =>
-      s"ConsumerSettings(closeTimeout = ${s.closeTimeout}, commitTimeout = ${s.commitTimeout}, pollInterval = ${s.pollInterval}, pollTimeout = ${s.pollTimeout}, commitRecovery = ${s.commitRecovery}, consumerFactory = ${s.consumerFactory})"
-    }
+  implicit def consumerSettingsShow[F[_], K, V]: Show[ConsumerSettings[F, K, V]] =
+    Show.fromToString
 }

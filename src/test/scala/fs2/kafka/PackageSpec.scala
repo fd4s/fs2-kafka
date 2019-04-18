@@ -16,7 +16,7 @@ final class PackageSpec extends BaseKafkaSpec {
   describe("creating consumers") {
     it("should support defined syntax") {
       val settings =
-        ConsumerSettings[String, String]
+        ConsumerSettings[IO, String, String]
 
       consumerResource[IO, String, String](settings)
       consumerResource[IO].toString should startWith("ConsumerResource$")

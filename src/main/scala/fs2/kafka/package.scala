@@ -40,11 +40,14 @@ package object kafka {
   private[kafka] type KafkaHeaders =
     org.apache.kafka.common.header.Headers
 
-  private[kafka] type KafkaConsumerRecord[K, V] =
-    org.apache.kafka.clients.consumer.ConsumerRecord[K, V]
+  private[kafka] type KafkaConsumerRecords =
+    org.apache.kafka.clients.consumer.ConsumerRecords[Array[Byte], Array[Byte]]
 
-  private[kafka] type KafkaProducerRecord[K, V] =
-    org.apache.kafka.clients.producer.ProducerRecord[K, V]
+  private[kafka] type KafkaConsumerRecord =
+    org.apache.kafka.clients.consumer.ConsumerRecord[Array[Byte], Array[Byte]]
+
+  private[kafka] type KafkaProducerRecord =
+    org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
   /**
     * Commits offsets in batches determined by the `Chunk`s of the
@@ -358,7 +361,7 @@ package object kafka {
     * consumerResource[F].using(settings)
     * }}}
     */
-  def consumerResource[F[_], K, V](settings: ConsumerSettings[K, V])(
+  def consumerResource[F[_], K, V](settings: ConsumerSettings[F, K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
     timer: Timer[F]
@@ -389,7 +392,7 @@ package object kafka {
     * consumerStream[F].using(settings)
     * }}}
     */
-  def consumerStream[F[_], K, V](settings: ConsumerSettings[K, V])(
+  def consumerStream[F[_], K, V](settings: ConsumerSettings[F, K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
     timer: Timer[F]

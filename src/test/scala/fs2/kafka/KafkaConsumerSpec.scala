@@ -136,7 +136,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         assert {
           committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
-          withKafkaConsumer[String, String](consumerProperties(config)) { consumer =>
+          withKafkaConsumer(consumerProperties(config)) { consumer =>
             committed.foldLeft(true) {
               case (result, (topicPartition, offsetAndMetadata)) =>
                 result && offsetAndMetadata == consumer.committed(topicPartition)
@@ -226,7 +226,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val consumed =
           consumerStream[IO]
             .using {
-              consumerSettings(config)
+              consumerSettings[IO](config)
                 .withAutoOffsetReset(AutoOffsetReset.None)
             }
             .evalTap(_.subscribeTo(topic))

@@ -162,10 +162,10 @@ private[kafka] object KafkaProducer {
           private[this] def asJavaRecord(
             record: ProducerRecord[K, V],
             shiftSerialization: Boolean
-          ): F[KafkaProducerRecord[Array[Byte], Array[Byte]]] =
+          ): F[KafkaProducerRecord] =
             serializeToBytes(record, shiftSerialization).map {
               case (keyBytes, valueBytes) =>
-                new KafkaProducerRecord[Array[Byte], Array[Byte]](
+                new KafkaProducerRecord(
                   record.topic,
                   if (record.partition.isDefined)
                     record.partition.get: java.lang.Integer

@@ -260,7 +260,7 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 
 private[kafka] object KafkaConsumer {
   private[this] def executionContextResource[F[_], K, V](
-    settings: ConsumerSettings[K, V]
+    settings: ConsumerSettings[F, K, V]
   )(
     implicit F: Sync[F]
   ): Resource[F, ExecutionContext] =
@@ -270,15 +270,14 @@ private[kafka] object KafkaConsumer {
     }
 
   private[this] def createConsumer[F[_], K, V](
-    settings: ConsumerSettings[K, V],
+    settings: ConsumerSettings[F, K, V],
     executionContext: ExecutionContext
   )(
     implicit F: Concurrent[F],
     context: ContextShift[F]
-  ): Resource[F, Synchronized[F, Consumer[K, V]]] =
-    Resource.make[F, Synchronized[F, Consumer[K, V]]] {
-      settings.consumerFactory
-        .create(settings)
+  ): Resource[F, Synchronized[F, Consumer[Array[Byte], Array[Byte]]]] =
+    Resource.make[F, Synchronized[F, Consumer[Array[Byte], Array[Byte]]]] {
+      settings.createConsumer
         .flatMap(Synchronized[F].of)
     } { synchronized =>
       synchronized.use { consumer =>
@@ -337,7 +336,7 @@ private[kafka] object KafkaConsumer {
 
   private[this] def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
-    settings: ConsumerSettings[K, V],
+    settings: ConsumerSettings[F, K, V],
     actor: Fiber[F, Unit],
     polls: Fiber[F, Unit],
     streamIdRef: Ref[F, Int],
@@ -628,7 +627,7 @@ private[kafka] object KafkaConsumer {
     }
 
   def consumerResource[F[_], K, V](
-    settings: ConsumerSettings[K, V]
+    settings: ConsumerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],

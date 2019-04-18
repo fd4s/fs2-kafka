@@ -37,7 +37,7 @@ final class ConsumerStream[F[_]] private[kafka] (
     * This is equivalent to using `consumerStream` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: ConsumerSettings[K, V])(
+  def using[K, V](settings: ConsumerSettings[F, K, V])(
     implicit context: ContextShift[F],
     timer: Timer[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =

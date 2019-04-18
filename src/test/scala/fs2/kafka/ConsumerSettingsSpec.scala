@@ -1,8 +1,8 @@
 package fs2.kafka
 
+import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.serialization.StringDeserializer
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -189,11 +189,14 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should provide withConsumerFactory") {
+    it("should provide withCreateConsumer") {
       assert {
         settings
-          .withConsumerFactory(ConsumerFactory.Default)
-          .consumerFactory == ConsumerFactory.Default
+          .withCreateConsumer(_ => IO.raiseError(new RuntimeException))
+          .createConsumer
+          .attempt
+          .unsafeRunSync
+          .isLeft
       }
     }
 
@@ -228,9 +231,17 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
+    it("should provide withShiftDeserialization") {
+      assert {
+        settings
+          .withShiftDeserialization(false)
+          .shiftDeserialization == false
+      }
+    }
+
     it("should have a Show instance and matching toString") {
       assert {
-        settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default, consumerFactory = Default)" &&
+        settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default, shiftDeserialization = true)" &&
         settings.show == settings.toString
       }
     }
@@ -238,14 +249,11 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
   val settings =
     ConsumerSettings(
-      keyDeserializer = new StringDeserializer,
-      valueDeserializer = new StringDeserializer
+      keyDeserializer = Deserializer[IO, String],
+      valueDeserializer = Deserializer[IO, String]
     )
 
   val settingsWithContext =
-    ConsumerSettings(
-      keyDeserializer = new StringDeserializer,
-      valueDeserializer = new StringDeserializer,
-      executionContext = ExecutionContext.global
-    )
+    ConsumerSettings[IO, String, String]
+      .withExecutionContext(ExecutionContext.global)
 }
