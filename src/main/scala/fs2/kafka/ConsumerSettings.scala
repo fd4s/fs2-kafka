@@ -30,6 +30,12 @@ import scala.concurrent.ExecutionContext
   * [[KafkaConsumer]]. At the very least, this includes key and
   * value deserializers.<br>
   * <br>
+  * The following consumer configuration defaults are used.<br>
+  * - `auto.offset.reset` is set to `none` to avoid the surprise
+  *   of the otherwise default `latest` setting.<br>
+  * - `enable.auto.commit` is set to `false` since offset
+  *   commits are managed manually.<br>
+  * <br>
   * Several convenience functions are provided so that you don't
   * have to work with `String` values and `ConsumerConfig` for
   * configuration. It's still possible to specify `ConsumerConfig`
@@ -513,7 +519,10 @@ object ConsumerSettings {
       keyDeserializer = keyDeserializer,
       valueDeserializer = valueDeserializer,
       executionContext = None,
-      properties = Map(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"),
+      properties = Map(
+        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "none",
+        ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"
+      ),
       closeTimeout = 20.seconds,
       commitTimeout = 15.seconds,
       pollInterval = 50.millis,
@@ -535,16 +544,7 @@ object ConsumerSettings {
 
   /**
     * Creates a new [[ConsumerSettings]] instance using the
-    * specified deserializers for the key and value. Since
-    * offset commits are managed manually, automatic commits
-    * are disabled by default. Automatic offset commits can be
-    * enabled with [[ConsumerSettings#withEnableAutoCommit]].<br>
-    * <br>
-    * Since some Kafka operations are blocking, these should
-    * be run on a dedicated `ExecutionContext`. When not set
-    * with [[ConsumerSettings#withExecutionContext]], there
-    * will be a default created. The default context is the
-    * same as `consumerExecutionContextResource`.
+    * specified [[Deserializer]]s for the key and value.
     */
   def apply[F[_], K, V](
     keyDeserializer: Deserializer[F, K],
