@@ -16,9 +16,9 @@
 
 package fs2.kafka
 
-import cats.{Applicative, ApplicativeError, Contravariant, Defer, Functor}
-import cats.effect.Sync
-import cats.syntax.functor._
+import cats._
+import cats.effect._
+import cats.implicits._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 import org.apache.kafka.common.utils.Bytes
@@ -190,7 +190,7 @@ object Serializer {
     * default `UUID` serializer uses `UTF-8.`
     */
   def uuid[F[_]](charset: Charset)(implicit F: Applicative[F]): Serializer[F, UUID] =
-    Serializer.string(charset).contramap(_.toString)
+    Serializer.string[F](charset).contramap(_.toString)
 
   /**
     * The identity [[Serializer]], which does not perform any kind
@@ -216,7 +216,7 @@ object Serializer {
     }
 
   implicit def bytes[F[_]](implicit F: Applicative[F]): Serializer[F, Bytes] =
-    Serializer.identity.contramap(_.get)
+    Serializer.identity[F].contramap(_.get)
 
   implicit def double[F[_]](implicit F: Applicative[F]): Serializer[F, Double] =
     Serializer.delegate {
@@ -255,5 +255,5 @@ object Serializer {
     Serializer.const(null)
 
   implicit def uuid[F[_]](implicit F: Applicative[F]): Serializer[F, UUID] =
-    Serializer.string.contramap(_.toString)
+    Serializer.string[F].contramap(_.toString)
 }
