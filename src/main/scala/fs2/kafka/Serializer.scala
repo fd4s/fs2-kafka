@@ -16,7 +16,7 @@
 
 package fs2.kafka
 
-import cats.{Applicative, Contravariant, Defer, Functor}
+import cats.{Applicative, ApplicativeError, Contravariant, Defer, Functor}
 import cats.effect.Sync
 import cats.syntax.functor._
 import java.nio.charset.{Charset, StandardCharsets}
@@ -116,6 +116,15 @@ object Serializer {
     Serializer.instance[F, A] { (topic, headers, a) =>
       F.pure(serializer.serialize(topic, headers.asJava, a))
     }
+
+  /**
+    * Creates a new [[Serializer]] which always fails
+    * serialization with the specified exception `e`.
+    */
+  def fail[F[_], A](e: Throwable)(
+    implicit F: ApplicativeError[F, Throwable]
+  ): Serializer[F, A] =
+    Serializer.lift(_ => F.raiseError(e))
 
   /**
     * Creates a new [[Serializer]] which serializes all

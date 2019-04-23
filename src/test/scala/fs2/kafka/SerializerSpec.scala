@@ -73,6 +73,16 @@ final class SerializerSpec extends BaseCatsSpec {
     }
   }
 
+  test("Serializer#fail") {
+    val serializer =
+      Serializer.fail[IO, Int](new RuntimeException)
+
+    forAll { (topic: String, headers: Headers, i: Int) =>
+      val serialized = serializer.serialize(topic, headers, i)
+      assert(serialized.attempt.unsafeRunSync.isLeft)
+    }
+  }
+
   test("Serializer#suspend") {
     val serializer =
       Serializer
