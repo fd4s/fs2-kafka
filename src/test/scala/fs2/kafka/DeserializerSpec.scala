@@ -64,6 +64,16 @@ final class DeserializerSpec extends BaseCatsSpec {
     }
   }
 
+  test("Deserializer#fail") {
+    val deserializer =
+      Deserializer.fail[IO, Int](new RuntimeException)
+
+    forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>
+      val deserialized = deserializer.deserialize(topic, headers, bytes)
+      assert(deserialized.attempt.unsafeRunSync.isLeft)
+    }
+  }
+
   test("Deserializer#headers") {
     val deserializer =
       Deserializer.headers { headers =>

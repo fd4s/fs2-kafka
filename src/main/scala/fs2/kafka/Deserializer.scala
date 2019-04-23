@@ -139,6 +139,15 @@ object Deserializer {
     }
 
   /**
+    * Creates a new [[Deserializer]] which always fails
+    * deserialization with the specified exception `e`.
+    */
+  def fail[F[_], A](e: Throwable)(
+    implicit F: ApplicativeError[F, Throwable]
+  ): Deserializer[F, A] =
+    Deserializer.lift(_ => F.raiseError(e))
+
+  /**
     * Creates a new [[Deserializer]] which can use different
     * [[Deserializer]]s depending on the record headers.
     */
