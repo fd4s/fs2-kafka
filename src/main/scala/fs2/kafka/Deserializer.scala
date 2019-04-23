@@ -24,10 +24,9 @@ import java.util.UUID
 import org.apache.kafka.common.utils.Bytes
 
 /**
-  * [[Deserializer]] is a functional Kafka deserializer which directly
-  * extends the Kafka `Deserializer` interface, but doesn't make use
-  * of `close` or `configure`. There is only a single function for
-  * deserialization, which provides access to the record headers.
+  * Kafka deserializer with support for deserialization effects
+  * by returning the deserialized value in an abstract context
+  * `F[_]`, which can include effects.
   */
 sealed abstract class Deserializer[F[_], A] {
 
@@ -137,6 +136,15 @@ object Deserializer {
     Deserializer.instance { (topic, headers, bytes) =>
       F.pure(deserializer.deserialize(topic, headers.asJava, bytes))
     }
+
+  /**
+    * Creates a new [[Deserializer]] which always fails
+    * deserialization with the specified exception `e`.
+    */
+  def fail[F[_], A](e: Throwable)(
+    implicit F: ApplicativeError[F, Throwable]
+  ): Deserializer[F, A] =
+    Deserializer.lift(_ => F.raiseError(e))
 
   /**
     * Creates a new [[Deserializer]] which can use different
