@@ -35,14 +35,14 @@ lazy val dependencySettings = Seq(
     "org.apache.kafka" % "kafka-clients" % kafkaVersion
   ),
   libraryDependencies ++= Seq(
-    "org.scalatest" %% "scalatest" % "3.0.5",
+    "org.scalatest" %% "scalatest" % "3.0.7",
     "org.typelevel" %% "cats-testkit" % "1.6.0",
     "org.scalacheck" %% "scalacheck" % "1.14.0",
     "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.0",
+    "io.github.embeddedkafka" %% "embedded-kafka" % kafkaVersion,
     "org.apache.kafka" %% "kafka" % kafkaVersion
   ).map(_ % Test),
-  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0-M4"),
+  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.0" cross CrossVersion.binary)
 )
 
