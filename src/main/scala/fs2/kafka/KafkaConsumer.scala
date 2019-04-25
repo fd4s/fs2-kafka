@@ -25,14 +25,11 @@ import cats.implicits._
 import fs2.concurrent.Queue
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.instances._
-import fs2.kafka.internal.syntax._
 import fs2.kafka.internal._
 import fs2.{Chunk, Stream}
-import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.immutable.SortedSet
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
 
@@ -259,34 +256,6 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 }
 
 private[kafka] object KafkaConsumer {
-  private[this] def executionContextResource[F[_], K, V](
-    settings: ConsumerSettings[F, K, V]
-  )(
-    implicit F: Sync[F]
-  ): Resource[F, ExecutionContext] =
-    settings.executionContext match {
-      case Some(executionContext) => Resource.pure(executionContext)
-      case None                   => consumerExecutionContextResource
-    }
-
-  private[this] def createConsumer[F[_], K, V](
-    settings: ConsumerSettings[F, K, V],
-    executionContext: ExecutionContext
-  )(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
-  ): Resource[F, Synchronized[F, Consumer[Array[Byte], Array[Byte]]]] =
-    Resource.make[F, Synchronized[F, Consumer[Array[Byte], Array[Byte]]]] {
-      settings.createConsumer
-        .flatMap(Synchronized[F].of)
-    } { synchronized =>
-      synchronized.use { consumer =>
-        context.evalOn(executionContext) {
-          F.delay(consumer.close(settings.closeTimeout.asJava))
-        }
-      }
-    }
-
   private[this] def startConsumerActor[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     polls: Queue[F, Request[F, K, V]],
@@ -641,15 +610,8 @@ private[kafka] object KafkaConsumer {
       polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, Int](0))
-      ec <- executionContextResource(settings)
-      sync <- createConsumer(settings, ec)
-      actor = new KafkaConsumerActor(
-        settings = settings,
-        executionContext = ec,
-        ref = ref,
-        requests = requests,
-        synchronized = sync
-      )
+      withConsumer <- WithConsumer.of(settings)
+      actor = new KafkaConsumerActor(settings, ref, requests, withConsumer)
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
     } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id)

@@ -22,7 +22,7 @@ import java.util.regex.Pattern
 
 import cats.data.{Chain, NonEmptyList, NonEmptyVector}
 import cats.effect.concurrent.{Deferred, Ref}
-import cats.effect.{ConcurrentEffect, ContextShift, IO, Timer}
+import cats.effect.{ConcurrentEffect, IO, Timer}
 import cats.implicits._
 import fs2.Chunk
 import fs2.concurrent.Queue
@@ -32,7 +32,6 @@ import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.internal.LogEntry._
 import org.apache.kafka.clients.consumer.{
-  Consumer,
   ConsumerRebalanceListener,
   OffsetCommitCallback,
   OffsetAndMetadata
@@ -41,7 +40,6 @@ import org.apache.kafka.common.TopicPartition
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.SortedSet
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -61,13 +59,11 @@ import scala.concurrent.duration.FiniteDuration
   */
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[F, K, V],
-  executionContext: ExecutionContext,
   ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
-  synchronized: Synchronized[F, Consumer[Array[Byte], Array[Byte]]]
+  withConsumer: WithConsumer[F]
 )(
   implicit F: ConcurrentEffect[F],
-  context: ContextShift[F],
   logging: Logging[F],
   jitter: Jitter[F],
   timer: Timer[F]
@@ -76,13 +72,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private[this] type ConsumerRecords =
     Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]]
-
-  private[this] def withConsumer[A](f: Consumer[Array[Byte], Array[Byte]] => F[A]): F[A] =
-    synchronized.use { consumer =>
-      context.evalOn(executionContext) {
-        f(consumer)
-      }
-    }
 
   private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {

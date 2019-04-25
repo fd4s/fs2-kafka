@@ -28,6 +28,9 @@ import scala.concurrent.duration.FiniteDuration
 package object kafka {
   type Id[+A] = A
 
+  private[kafka] type ByteConsumer =
+    org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
+
   private[kafka] type KafkaDeserializer[A] =
     org.apache.kafka.common.serialization.Deserializer[A]
 
