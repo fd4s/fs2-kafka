@@ -22,17 +22,16 @@ import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.implicits._
 import cats.implicits._
-import fs2.concurrent.Queue
-import fs2.kafka.internal.KafkaConsumerActor._
-import fs2.kafka.internal.instances._
-import fs2.kafka.internal.syntax._
-import fs2.kafka.internal._
 import fs2.{Chunk, Stream}
-import org.apache.kafka.clients.consumer._
+import fs2.concurrent.Queue
+import fs2.kafka.internal._
+import fs2.kafka.internal.instances._
+import fs2.kafka.internal.KafkaConsumerActor._
+import fs2.kafka.internal.syntax._
+import java.util
 import org.apache.kafka.common.TopicPartition
-
 import scala.collection.immutable.SortedSet
-import scala.concurrent.ExecutionContext
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
 
@@ -259,34 +258,6 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 }
 
 private[kafka] object KafkaConsumer {
-  private[this] def executionContextResource[F[_], K, V](
-    settings: ConsumerSettings[F, K, V]
-  )(
-    implicit F: Sync[F]
-  ): Resource[F, ExecutionContext] =
-    settings.executionContext match {
-      case Some(executionContext) => Resource.pure(executionContext)
-      case None                   => consumerExecutionContextResource
-    }
-
-  private[this] def createConsumer[F[_], K, V](
-    settings: ConsumerSettings[F, K, V],
-    executionContext: ExecutionContext
-  )(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
-  ): Resource[F, Synchronized[F, Consumer[Array[Byte], Array[Byte]]]] =
-    Resource.make[F, Synchronized[F, Consumer[Array[Byte], Array[Byte]]]] {
-      settings.createConsumer
-        .flatMap(Synchronized[F].of)
-    } { synchronized =>
-      synchronized.use { consumer =>
-        context.evalOn(executionContext) {
-          F.delay(consumer.close(settings.closeTimeout.asJava))
-        }
-      }
-    }
-
   private[this] def startConsumerActor[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     polls: Queue[F, Request[F, K, V]],
@@ -340,7 +311,8 @@ private[kafka] object KafkaConsumer {
     actor: Fiber[F, Unit],
     polls: Fiber[F, Unit],
     streamIdRef: Ref[F, Int],
-    id: Int
+    id: Int,
+    withConsumer: WithConsumer[F]
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
       override val fiber: Fiber[F, Unit] = {
@@ -505,12 +477,10 @@ private[kafka] object KafkaConsumer {
         }
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
-        request { deferred =>
-          Request.Seek(
-            partition = partition,
-            offset = offset,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.seek(partition, offset)
+          }
         }
 
       override def seekToBeginning: F[Unit] =
@@ -519,11 +489,10 @@ private[kafka] object KafkaConsumer {
       override def seekToBeginning[G[_]](partitions: G[TopicPartition])(
         implicit G: Foldable[G]
       ): F[Unit] =
-        request { deferred =>
-          Request.SeekToBeginning(
-            partitions = partitions.toList,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.seekToBeginning(partitions.asJava)
+          }
         }
 
       override def seekToEnd: F[Unit] =
@@ -532,29 +501,24 @@ private[kafka] object KafkaConsumer {
       override def seekToEnd[G[_]](
         partitions: G[TopicPartition]
       )(implicit G: Foldable[G]): F[Unit] =
-        request { deferred =>
-          Request.SeekToEnd(
-            partitions = partitions.toList,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.seekToEnd(partitions.asJava)
+          }
         }
 
       override def position(partition: TopicPartition): F[Long] =
-        request { deferred =>
-          Request.Position(
-            partition = partition,
-            timeout = None,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.position(partition)
+          }
         }
 
       override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
-        request { deferred =>
-          Request.Position(
-            partition = partition,
-            timeout = Some(timeout),
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.position(partition, timeout.asJava)
+          }
         }
 
       override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
@@ -579,47 +543,51 @@ private[kafka] object KafkaConsumer {
       override def beginningOffsets(
         partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
-        request { deferred =>
-          Request.BeginningOffsets(
-            partitions = partitions,
-            timeout = None,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer
+              .beginningOffsets(partitions.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
+          }
         }
 
       override def beginningOffsets(
         partitions: Set[TopicPartition],
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
-        request { deferred =>
-          Request.BeginningOffsets(
-            partitions = partitions,
-            timeout = Some(timeout),
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer
+              .beginningOffsets(partitions.asJava, timeout.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
+          }
         }
 
       override def endOffsets(
         partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
-        request { deferred =>
-          Request.EndOffsets(
-            partitions = partitions,
-            timeout = None,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer
+              .endOffsets(partitions.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
+          }
         }
 
       override def endOffsets(
         partitions: Set[TopicPartition],
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
-        request { deferred =>
-          Request.EndOffsets(
-            partitions = partitions,
-            timeout = Some(timeout),
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer
+              .endOffsets(partitions.asJava, timeout.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
+          }
         }
 
       override def toString: String =
@@ -641,16 +609,9 @@ private[kafka] object KafkaConsumer {
       polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, Int](0))
-      ec <- executionContextResource(settings)
-      sync <- createConsumer(settings, ec)
-      actor = new KafkaConsumerActor(
-        settings = settings,
-        executionContext = ec,
-        ref = ref,
-        requests = requests,
-        synchronized = sync
-      )
+      withConsumer <- WithConsumer.of(settings)
+      actor = new KafkaConsumerActor(settings, ref, requests, withConsumer)
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
-    } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id)
+    } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id, withConsumer)
 }
