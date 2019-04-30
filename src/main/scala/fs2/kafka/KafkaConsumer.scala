@@ -22,14 +22,16 @@ import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.implicits._
 import cats.implicits._
-import fs2.concurrent.Queue
-import fs2.kafka.internal.KafkaConsumerActor._
-import fs2.kafka.internal.instances._
-import fs2.kafka.internal._
 import fs2.{Chunk, Stream}
+import fs2.concurrent.Queue
+import fs2.kafka.internal._
+import fs2.kafka.internal.instances._
+import fs2.kafka.internal.KafkaConsumerActor._
+import fs2.kafka.internal.syntax._
+import java.util
 import org.apache.kafka.common.TopicPartition
-
 import scala.collection.immutable.SortedSet
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
 
@@ -309,7 +311,8 @@ private[kafka] object KafkaConsumer {
     actor: Fiber[F, Unit],
     polls: Fiber[F, Unit],
     streamIdRef: Ref[F, Int],
-    id: Int
+    id: Int,
+    withConsumer: WithConsumer[F]
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
       override val fiber: Fiber[F, Unit] = {
@@ -474,12 +477,10 @@ private[kafka] object KafkaConsumer {
         }
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
-        request { deferred =>
-          Request.Seek(
-            partition = partition,
-            offset = offset,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.seek(partition, offset)
+          }
         }
 
       override def seekToBeginning: F[Unit] =
@@ -488,11 +489,10 @@ private[kafka] object KafkaConsumer {
       override def seekToBeginning[G[_]](partitions: G[TopicPartition])(
         implicit G: Foldable[G]
       ): F[Unit] =
-        request { deferred =>
-          Request.SeekToBeginning(
-            partitions = partitions.toList,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.seekToBeginning(partitions.asJava)
+          }
         }
 
       override def seekToEnd: F[Unit] =
@@ -501,29 +501,24 @@ private[kafka] object KafkaConsumer {
       override def seekToEnd[G[_]](
         partitions: G[TopicPartition]
       )(implicit G: Foldable[G]): F[Unit] =
-        request { deferred =>
-          Request.SeekToEnd(
-            partitions = partitions.toList,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.seekToEnd(partitions.asJava)
+          }
         }
 
       override def position(partition: TopicPartition): F[Long] =
-        request { deferred =>
-          Request.Position(
-            partition = partition,
-            timeout = None,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.position(partition)
+          }
         }
 
       override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
-        request { deferred =>
-          Request.Position(
-            partition = partition,
-            timeout = Some(timeout),
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer.position(partition, timeout.asJava)
+          }
         }
 
       override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
@@ -548,47 +543,51 @@ private[kafka] object KafkaConsumer {
       override def beginningOffsets(
         partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
-        request { deferred =>
-          Request.BeginningOffsets(
-            partitions = partitions,
-            timeout = None,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer
+              .beginningOffsets(partitions.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
+          }
         }
 
       override def beginningOffsets(
         partitions: Set[TopicPartition],
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
-        request { deferred =>
-          Request.BeginningOffsets(
-            partitions = partitions,
-            timeout = Some(timeout),
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer
+              .beginningOffsets(partitions.asJava, timeout.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
+          }
         }
 
       override def endOffsets(
         partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
-        request { deferred =>
-          Request.EndOffsets(
-            partitions = partitions,
-            timeout = None,
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer
+              .endOffsets(partitions.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
+          }
         }
 
       override def endOffsets(
         partitions: Set[TopicPartition],
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
-        request { deferred =>
-          Request.EndOffsets(
-            partitions = partitions,
-            timeout = Some(timeout),
-            deferred = deferred
-          )
+        withConsumer { consumer =>
+          F.delay {
+            consumer
+              .endOffsets(partitions.asJava, timeout.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
+          }
         }
 
       override def toString: String =
@@ -614,5 +613,5 @@ private[kafka] object KafkaConsumer {
       actor = new KafkaConsumerActor(settings, ref, requests, withConsumer)
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
-    } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id)
+    } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id, withConsumer)
 }
