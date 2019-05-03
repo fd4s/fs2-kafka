@@ -18,7 +18,6 @@ package fs2.kafka
 
 import cats.Traverse
 import cats.effect._
-import cats.effect.concurrent.Deferred
 import cats.effect.syntax.concurrent._
 import cats.implicits._
 import fs2.kafka.internal.syntax._
@@ -68,10 +67,10 @@ private[kafka] object KafkaProducer {
         .create(settings)
     } { producer =>
       F.delay {
-          producer.close(settings.closeTimeout.asJava)
-        }
-        .start
-        .flatMap(_.join)
+        producer.close(settings.closeTimeout.asJava)
+      }
+      .start
+      .flatMap(_.join)
     }
   }
 
@@ -87,7 +86,7 @@ private[kafka] object KafkaProducer {
             message.traverse
 
           message.records
-            .traverse(record => produceRecord(record, (record, _)))
+            .traverse(record => produceRecord(record).map(_.tupleLeft(record)))
             .map(_.sequence.map(ProducerResult(_, message.passthrough)))
         }
 
@@ -98,31 +97,25 @@ private[kafka] object KafkaProducer {
             message.traverse
 
           message.records
-            .traverse(record => produceRecord(record, _ => ()))
+            .traverse(produceRecord)
             .map(_.sequence_.as(message.passthrough))
         }
 
         private[this] def produceRecord[A](
-          record: ProducerRecord[K, V],
-          result: RecordMetadata => A
-        ): F[F[A]] =
-          Deferred[F, Either[Throwable, A]].flatMap { deferred =>
-            F.delay {
-                producer.send(
-                  asJavaRecord(record),
-                  callback { (metadata, throwable) =>
-                    val complete =
-                      deferred.complete {
-                        if (throwable == null)
-                          Right(result(metadata))
-                        else Left(throwable)
-                      }
-
-                    F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
-                  }
-                )
-              }
-              .as(deferred.get.rethrow)
+          record: ProducerRecord[K, V]
+        ): F[F[RecordMetadata]] =
+          F.delay {
+            F.async[RecordMetadata] { cb =>
+              val _ = producer.send(
+                asJavaRecord(record),
+                callback { (metadata, exception) =>
+                  if (exception == null)
+                    cb(Right(metadata))
+                  else
+                    cb(Left(exception))
+                }
+              )
+            }
           }
 
         private[this] def asJavaRecord(
@@ -141,7 +134,7 @@ private[kafka] object KafkaProducer {
             record.headers.asJava
           )
 
-        private[this] def callback(f: (RecordMetadata, Throwable) => Unit): Callback =
+        private[this] def callback(f: (RecordMetadata, Exception) => Unit): Callback =
           new Callback {
             override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
               f(metadata, exception)
