@@ -337,7 +337,7 @@ package object kafka {
     * using the specified [[AdminClientSettings]]. If working in a
     * `Stream` context, you might prefer [[adminClientStream]].
     */
-  def adminClientResource[F[_]](settings: AdminClientSettings)(
+  def adminClientResource[F[_]](settings: AdminClientSettings[F])(
     implicit F: Concurrent[F]
   ): Resource[F, KafkaAdminClient[F]] =
     KafkaAdminClient.adminClientResource(settings)
@@ -348,7 +348,7 @@ package object kafka {
     * working in a `Stream` context, you might instead prefer to
     * use the [[adminClientResource]] function.
     */
-  def adminClientStream[F[_]](settings: AdminClientSettings)(
+  def adminClientStream[F[_]](settings: AdminClientSettings[F])(
     implicit F: Concurrent[F]
   ): Stream[F, KafkaAdminClient[F]] =
     Stream.resource(adminClientResource(settings))

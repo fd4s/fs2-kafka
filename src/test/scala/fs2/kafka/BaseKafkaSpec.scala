@@ -19,8 +19,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
 
   final def adminClientSettings(
     config: EmbeddedKafkaConfig
-  ): AdminClientSettings =
-    AdminClientSettings.Default
+  ): AdminClientSettings[IO] =
+    AdminClientSettings[IO]
       .withProperties(adminClientProperties(config))
 
   final def consumerSettings[F[_]](
