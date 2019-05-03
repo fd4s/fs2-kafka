@@ -350,12 +350,11 @@ object KafkaAdminClient {
     }
 
   private[this] def createAdminClient[F[_]](
-    settings: AdminClientSettings
+    settings: AdminClientSettings[F]
   )(implicit F: Concurrent[F]): Resource[F, Client[F]] =
     Resource
       .make[F, AdminClient] {
-        settings.adminClientFactory
-          .create(settings)
+        settings.createAdminClient
       } { adminClient =>
         F.delay {
             adminClient.close(settings.closeTimeout.asJava)
@@ -373,7 +372,7 @@ object KafkaAdminClient {
   }
 
   private[kafka] def adminClientResource[F[_]](
-    settings: AdminClientSettings
+    settings: AdminClientSettings[F]
   )(implicit F: Concurrent[F]): Resource[F, KafkaAdminClient[F]] =
     createAdminClient(settings).map { client =>
       new KafkaAdminClient[F] {
