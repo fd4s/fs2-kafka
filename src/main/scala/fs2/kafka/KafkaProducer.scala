@@ -67,10 +67,10 @@ private[kafka] object KafkaProducer {
         .create(settings)
     } { producer =>
       F.delay {
-        producer.close(settings.closeTimeout.asJava)
-      }
-      .start
-      .flatMap(_.join)
+          producer.close(settings.closeTimeout.asJava)
+        }
+        .start
+        .flatMap(_.join)
     }
   }
 
