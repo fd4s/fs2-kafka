@@ -16,15 +16,14 @@
 
 package fs2.kafka
 
-import cats.Show
 import cats.effect.Sync
+import cats.Show
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerConfig}
-import org.apache.kafka.common.requests.{IsolationLevel, OffsetFetchResponse}
+import org.apache.kafka.common.requests.OffsetFetchResponse
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 /**
   * [[ConsumerSettings]] contain settings necessary to create a
@@ -231,9 +230,9 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
-    * isolation level. This is equivalent to setting the following property
-    * using the [[withProperty]] function, except you can specify it
-    * with an `IsolationLevel` instead of a `String`.
+    * isolation level. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with an [[IsolationLevel]] instead of a `String`.
     *
     * {{{
     * ConsumerConfig.ISOLATION_LEVEL_CONFIG
@@ -488,8 +487,8 @@ object ConsumerSettings {
       withProperty(
         ConsumerConfig.ISOLATION_LEVEL_CONFIG,
         isolationLevel match {
-          case IsolationLevel.READ_COMMITTED   => "read_committed"
-          case IsolationLevel.READ_UNCOMMITTED => "read_uncommitted"
+          case IsolationLevel.ReadCommittedIsolationLevel   => "read_committed"
+          case IsolationLevel.ReadUncommittedIsolationLevel => "read_uncommitted"
         }
       )
 
@@ -568,7 +567,7 @@ object ConsumerSettings {
             byteArrayDeserializer,
             byteArrayDeserializer
           )
-      }
+        }
     )
 
   /**

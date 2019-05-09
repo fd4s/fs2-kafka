@@ -3,7 +3,6 @@ package fs2.kafka
 import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.requests.IsolationLevel
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -145,11 +144,11 @@ final class ConsumerSettingsSpec extends BaseSpec {
     it("should provide withIsolationLevel") {
       assert {
         settings
-          .withIsolationLevel(IsolationLevel.READ_COMMITTED)
+          .withIsolationLevel(IsolationLevel.ReadCommitted)
           .properties(ConsumerConfig.ISOLATION_LEVEL_CONFIG)
           .contains("read_committed")
         settings
-          .withIsolationLevel(IsolationLevel.READ_UNCOMMITTED)
+          .withIsolationLevel(IsolationLevel.ReadUncommitted)
           .properties(ConsumerConfig.ISOLATION_LEVEL_CONFIG)
           .contains("read_uncommitted")
       }
