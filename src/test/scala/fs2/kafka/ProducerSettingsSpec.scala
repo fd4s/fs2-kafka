@@ -114,6 +114,24 @@ final class ProducerSettingsSpec extends BaseSpec {
       }
     }
 
+    it("should provide withTransactionalId") {
+      assert {
+        settings
+          .withTransactionalId("transactional-id")
+          .properties(ProducerConfig.TRANSACTIONAL_ID_CONFIG)
+          .contains("transactional-id")
+      }
+    }
+
+    it("should provide withTransactionTimeout") {
+      assert {
+        settings
+          .withTransactionTimeout(10.seconds)
+          .properties(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG)
+          .contains("10000")
+      }
+    }
+
     it("should provide withShiftSerialization") {
       assert {
         settings
