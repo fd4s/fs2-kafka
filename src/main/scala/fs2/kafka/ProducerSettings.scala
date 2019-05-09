@@ -205,9 +205,9 @@ sealed abstract class ProducerSettings[F[_], K, V] {
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
-    * transactional ID. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can specify
-    * it with a `FiniteDuration` instead of a `String`
+    * transaction timeout. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
     *
     * {{{
     * ProducerConfig.TRANSACTION_TIMEOUT_CONFIG
@@ -342,7 +342,8 @@ object ProducerSettings {
       withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId)
 
     override def withTransactionTimeout(
-      transactionTimeout: FiniteDuration): ProducerSettings[F, K, V] =
+      transactionTimeout: FiniteDuration
+    ): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, transactionTimeout.toMillis.toString)
 
     override def withProperty(key: String, value: String): ProducerSettings[F, K, V] =
