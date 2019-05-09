@@ -52,15 +52,12 @@ final class ConsumerSettingsSpec extends BaseSpec {
     }
 
     it("should provide withGroupId") {
+      assert(settings.properties(ConsumerConfig.GROUP_ID_CONFIG).isEmpty)
+
       assert {
-        settings.groupId.isEmpty &&
         settings
           .withGroupId("group")
           .properties(ConsumerConfig.GROUP_ID_CONFIG)
-          .contains("group") &&
-        settings
-          .withGroupId("group")
-          .groupId
           .contains("group")
       }
     }

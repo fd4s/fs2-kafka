@@ -126,11 +126,6 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   def withGroupId(groupId: String): ConsumerSettings[F, K, V]
 
   /**
-    * The group ID consumers created with these settings will report.
-    */
-  def groupId: Option[String]
-
-  /**
     * Returns a new [[ConsumerSettings]] instance with the specified
     * max poll records. This is equivalent to setting the following
     * property using the [[withProperty]] function, except you can
@@ -441,8 +436,6 @@ object ConsumerSettings {
 
     override def withGroupId(groupId: String): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId)
-
-    override def groupId: Option[String] = properties.get(ConsumerConfig.GROUP_ID_CONFIG)
 
     override def withMaxPollRecords(maxPollRecords: Int): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords.toString)
