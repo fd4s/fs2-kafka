@@ -14,6 +14,7 @@ final class CommittableOffsetSpec extends BaseSpec {
       CommittableOffset[Id](
         partition,
         offsetAndMetadata,
+        consumerGroupId = None,
         committed = _
       ).commit
 
@@ -25,18 +26,34 @@ final class CommittableOffsetSpec extends BaseSpec {
 
       assert {
         val offsetAndMetadata = new OffsetAndMetadata(0L, "metadata")
-        val offset = CommittableOffset[Id](partition, offsetAndMetadata, _ => ())
+        val offset = CommittableOffset[Id](partition, offsetAndMetadata, None, _ => ())
 
         offset.toString == "CommittableOffset(topic-0 -> (0, metadata))" &&
         offset.show == offset.toString
       }
 
       assert {
+        val offsetAndMetadata = new OffsetAndMetadata(0L, "metadata")
+        val offset = CommittableOffset[Id](partition, offsetAndMetadata, Some("the-group"), _ => ())
+
+        offset.toString == "CommittableOffset(topic-0 -> (0, metadata), the-group)" &&
+          offset.show == offset.toString
+      }
+
+      assert {
         val offsetAndMetadata = new OffsetAndMetadata(0L)
-        val offset = CommittableOffset[Id](partition, offsetAndMetadata, _ => ())
+        val offset = CommittableOffset[Id](partition, offsetAndMetadata, None, _ => ())
 
         offset.toString == "CommittableOffset(topic-0 -> 0)" &&
         offset.show == offset.toString
+      }
+
+      assert {
+        val offsetAndMetadata = new OffsetAndMetadata(0L)
+        val offset = CommittableOffset[Id](partition, offsetAndMetadata, Some("the-group"), _ => ())
+
+        offset.toString == "CommittableOffset(topic-0 -> 0, the-group)" &&
+          offset.show == offset.toString
       }
     }
   }

@@ -13,13 +13,14 @@ final class CommittableMessageSpec extends BaseSpec {
           CommittableOffset[Id](
             topicPartition = new TopicPartition("topic", 0),
             offsetAndMetadata = new OffsetAndMetadata(0L),
+            consumerGroupId = Some("the-group"),
             commit = _ => ()
           )
         )
 
       assert {
-        message.toString == "CommittableMessage(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0))" &&
-        message.show == "CommittableMessage(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0))"
+        message.toString == "CommittableMessage(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))" &&
+        message.show == "CommittableMessage(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))"
       }
     }
   }

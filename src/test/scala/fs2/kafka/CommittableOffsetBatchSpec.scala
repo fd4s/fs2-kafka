@@ -43,6 +43,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
               CommittableOffset[Id](
                 topicPartition = topicPartition,
                 offsetAndMetadata = newOffsetAndMetadata,
+                consumerGroupId = None,
                 commit = _ => ()
               )
 
@@ -59,7 +60,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
 
         val offsets = batch2.offsets.map {
           case (topicPartition, offsetAndMetadata) =>
-            CommittableOffset[Id](topicPartition, offsetAndMetadata, _ => ())
+            CommittableOffset[Id](topicPartition, offsetAndMetadata, None, _ => ())
         }
 
         val expected = offsets.foldLeft(batch1)(_ updated _)
@@ -79,6 +80,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
       val one = CommittableOffset[Id](
         new TopicPartition("topic", 0),
         new OffsetAndMetadata(0L),
+        None,
         _ => ()
       ).batch
 
@@ -90,6 +92,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
       val oneMetadata = CommittableOffset[Id](
         new TopicPartition("topic", 1),
         new OffsetAndMetadata(0L, "metadata"),
+        None,
         _ => ()
       ).batch
 
