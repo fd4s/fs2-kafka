@@ -341,7 +341,8 @@ object ProducerSettings {
     override def withTransactionalId(transactionalId: String): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId)
 
-    override def withTransactionTimeout(transactionTimeout: FiniteDuration): ProducerSettings[F, K, V] =
+    override def withTransactionTimeout(
+      transactionTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, transactionTimeout.toMillis.toString)
 
     override def withProperty(key: String, value: String): ProducerSettings[F, K, V] =

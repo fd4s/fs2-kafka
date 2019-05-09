@@ -93,7 +93,7 @@ class TransactionalProducerMessageSpec extends BaseSpec {
               new OffsetAndMetadata(1),
               Some(s"the-group-$i"),
               _ => IO.unit
-            )
+          )
         )
       val zipped = records.zipWith(offsets)(Tuple2.apply)
 
@@ -110,7 +110,11 @@ class TransactionalProducerMessageSpec extends BaseSpec {
           _ => IO.unit
         )
 
-      TransactionalProducerMessage.one(record -> offset).attempt.unsafeRunSync().isLeft shouldBe true
+      TransactionalProducerMessage
+        .one(record -> offset)
+        .attempt
+        .unsafeRunSync()
+        .isLeft shouldBe true
     }
   }
 }

@@ -167,11 +167,26 @@ final class KafkaSpec extends BaseAsyncSpec {
   def exampleOffsets[F[_]](
     commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
   ): List[CommittableOffset[F]] = List(
-    CommittableOffset[F](new TopicPartition("topic", 0), new OffsetAndMetadata(1L), Some("group-1"), commit),
-    CommittableOffset[F](new TopicPartition("topic", 0), new OffsetAndMetadata(2L), Some("group-1"), commit),
-    CommittableOffset[F](new TopicPartition("topic", 1), new OffsetAndMetadata(1L), Some("group-1"), commit),
-    CommittableOffset[F](new TopicPartition("topic", 1), new OffsetAndMetadata(2L), Some("group-1"), commit),
-    CommittableOffset[F](new TopicPartition("topic", 1), new OffsetAndMetadata(3L), Some("group-1"), commit)
+    CommittableOffset[F](new TopicPartition("topic", 0),
+                         new OffsetAndMetadata(1L),
+                         Some("group-1"),
+                         commit),
+    CommittableOffset[F](new TopicPartition("topic", 0),
+                         new OffsetAndMetadata(2L),
+                         Some("group-1"),
+                         commit),
+    CommittableOffset[F](new TopicPartition("topic", 1),
+                         new OffsetAndMetadata(1L),
+                         Some("group-1"),
+                         commit),
+    CommittableOffset[F](new TopicPartition("topic", 1),
+                         new OffsetAndMetadata(2L),
+                         Some("group-1"),
+                         commit),
+    CommittableOffset[F](new TopicPartition("topic", 1),
+                         new OffsetAndMetadata(3L),
+                         Some("group-1"),
+                         commit)
   )
 
   val exampleOffsetsCommitted: Map[TopicPartition, OffsetAndMetadata] = Map(

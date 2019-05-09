@@ -37,7 +37,7 @@ final class CommittableOffsetSpec extends BaseSpec {
         val offset = CommittableOffset[Id](partition, offsetAndMetadata, Some("the-group"), _ => ())
 
         offset.toString == "CommittableOffset(topic-0 -> (0, metadata), the-group)" &&
-          offset.show == offset.toString
+        offset.show == offset.toString
       }
 
       assert {
@@ -53,7 +53,7 @@ final class CommittableOffsetSpec extends BaseSpec {
         val offset = CommittableOffset[Id](partition, offsetAndMetadata, Some("the-group"), _ => ())
 
         offset.toString == "CommittableOffset(topic-0 -> 0, the-group)" &&
-          offset.show == offset.toString
+        offset.show == offset.toString
       }
     }
   }

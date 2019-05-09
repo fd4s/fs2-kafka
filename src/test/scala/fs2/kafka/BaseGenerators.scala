@@ -34,12 +34,13 @@ trait BaseGenerators {
       topicPartition <- genTopicPartition
       offsetAndMetadata <- genOffsetAndMetadata
       groupId <- arbitrary[Option[String]]
-    } yield CommittableOffset[F](
-      topicPartition = topicPartition,
-      offsetAndMetadata = offsetAndMetadata,
-      consumerGroupId = groupId,
-      commit = _ => F.unit
-    )
+    } yield
+      CommittableOffset[F](
+        topicPartition = topicPartition,
+        offsetAndMetadata = offsetAndMetadata,
+        consumerGroupId = groupId,
+        commit = _ => F.unit
+      )
 
   implicit def arbCommittableOffset[F[_]](
     implicit F: Applicative[F]
