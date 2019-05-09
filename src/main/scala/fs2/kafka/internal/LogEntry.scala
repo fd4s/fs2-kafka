@@ -99,15 +99,6 @@ private[kafka] object LogEntry {
       s"Completed fetches with records for partitions [${recordsString(records)}]. Current state [$state]."
   }
 
-  final case class RevokedFetchesWithRecords[F[_], K, V](
-    records: Records[F, K, V],
-    state: State[F, K, V]
-  ) extends LogEntry {
-    override def level: LogLevel = Debug
-    override def message: String =
-      s"Revoked fetches with records for partitions [${recordsString(records)}]. Current state [$state]."
-  }
-
   final case class RevokedFetchesWithoutRecords[F[_], K, V](
     partitions: Set[TopicPartition],
     state: State[F, K, V]
