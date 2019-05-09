@@ -626,4 +626,16 @@ package object kafka {
     */
   def producerStream[F[_]](implicit F: ConcurrentEffect[F]): ProducerStream[F] =
     new ProducerStream[F](F)
+
+  def transactionalProducerResource[F[_], K, V](settings: ProducerSettings[F, K, V])(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F]
+  ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
+    TransactionalKafkaProducer.producerResource(settings)
+
+  def transactionalProducerStream[F[_], K, V](settings: ProducerSettings[F, K, V])(
+    implicit F: ConcurrentEffect[F],
+    C: ContextShift[F]
+  ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
+    Stream.resource(transactionalProducerResource(settings))
 }
