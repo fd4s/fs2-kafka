@@ -67,6 +67,12 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
   def offsets: Map[TopicPartition, OffsetAndMetadata]
 
   /**
+    * The configured group IDs of the consumers which pulled the offsets
+    * included in this batch.
+    */
+  def consumerGroupIds: Set[String]
+
+  /**
     * Commits the [[offsets]] to Kafka in a single commit.
     */
   def commit: F[Unit]
@@ -75,26 +81,33 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
 object CommittableOffsetBatch {
   private[kafka] def apply[F[_]](
     offsets: Map[TopicPartition, OffsetAndMetadata],
+    consumerGroupIds: Set[String],
     commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
   ): CommittableOffsetBatch[F] = {
     val _offsets = offsets
+    val _consumerGroupIds = consumerGroupIds
     val _commit = commit
 
     new CommittableOffsetBatch[F] {
       override def updated(that: CommittableOffset[F]): CommittableOffsetBatch[F] =
         CommittableOffsetBatch(
           _offsets.updated(that.topicPartition, that.offsetAndMetadata),
+          that.consumerGroupId.fold(_consumerGroupIds)(_consumerGroupIds + _),
           _commit
         )
 
       override def updated(that: CommittableOffsetBatch[F]): CommittableOffsetBatch[F] =
         CommittableOffsetBatch(
           _offsets ++ that.offsets,
+          _consumerGroupIds.union(that.consumerGroupIds),
           _commit
         )
 
       override val offsets: Map[TopicPartition, OffsetAndMetadata] =
         _offsets
+
+      override val consumerGroupIds: Set[String] =
+        _consumerGroupIds
 
       override def commit: F[Unit] =
         _commit(offsets)
@@ -147,6 +160,7 @@ object CommittableOffsetBatch {
   ): CommittableOffsetBatch[F] = {
     var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
     var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
+    var groupSet: Set[String] = Set.empty
     var empty: Boolean = true
 
     ga.foldLeft(()) { (_, a) =>
@@ -158,10 +172,11 @@ object CommittableOffsetBatch {
       }
 
       offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
+      groupSet = offset.consumerGroupId.fold(groupSet)(groupSet + _)
     }
 
     if (empty) CommittableOffsetBatch.empty[F]
-    else CommittableOffsetBatch(offsetsMap, commit)
+    else CommittableOffsetBatch(offsetsMap, groupSet, commit)
   }
 
   /**
@@ -188,6 +203,7 @@ object CommittableOffsetBatch {
   ): CommittableOffsetBatch[F] = {
     var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
     var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
+    var groupSet: Set[String] = Set.empty
     var empty: Boolean = true
 
     offsets.foldLeft(()) {
@@ -198,11 +214,12 @@ object CommittableOffsetBatch {
         }
 
         offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
+        groupSet = offset.consumerGroupId.fold(groupSet)(groupSet + _)
       case (_, None) => ()
     }
 
     if (empty) CommittableOffsetBatch.empty[F]
-    else CommittableOffsetBatch(offsetsMap, commit)
+    else CommittableOffsetBatch(offsetsMap, groupSet, commit)
   }
 
   /**
@@ -223,6 +240,9 @@ object CommittableOffsetBatch {
 
       override val offsets: Map[TopicPartition, OffsetAndMetadata] =
         Map.empty
+
+      override val consumerGroupIds: Set[String] =
+        Set.empty
 
       override val commit: F[Unit] =
         F.unit

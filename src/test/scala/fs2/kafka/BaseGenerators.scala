@@ -34,13 +34,12 @@ trait BaseGenerators {
       topicPartition <- genTopicPartition
       offsetAndMetadata <- genOffsetAndMetadata
       groupId <- arbitrary[Option[String]]
-    } yield
-      CommittableOffset[F](
-        topicPartition = topicPartition,
-        offsetAndMetadata = offsetAndMetadata,
-        consumerGroupId = groupId,
-        commit = _ => F.unit
-      )
+    } yield CommittableOffset[F](
+      topicPartition = topicPartition,
+      offsetAndMetadata = offsetAndMetadata,
+      consumerGroupId = groupId,
+      commit = _ => F.unit
+    )
 
   implicit def arbCommittableOffset[F[_]](
     implicit F: Applicative[F]
@@ -50,8 +49,12 @@ trait BaseGenerators {
   def genCommittableOffsetBatch[F[_]](
     implicit F: Applicative[F]
   ): Gen[CommittableOffsetBatch[F]] =
-    arbitrary[Map[TopicPartition, OffsetAndMetadata]]
-      .map(CommittableOffsetBatch[F](_, _ => F.unit))
+    for {
+      offsets <- arbitrary[Map[TopicPartition, OffsetAndMetadata]]
+      groups <- arbitrary[Set[String]]
+    } yield {
+      CommittableOffsetBatch[F](offsets, groups, _ => F.unit)
+    }
 
   implicit def arbCommittableOffsetBatch[F[_]](
     implicit F: Applicative[F]
