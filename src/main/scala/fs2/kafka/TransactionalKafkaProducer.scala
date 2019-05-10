@@ -46,7 +46,7 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
     * only keeps the passthrough value in the output.
     */
   def produce[G[+ _], P](
-    message: TransactionalProducerMessage[F, G, K, V, P]
+    message: TransactionalProducerMessage[G, K, V, P]
   ): F[ProducerResult[G, K, V, P]]
 
   /**
@@ -54,7 +54,7 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
     * [[ProducerResult]] rather than the whole [[ProducerResult]].
     */
   def producePassthrough[G[+ _], P](
-    message: TransactionalProducerMessage[F, G, K, V, P]
+    message: TransactionalProducerMessage[G, K, V, P]
   ): F[P]
 }
 
@@ -95,18 +95,18 @@ private[kafka] object TransactionalKafkaProducer {
       createProducer(settings, executionContext).map { producer =>
         new TransactionalKafkaProducer[F, K, V] {
           override def produce[G[+ _], P](
-            message: TransactionalProducerMessage[F, G, K, V, P]
+            message: TransactionalProducerMessage[G, K, V, P]
           ): F[ProducerResult[G, K, V, P]] =
             produceTransaction(message).map(
               ProducerResult(_, message.passthrough)(message.traverse)
             )
 
           override def producePassthrough[G[+ _], P](
-            message: TransactionalProducerMessage[F, G, K, V, P]
+            message: TransactionalProducerMessage[G, K, V, P]
           ): F[P] = produceTransaction(message).as(message.passthrough)
 
           private[this] def produceTransaction[G[+ _], P](
-            message: TransactionalProducerMessage[F, G, K, V, P]
+            message: TransactionalProducerMessage[G, K, V, P]
           ): F[G[(ProducerRecord[K, V], RecordMetadata)]] = {
             implicit val G: Traverse[G] = message.traverse
 
@@ -120,7 +120,7 @@ private[kafka] object TransactionalKafkaProducer {
                     .map(_.sequence)
                   _ <- context.evalOn(executionContext)(F.delay {
                     producer.sendOffsetsToTransaction(
-                      message.offsetBatch.offsets.asJava,
+                      message.offsets.asJava,
                       message.consumerGroupId
                     )
                   })

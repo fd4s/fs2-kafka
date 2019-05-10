@@ -18,7 +18,10 @@ package fs2.kafka
 
 import cats._
 import cats.implicits._
+import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.common.TopicPartition
 
 /**
   * [[TransactionalProducerMessage]] represents zero or more `ProducerRecord`s
@@ -40,33 +43,55 @@ import fs2.kafka.internal.syntax._
   * it needs a `Traverse[F]` instance. This requirement is
   * captured in [[TransactionalProducerMessage]] as [[traverse]].
   */
-sealed abstract class TransactionalProducerMessage[F[_], G[+ _], +K, +V, +P] {
+sealed abstract class TransactionalProducerMessage[G[+ _], +K, +V, +P] {
 
+  /**
+    * The records to produce within the transaction. If these records are
+    * produced, but [[offsets]] fail to be committed, consumers configured
+    * to have isolation level "read_committed" will not see the records.
+    */
   def records: G[ProducerRecord[K, V]]
 
-  def offsetBatch: CommittableOffsetBatch[F]
+  /** Offsets to commit within the transaction where [[records]] are produced. */
+  def offsets: Map[TopicPartition, OffsetAndMetadata]
 
+  /** Group ID of the consumer which pulled `offsets` from Kafka. */
   def consumerGroupId: String
 
+  /**
+    * The passthrough to emit once all [[records]] have been produced,
+    * [[offsets]] have been committed, and the wrapping transaction has
+    * been completed.
+    */
   def passthrough: P
 
+  /** The traverse instance for `F[_]`. Required by [[TransactionalKafkaProducer]]. */
   def traverse: Traverse[G]
 }
 
 object TransactionalProducerMessage {
-  private[this] final class TransactionalProducerMessageImpl[F[_], G[+ _], +K, +V, +P](
+  private[this] final class TransactionalProducerMessageImpl[G[+ _], +K, +V, +P](
     override val records: G[ProducerRecord[K, V]],
-    override val offsetBatch: CommittableOffsetBatch[F],
+    override val offsets: Map[TopicPartition, OffsetAndMetadata],
     override val consumerGroupId: String,
     override val passthrough: P,
     override val traverse: NonEmptyTraverse[G]
-  ) extends TransactionalProducerMessage[F, G, K, V, P] {
+  ) extends TransactionalProducerMessage[G, K, V, P] {
     override def toString: String = {
       implicit val G: Foldable[G] = traverse
+      val offsetStr =
+        if (offsets.isEmpty) {
+          "<empty>"
+        } else {
+          offsets.toList.sorted.map {
+            case (tp, oam) => s"${tp.show} -> ${oam.show}"
+          }.mkString("[", ", ", "]")
+        }
+
       records.mkString(
         "TransactionalProducerMessage(",
         ", ",
-        s", $offsetBatch, $consumerGroupId, $passthrough)"
+        s", $offsetStr, $consumerGroupId, $passthrough)"
       )
     }
   }
@@ -90,10 +115,11 @@ object TransactionalProducerMessage {
       * [[ProducerResult]] with the results and specified passthrough value.
       */
     def of[F[_], K, V, P](
-      records: G[(ProducerRecord[K, V], CommittableOffset[F])],
+      records: G[ProducerRecord[K, V]],
+      offsetBatch: CommittableOffsetBatch[F],
       passthrough: P
-    )(implicit F: MonadError[F, Throwable]): F[TransactionalProducerMessage[F, G, K, V, P]] =
-      TransactionalProducerMessage(records, passthrough)(F, G)
+    )(implicit F: MonadError[F, Throwable]): F[TransactionalProducerMessage[G, K, V, P]] =
+      TransactionalProducerMessage(records, offsetBatch, passthrough)(F, G)
 
     /**
       * Creates a new [[TransactionalProducerMessage]] for producing zero or more
@@ -101,9 +127,10 @@ object TransactionalProducerMessage {
       * [[ProducerResult]] with the results and `Unit` passthrough value.
       */
     def of[F[_], K, V](
-      records: G[(ProducerRecord[K, V], CommittableOffset[F])]
-    )(implicit F: MonadError[F, Throwable]): F[TransactionalProducerMessage[F, G, K, V, Unit]] =
-      TransactionalProducerMessage(records)(F, G)
+      records: G[ProducerRecord[K, V]],
+      offsetBatch: CommittableOffsetBatch[F]
+    )(implicit F: MonadError[F, Throwable]): F[TransactionalProducerMessage[G, K, V, Unit]] =
+      TransactionalProducerMessage(records, offsetBatch)(F, G)
   }
 
   /**
@@ -112,10 +139,11 @@ object TransactionalProducerMessage {
     * [[ProducerResult]] with the results and specified passthrough value.
     */
   def one[F[_], K, V, P](
-    record: (ProducerRecord[K, V], CommittableOffset[F]),
+    record: ProducerRecord[K, V],
+    offsetBatch: CommittableOffsetBatch[F],
     passthrough: P
-  )(implicit F: MonadError[F, Throwable]): F[TransactionalProducerMessage[F, Id, K, V, P]] =
-    apply[F, Id, K, V, P](record, passthrough)
+  )(implicit F: MonadError[F, Throwable]): F[TransactionalProducerMessage[Id, K, V, P]] =
+    apply[F, Id, K, V, P](record, offsetBatch, passthrough)
 
   /**
     * Creates a new [[TransactionalProducerMessage]] for producing exactly one
@@ -123,9 +151,10 @@ object TransactionalProducerMessage {
     * [[ProducerResult]] with the results and `Unit` passthrough value.
     */
   def one[F[_], K, V](
-    record: (ProducerRecord[K, V], CommittableOffset[F])
-  )(implicit F: MonadError[F, Throwable]): F[TransactionalProducerMessage[F, Id, K, V, Unit]] =
-    one(record, ())
+    record: ProducerRecord[K, V],
+    offsetBatch: CommittableOffsetBatch[F]
+  )(implicit F: MonadError[F, Throwable]): F[TransactionalProducerMessage[Id, K, V, Unit]] =
+    one(record, offsetBatch, ())
 
   /**
     * Creates a new [[TransactionalProducerMessage]] for producing zero or more
@@ -133,31 +162,29 @@ object TransactionalProducerMessage {
     * [[ProducerResult]] with the results and specified passthrough value.
     */
   def apply[F[_], G[+ _], K, V, P](
-    records: G[(ProducerRecord[K, V], CommittableOffset[F])],
+    records: G[ProducerRecord[K, V]],
+    offsetBatch: CommittableOffsetBatch[F],
     passthrough: P
   )(
     implicit F: MonadError[F, Throwable],
     G: NonEmptyTraverse[G]
-  ): F[TransactionalProducerMessage[F, G, K, V, P]] = {
-    val consumerGroups = records.foldMap {
-      case (_, offset) => Set(offset.consumerGroupId)
-    }
-
-    if (consumerGroups.size != 1) {
-      F.raiseError(new RuntimeException("multiple consumer group IDs given in transaction"))
-    } else {
-      consumerGroups.head.fold(
-        F.raiseError[TransactionalProducerMessage[F, G, K, V, P]](
-          new RuntimeException("no consumer group ID given for transaction")
-        )
-      ) { id =>
-        val offsetBatch = CommittableOffsetBatch.fromFoldable(records.map(_._2))
-        F.pure(
-          new TransactionalProducerMessageImpl(records.map(_._1), offsetBatch, id, passthrough, G)
+  ): F[TransactionalProducerMessage[G, K, V, P]] =
+    F.whenA(offsetBatch.consumerGroupIds.size != 1) {
+        F.raiseError(
+          new RuntimeException(
+            "Transactional messages must contain messages from exactly one consuer group"
+          )
         )
       }
-    }
-  }
+      .map { _ =>
+        new TransactionalProducerMessageImpl(
+          records,
+          offsetBatch.offsets,
+          offsetBatch.consumerGroupIds.head,
+          passthrough,
+          G
+        )
+      }
 
   /**
     * Creates a new [[TransactionalProducerMessage]] for producing zero or more
@@ -165,12 +192,13 @@ object TransactionalProducerMessage {
     * [[ProducerResult]] with the results and `Unit` passthrough value.
     */
   def apply[F[_], G[+ _], K, V](
-    records: G[(ProducerRecord[K, V], CommittableOffset[F])]
+    records: G[ProducerRecord[K, V]],
+    offsetBatch: CommittableOffsetBatch[F]
   )(
     implicit F: MonadError[F, Throwable],
     G: NonEmptyTraverse[G]
-  ): F[TransactionalProducerMessage[F, G, K, V, Unit]] =
-    apply(records, ())
+  ): F[TransactionalProducerMessage[G, K, V, Unit]] =
+    apply(records, offsetBatch, ())
 
   /**
     * Creates a new [[TransactionalProducerMessage]] for producing zero or more
@@ -192,17 +220,33 @@ object TransactionalProducerMessage {
   def apply[G[+ _]](implicit G: NonEmptyTraverse[G]): ApplyBuilders[G] =
     new ApplyBuilders[G](G)
 
-  implicit def transactionalMessageShow[F[_], G[+ _], K, V, P](
+  implicit def transactionalMessageShow[G[+ _], K, V, P](
     implicit
     K: Show[K],
     V: Show[V],
     P: Show[P]
-  ): Show[TransactionalProducerMessage[F, G, K, V, P]] = Show.show { message =>
+  ): Show[TransactionalProducerMessage[G, K, V, P]] = Show.show { message =>
     implicit val G: Foldable[G] = message.traverse
+    val offsets =
+      if (message.offsets.isEmpty) {
+        "<empty>"
+      } else {
+        message.offsets.toList.sorted.mkStringAppend {
+          case (append, (tp, oam)) =>
+            append(tp.show)
+            append(" -> ")
+            append(oam.show)
+        }(
+          start = "[",
+          sep = ", ",
+          end = "]"
+        )
+      }
+
     message.records.mkStringShow(
       "TransactionalProducerMessage(",
       ", ",
-      show", ${message.offsetBatch}, ${message.consumerGroupId}, ${message.passthrough})"
+      show", $offsets, ${message.consumerGroupId}, ${message.passthrough})"
     )
   }
 }

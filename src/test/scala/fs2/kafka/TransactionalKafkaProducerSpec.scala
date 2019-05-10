@@ -35,8 +35,9 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
                 Some("group"),
                 _ => IO.unit
               )
-              TransactionalProducerMessage.one[IO, String, String, (String, String)](
-                ProducerRecord(topic, key, value) -> offset,
+              TransactionalProducerMessage.one(
+                ProducerRecord(topic, key, value),
+                offset.batch,
                 (key, value)
               )
           }
@@ -73,9 +74,12 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
           producer <- transactionalProducerStream[IO, String, String](
             producerSettings[IO](config).withTransactionalId("transactions")
           )
-          records = toProduce.zipWithIndex.map {
-            case ((key, value), i) =>
-              ProducerRecord(topic, key, value) -> CommittableOffset[IO](
+          records = toProduce.map {
+            case (key, value) => ProducerRecord(topic, key, value)
+          }
+          offsets = toProduce.mapWithIndex {
+            case (_, i) =>
+              CommittableOffset[IO](
                 new TopicPartition(topic, i % 3),
                 new OffsetAndMetadata(i.toLong),
                 Some("group"),
@@ -84,7 +88,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
           }
           message <- Stream.eval(
             TransactionalProducerMessage[NonEmptyList]
-              .of[IO, String, String, String](records, toPassthrough)
+              .of(records, CommittableOffsetBatch.fromFoldable(offsets), toPassthrough)
           )
           result <- Stream.eval(producer.produce(message))
         } yield result).compile.lastOrError.unsafeRunSync()
@@ -147,9 +151,12 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
                 }
               }
           )
-          records = toProduce.zipWithIndex.map {
-            case ((key, value), i) =>
-              ProducerRecord(topic, key, value) -> CommittableOffset(
+          records = toProduce.map {
+            case (key, value) => ProducerRecord(topic, key, value)
+          }
+          offsets = toProduce.mapWithIndex {
+            case (_, i) =>
+              CommittableOffset(
                 new TopicPartition(topic, i % 3),
                 new OffsetAndMetadata(i.toLong),
                 Some("group"),
@@ -158,7 +165,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
           }
           message <- Stream.eval(
             TransactionalProducerMessage[NonEmptyList]
-              .of[IO, String, String, String](records, toPassthrough)
+              .of(records, CommittableOffsetBatch.fromFoldable(offsets), toPassthrough)
           )
           result <- Stream.eval(producer.produce(message).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
