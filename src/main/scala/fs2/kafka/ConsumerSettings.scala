@@ -560,7 +560,7 @@ object ConsumerSettings {
             byteArrayDeserializer,
             byteArrayDeserializer
           )
-        }
+      }
     )
 
   /**
