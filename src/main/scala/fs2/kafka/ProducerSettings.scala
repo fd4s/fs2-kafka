@@ -271,7 +271,7 @@ object ProducerSettings {
     override val valueSerializer: Serializer[F, V],
     override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
-    override val closeTimeout: FiniteDuration
+    override val closeTimeout: FiniteDuration,
     val createProducerWith: Map[String, String] => F[Producer[Array[Byte], Array[Byte]]]
   ) extends ProducerSettings[F, K, V] {
     override def withExecutionContext(
