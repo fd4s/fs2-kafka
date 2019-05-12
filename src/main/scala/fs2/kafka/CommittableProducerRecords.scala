@@ -1,0 +1,45 @@
+/*
+ * Copyright 2018-2019 OVO Energy Limited
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package fs2.kafka
+
+sealed abstract class CommittableProducerRecords[F[_], G[+ _], +K, +V] {
+  def records: G[ProducerRecord[K, V]]
+
+  def committableOffset: CommittableOffset[F]
+}
+
+object CommittableProducerRecords {
+  private[this] final class CommittableProducerRecordsImpl[F[_], G[+ _], +K, +V](
+    override val records: G[ProducerRecord[K, V]],
+    override val committableOffset: CommittableOffset[F]
+  ) extends CommittableProducerRecords[F, G, K, V] {
+    override def toString: String =
+      s"CommittableProducerRecords($records, $committableOffset)"
+  }
+
+  def apply[F[_], G[+ _], K, V](
+    records: G[ProducerRecord[K, V]],
+    committableOffset: CommittableOffset[F]
+  ): CommittableProducerRecords[F, G, K, V] =
+    new CommittableProducerRecordsImpl(records, committableOffset)
+
+  def one[F[_], K, V](
+    record: ProducerRecord[K, V],
+    committableOffset: CommittableOffset[F]
+  ): CommittableProducerRecords[F, Id, K, V] =
+    apply[F, Id, K, V](record, committableOffset)
+}

@@ -132,14 +132,6 @@ final class ProducerSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should provide withShiftSerialization") {
-      assert {
-        settings
-          .withShiftSerialization(false)
-          .shiftSerialization == false
-      }
-    }
-
     it("should provide withCreateProducer") {
       assert {
         settings
@@ -167,7 +159,7 @@ final class ProducerSettingsSpec extends BaseSpec {
       val shown = settings.show
 
       assert(
-        shown == "ProducerSettings(closeTimeout = 60 seconds, shiftSerialization = true)" &&
+        shown == "ProducerSettings(closeTimeout = 60 seconds)" &&
           shown == settings.toString
       )
     }

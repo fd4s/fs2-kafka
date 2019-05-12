@@ -249,25 +249,6 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
-    * Whether serialization should be run on [[executionContext]] or not.
-    * When `true`, we will shift to run on the [[executionContext]] for
-    * the duration of serialization. When `false`, no such shifting
-    * will take place.<br>
-    * <br>
-    * Serialization is shifted to [[executionContext]] by default, in
-    * order to support blocking serializers. If your serializers aren't
-    * blocking, then this can safely be set to `false`.<br>
-    * <br>
-    * The default value is `true`.
-    */
-  def shiftSerialization: Boolean
-
-  /**
-    * Creates a new [[ProducerSettings]] with the specified [[shiftSerialization]].
-    */
-  def withShiftSerialization(shiftSerialization: Boolean): ProducerSettings[F, K, V]
-
-  /**
     * Creates a new `Producer` using the [[properties]]. Note that this
     * operation should be bracketed, using e.g. `Resource`, to ensure
     * the `close` function on the producer is called.
@@ -290,8 +271,7 @@ object ProducerSettings {
     override val valueSerializer: Serializer[F, V],
     override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
-    override val closeTimeout: FiniteDuration,
-    override val shiftSerialization: Boolean,
+    override val closeTimeout: FiniteDuration
     val createProducerWith: Map[String, String] => F[Producer[Array[Byte], Array[Byte]]]
   ) extends ProducerSettings[F, K, V] {
     override def withExecutionContext(
@@ -358,9 +338,6 @@ object ProducerSettings {
     override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       copy(closeTimeout = closeTimeout)
 
-    override def withShiftSerialization(shiftSerialization: Boolean): ProducerSettings[F, K, V] =
-      copy(shiftSerialization = shiftSerialization)
-
     override def createProducer: F[Producer[Array[Byte], Array[Byte]]] =
       createProducerWith(properties)
 
@@ -370,7 +347,7 @@ object ProducerSettings {
       copy(createProducerWith = createProducerWith)
 
     override def toString: String =
-      s"ProducerSettings(closeTimeout = $closeTimeout, shiftSerialization = $shiftSerialization)"
+      s"ProducerSettings(closeTimeout = $closeTimeout)"
   }
 
   private[this] def create[F[_], K, V](
@@ -383,7 +360,6 @@ object ProducerSettings {
       executionContext = None,
       properties = Map.empty,
       closeTimeout = 60.seconds,
-      shiftSerialization = true,
       createProducerWith = properties =>
         F.delay {
           val byteArraySerializer = new ByteArraySerializer
@@ -392,7 +368,7 @@ object ProducerSettings {
             byteArraySerializer,
             byteArraySerializer
           )
-      }
+        }
     )
 
   /**
