@@ -1,7 +1,7 @@
 package fs2.kafka
 
-import cats.data.NonEmptyList
 import cats.effect.IO
+import cats.instances.list._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
@@ -29,7 +29,7 @@ class TransactionalProducerMessageSpec extends BaseSpec {
     }
 
     it("should be able to create with multiple records") {
-      val records = NonEmptyList.of(
+      val records = List(
         ProducerRecord("topic", "key", "value"),
         ProducerRecord("topic2", "key2", "value2")
       )
@@ -44,10 +44,17 @@ class TransactionalProducerMessageSpec extends BaseSpec {
       assert {
         TransactionalProducerMessage
           .one(CommittableProducerRecords(records, offset), 123)
-          .toString == "TransactionalProducerMessage(NonEmptyList(CommittableProducerRecords(NonEmptyList(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2)), CommittableOffset(topic-1 -> 1, the-group))), 123)" &&
+          .toString == "TransactionalProducerMessage(List(CommittableProducerRecords(List(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2)), CommittableOffset(topic-1 -> 1, the-group))), 123)" &&
         TransactionalProducerMessage
           .one(CommittableProducerRecords(records, offset))
-          .toString == "TransactionalProducerMessage(NonEmptyList(CommittableProducerRecords(NonEmptyList(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2)), CommittableOffset(topic-1 -> 1, the-group))), ())"
+          .toString == "TransactionalProducerMessage(List(CommittableProducerRecords(List(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2)), CommittableOffset(topic-1 -> 1, the-group))), ())"
+      }
+    }
+
+    it("should be able to create with zero records") {
+      assert {
+        TransactionalProducerMessage[IO, List, String, String, Int](Nil, 123).toString == "TransactionalProducerMessage(List(), 123)" &&
+        TransactionalProducerMessage[IO, List, String, String](Nil).toString == "TransactionalProducerMessage(List(), ())"
       }
     }
   }
