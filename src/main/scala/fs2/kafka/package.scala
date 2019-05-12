@@ -31,6 +31,9 @@ package object kafka {
   private[kafka] type ByteConsumer =
     org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
 
+  private[kafka] type ByteProducer =
+    org.apache.kafka.clients.producer.Producer[Array[Byte], Array[Byte]]
+
   private[kafka] type KafkaDeserializer[A] =
     org.apache.kafka.common.serialization.Deserializer[A]
 
