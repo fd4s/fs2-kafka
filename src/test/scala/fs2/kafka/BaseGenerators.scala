@@ -49,12 +49,8 @@ trait BaseGenerators {
   def genCommittableOffsetBatch[F[_]](
     implicit F: Applicative[F]
   ): Gen[CommittableOffsetBatch[F]] =
-    for {
-      offsets <- arbitrary[Map[TopicPartition, OffsetAndMetadata]]
-      groups <- arbitrary[Set[String]]
-    } yield {
-      CommittableOffsetBatch[F](offsets, groups, _ => F.unit)
-    }
+    arbitrary[Map[TopicPartition, OffsetAndMetadata]]
+      .map(CommittableOffsetBatch[F](_, _ => F.unit))
 
   implicit def arbCommittableOffsetBatch[F[_]](
     implicit F: Applicative[F]

@@ -14,10 +14,6 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
       assert(empty.offsets.isEmpty)
     }
 
-    it("should have no consumer group IDs") {
-      assert(empty.consumerGroupIds.isEmpty)
-    }
-
     it("should return updated offset as batch") {
       forAll { offset: CommittableOffset[Id] =>
         val updated = empty.updated(offset)
@@ -30,12 +26,10 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
     it("should include the provided offset") {
       forAll { (batch: CommittableOffsetBatch[Id], offset: CommittableOffset[Id]) =>
         val updatedBatch = batch.updated(offset)
-        val updatedGroups = updatedBatch.consumerGroupIds
         val updatedOffset = updatedBatch.offsets.get(offset.topicPartition)
 
         assert {
-          updatedOffset.contains(offset.offsetAndMetadata) &&
-          offset.consumerGroupId.forall(updatedGroups.contains)
+          updatedOffset.contains(offset.offsetAndMetadata)
         }
       }
     }
@@ -76,8 +70,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
         val expected = offsets.foldLeft(batch1)(_ updated _)
 
         assert {
-          result.offsets == expected.offsets &&
-          result.consumerGroupIds == batch1.consumerGroupIds.union(batch2.consumerGroupIds)
+          result.offsets == expected.offsets
         }
       }
     }
