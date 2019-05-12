@@ -16,9 +16,24 @@
 
 package fs2.kafka
 
+/**
+  * [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
+  * and a [[CommittableOffset]] which can be used by [[TransactionalKafkaProducer]]
+  * to produce the records and commit the offset atomically.
+  * [[CommittableProducerRecords]]s can be created using one of the following options.<br>
+  * <br>
+  * - `CommittableProducerRecords#apply` to produce zero or more records
+  * within the same transaction that an offset is committed.<br>
+  * - `CommittableProducerRecords#one` to produce exactly one record within
+  * the same transaction that an offset is committed.<br>
+  * <br>
+  */
 sealed abstract class CommittableProducerRecords[F[_], G[+ _], +K, +V] {
+
+  /** The records to produce. Can be empty to simply commit the offset. */
   def records: G[ProducerRecord[K, V]]
 
+  /** The offset to commit. */
   def committableOffset: CommittableOffset[F]
 }
 
@@ -31,12 +46,22 @@ object CommittableProducerRecords {
       s"CommittableProducerRecords($records, $committableOffset)"
   }
 
+  /**
+    * Creates a new [[CommittableProducerRecords]] for producing zero or
+    * more [[ProducerRecord]]s and committing an offset atomically within
+    * a transaction.
+    */
   def apply[F[_], G[+ _], K, V](
     records: G[ProducerRecord[K, V]],
     committableOffset: CommittableOffset[F]
   ): CommittableProducerRecords[F, G, K, V] =
     new CommittableProducerRecordsImpl(records, committableOffset)
 
+  /**
+    * Creates a new [[CommittableProducerRecords]] for producing exactly
+    * one [[ProducerRecord]] and committing an offset atomically within
+    * a transaction.
+    */
   def one[F[_], K, V](
     record: ProducerRecord[K, V],
     committableOffset: CommittableOffset[F]
