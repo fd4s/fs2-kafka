@@ -16,6 +16,8 @@
 
 package fs2.kafka
 
+import cats.data.Chain
+
 /**
   * [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
   * and a [[CommittableOffset]] which can be used by [[TransactionalKafkaProducer]]
@@ -65,6 +67,6 @@ object CommittableProducerRecords {
   def one[F[_], K, V](
     record: ProducerRecord[K, V],
     committableOffset: CommittableOffset[F]
-  ): CommittableProducerRecords[F, Id, K, V] =
-    apply[F, Id, K, V](record, committableOffset)
+  ): CommittableProducerRecords[F, Chain, K, V] =
+    apply(Chain.one(record), committableOffset)
 }

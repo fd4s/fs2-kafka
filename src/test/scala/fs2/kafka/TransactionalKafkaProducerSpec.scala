@@ -67,11 +67,9 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
   it("should be able to produce multiple records in a transaction") {
     withKafka { (config, topic) =>
       createCustomTopic(topic, partitions = 3)
-      val toProduce = NonEmptyList
-        .fromList(
-          (0 to 100).map(n => s"key-$n" -> s"value-$n").toList
-        )
-        .value
+      val toProduce =
+        (0 to 100).toList.map(n => s"key-$n" -> s"value-$n").toList
+
       val toPassthrough = "passthrough"
 
       val produced =
@@ -92,10 +90,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
               )
           }
           message = TransactionalProducerMessage(
-            records.zipWith(offsets) {
+            records.zip(offsets).map {
               case (record, offset) =>
-                CommittableProducerRecords(
-                  NonEmptyList.one(record),
+                CommittableProducerRecords.one(
+                  record,
                   offset
                 )
             },
@@ -128,11 +126,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
   it("should abort transactions if committing offsets fails") {
     withKafka { (config, topic) =>
       createCustomTopic(topic, partitions = 3)
-      val toProduce = NonEmptyList
-        .fromList(
-          (0 to 100).map(n => s"key-$n" -> s"value-$n").toList
-        )
-        .value
+      val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n").toList
       val toPassthrough = "passthrough"
 
       val error = new RuntimeException("BOOM")
@@ -175,7 +169,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
               )
           }
           message = TransactionalProducerMessage(
-            records.zipWith(offsets) {
+            records.zip(offsets).map {
               case (record, offset) =>
                 CommittableProducerRecords(
                   NonEmptyList.one(record),

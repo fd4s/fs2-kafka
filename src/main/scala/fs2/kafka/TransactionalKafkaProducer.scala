@@ -16,7 +16,7 @@
 
 package fs2.kafka
 
-import cats.{FlatMap, Traverse}
+import cats._
 import cats.effect.concurrent.Deferred
 import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, IO, Resource}
 import cats.implicits._
@@ -44,16 +44,16 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
     * [[ProducerResult]], you can instead use [[producePassthrough]] which
     * only keeps the passthrough value in the output.
     */
-  def produce[G[+ _], P](
-    message: TransactionalProducerMessage[F, G, K, V, P]
+  def produce[G[+ _], H[+ _], P](
+    message: TransactionalProducerMessage[F, G, H, K, V, P]
   ): F[ProducerResult[G, K, V, P]]
 
   /**
     * Like [[produce]] but only keeps the passthrough value of the
     * [[ProducerResult]] rather than the whole [[ProducerResult]].
     */
-  def producePassthrough[G[+ _], P](
-    message: TransactionalProducerMessage[F, G, K, V, P]
+  def producePassthrough[G[+ _], H[+ _], P](
+    message: TransactionalProducerMessage[F, G, H, K, V, P]
   ): F[P]
 }
 
@@ -73,22 +73,24 @@ private[kafka] object TransactionalKafkaProducer {
       }
       .map { withProducer =>
         new TransactionalKafkaProducer[F, K, V] {
-          override def produce[G[+ _], P](
-            message: TransactionalProducerMessage[F, G, K, V, P]
+          override def produce[G[+ _], H[+ _], P](
+            message: TransactionalProducerMessage[F, G, H, K, V, P]
           ): F[ProducerResult[G, K, V, P]] =
             produceTransaction(message).map(
               ProducerResult(_, message.passthrough)(message.traverse)
             )
 
-          override def producePassthrough[G[+ _], P](
-            message: TransactionalProducerMessage[F, G, K, V, P]
+          override def producePassthrough[G[+ _], H[+ _], P](
+            message: TransactionalProducerMessage[F, G, H, K, V, P]
           ): F[P] = produceTransaction(message).as(message.passthrough)
 
-          private[this] def produceTransaction[G[+ _], P](
-            message: TransactionalProducerMessage[F, G, K, V, P]
+          private[this] def produceTransaction[G[+ _], H[+ _], P](
+            message: TransactionalProducerMessage[F, G, H, K, V, P]
           ): F[G[(ProducerRecord[K, V], RecordMetadata)]] = {
+            implicit val monad: Monad[G] = message.monad
             implicit val traverse: Traverse[G] = message.traverse
-            implicit val flatMap: FlatMap[G] = message.flatMap
+            implicit val monoidK: MonoidK[G] = message.monoidK
+            implicit val foldable: Foldable[H] = message.foldable
 
             var consumerGroupIds = Set.empty[String]
             var existsOffsetWithoutGroupId = false
@@ -110,7 +112,10 @@ private[kafka] object TransactionalKafkaProducer {
               withProducer { producer =>
                 F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
                   message.records
-                    .flatMap(_.records)
+                    .flatMap { committable =>
+                      val empty = monoidK.empty[ProducerRecord[K, V]]
+                      committable.records.foldLeft(empty)(_ combineK monad.pure(_))
+                    }
                     .traverse(produceRecord(producer))
                     .map(_.sequence)
                     .flatTap { _ =>
