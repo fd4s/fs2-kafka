@@ -117,6 +117,7 @@ private[kafka] object TransactionalKafkaProducer {
                       committable.foldable.foldLeft(committable.records, ()) {
                         case (_, record) =>
                           records += record
+                          ()
                       }
                     }
 

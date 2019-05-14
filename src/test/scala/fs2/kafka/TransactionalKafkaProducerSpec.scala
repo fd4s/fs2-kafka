@@ -90,7 +90,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
               )
           }
           message = TransactionalProducerMessage(
-            Chunk.seq(records.zip(offsets)).map {
+            records.zip(offsets).map {
               case (record, offset) =>
                 CommittableProducerRecords.one(
                   record,
