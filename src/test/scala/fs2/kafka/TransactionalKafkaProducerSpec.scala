@@ -68,7 +68,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
     withKafka { (config, topic) =>
       createCustomTopic(topic, partitions = 3)
       val toProduce =
-        (0 to 100).toList.map(n => s"key-$n" -> s"value-$n").toList
+        Chunk.seq((0 to 100).toList.map(n => s"key-$n" -> s"value-$n"))
 
       val toPassthrough = "passthrough"
 
