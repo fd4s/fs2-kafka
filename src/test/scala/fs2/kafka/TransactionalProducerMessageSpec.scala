@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.instances.list._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
+import fs2.Chunk
 
 class TransactionalProducerMessageSpec extends BaseSpec {
   describe("TransactionalProducerMessageSpec") {
@@ -21,10 +22,10 @@ class TransactionalProducerMessageSpec extends BaseSpec {
       assert {
         TransactionalProducerMessage
           .one(CommittableProducerRecords.one(record, offset), 123)
-          .toString == "TransactionalProducerMessage(Chain(CommittableProducerRecords(Chain(ProducerRecord(topic = topic, key = key, value = value)), CommittableOffset(topic-1 -> 1, the-group))), 123)" &&
+          .toString == "TransactionalProducerMessage(Chunk(CommittableProducerRecords(ProducerRecord(topic = topic, key = key, value = value), CommittableOffset(topic-1 -> 1, the-group))), 123)" &&
         TransactionalProducerMessage
           .one(CommittableProducerRecords.one(record, offset))
-          .toString == "TransactionalProducerMessage(Chain(CommittableProducerRecords(Chain(ProducerRecord(topic = topic, key = key, value = value)), CommittableOffset(topic-1 -> 1, the-group))), ())"
+          .toString == "TransactionalProducerMessage(Chunk(CommittableProducerRecords(ProducerRecord(topic = topic, key = key, value = value), CommittableOffset(topic-1 -> 1, the-group))), ())"
       }
     }
 
@@ -44,17 +45,17 @@ class TransactionalProducerMessageSpec extends BaseSpec {
       assert {
         TransactionalProducerMessage
           .one(CommittableProducerRecords(records, offset), 123)
-          .toString == "TransactionalProducerMessage(Chain(CommittableProducerRecords(List(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2)), CommittableOffset(topic-1 -> 1, the-group))), 123)" &&
+          .toString == "TransactionalProducerMessage(Chunk(CommittableProducerRecords(List(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2)), CommittableOffset(topic-1 -> 1, the-group))), 123)" &&
         TransactionalProducerMessage
           .one(CommittableProducerRecords(records, offset))
-          .toString == "TransactionalProducerMessage(Chain(CommittableProducerRecords(List(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2)), CommittableOffset(topic-1 -> 1, the-group))), ())"
+          .toString == "TransactionalProducerMessage(Chunk(CommittableProducerRecords(List(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2)), CommittableOffset(topic-1 -> 1, the-group))), ())"
       }
     }
 
     it("should be able to create with zero records") {
       assert {
-        TransactionalProducerMessage[IO, List, List, String, String, Int](Nil, 123).toString == "TransactionalProducerMessage(List(), 123)" &&
-        TransactionalProducerMessage[IO, List, List, String, String](Nil).toString == "TransactionalProducerMessage(List(), ())"
+        TransactionalProducerMessage[IO, List, String, String, Int](Chunk.empty, 123).toString == "TransactionalProducerMessage(empty, 123)" &&
+        TransactionalProducerMessage[IO, List, String, String](Chunk.empty).toString == "TransactionalProducerMessage(empty, ())"
       }
     }
   }

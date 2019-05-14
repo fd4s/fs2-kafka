@@ -16,7 +16,7 @@
 
 package fs2.kafka
 
-import cats.data.Chain
+import cats.Foldable
 
 /**
   * [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
@@ -37,12 +37,16 @@ sealed abstract class CommittableProducerRecords[F[_], G[+ _], +K, +V] {
 
   /** The offset to commit. */
   def committableOffset: CommittableOffset[F]
+
+  /** The `Foldable` instance for `G[_]`. Required by [[TransactionalKafkaProducer]]. */
+  def foldable: Foldable[G]
 }
 
 object CommittableProducerRecords {
   private[this] final class CommittableProducerRecordsImpl[F[_], G[+ _], +K, +V](
     override val records: G[ProducerRecord[K, V]],
-    override val committableOffset: CommittableOffset[F]
+    override val committableOffset: CommittableOffset[F],
+    override val foldable: Foldable[G]
   ) extends CommittableProducerRecords[F, G, K, V] {
     override def toString: String =
       s"CommittableProducerRecords($records, $committableOffset)"
@@ -56,8 +60,8 @@ object CommittableProducerRecords {
   def apply[F[_], G[+ _], K, V](
     records: G[ProducerRecord[K, V]],
     committableOffset: CommittableOffset[F]
-  ): CommittableProducerRecords[F, G, K, V] =
-    new CommittableProducerRecordsImpl(records, committableOffset)
+  )(implicit G: Foldable[G]): CommittableProducerRecords[F, G, K, V] =
+    new CommittableProducerRecordsImpl(records, committableOffset, G)
 
   /**
     * Creates a new [[CommittableProducerRecords]] for producing exactly
@@ -67,6 +71,6 @@ object CommittableProducerRecords {
   def one[F[_], K, V](
     record: ProducerRecord[K, V],
     committableOffset: CommittableOffset[F]
-  ): CommittableProducerRecords[F, Chain, K, V] =
-    apply(Chain.one(record), committableOffset)
+  ): CommittableProducerRecords[F, Id, K, V] =
+    apply[F, Id, K, V](record, committableOffset)
 }

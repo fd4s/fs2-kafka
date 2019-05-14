@@ -123,7 +123,7 @@ private[kafka] object KafkaProducer {
             }
             .as(deferred.get.rethrow)
         }
-      }
+    }
 
   private[this] def serializeToBytes[F[_], K, V](
     settings: ProducerSettings[F, K, V],

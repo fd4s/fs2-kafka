@@ -16,12 +16,13 @@
 
 package fs2.kafka
 
-import cats._
 import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, Resource}
 import cats.implicits._
+import fs2.Chunk
 import fs2.kafka.internal._
 import org.apache.kafka.clients.producer.RecordMetadata
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
 
 /**
   * Represents a producer of Kafka messages specialized for 'read-process-write'
@@ -45,16 +46,16 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
     * [[ProducerResult]], you can instead use [[producePassthrough]] which
     * only keeps the passthrough value in the output.
     */
-  def produce[G[+ _], H[+ _], P](
-    message: TransactionalProducerMessage[F, G, H, K, V, P]
-  ): F[ProducerResult[G, K, V, P]]
+  def produce[G[+ _], P](
+    message: TransactionalProducerMessage[F, G, K, V, P]
+  ): F[ProducerResult[Chunk, K, V, P]]
 
   /**
     * Like [[produce]] but only keeps the passthrough value of the
     * [[ProducerResult]] rather than the whole [[ProducerResult]].
     */
-  def producePassthrough[G[+ _], H[+ _], P](
-    message: TransactionalProducerMessage[F, G, H, K, V, P]
+  def producePassthrough[G[+ _], P](
+    message: TransactionalProducerMessage[F, G, K, V, P]
   ): F[P]
 }
 
@@ -73,67 +74,72 @@ private[kafka] object TransactionalKafkaProducer {
       }
       .map { withProducer =>
         new TransactionalKafkaProducer[F, K, V] {
-          override def produce[G[+ _], H[+ _], P](
-            message: TransactionalProducerMessage[F, G, H, K, V, P]
-          ): F[ProducerResult[G, K, V, P]] = {
-            implicit val G: Foldable[G] = message.traverse
+          override def produce[G[+ _], P](
+            message: TransactionalProducerMessage[F, G, K, V, P]
+          ): F[ProducerResult[Chunk, K, V, P]] =
             produceTransaction(message)
               .map(ProducerResult(_, message.passthrough))
-          }
 
-          override def producePassthrough[G[+ _], H[+ _], P](
-            message: TransactionalProducerMessage[F, G, H, K, V, P]
-          ): F[P] = produceTransaction(message).as(message.passthrough)
+          override def producePassthrough[G[+ _], P](
+            message: TransactionalProducerMessage[F, G, K, V, P]
+          ): F[P] =
+            produceTransaction(message)
+              .as(message.passthrough)
 
-          private[this] def produceTransaction[G[+ _], H[+ _], P](
-            message: TransactionalProducerMessage[F, G, H, K, V, P]
-          ): F[G[(ProducerRecord[K, V], RecordMetadata)]] = {
-            implicit val monad: Monad[G] = message.monad
-            implicit val traverse: Traverse[G] = message.traverse
-            implicit val monoidK: MonoidK[G] = message.monoidK
-            implicit val foldable: Foldable[H] = message.foldable
+          private[this] def produceTransaction[G[+ _], P](
+            message: TransactionalProducerMessage[F, G, K, V, P]
+          ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
+            if (message.records.isEmpty) F.pure(Chunk.empty)
+            else {
+              var consumerGroupIds = Set.empty[String]
+              var existsOffsetWithoutGroupId = false
+              val batch = CommittableOffsetBatch.fromFoldableMap(message.records) { record =>
+                record.committableOffset.consumerGroupId match {
+                  case Some(groupId) => consumerGroupIds = consumerGroupIds + groupId
+                  case None          => existsOffsetWithoutGroupId = true
+                }
 
-            var consumerGroupIds = Set.empty[String]
-            var existsOffsetWithoutGroupId = false
-            val batch = CommittableOffsetBatch.fromFoldableMap(message.records) { record =>
-              record.committableOffset.consumerGroupId match {
-                case Some(groupId) => consumerGroupIds = consumerGroupIds + groupId
-                case None          => existsOffsetWithoutGroupId = true
+                record.committableOffset
               }
 
-              record.committableOffset
-            }
+              val consumerGroupId =
+                if (existsOffsetWithoutGroupId || consumerGroupIds.size != 1)
+                  F.raiseError(ConsumerGroupException(consumerGroupIds))
+                else F.pure(consumerGroupIds.head)
 
-            val consumerGroupId =
-              if (existsOffsetWithoutGroupId || consumerGroupIds.size != 1)
-                F.raiseError(ConsumerGroupException(consumerGroupIds))
-              else F.pure(consumerGroupIds.head)
+              consumerGroupId.flatMap { groupId =>
+                withProducer { producer =>
+                  F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
+                    val records: ArrayBuffer[ProducerRecord[K, V]] =
+                      new ArrayBuffer(message.records.size)
 
-            consumerGroupId.flatMap { groupId =>
-              withProducer { producer =>
-                F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
-                  message.records
-                    .flatMap { committable =>
-                      val empty = monoidK.empty[ProducerRecord[K, V]]
-                      committable.records.foldLeft(empty)(_ combineK monad.pure(_))
-                    }
-                    .traverse(KafkaProducer.produceRecord(settings, producer))
-                    .map(_.sequence)
-                    .flatTap { _ =>
-                      F.delay {
-                        producer.sendOffsetsToTransaction(
-                          batch.offsets.asJava,
-                          groupId
-                        )
+                    message.records.foreach { committable =>
+                      committable.foldable.foldLeft(committable.records, ()) {
+                        case (_, record) =>
+                          records += record
                       }
                     }
-                } {
-                  case (_, ExitCase.Completed) =>
-                    F.delay(producer.commitTransaction())
-                  case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
-                    F.delay(producer.abortTransaction())
-                }
-              }.flatten
+
+                    Chunk
+                      .buffer(records)
+                      .traverse(KafkaProducer.produceRecord(settings, producer))
+                      .map(_.sequence)
+                      .flatTap { _ =>
+                        F.delay {
+                          producer.sendOffsetsToTransaction(
+                            batch.offsets.asJava,
+                            groupId
+                          )
+                        }
+                      }
+                  } {
+                    case (_, ExitCase.Completed) =>
+                      F.delay(producer.commitTransaction())
+                    case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
+                      F.delay(producer.abortTransaction())
+                  }
+                }.flatten
+              }
             }
           }
 
