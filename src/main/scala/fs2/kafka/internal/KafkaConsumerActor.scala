@@ -319,7 +319,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val poll: F[Unit] = {
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords] =
       withConsumer { consumer =>
-        F.suspend[Either[KafkaConsumerRecords, ConsumerRecords]] {
+        F.suspend {
           val assigned = consumer.assignment.toSet
           val requested = state.fetches.keySetStrict
 
@@ -333,12 +333,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             if (resume.nonEmpty)
               consumer.resume(resume.asJava)
 
-            val batch =
-              consumer.poll(pollTimeout)
-
-            if (settings.shiftDeserialization)
-              records(batch).map(_.asRight)
-            else F.pure(batch.asLeft)
+            records(consumer.poll(pollTimeout))
           } else {
             if (assigned.nonEmpty)
               consumer.pause(assigned.asJava)
@@ -347,7 +342,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               consumer.poll(Duration.ZERO)
 
             if (batch.isEmpty)
-              F.pure(Right(Map.empty))
+              F.pure(Map.empty)
             else
               F.raiseError(
                 new IllegalStateException(
@@ -356,9 +351,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               )
           }
         }
-      }.flatMap {
-        case Right(records) => F.pure(records)
-        case Left(batch)    => records(batch)
       }
 
     def handleBatch(newRecords: ConsumerRecords): F[Unit] =

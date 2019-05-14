@@ -245,17 +245,9 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should provide withShiftDeserialization") {
-      assert {
-        settings
-          .withShiftDeserialization(false)
-          .shiftDeserialization == false
-      }
-    }
-
     it("should have a Show instance and matching toString") {
       assert {
-        settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default, shiftDeserialization = true)" &&
+        settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default)" &&
         settings.show == settings.toString
       }
     }

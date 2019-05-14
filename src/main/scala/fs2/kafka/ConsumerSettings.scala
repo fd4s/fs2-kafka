@@ -376,25 +376,6 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * instead be set to `2` and not the specified value.
     */
   def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V]
-
-  /**
-    * Whether deserialization should be run on [[executionContext]] or not.
-    * When `true`, we will shift to run on the [[executionContext]] for the
-    * duration of deserialization. When `false`, no such shifting will take
-    * place.<br>
-    * <br>
-    * Deserialization is shifted to [[executionContext]] by default, in
-    * order to support blocking deserializers. If your deserializers
-    * aren't blocking, then this can safely be set to `false`.<br>
-    * <br>
-    * The default value is `true`.
-    */
-  def shiftDeserialization: Boolean
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified [[shiftDeserialization]].
-    */
-  def withShiftDeserialization(shiftSerialization: Boolean): ConsumerSettings[F, K, V]
 }
 
 object ConsumerSettings {
@@ -410,7 +391,6 @@ object ConsumerSettings {
     override val commitRecovery: CommitRecovery,
     override val recordMetadata: ConsumerRecord[K, V] => String,
     override val maxPrefetchBatches: Int,
-    override val shiftDeserialization: Boolean,
     val createConsumerWith: Map[String, String] => F[Consumer[Array[Byte], Array[Byte]]]
   ) extends ConsumerSettings[F, K, V] {
     override def withExecutionContext(
@@ -525,11 +505,8 @@ object ConsumerSettings {
     override def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V] =
       copy(maxPrefetchBatches = Math.max(2, maxPrefetchBatches))
 
-    override def withShiftDeserialization(shiftSerialization: Boolean): ConsumerSettings[F, K, V] =
-      copy(shiftDeserialization = shiftSerialization)
-
     override def toString: String =
-      s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery, shiftDeserialization = $shiftDeserialization)"
+      s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery)"
   }
 
   private[this] def create[F[_], K, V](
@@ -551,7 +528,6 @@ object ConsumerSettings {
       commitRecovery = CommitRecovery.Default,
       recordMetadata = _ => OffsetFetchResponse.NO_METADATA,
       maxPrefetchBatches = 2,
-      shiftDeserialization = true,
       createConsumerWith = properties =>
         F.delay {
           val byteArrayDeserializer = new ByteArrayDeserializer
