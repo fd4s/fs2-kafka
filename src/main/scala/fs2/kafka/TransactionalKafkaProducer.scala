@@ -58,7 +58,7 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
 }
 
 private[kafka] object TransactionalKafkaProducer {
-  def producerResource[F[_], K, V](
+  def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
