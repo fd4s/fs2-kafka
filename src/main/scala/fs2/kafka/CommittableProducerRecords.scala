@@ -20,15 +20,15 @@ import cats.data.Chain
 
 /**
   * [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
-  * and a [[CommittableOffset]] which can be used by [[TransactionalKafkaProducer]]
-  * to produce the records and commit the offset atomically.
+  * and a [[CommittableOffset]], used by [[TransactionalKafkaProducer]] to
+  * produce the records and commit the offset atomically.<br>
+  * <br>
   * [[CommittableProducerRecords]]s can be created using one of the following options.<br>
   * <br>
   * - `CommittableProducerRecords#apply` to produce zero or more records
-  * within the same transaction that an offset is committed.<br>
+  * within the same transaction as the offset is committed.<br>
   * - `CommittableProducerRecords#one` to produce exactly one record within
-  * the same transaction that an offset is committed.<br>
-  * <br>
+  * the same transaction as the offset is committed.
   */
 sealed abstract class CommittableProducerRecords[F[_], G[+ _], +K, +V] {
 

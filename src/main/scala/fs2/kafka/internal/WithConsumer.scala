@@ -27,7 +27,7 @@ private[kafka] sealed abstract class WithConsumer[F[_]] {
 }
 
 private[kafka] object WithConsumer {
-  def of[F[_], K, V](
+  def apply[F[_], K, V](
     settings: ConsumerSettings[F, K, V]
   )(
     implicit F: Concurrent[F],

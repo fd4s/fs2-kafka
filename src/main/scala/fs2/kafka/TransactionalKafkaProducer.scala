@@ -17,28 +17,29 @@
 package fs2.kafka
 
 import cats._
-import cats.effect.concurrent.Deferred
-import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, IO, Resource}
+import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, Resource}
 import cats.implicits._
 import fs2.kafka.internal._
-import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
+import org.apache.kafka.clients.producer.RecordMetadata
 import scala.collection.JavaConverters._
 
 /**
-  * [[TransactionalKafkaProducer]] represents a producer of Kafka messages specialized
-  * for "read-process-write" streams, with the ability to simultaneously produce
-  * `ProducerRecord`s and commit corresponding `CommittableOffset`s using [[produce]].
-  * Records are wrapped in [[TransactionalProducerMessage]] which allow an arbitrary value, that
-  * is a passthrough, to be included in the result.
+  * Represents a producer of Kafka messages specialized for 'read-process-write'
+  * streams, with the ability to atomically produce `ProducerRecord`s and commit
+  * corresponding [[CommittableOffset]]s using [[produce]].<br>
+  * <br>
+  * Records are wrapped in [[TransactionalProducerMessage]] which allow an
+  * arbitrary passthrough value to be included in the result.
   */
 sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
 
   /**
     * Produces the `ProducerRecord`s in the specified [[TransactionalProducerMessage]]
-    * in four steps: first a transaction is initialized, then the records are
-    * placed in the buffer of the producer, then the offsets of the records are
-    * sent to the trancation, and lastly the transaction is completed. The
-    * returned effect completes when the transaction is successfully completed.<br>
+    * in four steps: first a transaction is initialized, then the records are placed
+    * in the buffer of the producer, then the offsets of the records are sent to the
+    * transaction, and lastly the transaction is committed. If errors or cancellation
+    * occurs, the transaction is aborted. The returned effect succeeds if the whole
+    * transaction completes successfully.<br>
     * <br>
     * If you're only interested in the passthrough value, and not the whole
     * [[ProducerResult]], you can instead use [[producePassthrough]] which
@@ -64,8 +65,7 @@ private[kafka] object TransactionalKafkaProducer {
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    WithProducer
-      .of(settings)
+    WithProducer(settings)
       .evalTap { withProducer =>
         withProducer { producer =>
           F.delay(producer.initTransactions())
@@ -75,10 +75,11 @@ private[kafka] object TransactionalKafkaProducer {
         new TransactionalKafkaProducer[F, K, V] {
           override def produce[G[+ _], H[+ _], P](
             message: TransactionalProducerMessage[F, G, H, K, V, P]
-          ): F[ProducerResult[G, K, V, P]] =
-            produceTransaction(message).map(
-              ProducerResult(_, message.passthrough)(message.traverse)
-            )
+          ): F[ProducerResult[G, K, V, P]] = {
+            implicit val G: Foldable[G] = message.traverse
+            produceTransaction(message)
+              .map(ProducerResult(_, message.passthrough))
+          }
 
           override def producePassthrough[G[+ _], H[+ _], P](
             message: TransactionalProducerMessage[F, G, H, K, V, P]
@@ -116,7 +117,7 @@ private[kafka] object TransactionalKafkaProducer {
                       val empty = monoidK.empty[ProducerRecord[K, V]]
                       committable.records.foldLeft(empty)(_ combineK monad.pure(_))
                     }
-                    .traverse(produceRecord(producer))
+                    .traverse(KafkaProducer.produceRecord(settings, producer))
                     .map(_.sequence)
                     .flatTap { _ =>
                       F.delay {
@@ -135,72 +136,6 @@ private[kafka] object TransactionalKafkaProducer {
               }.flatten
             }
           }
-
-          private[this] def produceRecord(
-            producer: ByteProducer
-          )(
-            record: ProducerRecord[K, V]
-          ): F[F[(ProducerRecord[K, V], RecordMetadata)]] =
-            asJavaRecord(record).flatMap { javaRecord =>
-              Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap {
-                deferred =>
-                  F.delay {
-                      producer.send(
-                        javaRecord,
-                        callback { (metadata, throwable) =>
-                          val complete =
-                            deferred.complete {
-                              if (throwable == null)
-                                Right((record, metadata))
-                              else Left(throwable)
-                            }
-
-                          F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
-                        }
-                      )
-                    }
-                    .as(deferred.get.rethrow)
-              }
-            }
-
-          private[this] def serializeToBytes(
-            record: ProducerRecord[K, V]
-          ): F[(Array[Byte], Array[Byte])] = {
-            val keyBytes =
-              settings.keySerializer
-                .serialize(record.topic, record.headers, record.key)
-
-            val valueBytes =
-              settings.valueSerializer
-                .serialize(record.topic, record.headers, record.value)
-
-            keyBytes.product(valueBytes)
-          }
-
-          private[this] def asJavaRecord(
-            record: ProducerRecord[K, V]
-          ): F[KafkaProducerRecord] =
-            serializeToBytes(record).map {
-              case (keyBytes, valueBytes) =>
-                new KafkaProducerRecord(
-                  record.topic,
-                  if (record.partition.isDefined)
-                    record.partition.get: java.lang.Integer
-                  else null,
-                  if (record.timestamp.isDefined)
-                    record.timestamp.get: java.lang.Long
-                  else null,
-                  keyBytes,
-                  valueBytes,
-                  record.headers.asJava
-                )
-            }
-
-          private[this] def callback(f: (RecordMetadata, Throwable) => Unit): Callback =
-            new Callback {
-              override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
-                f(metadata, exception)
-            }
 
           override def toString: String =
             "TransactionalKafkaProducer$" + System.identityHashCode(this)

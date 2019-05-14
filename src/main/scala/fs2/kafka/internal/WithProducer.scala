@@ -27,7 +27,7 @@ private[kafka] sealed abstract class WithProducer[F[_]] {
 }
 
 private[kafka] object WithProducer {
-  def of[F[_], K, V](
+  def apply[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: Sync[F],

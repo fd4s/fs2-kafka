@@ -609,7 +609,7 @@ private[kafka] object KafkaConsumer {
       polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, Int](0))
-      withConsumer <- WithConsumer.of(settings)
+      withConsumer <- WithConsumer(settings)
       actor = new KafkaConsumerActor(settings, ref, requests, withConsumer)
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
