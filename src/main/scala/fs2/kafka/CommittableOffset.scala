@@ -16,8 +16,8 @@
 
 package fs2.kafka
 
-import cats.Show
 import cats.instances.string._
+import cats.Show
 import cats.syntax.show._
 import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -49,8 +49,10 @@ sealed abstract class CommittableOffset[F[_]] {
   def offsetAndMetadata: OffsetAndMetadata
 
   /**
-    * The group ID of the consumer which pulled this offset from Kafka.
-    *
+    * The consumer group ID of the consumer that fetched the
+    * [[offsetAndMetadata]] from the [[topicPartition]] from
+    * Kafka.<br>
+    * <br>
     * Required for committing messages within a transaction.
     */
   def consumerGroupId: Option[String]
@@ -129,16 +131,15 @@ object CommittableOffset {
         _commit
 
       override def toString: String =
-        Show[CommittableOffset[F]].show(this)
+        consumerGroupId match {
+          case Some(consumerGroupId) =>
+            show"CommittableOffset($topicPartition -> $offsetAndMetadata, $consumerGroupId)"
+          case None =>
+            show"CommittableOffset($topicPartition -> $offsetAndMetadata)"
+        }
     }
   }
 
   implicit def committableOffsetShow[F[_]]: Show[CommittableOffset[F]] =
-    Show.show { co =>
-      co.consumerGroupId.fold(
-        show"CommittableOffset(${co.topicPartition} -> ${co.offsetAndMetadata})"
-      ) { id =>
-        show"CommittableOffset(${co.topicPartition} -> ${co.offsetAndMetadata}, $id)"
-      }
-    }
+    Show.fromToString
 }
