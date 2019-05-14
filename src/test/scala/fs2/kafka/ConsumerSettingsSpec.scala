@@ -53,6 +53,7 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
     it("should provide withGroupId") {
       assert {
+        settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG).isEmpty &&
         settings
           .withGroupId("group")
           .properties(ConsumerConfig.GROUP_ID_CONFIG)
@@ -133,6 +134,19 @@ final class ConsumerSettingsSpec extends BaseSpec {
           .withDefaultApiTimeout(10.seconds)
           .properties(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG)
           .contains("10000")
+      }
+    }
+
+    it("should provide withIsolationLevel") {
+      assert {
+        settings
+          .withIsolationLevel(IsolationLevel.ReadCommitted)
+          .properties(ConsumerConfig.ISOLATION_LEVEL_CONFIG)
+          .contains("read_committed")
+        settings
+          .withIsolationLevel(IsolationLevel.ReadUncommitted)
+          .properties(ConsumerConfig.ISOLATION_LEVEL_CONFIG)
+          .contains("read_uncommitted")
       }
     }
 

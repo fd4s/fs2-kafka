@@ -16,6 +16,7 @@
 
 package fs2.kafka
 
+import cats.instances.string._
 import cats.Show
 import cats.syntax.show._
 import fs2.kafka.internal.instances._
@@ -46,6 +47,15 @@ sealed abstract class CommittableOffset[F[_]] {
     * can be committed using [[commit]].
     */
   def offsetAndMetadata: OffsetAndMetadata
+
+  /**
+    * The consumer group ID of the consumer that fetched the
+    * [[offsetAndMetadata]] from the [[topicPartition]] from
+    * Kafka.<br>
+    * <br>
+    * Required for committing messages within a transaction.
+    */
+  def consumerGroupId: Option[String]
 
   /**
     * The [[topicPartition]] and [[offsetAndMetadata]] as a `Map`.
@@ -90,10 +100,12 @@ object CommittableOffset {
   def apply[F[_]](
     topicPartition: TopicPartition,
     offsetAndMetadata: OffsetAndMetadata,
+    consumerGroupId: Option[String],
     commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
   ): CommittableOffset[F] = {
     val _topicPartition = topicPartition
     val _offsetAndMetadata = offsetAndMetadata
+    val _consumerGroupId = consumerGroupId
     val _commit = commit
 
     new CommittableOffset[F] {
@@ -102,6 +114,9 @@ object CommittableOffset {
 
       override val offsetAndMetadata: OffsetAndMetadata =
         _offsetAndMetadata
+
+      override val consumerGroupId: Option[String] =
+        _consumerGroupId
 
       override def offsets: Map[TopicPartition, OffsetAndMetadata] =
         Map(_topicPartition -> _offsetAndMetadata)
@@ -116,10 +131,15 @@ object CommittableOffset {
         _commit
 
       override def toString: String =
-        Show[CommittableOffset[F]].show(this)
+        consumerGroupId match {
+          case Some(consumerGroupId) =>
+            show"CommittableOffset($topicPartition -> $offsetAndMetadata, $consumerGroupId)"
+          case None =>
+            show"CommittableOffset($topicPartition -> $offsetAndMetadata)"
+        }
     }
   }
 
   implicit def committableOffsetShow[F[_]]: Show[CommittableOffset[F]] =
-    Show.show(co => show"CommittableOffset(${co.topicPartition} -> ${co.offsetAndMetadata})")
+    Show.fromToString
 }

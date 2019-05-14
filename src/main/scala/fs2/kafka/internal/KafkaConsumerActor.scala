@@ -31,6 +31,7 @@ import java.time.Duration
 import java.util
 import java.util.regex.Pattern
 import org.apache.kafka.clients.consumer.{
+  ConsumerConfig,
   ConsumerRebalanceListener,
   OffsetCommitCallback,
   OffsetAndMetadata
@@ -285,6 +286,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       record = record,
       committableOffset = CommittableOffset(
         topicPartition = partition,
+        consumerGroupId = settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG),
         offsetAndMetadata = new OffsetAndMetadata(
           record.offset + 1L,
           settings.recordMetadata(record)

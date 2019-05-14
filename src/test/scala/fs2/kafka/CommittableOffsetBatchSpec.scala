@@ -25,8 +25,12 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
   describe("CommittableOffsetBatch#updated") {
     it("should include the provided offset") {
       forAll { (batch: CommittableOffsetBatch[Id], offset: CommittableOffset[Id]) =>
-        val updatedOffset = batch.updated(offset).offsets.get(offset.topicPartition)
-        assert(updatedOffset.contains(offset.offsetAndMetadata))
+        val updatedBatch = batch.updated(offset)
+        val updatedOffset = updatedBatch.offsets.get(offset.topicPartition)
+
+        assert {
+          updatedOffset.contains(offset.offsetAndMetadata)
+        }
       }
     }
 
@@ -43,6 +47,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
               CommittableOffset[Id](
                 topicPartition = topicPartition,
                 offsetAndMetadata = newOffsetAndMetadata,
+                consumerGroupId = None,
                 commit = _ => ()
               )
 
@@ -59,12 +64,14 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
 
         val offsets = batch2.offsets.map {
           case (topicPartition, offsetAndMetadata) =>
-            CommittableOffset[Id](topicPartition, offsetAndMetadata, _ => ())
+            CommittableOffset[Id](topicPartition, offsetAndMetadata, None, _ => ())
         }
 
         val expected = offsets.foldLeft(batch1)(_ updated _)
 
-        assert(result.offsets == expected.offsets)
+        assert {
+          result.offsets == expected.offsets
+        }
       }
     }
   }
@@ -79,6 +86,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
       val one = CommittableOffset[Id](
         new TopicPartition("topic", 0),
         new OffsetAndMetadata(0L),
+        None,
         _ => ()
       ).batch
 
@@ -90,6 +98,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
       val oneMetadata = CommittableOffset[Id](
         new TopicPartition("topic", 1),
         new OffsetAndMetadata(0L, "metadata"),
+        None,
         _ => ()
       ).batch
 

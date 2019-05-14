@@ -43,6 +43,21 @@ final class PackageSpec extends BaseKafkaSpec {
     }
   }
 
+  describe("creating transactional producers") {
+    it("should support defined syntax") {
+      val settings =
+        ProducerSettings[IO, String, String]
+
+      transactionalProducerResource[IO, String, String](settings)
+      transactionalProducerResource[IO].toString should startWith("TransactionalProducerResource$")
+      transactionalProducerResource[IO].using(settings)
+
+      transactionalProducerStream[IO, String, String](settings)
+      transactionalProducerStream[IO].toString should startWith("TransactionalProducerStream$")
+      transactionalProducerStream[IO].using(settings)
+    }
+  }
+
   describe("creating consumer execution contexts") {
     it("should support defined syntax") {
       consumerExecutionContextResource[IO]

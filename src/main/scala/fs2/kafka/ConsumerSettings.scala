@@ -224,6 +224,18 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   def withDefaultApiTimeout(defaultApiTimeout: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * isolation level. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with an [[IsolationLevel]] instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.ISOLATION_LEVEL_CONFIG
+    * }}}
+    */
+  def withIsolationLevel(isolationLevel: IsolationLevel): ConsumerSettings[F, K, V]
+
+  /**
     * Includes a property with the specified `key` and `value`.
     * The key should be one of the keys in `ConsumerConfig`,
     * and the value should be a valid choice for the key.
@@ -462,6 +474,15 @@ object ConsumerSettings {
       withProperty(
         ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG,
         defaultApiTimeout.toMillis.toString
+      )
+
+    override def withIsolationLevel(isolationLevel: IsolationLevel): ConsumerSettings[F, K, V] =
+      withProperty(
+        ConsumerConfig.ISOLATION_LEVEL_CONFIG,
+        isolationLevel match {
+          case IsolationLevel.ReadCommittedIsolationLevel   => "read_committed"
+          case IsolationLevel.ReadUncommittedIsolationLevel => "read_uncommitted"
+        }
       )
 
     override def withProperty(key: String, value: String): ConsumerSettings[F, K, V] =

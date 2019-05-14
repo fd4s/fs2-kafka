@@ -69,7 +69,11 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
     Map(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}")
 
   final def withKafka[A](f: (EmbeddedKafkaConfig, String) => A): A =
-    withRunningKafkaOnFoundPort(EmbeddedKafkaConfig())(f(_, nextTopicName()))
+    withRunningKafkaOnFoundPort(
+      EmbeddedKafkaConfig(
+        customBrokerProperties = Map("transaction.state.log.replication.factor" -> "1")
+      )
+    )(f(_, nextTopicName()))
 
   final def withKafkaConsumer(
     nativeSettings: Map[String, AnyRef]

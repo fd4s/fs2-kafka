@@ -22,39 +22,36 @@ import fs2.kafka._
 import fs2.kafka.internal.syntax._
 import scala.concurrent.ExecutionContext
 
-private[kafka] sealed abstract class WithConsumer[F[_]] {
-  def apply[A](f: ByteConsumer => F[A]): F[A]
+private[kafka] sealed abstract class WithProducer[F[_]] {
+  def apply[A](f: ByteProducer => F[A]): F[A]
 }
 
-private[kafka] object WithConsumer {
+private[kafka] object WithProducer {
   def apply[F[_], K, V](
-    settings: ConsumerSettings[F, K, V]
+    settings: ProducerSettings[F, K, V]
   )(
-    implicit F: Concurrent[F],
+    implicit F: Sync[F],
     context: ContextShift[F]
-  ): Resource[F, WithConsumer[F]] = {
+  ): Resource[F, WithProducer[F]] = {
     val executionContextResource =
       settings.executionContext
         .map(Resource.pure[F, ExecutionContext])
-        .getOrElse(consumerExecutionContextResource)
+        .getOrElse(producerExecutionContextResource)
 
     executionContextResource.flatMap { executionContext =>
-      Resource.make[F, WithConsumer[F]] {
-        settings.createConsumer
-          .flatMap(Synchronized[F].of)
-          .map { synchronizedConsumer =>
-            new WithConsumer[F] {
-              override def apply[A](f: ByteConsumer => F[A]): F[A] =
-                synchronizedConsumer.use { consumer =>
-                  context.evalOn(executionContext) {
-                    f(consumer)
-                  }
+      Resource.make[F, WithProducer[F]] {
+        settings.createProducer
+          .map { producer =>
+            new WithProducer[F] {
+              override def apply[A](f: ByteProducer => F[A]): F[A] =
+                context.evalOn(executionContext) {
+                  f(producer)
                 }
             }
           }
-      } { withConsumer =>
-        withConsumer { consumer =>
-          F.delay(consumer.close(settings.closeTimeout.asJava))
+      } { withProducer =>
+        withProducer { producer =>
+          F.delay(producer.close(settings.closeTimeout.asJava))
         }
       }
     }

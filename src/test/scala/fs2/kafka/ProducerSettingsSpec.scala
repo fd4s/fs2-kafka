@@ -114,11 +114,21 @@ final class ProducerSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should provide withShiftSerialization") {
+    it("should provide withTransactionalId") {
       assert {
         settings
-          .withShiftSerialization(false)
-          .shiftSerialization == false
+          .withTransactionalId("transactional-id")
+          .properties(ProducerConfig.TRANSACTIONAL_ID_CONFIG)
+          .contains("transactional-id")
+      }
+    }
+
+    it("should provide withTransactionTimeout") {
+      assert {
+        settings
+          .withTransactionTimeout(10.seconds)
+          .properties(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG)
+          .contains("10000")
       }
     }
 
@@ -149,7 +159,7 @@ final class ProducerSettingsSpec extends BaseSpec {
       val shown = settings.show
 
       assert(
-        shown == "ProducerSettings(closeTimeout = 60 seconds, shiftSerialization = true)" &&
+        shown == "ProducerSettings(closeTimeout = 60 seconds)" &&
           shown == settings.toString
       )
     }
