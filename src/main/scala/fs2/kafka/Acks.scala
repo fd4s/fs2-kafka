@@ -17,10 +17,9 @@
 package fs2.kafka
 
 /**
-  * [[Acks]] represents the available options for the producer
-  * configuration setting [[ProducerSettings#withAcks]]. These
-  * options include the following.<br>
+  * The available options for [[ProducerSettings#withAcks]].<br>
   * <br>
+  * Available options include:<br>
   * - [[Acks#Zero]] to not wait for any acknowledgement from the server,<br>
   * - [[Acks#One]] to only wait for acknowledgement from the leader node,<br>
   * - [[Acks#All]] to wait for acknowledgement from all in-sync replicas.
@@ -41,17 +40,20 @@ object Acks {
   }
 
   /**
-    * Do not wait for any acknowledgement from the server when producing records.
+    * Option to not wait for any acknowledgement from the server
+    * when producing records.
     */
   val Zero: Acks = ZeroAcks
 
   /**
-    * Only wait for acknowledgement from the leader node when producing records.
+    * Option to only wait for acknowledgement from the leader node
+    * when producing records.
     */
   val One: Acks = OneAcks
 
   /**
-    * Wait for acknowledgement from all in-sync replicas when producing records.
+    * Option to wait for acknowledgement from all in-sync replicas
+    * when producing records.
     */
   val All: Acks = AllAcks
 }
