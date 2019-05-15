@@ -407,7 +407,7 @@ object ConsumerSettings {
         autoOffsetReset match {
           case AutoOffsetReset.EarliestOffsetReset => "earliest"
           case AutoOffsetReset.LatestOffsetReset   => "latest"
-          case AutoOffsetReset.NoOffsetReset       => "none"
+          case AutoOffsetReset.NoneOffsetReset     => "none"
         }
       )
 
@@ -536,7 +536,7 @@ object ConsumerSettings {
             byteArrayDeserializer,
             byteArrayDeserializer
           )
-      }
+        }
     )
 
   /**

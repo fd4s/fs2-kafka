@@ -17,10 +17,9 @@
 package fs2.kafka
 
 /**
-  * [[AutoOffsetReset]] represents the available options for the consumer
-  * configuration option [[ConsumerSettings#withAutoOffsetReset]]. These
-  * options include the following.<br>
+  * The available options for [[ConsumerSettings#withAutoOffsetReset]].<br>
   * <br>
+  * Available options include:<br>
   * - [[AutoOffsetReset#Earliest]] to reset to the earliest offsets,<br>
   * - [[AutoOffsetReset#Latest]] to reset to the latest offsets,<br>
   * - [[AutoOffsetReset#None]] to fail if no offsets are available.
@@ -36,25 +35,25 @@ object AutoOffsetReset {
     override def toString: String = "Latest"
   }
 
-  private[kafka] case object NoOffsetReset extends AutoOffsetReset {
+  private[kafka] case object NoneOffsetReset extends AutoOffsetReset {
     override def toString: String = "None"
   }
 
   /**
-    * Reset to the earliest available offsets if no initial
-    * or current offsets exist for the consumer group.
+    * Option to reset to the earliest available offsets if no
+    * initial or current offsets exist for the consumer group.
     */
   val Earliest: AutoOffsetReset = EarliestOffsetReset
 
   /**
-    * Reset to the latest available offsets if no initial
-    * or current offsets exist for the consumer group.
+    * Option to reset to the latest available offsets if no
+    * initial or current offsets exist for the consumer group.
     */
   val Latest: AutoOffsetReset = LatestOffsetReset
 
   /**
-    * Fail the consumer if there are no offsets available
-    * for the consumer group.
+    * Option to fail the consumer if there are no offsets
+    * available for the consumer group.
     */
-  val None: AutoOffsetReset = NoOffsetReset
+  val None: AutoOffsetReset = NoneOffsetReset
 }
