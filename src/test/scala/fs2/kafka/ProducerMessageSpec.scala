@@ -29,19 +29,7 @@ final class ProducerMessageSpec extends BaseSpec {
         ProducerMessage[List, String, String, Int](records, 123).toString == "ProducerMessage(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
         ProducerMessage[List, String, String, Int](records, 123).show == "ProducerMessage(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
         ProducerMessage[List, String, String](records).toString == "ProducerMessage(ProducerRecord(topic = topic, key = key, value = value), ())" &&
-        ProducerMessage[List, String, String](records).show == "ProducerMessage(ProducerRecord(topic = topic, key = key, value = value), ())" &&
-        ProducerMessage[List]
-          .of(records, 123)
-          .toString == "ProducerMessage(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
-        ProducerMessage[List]
-          .of(records, 123)
-          .show == "ProducerMessage(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
-        ProducerMessage[List]
-          .of(records)
-          .toString == "ProducerMessage(ProducerRecord(topic = topic, key = key, value = value), ())" &&
-        ProducerMessage[List]
-          .of(records)
-          .show == "ProducerMessage(ProducerRecord(topic = topic, key = key, value = value), ())"
+        ProducerMessage[List, String, String](records).show == "ProducerMessage(ProducerRecord(topic = topic, key = key, value = value), ())"
       }
     }
 

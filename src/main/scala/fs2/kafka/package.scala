@@ -352,7 +352,7 @@ package object kafka {
   def adminClientResource[F[_]](settings: AdminClientSettings[F])(
     implicit F: Concurrent[F]
   ): Resource[F, KafkaAdminClient[F]] =
-    KafkaAdminClient.adminClientResource(settings)
+    KafkaAdminClient.resource(settings)
 
   /**
     * Creates a new [[KafkaAdminClient]] in the `Stream` context,

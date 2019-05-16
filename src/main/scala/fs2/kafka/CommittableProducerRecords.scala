@@ -17,6 +17,10 @@
 package fs2.kafka
 
 import cats.Foldable
+import cats.Show
+import cats.syntax.foldable._
+import cats.syntax.show._
+import fs2.kafka.internal.syntax._
 
 /**
   * [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
@@ -48,8 +52,11 @@ object CommittableProducerRecords {
     override val committableOffset: CommittableOffset[F],
     override val foldable: Foldable[G]
   ) extends CommittableProducerRecords[F, G, K, V] {
-    override def toString: String =
-      s"CommittableProducerRecords($records, $committableOffset)"
+    override def toString: String = {
+      implicit val G: Foldable[G] = foldable
+      if (records.isEmpty) s"CommittableProducerRecords(<empty>, $committableOffset)"
+      else records.mkString("CommittableProducerRecords(", ", ", s", $committableOffset)")
+    }
   }
 
   /**
@@ -73,4 +80,21 @@ object CommittableProducerRecords {
     committableOffset: CommittableOffset[F]
   ): CommittableProducerRecords[F, Id, K, V] =
     apply[F, Id, K, V](record, committableOffset)
+
+  implicit def committableProducerRecordsShow[F[_], G[+ _], K, V](
+    implicit
+    K: Show[K],
+    V: Show[V]
+  ): Show[CommittableProducerRecords[F, G, K, V]] =
+    Show.show { committable =>
+      implicit val G: Foldable[G] = committable.foldable
+      if (committable.records.isEmpty)
+        show"CommittableProducerRecords(<empty>, ${committable.committableOffset})"
+      else
+        committable.records.mkStringShow(
+          "CommittableProducerRecords(",
+          ", ",
+          s", ${committable.committableOffset})"
+        )
+    }
 }

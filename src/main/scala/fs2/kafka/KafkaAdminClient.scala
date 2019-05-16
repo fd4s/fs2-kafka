@@ -371,7 +371,7 @@ object KafkaAdminClient {
       F.suspend(f(adminClient).cancelable)
   }
 
-  private[kafka] def adminClientResource[F[_]](
+  private[kafka] def resource[F[_]](
     settings: AdminClientSettings[F]
   )(implicit F: Concurrent[F]): Resource[F, KafkaAdminClient[F]] =
     createAdminClient(settings).map { client =>

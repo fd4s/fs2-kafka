@@ -16,7 +16,10 @@
 
 package fs2.kafka
 
+import cats.Show
+import cats.syntax.show._
 import fs2.Chunk
+import fs2.kafka.internal.syntax._
 
 /**
   * Represents zero or more [[CommittableProducerRecords]], together with an
@@ -49,7 +52,8 @@ object TransactionalProducerMessage {
     override val passthrough: P
   ) extends TransactionalProducerMessage[F, G, K, V, P] {
     override def toString: String =
-      s"TransactionalProducerMessage($records, $passthrough)"
+      if (records.isEmpty) s"TransactionalProducerMessage(<empty>, $passthrough)"
+      else records.mkString("TransactionalProducerMessage(", ", ", s", $passthrough)")
   }
 
   /**
@@ -93,4 +97,21 @@ object TransactionalProducerMessage {
     passthrough: P
   ): TransactionalProducerMessage[F, G, K, V, P] =
     apply(Chunk.singleton(record), passthrough)
+
+  implicit def transactionalProducerMessageShow[F[_], G[+ _], K, V, P](
+    implicit
+    K: Show[K],
+    V: Show[V],
+    P: Show[P]
+  ): Show[TransactionalProducerMessage[F, G, K, V, P]] =
+    Show.show { message =>
+      if (message.records.isEmpty)
+        show"TransactionalProducerMessage(<empty>, ${message.passthrough})"
+      else
+        message.records.mkStringShow(
+          "TransactionalProducerMessage(",
+          ", ",
+          s", ${message.passthrough})"
+        )
+    }
 }

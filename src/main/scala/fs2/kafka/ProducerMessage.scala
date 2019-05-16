@@ -16,9 +16,9 @@
 
 package fs2.kafka
 
+import cats.{Foldable, Show, Traverse}
 import cats.syntax.foldable._
 import cats.syntax.show._
-import cats.{Foldable, Show, Traverse}
 import fs2.kafka.internal.syntax._
 
 /**
@@ -67,60 +67,16 @@ object ProducerMessage {
   }
 
   /**
-    * Enables creating [[ProducerMessage]]s with the following syntax.
-    *
-    * {{{
-    * ProducerMessage[F].of(records, passthrough)
-    *
-    * ProducerMessage[F].of(records)
-    * }}}
+    * Creates a new [[ProducerMessage]] for producing zero or more
+    * `ProducerRecords`s, then emitting a [[ProducerResult]] with
+    * the results and `Unit` passthrough value.
     */
-  final class ApplyBuilders[F[+ _]] private[kafka] (
-    private val F: Traverse[F]
-  ) extends AnyVal {
-
-    /**
-      * Creates a new [[ProducerMessage]] for producing zero or more
-      * `ProducerRecords`s, then emitting a [[ProducerResult]] with
-      * the results and specified passthrough value.
-      */
-    def of[K, V, P](
-      records: F[ProducerRecord[K, V]],
-      passthrough: P
-    ): ProducerMessage[F, K, V, P] =
-      ProducerMessage(records, passthrough)(F)
-
-    /**
-      * Creates a new [[ProducerMessage]] for producing zero or more
-      * `ProducerRecords`s, then emitting a [[ProducerResult]] with
-      * the results and `Unit` passthrough value.
-      */
-    def of[K, V](
-      records: F[ProducerRecord[K, V]]
-    ): ProducerMessage[F, K, V, Unit] =
-      ProducerMessage(records)(F)
-  }
-
-  /**
-    * Creates a new [[ProducerMessage]] for producing exactly one
-    * `ProducerRecord`, then emitting a [[ProducerResult]] with
-    * the result and specified passthrough value.
-    */
-  def one[K, V, P](
-    record: ProducerRecord[K, V],
-    passthrough: P
-  ): ProducerMessage[Id, K, V, P] =
-    apply[Id, K, V, P](record, passthrough)
-
-  /**
-    * Creates a new [[ProducerMessage]] for producing exactly one
-    * `ProducerRecord`, then emitting a [[ProducerResult]] with
-    * the result and `Unit` passthrough value.
-    */
-  def one[K, V](
-    record: ProducerRecord[K, V]
-  ): ProducerMessage[Id, K, V, Unit] =
-    one(record, ())
+  def apply[F[+ _], K, V](
+    records: F[ProducerRecord[K, V]]
+  )(
+    implicit F: Traverse[F]
+  ): ProducerMessage[F, K, V, Unit] =
+    apply(records, ())
 
   /**
     * Creates a new [[ProducerMessage]] for producing zero or more
@@ -136,36 +92,25 @@ object ProducerMessage {
     new ProducerMessageImpl(records, passthrough, F)
 
   /**
-    * Creates a new [[ProducerMessage]] for producing zero or more
-    * `ProducerRecords`s, then emitting a [[ProducerResult]] with
-    * the results and `Unit` passthrough value.
+    * Creates a new [[ProducerMessage]] for producing exactly one
+    * `ProducerRecord`, then emitting a [[ProducerResult]] with
+    * the result and `Unit` passthrough value.
     */
-  def apply[F[+ _], K, V](
-    records: F[ProducerRecord[K, V]]
-  )(
-    implicit F: Traverse[F]
-  ): ProducerMessage[F, K, V, Unit] =
-    apply(records, ())
+  def one[K, V](
+    record: ProducerRecord[K, V]
+  ): ProducerMessage[Id, K, V, Unit] =
+    one(record, ())
 
   /**
-    * Creates a new [[ProducerMessage]] for producing zero or more
-    * `ProducerRecord`s, then emitting a [[ProducerResult]] with
-    * the results and a specified or `Unit` passthrough.<br>
-    * <br>
-    * This version allows you to explicitly specify the context `F[_]`,
-    * while the key, value, and passthrough types can be inferred. This
-    * is useful when the context cannot otherwise be inferred correctly.<br>
-    * <br>
-    * This function enables the following syntax.
-    *
-    * {{{
-    * ProducerMessage[F].of(records, passthrough)
-    *
-    * ProducerMessage[F].of(records)
-    * }}}
+    * Creates a new [[ProducerMessage]] for producing exactly one
+    * `ProducerRecord`, then emitting a [[ProducerResult]] with
+    * the result and specified passthrough value.
     */
-  def apply[F[+ _]](implicit F: Traverse[F]): ApplyBuilders[F] =
-    new ApplyBuilders[F](F)
+  def one[K, V, P](
+    record: ProducerRecord[K, V],
+    passthrough: P
+  ): ProducerMessage[Id, K, V, P] =
+    apply[Id, K, V, P](record, passthrough)
 
   implicit def producerMessageShow[F[+ _], K, V, P](
     implicit
