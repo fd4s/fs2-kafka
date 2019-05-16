@@ -90,7 +90,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         (for {
           producer <- producerStream[IO].using(producerSettings(config))
           result <- Stream.eval {
-            producer.produce(ProducerMessage[List].of(Nil, passthrough)).flatten
+            producer.produce(ProducerMessage(Nil, passthrough)).flatten
           }
         } yield result).compile.lastOrError.unsafeRunSync
 
