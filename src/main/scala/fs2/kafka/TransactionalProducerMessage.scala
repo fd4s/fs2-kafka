@@ -22,7 +22,7 @@ import fs2.Chunk
 import fs2.kafka.internal.syntax._
 
 /**
-  * Represents zero or more [[CommittableProducerRecords]], together with an
+  * Represents zero or more [[CommittableProducerRecords]], together with
   * arbitrary passthrough value, all of which can be used together with a
   * [[TransactionalKafkaProducer]] to produce messages and commit offsets
   * within a single transaction.<br>
@@ -111,7 +111,7 @@ object TransactionalProducerMessage {
         message.records.mkStringShow(
           "TransactionalProducerMessage(",
           ", ",
-          s", ${message.passthrough})"
+          show", ${message.passthrough})"
         )
     }
 }
