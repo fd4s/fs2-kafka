@@ -71,6 +71,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] type ConsumerRecords =
     Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]]
 
+  private[this] val consumerGroupId: Option[String] =
+    settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG)
+
   private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
       override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
@@ -286,7 +289,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       record = record,
       committableOffset = CommittableOffset(
         topicPartition = partition,
-        consumerGroupId = settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG),
+        consumerGroupId = consumerGroupId,
         offsetAndMetadata = new OffsetAndMetadata(
           record.offset + 1L,
           settings.recordMetadata(record)
