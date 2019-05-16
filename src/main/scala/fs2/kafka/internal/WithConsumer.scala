@@ -23,7 +23,7 @@ import fs2.kafka.internal.syntax._
 import scala.concurrent.ExecutionContext
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
-  def apply[A](f: ByteConsumer => F[A]): F[A]
+  def apply[A](f: KafkaByteConsumer => F[A]): F[A]
 }
 
 private[kafka] object WithConsumer {
@@ -44,7 +44,7 @@ private[kafka] object WithConsumer {
           .flatMap(Synchronized[F].of)
           .map { synchronizedConsumer =>
             new WithConsumer[F] {
-              override def apply[A](f: ByteConsumer => F[A]): F[A] =
+              override def apply[A](f: KafkaByteConsumer => F[A]): F[A] =
                 synchronizedConsumer.use { consumer =>
                   context.evalOn(executionContext) {
                     f(consumer)

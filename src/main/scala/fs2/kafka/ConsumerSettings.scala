@@ -18,7 +18,7 @@ package fs2.kafka
 
 import cats.effect.Sync
 import cats.Show
-import org.apache.kafka.clients.consumer.{Consumer, ConsumerConfig}
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import scala.collection.JavaConverters._
@@ -326,7 +326,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * operation should be bracketed, using e.g. `Resource`, to ensure
     * the `close` function on the consumer is called.
     */
-  def createConsumer: F[Consumer[Array[Byte], Array[Byte]]]
+  def createConsumer: F[KafkaByteConsumer]
 
   /**
     * Creates a new [[ConsumerSettings]] with the specified function for
@@ -334,7 +334,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * is the [[properties]] of the settings instance.
     */
   def withCreateConsumer(
-    createConsumer: Map[String, String] => F[Consumer[Array[Byte], Array[Byte]]]
+    createConsumer: Map[String, String] => F[KafkaByteConsumer]
   ): ConsumerSettings[F, K, V]
 
   /**
@@ -391,7 +391,7 @@ object ConsumerSettings {
     override val commitRecovery: CommitRecovery,
     override val recordMetadata: ConsumerRecord[K, V] => String,
     override val maxPrefetchBatches: Int,
-    val createConsumerWith: Map[String, String] => F[Consumer[Array[Byte], Array[Byte]]]
+    val createConsumerWith: Map[String, String] => F[KafkaByteConsumer]
   ) extends ConsumerSettings[F, K, V] {
     override def withExecutionContext(
       executionContext: ExecutionContext
@@ -489,11 +489,11 @@ object ConsumerSettings {
     override def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[F, K, V] =
       copy(commitRecovery = commitRecovery)
 
-    override def createConsumer: F[Consumer[Array[Byte], Array[Byte]]] =
+    override def createConsumer: F[KafkaByteConsumer] =
       createConsumerWith(properties)
 
     override def withCreateConsumer(
-      createConsumerWith: Map[String, String] => F[Consumer[Array[Byte], Array[Byte]]]
+      createConsumerWith: Map[String, String] => F[KafkaByteConsumer]
     ): ConsumerSettings[F, K, V] =
       copy(createConsumerWith = createConsumerWith)
 

@@ -23,7 +23,7 @@ import fs2.kafka.internal.syntax._
 import scala.concurrent.ExecutionContext
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
-  def apply[A](f: ByteProducer => F[A]): F[A]
+  def apply[A](f: KafkaByteProducer => F[A]): F[A]
 }
 
 private[kafka] object WithProducer {
@@ -43,7 +43,7 @@ private[kafka] object WithProducer {
         settings.createProducer
           .map { producer =>
             new WithProducer[F] {
-              override def apply[A](f: ByteProducer => F[A]): F[A] =
+              override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
                 context.evalOn(executionContext) {
                   f(producer)
                 }
