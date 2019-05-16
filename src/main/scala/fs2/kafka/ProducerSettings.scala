@@ -18,7 +18,7 @@ package fs2.kafka
 
 import cats.effect.Sync
 import cats.Show
-import org.apache.kafka.clients.producer.{Producer, ProducerConfig}
+import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -253,7 +253,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * operation should be bracketed, using e.g. `Resource`, to ensure
     * the `close` function on the producer is called.
     */
-  def createProducer: F[Producer[Array[Byte], Array[Byte]]]
+  def createProducer: F[KafkaByteProducer]
 
   /**
     * Creates a new [[ProducerSettings]] with the specified function for
@@ -261,7 +261,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * is the [[properties]] of the settings instance.
     */
   def withCreateProducer(
-    createProducer: Map[String, String] => F[Producer[Array[Byte], Array[Byte]]]
+    createProducer: Map[String, String] => F[KafkaByteProducer]
   ): ProducerSettings[F, K, V]
 }
 
@@ -272,7 +272,7 @@ object ProducerSettings {
     override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
-    val createProducerWith: Map[String, String] => F[Producer[Array[Byte], Array[Byte]]]
+    val createProducerWith: Map[String, String] => F[KafkaByteProducer]
   ) extends ProducerSettings[F, K, V] {
     override def withExecutionContext(
       executionContext: ExecutionContext
@@ -338,11 +338,11 @@ object ProducerSettings {
     override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       copy(closeTimeout = closeTimeout)
 
-    override def createProducer: F[Producer[Array[Byte], Array[Byte]]] =
+    override def createProducer: F[KafkaByteProducer] =
       createProducerWith(properties)
 
     override def withCreateProducer(
-      createProducerWith: Map[String, String] => F[Producer[Array[Byte], Array[Byte]]]
+      createProducerWith: Map[String, String] => F[KafkaByteProducer]
     ): ProducerSettings[F, K, V] =
       copy(createProducerWith = createProducerWith)
 

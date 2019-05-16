@@ -28,31 +28,40 @@ import scala.concurrent.duration.FiniteDuration
 package object kafka {
   type Id[+A] = A
 
-  private[kafka] type ByteConsumer =
+  /** Alias for Java Kafka `Consumer[Array[Byte], Array[Byte]]`. */
+  type KafkaByteConsumer =
     org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
 
-  private[kafka] type ByteProducer =
+  /** Alias for Java Kafka `Producer[Array[Byte], Array[Byte]]`. */
+  type KafkaByteProducer =
     org.apache.kafka.clients.producer.Producer[Array[Byte], Array[Byte]]
 
-  private[kafka] type KafkaDeserializer[A] =
+  /** Alias for Java Kafka `Deserializer[A]`. */
+  type KafkaDeserializer[A] =
     org.apache.kafka.common.serialization.Deserializer[A]
 
-  private[kafka] type KafkaSerializer[A] =
+  /** Alias for Java Kafka `Serializer[A]`. */
+  type KafkaSerializer[A] =
     org.apache.kafka.common.serialization.Serializer[A]
 
-  private[kafka] type KafkaHeader =
+  /** Alias for Java Kafka `Header`. */
+  type KafkaHeader =
     org.apache.kafka.common.header.Header
 
-  private[kafka] type KafkaHeaders =
+  /** Alias for Java Kafka `Headers`. */
+  type KafkaHeaders =
     org.apache.kafka.common.header.Headers
 
-  private[kafka] type KafkaConsumerRecords =
+  /** Alias for Java Kafka `ConsumerRecords[Array[Byte], Array[Byte]]`. */
+  type KafkaByteConsumerRecords =
     org.apache.kafka.clients.consumer.ConsumerRecords[Array[Byte], Array[Byte]]
 
-  private[kafka] type KafkaConsumerRecord =
+  /** Alias for Java Kafka `ConsumerRecord[Array[Byte], Array[Byte]]`. */
+  type KafkaByteConsumerRecord =
     org.apache.kafka.clients.consumer.ConsumerRecord[Array[Byte], Array[Byte]]
 
-  private[kafka] type KafkaProducerRecord =
+  /** Alias for Java Kafka `ProducerRecord[Array[Byte], Array[Byte]]`. */
+  type KafkaByteProducerRecord =
     org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
   /**

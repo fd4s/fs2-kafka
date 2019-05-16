@@ -168,7 +168,7 @@ object ConsumerRecord {
     )
 
   private[this] def deserializeFromBytes[F[_], K, V](
-    record: KafkaConsumerRecord,
+    record: KafkaByteConsumerRecord,
     headers: Headers,
     keyDeserializer: Deserializer[F, K],
     valueDeserializer: Deserializer[F, V]
@@ -179,7 +179,7 @@ object ConsumerRecord {
   }
 
   private[kafka] def fromJava[F[_], K, V](
-    record: KafkaConsumerRecord,
+    record: KafkaByteConsumerRecord,
     keyDeserializer: Deserializer[F, K],
     valueDeserializer: Deserializer[F, V]
   )(implicit F: Apply[F]): F[ConsumerRecord[K, V]] = {
