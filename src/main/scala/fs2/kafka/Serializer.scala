@@ -102,10 +102,16 @@ object Serializer {
     * Creates a new [[Serializer]] which always fails
     * serialization with the specified exception `e`.
     */
-  def fail[F[_], A](e: Throwable)(
-    implicit F: Sync[F]
-  ): Serializer[F, A] =
+  def fail[F[_], A](e: Throwable)(implicit F: Sync[F]): Serializer[F, A] =
     Serializer.lift(_ => F.raiseError(e))
+
+  /**
+    * Creates a new [[Serializer]] which always fails
+    * serialization with a [[SerializationException]]
+    * using the specified message.
+    */
+  def failWith[F[_], A](message: String)(implicit F: Sync[F]): Serializer[F, A] =
+    Serializer.fail(SerializationException(message))
 
   /**
     * Creates a new [[Serializer]] which serializes all

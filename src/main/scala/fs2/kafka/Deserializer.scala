@@ -115,6 +115,14 @@ object Deserializer {
     Deserializer.lift(_ => F.raiseError(e))
 
   /**
+    * Creates a new [[Deserializer]] which always fails
+    * deserialization with a [[SerializationException]]
+    * using the specified message.
+    */
+  def failWith[F[_], A](message: String)(implicit F: Sync[F]): Deserializer[F, A] =
+    Deserializer.fail(SerializationException(message))
+
+  /**
     * Creates a new [[Deserializer]] which can use different
     * [[Deserializer]]s depending on the record headers.
     */
