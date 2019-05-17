@@ -1,12 +1,13 @@
 package fs2.kafka
 
 import cats._
+import cats.effect.IO
 import cats.tests._
 import org.scalacheck._
 import scala.util.Try
 
 trait BaseCatsSpec extends CatsSuite with BaseGenerators {
-  implicit def deserializerEq[A](implicit A: Eq[A]): Eq[Deserializer[Id, A]] =
+  implicit def deserializerEq[A](implicit A: Eq[IO[A]]): Eq[Deserializer[IO, A]] =
     Eq.instance { (d1, d2) =>
       Try {
         forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>
@@ -16,6 +17,9 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators {
         }
       }.isSuccess
     }
+
+  implicit val deserializerUnitArbitrary: Arbitrary[Deserializer[IO, Unit]] =
+    Arbitrary(Gen.const(Deserializer.unit[IO]))
 
   implicit def serializerEq[A](implicit A: Arbitrary[A]): Eq[Serializer[Id, A]] =
     Eq.instance { (s1, s2) =>
