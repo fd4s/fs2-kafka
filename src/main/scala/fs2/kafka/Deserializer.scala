@@ -79,6 +79,9 @@ sealed abstract class Deserializer[F[_], A] {
 object Deserializer {
   def apply[F[_], A](implicit deserializer: Deserializer[F, A]): Deserializer[F, A] = deserializer
 
+  /** Alias for [[Deserializer#identity]]. */
+  def apply[F[_]](implicit F: Sync[F]): Deserializer[F, Array[Byte]] = identity
+
   /**
     * Creates a new [[Deserializer]] which deserializes
     * all bytes to the specified value of type `A`.
