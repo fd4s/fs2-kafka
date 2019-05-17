@@ -51,7 +51,7 @@ lazy val dependencySettings = Seq(
 
 lazy val mdocSettings = Seq(
   mdoc := run.in(Compile).evaluated,
-  scalacOptions -= "-Xfatal-warnings",
+  scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
   crossScalaVersions := Seq(scalaVersion.value)
 )
 
