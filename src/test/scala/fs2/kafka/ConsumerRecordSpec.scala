@@ -1,5 +1,6 @@
 package fs2.kafka
 
+import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerRecord.{NULL_SIZE, NO_TIMESTAMP}
 import org.apache.kafka.common.record.TimestampType
@@ -26,7 +27,11 @@ final class ConsumerRecordSpec extends BaseSpec {
             "value".getBytes
           )
 
-        f(ConsumerRecord.fromJava(record, Deserializer[Id, String], Deserializer[Id, String]))
+        f(
+          ConsumerRecord
+            .fromJava(record, Deserializer[IO, String], Deserializer[IO, String])
+            .unsafeRunSync
+        )
       }
 
       check(NO_TIMESTAMP, NO_TIMESTAMP_TYPE)(_.timestamp.isEmpty shouldBe true)
@@ -56,7 +61,11 @@ final class ConsumerRecordSpec extends BaseSpec {
             "value".getBytes
           )
 
-        f(ConsumerRecord.fromJava(record, Deserializer[Id, String], Deserializer[Id, String]))
+        f(
+          ConsumerRecord
+            .fromJava(record, Deserializer[IO, String], Deserializer[IO, String])
+            .unsafeRunSync
+        )
       }
 
       check(NULL_SIZE)(_.serializedKeySize shouldBe None)
@@ -81,7 +90,11 @@ final class ConsumerRecordSpec extends BaseSpec {
             "value".getBytes
           )
 
-        f(ConsumerRecord.fromJava(record, Deserializer[Id, String], Deserializer[Id, String]))
+        f(
+          ConsumerRecord
+            .fromJava(record, Deserializer[IO, String], Deserializer[IO, String])
+            .unsafeRunSync
+        )
       }
 
       check(NULL_SIZE)(_.serializedValueSize shouldBe None)
@@ -110,7 +123,11 @@ final class ConsumerRecordSpec extends BaseSpec {
             else java.util.Optional.empty()
           )
 
-        f(ConsumerRecord.fromJava(record, Deserializer[Id, String], Deserializer[Id, String]))
+        f(
+          ConsumerRecord
+            .fromJava(record, Deserializer[IO, String], Deserializer[IO, String])
+            .unsafeRunSync
+        )
       }
 
       check(None)(_.leaderEpoch shouldBe None)

@@ -1,12 +1,14 @@
 package fs2.kafka
 
-import cats.{Applicative, Functor}
+import cats.Applicative
+import cats.effect._
 import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.{Arbitrary, Gen}
 import java.nio.charset._
+import java.util.UUID
 
 trait BaseGenerators {
   val genTopicPartition: Gen[TopicPartition] =
@@ -57,6 +59,12 @@ trait BaseGenerators {
   ): Arbitrary[CommittableOffsetBatch[F]] =
     Arbitrary(genCommittableOffsetBatch[F])
 
+  val genUUID: Gen[UUID] =
+    arbitrary[Array[Byte]].map(UUID.nameUUIDFromBytes)
+
+  implicit val arbUUID: Arbitrary[UUID] =
+    Arbitrary(genUUID)
+
   val genCharset: Gen[Charset] =
     Gen.oneOf(
       StandardCharsets.US_ASCII,
@@ -70,16 +78,16 @@ trait BaseGenerators {
   implicit val arbCharset: Arbitrary[Charset] =
     Arbitrary(genCharset)
 
-  def genDeserializerString[F[_]](implicit F: Applicative[F]): Gen[Deserializer[F, String]] =
+  def genDeserializerString[F[_]](implicit F: Sync[F]): Gen[Deserializer[F, String]] =
     genCharset.map(Deserializer.string[F])
 
   implicit def arbDeserializerString[F[_]](
-    implicit F: Applicative[F]
+    implicit F: Sync[F]
   ): Arbitrary[Deserializer[F, String]] =
     Arbitrary(genDeserializerString)
 
   implicit def arbDeserializerCombine[F[_], A, B](
-    implicit F: Functor[F],
+    implicit F: Sync[F],
     arbB: Arbitrary[Deserializer[F, B]],
     arbABA: Arbitrary[(A, B) => A]
   ): Arbitrary[Deserializer[F, A => A]] =

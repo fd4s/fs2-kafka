@@ -190,75 +190,75 @@ final class SerializerSpec extends BaseCatsSpec {
   }
 
   def roundtrip[A: Arbitrary: Eq](
-    serializer: Serializer[Id, A],
-    deserializer: Deserializer[Id, A]
+    serializer: Serializer[IO, A],
+    deserializer: Deserializer[IO, A]
   ): Assertion = forAll { (topic: String, headers: Headers, a: A) =>
-    val serialized = serializer.serialize(topic, headers, a)
-    val deserialized = deserializer.deserialize(topic, headers, serialized)
+    val serialized = serializer.serialize(topic, headers, a).unsafeRunSync
+    val deserialized = deserializer.deserialize(topic, headers, serialized).unsafeRunSync
     assert(deserialized === a)
   }
 
   def roundtripAttempt[A: Arbitrary: Eq](
-    serializer: Serializer[Id, A],
+    serializer: Serializer[IO, A],
     deserializer: Deserializer[IO, A]
   ): Assertion = forAll { (topic: String, headers: Headers, a: A) =>
-    val serialized = serializer.serialize(topic, headers, a)
+    val serialized = serializer.serialize(topic, headers, a).unsafeRunSync
     val deserialized = deserializer.deserialize(topic, headers, serialized)
     assert(deserialized.attempt.unsafeRunSync.toOption === Option(a))
   }
 
   test("Serializer#string") {
     roundtrip(
-      Serializer.string[Id](StandardCharsets.UTF_8),
+      Serializer.string[IO](StandardCharsets.UTF_8),
       Deserializer.string(StandardCharsets.UTF_8)
     )
   }
 
   test("Serializer#uuid") {
     roundtripAttempt(
-      Serializer.uuid[Id](StandardCharsets.UTF_8),
+      Serializer.uuid[IO](StandardCharsets.UTF_8),
       Deserializer.uuid(StandardCharsets.UTF_8)
     )
   }
 
   test("Serializer#uuid.default") {
     roundtripAttempt(
-      Serializer[Id, UUID],
+      Serializer[IO, UUID],
       Deserializer.uuid
     )
   }
 
   test("Serializer#double") {
     roundtripAttempt(
-      Serializer.double[Id],
+      Serializer.double[IO],
       Deserializer.double
     )
   }
 
   test("Serializer#float") {
     roundtripAttempt(
-      Serializer.float[Id],
+      Serializer.float[IO],
       Deserializer.float
     )
   }
 
   test("Serializer#int") {
     roundtripAttempt(
-      Serializer.int[Id],
+      Serializer.int[IO],
       Deserializer.int
     )
   }
 
   test("Serializer#long") {
     roundtripAttempt(
-      Serializer.long[Id],
+      Serializer.long[IO],
       Deserializer.long
     )
   }
 
   test("Serializer#short") {
     roundtripAttempt(
-      Serializer.short[Id],
+      Serializer.short[IO],
       Deserializer.short
     )
   }

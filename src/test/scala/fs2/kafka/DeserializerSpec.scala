@@ -3,24 +3,15 @@ package fs2.kafka
 import cats._
 import cats.effect.IO
 import cats.laws.discipline._
-import org.scalacheck.Arbitrary
+import cats.effect.laws.util._
 
-final class DeserializerSpec extends BaseCatsSpec {
-  type IdDeserializer[A] = Deserializer[Id, A]
-
-  implicit def idApplicative: Applicative[Id] =
-    catsInstancesForId
-
-  implicit def idDeserializerArbitrary: Arbitrary[IdDeserializer[String]] =
-    arbDeserializerString
-
-  implicit def idDeserializerCombine: Arbitrary[IdDeserializer[String => String]] =
-    arbDeserializerCombine[Id, String, String]
-
-  implicit def idDeserializerIsomorphisms: SemigroupalTests.Isomorphisms[IdDeserializer] =
-    SemigroupalTests.Isomorphisms.invariant[IdDeserializer]
-
-  checkAll("Deserializer[Id, ?]", MonadTests[IdDeserializer].monad[String, String, String])
+final class DeserializerSpec extends BaseCatsSpec with TestInstances {
+  checkAll(
+    "Deserializer[IO, ?]", {
+      implicit val testContext: TestContext = TestContext()
+      MonadErrorTests[Deserializer[IO, ?], Throwable].monadError[String, String, String]
+    }
+  )
 
   test("Deserializer#attempt") {
     forAll { (topic: String, headers: Headers, i: Int) =>
@@ -38,29 +29,11 @@ final class DeserializerSpec extends BaseCatsSpec {
     forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>
       val deserialized =
         Deserializer
-          .bytes[Id]
+          .bytes[IO]
           .deserialize(topic, headers, bytes)
+          .unsafeRunSync
 
       deserialized.get shouldBe bytes
-    }
-  }
-
-  test("Deserializer#defer") {
-    forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>
-      var deserialized = false
-
-      val deserializer =
-        Deserializer
-          .lift[Eval, Array[Byte]] { bytes =>
-            deserialized = true
-            Eval.now(bytes)
-          }
-          .defer
-
-      val eval = deserializer.deserialize(topic, headers, bytes)
-      assert(!deserialized)
-      eval.value
-      assert(deserialized)
     }
   }
 
@@ -79,7 +52,7 @@ final class DeserializerSpec extends BaseCatsSpec {
       Deserializer.headers { headers =>
         headers("format").map(_.as[String]) match {
           case Some("int") => Deserializer[IO, Int]
-          case _           => Deserializer[IO, String].map(_.toInt).attempt
+          case _           => Deserializer[IO, String].map(_.toInt).suspend
         }
       }
 
@@ -95,7 +68,7 @@ final class DeserializerSpec extends BaseCatsSpec {
         Serializer[Id, String].contramap[Int](_.toString).serialize(topic, Headers.empty, i)
       val deserialized =
         Deserializer[IO, String].map(_.toInt).attempt.deserialize(topic, Headers.empty, serialized)
-      deserialized.attempt.unsafeRunSync shouldBe Right(i)
+      deserialized.unsafeRunSync shouldBe Right(i)
     }
   }
 
@@ -103,8 +76,9 @@ final class DeserializerSpec extends BaseCatsSpec {
     forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>
       val deserialized =
         Deserializer
-          .identity[Id]
+          .identity[IO]
           .deserialize(topic, headers, bytes)
+          .unsafeRunSync
 
       deserialized shouldBe bytes
     }
@@ -133,7 +107,7 @@ final class DeserializerSpec extends BaseCatsSpec {
     val deserializer =
       Deserializer.topic {
         case "topic" => Deserializer[IO, Int]
-        case _       => Deserializer[IO, String].map(_.toInt).attempt
+        case _       => Deserializer[IO, String].map(_.toInt).suspend
       }
 
     forAll { i: Int =>
@@ -149,7 +123,6 @@ final class DeserializerSpec extends BaseCatsSpec {
         val deserialized =
           Deserializer[IO, String]
             .map(_.toInt)
-            .attempt
             .deserialize(topic, Headers.empty, serialized)
 
         deserialized.attempt.unsafeRunSync shouldBe Right(i)
@@ -159,23 +132,23 @@ final class DeserializerSpec extends BaseCatsSpec {
 
   test("Deserializer#option") {
     val deserializer =
-      Deserializer[Id, Option[String]]
+      Deserializer[IO, Option[String]]
 
-    deserializer.deserialize("topic", Headers.empty, null) shouldBe None
+    deserializer.deserialize("topic", Headers.empty, null).unsafeRunSync shouldBe None
 
     forAll { s: String =>
       val serialized = Serializer[Id, String].serialize("topic", Headers.empty, s)
-      deserializer.deserialize("topic", Headers.empty, serialized) shouldBe Some(s)
+      deserializer.deserialize("topic", Headers.empty, serialized).unsafeRunSync shouldBe Some(s)
     }
   }
 
   test("Deserializer#unit") {
     forAll { bytes: Array[Byte] =>
-      Deserializer[Id, Unit].deserialize("topic", Headers.empty, bytes) shouldBe (())
+      Deserializer[IO, Unit].deserialize("topic", Headers.empty, bytes).unsafeRunSync shouldBe (())
     }
   }
 
   test("Deserializer#toString") {
-    assert(Deserializer[Id, String].toString startsWith "Deserializer$")
+    assert(Deserializer[IO, String].toString startsWith "Deserializer$")
   }
 }

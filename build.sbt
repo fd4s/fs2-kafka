@@ -2,6 +2,8 @@ import ReleaseTransformations._
 
 val fs2Version = "1.0.4"
 
+val catsEffectVersion = "1.3.0"
+
 val kafkaVersion = "2.2.0"
 
 lazy val `fs2-kafka` = project
@@ -32,13 +34,13 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "co.fs2" %% "fs2-core" % fs2Version,
-    "org.typelevel" %% "cats-effect" % "1.3.0",
+    "org.typelevel" %% "cats-effect" % catsEffectVersion,
     "org.apache.kafka" % "kafka-clients" % kafkaVersion
   ),
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % "3.0.7",
     "org.typelevel" %% "cats-testkit" % "1.6.0",
-    "org.scalacheck" %% "scalacheck" % "1.14.0",
+    "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "io.github.embeddedkafka" %% "embedded-kafka" % kafkaVersion,
     "org.apache.kafka" %% "kafka" % kafkaVersion
