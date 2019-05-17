@@ -59,6 +59,12 @@ sealed abstract class Headers {
   ): Headers
 
   /**
+    * Returns `true` if a header with the specified key
+    * exists; otherwise `false`.
+    */
+  def exists(key: String): Boolean
+
+  /**
     * Appends the specified [[Headers]] after these headers.
     */
   def concat(that: Headers): Headers
@@ -89,6 +95,9 @@ object Headers {
     override def append[V](key: String, value: V)(
       implicit serializer: HeaderSerializer[V]
     ): Headers = append(Header(key, value))
+
+    override def exists(key: String): Boolean =
+      headers.exists(_.key == key)
 
     override def concat(that: Headers): Headers = {
       if (that.isEmpty) this
@@ -188,6 +197,9 @@ object Headers {
       override def append[V](key: String, value: V)(
         implicit serializer: HeaderSerializer[V]
       ): Headers = append(Header(key, value))
+
+      override def exists(key: String): Boolean =
+        false
 
       override def concat(that: Headers): Headers =
         that
