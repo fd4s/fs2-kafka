@@ -65,6 +65,9 @@ sealed abstract class Serializer[F[_], A] {
 object Serializer {
   def apply[F[_], A](implicit serializer: Serializer[F, A]): Serializer[F, A] = serializer
 
+  /** Alias for [[Serializer#identity]]. */
+  def apply[F[_]](implicit F: Sync[F]): Serializer[F, Array[Byte]] = identity
+
   /**
     * Creates a new [[Serializer]] which serializes
     * all values of type `A` as `null`.
