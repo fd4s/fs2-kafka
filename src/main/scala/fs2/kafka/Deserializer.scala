@@ -194,14 +194,20 @@ object Deserializer {
   def lift[F[_], A](f: Array[Byte] => F[A])(implicit F: Sync[F]): Deserializer[F, A] =
     Deserializer.instance((_, _, bytes) => f(bytes))
 
+  private[this] def unexpectedTopic[F[_], A](implicit F: Sync[F]): String => Deserializer[F, A] =
+    topic => Deserializer.fail(UnexpectedTopicException(topic))
+
   /**
     * Creates a new [[Deserializer]] which can use different
     * [[Deserializer]]s depending on the Kafka topic name
     * from which the serialized bytes came.
     */
-  def topic[F[_], A](f: String => Deserializer[F, A])(implicit F: Sync[F]): Deserializer[F, A] =
+  def topic[F[_], A](
+    f: PartialFunction[String, Deserializer[F, A]]
+  )(implicit F: Sync[F]): Deserializer[F, A] =
     Deserializer.instance { (topic, headers, bytes) =>
-      f(topic).deserialize(topic, headers, bytes)
+      f.applyOrElse(topic, unexpectedTopic)
+        .deserialize(topic, headers, bytes)
     }
 
   /**

@@ -176,14 +176,20 @@ object Serializer {
   def lift[F[_], A](f: A => F[Array[Byte]])(implicit F: Sync[F]): Serializer[F, A] =
     Serializer.instance((_, _, a) => f(a))
 
+  private[this] def unexpectedTopic[F[_], A](implicit F: Sync[F]): String => Serializer[F, A] =
+    topic => Serializer.fail(UnexpectedTopicException(topic))
+
   /**
     * Creates a new [[Serializer]] which can use different
     * [[Serializer]]s depending on the Kafka topic name to
     * which the bytes are going to be sent.
     */
-  def topic[F[_], A](f: String => Serializer[F, A])(implicit F: Sync[F]): Serializer[F, A] =
+  def topic[F[_], A](
+    f: PartialFunction[String, Serializer[F, A]]
+  )(implicit F: Sync[F]): Serializer[F, A] =
     Serializer.instance { (topic, headers, a) =>
-      f(topic).serialize(topic, headers, a)
+      f.applyOrElse(topic, unexpectedTopic)
+        .serialize(topic, headers, a)
     }
 
   /**
