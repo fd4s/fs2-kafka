@@ -104,11 +104,11 @@ trait BaseGenerators {
       }
     }
 
-  def genSerializerString[F[_]](implicit F: Applicative[F]): Gen[Serializer[F, String]] =
+  def genSerializerString[F[_]](implicit F: Sync[F]): Gen[Serializer[F, String]] =
     genCharset.map(Serializer.string[F])
 
   implicit def arbSerializerString[F[_]](
-    implicit F: Applicative[F]
+    implicit F: Sync[F]
   ): Arbitrary[Serializer[F, String]] =
     Arbitrary(genSerializerString)
 

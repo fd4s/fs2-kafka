@@ -21,13 +21,22 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators {
   implicit val deserializerUnitArbitrary: Arbitrary[Deserializer[IO, Unit]] =
     Arbitrary(Gen.const(Deserializer.unit[IO]))
 
-  implicit def serializerEq[A](implicit A: Arbitrary[A]): Eq[Serializer[Id, A]] =
+  implicit val byteArrayEq: Eq[Array[Byte]] =
+    Eq.instance { (ba1, ba2) =>
+      ba1.length == ba2.length &&
+      !ba1.zip(ba2).exists { case (b1, b2) => b1 != b2 }
+    }
+
+  implicit def serializerEq[A](
+    implicit A: Arbitrary[A],
+    E: Eq[IO[Array[Byte]]]
+  ): Eq[Serializer[IO, A]] =
     Eq.instance { (s1, s2) =>
       Try {
         forAll { (topic: String, headers: Headers, a: A) =>
           val r1 = s1.serialize(topic, headers, a)
           val r2 = s2.serialize(topic, headers, a)
-          r1 should contain theSameElementsInOrderAs (r2)
+          assert(r1 === r2)
         }
       }.isSuccess
     }
