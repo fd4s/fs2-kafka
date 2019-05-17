@@ -8,56 +8,53 @@ import java.util.UUID
 import org.apache.kafka.common.utils.Bytes
 import org.scalacheck.Arbitrary
 import org.scalatest._
-import scala.util.Try
+import cats.effect.laws.util.TestContext
+import cats.effect.laws.util.TestInstances
 
-final class SerializerSpec extends BaseCatsSpec {
-  type IdSerializer[A] = Serializer[Id, A]
-
-  implicit def idSerializerApplicative: Applicative[Id] =
-    catsInstancesForId
-
-  implicit def idSerializerArbitrary: Arbitrary[IdSerializer[String]] =
-    arbSerializerString
-
+final class SerializerSpec extends BaseCatsSpec with TestInstances {
   checkAll(
-    "Serializer[Id, ?]",
-    ContravariantTests[IdSerializer].contravariant[String, String, String]
+    "Serializer[IO, ?]", {
+      implicit val testContext: TestContext = TestContext()
+      ContravariantTests[Serializer[IO, ?]].contravariant[String, String, String]
+    }
   )
 
   test("Serializer#mapBytes") {
     val serializer =
       Serializer
-        .identity[Id]
+        .identity[IO]
         .mapBytes(Array(0.toByte) ++ _)
 
     forAll { (topic: String, bytes: Array[Byte]) =>
-      serializer.serialize(topic, Headers.empty, bytes) shouldBe (Array(0.toByte) ++ bytes)
+      serializer
+        .serialize(topic, Headers.empty, bytes)
+        .unsafeRunSync shouldBe (Array(0.toByte) ++ bytes)
     }
   }
 
   test("Serializer#bytes") {
     val serializer =
-      Serializer.bytes[Id]
+      Serializer.bytes[IO]
 
     forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>
       val serialized = serializer.serialize(topic, headers, new Bytes(bytes))
-      serialized shouldBe bytes
+      serialized.unsafeRunSync shouldBe bytes
     }
   }
 
   test("Serializer#const") {
     val serializer =
-      Serializer.const[Id, Int](Array())
+      Serializer.const[IO, Int](Array())
 
     forAll { (topic: String, i: Int) =>
-      serializer.serialize(topic, Headers.empty, i).isEmpty shouldBe true
+      serializer.serialize(topic, Headers.empty, i).unsafeRunSync.isEmpty shouldBe true
     }
   }
 
   test("Serializer#defer") {
     val serializer =
       Serializer
-        .delegate[Eval, Int](
+        .delegate[IO, Int](
           new KafkaSerializer[Int] {
             override def close(): Unit = ()
             override def configure(props: java.util.Map[String, _], isKey: Boolean): Unit = ()
@@ -65,11 +62,11 @@ final class SerializerSpec extends BaseCatsSpec {
               throw new RuntimeException
           }
         )
-        .defer
+        .suspend
 
     forAll { (topic: String, headers: Headers, int: Int) =>
       val serialized = serializer.serialize(topic, headers, int)
-      Try(serialized.value).isFailure shouldBe true
+      serialized.attempt.unsafeRunSync.isLeft shouldBe true
     }
   }
 
@@ -106,22 +103,30 @@ final class SerializerSpec extends BaseCatsSpec {
     val serializer =
       Serializer.headers { headers =>
         headers("format").map(_.as[String]) match {
-          case Some("int") => Serializer[Id, Int]
-          case _           => Serializer[Id, String].contramap[Int](_.toString)
+          case Some("int") => Serializer[IO, Int]
+          case _           => Serializer[IO, String].contramap[Int](_.toString)
         }
       }
 
     forAll { (topic: String, i: Int) =>
       val headers = Header("format", "int").headers
       val serialized = serializer.serialize(topic, headers, i)
-      val expected = Serializer[Id, Int].serialize(topic, Headers.empty, i)
-      serialized shouldBe expected
+      val expected = Serializer[IO, Int].serialize(topic, Headers.empty, i)
+      serialized.unsafeRunSync shouldBe expected.unsafeRunSync
     }
 
     forAll { (topic: String, i: Int) =>
-      val serialized = serializer.serialize(topic, Headers.empty, i)
+      val serialized =
+        serializer
+          .serialize(topic, Headers.empty, i)
+          .unsafeRunSync
+
       val expected =
-        Serializer[Id, String].contramap[Int](_.toString).serialize(topic, Headers.empty, i)
+        Serializer[IO, String]
+          .contramap[Int](_.toString)
+          .serialize(topic, Headers.empty, i)
+          .unsafeRunSync
+
       serialized shouldBe expected
     }
   }
@@ -129,21 +134,29 @@ final class SerializerSpec extends BaseCatsSpec {
   test("Serializer#topic") {
     val serializer =
       Serializer.topic {
-        case "topic" => Serializer[Id, Int]
-        case _       => Serializer[Id, String].contramap[Int](_.toString)
+        case "topic" => Serializer[IO, Int]
+        case _       => Serializer[IO, String].contramap[Int](_.toString)
       }
 
     forAll { i: Int =>
       val serialized = serializer.serialize("topic", Headers.empty, i)
-      val expected = Serializer[Id, Int].serialize("topic", Headers.empty, i)
-      serialized shouldBe expected
+      val expected = Serializer[IO, Int].serialize("topic", Headers.empty, i)
+      serialized.unsafeRunSync shouldBe expected.unsafeRunSync
     }
 
     forAll { (topic: String, i: Int) =>
       whenever(topic != "topic") {
-        val serialized = serializer.serialize(topic, Headers.empty, i)
+        val serialized =
+          serializer
+            .serialize(topic, Headers.empty, i)
+            .unsafeRunSync
+
         val expected =
-          Serializer[Id, String].contramap[Int](_.toString).serialize(topic, Headers.empty, i)
+          Serializer[IO, String]
+            .contramap[Int](_.toString)
+            .serialize(topic, Headers.empty, i)
+            .unsafeRunSync
+
         serialized shouldBe expected
       }
     }
@@ -151,42 +164,42 @@ final class SerializerSpec extends BaseCatsSpec {
 
   test("Serializer#asNull") {
     val serializer =
-      Serializer.asNull[Id, Int]
+      Serializer.asNull[IO, Int]
 
     forAll { i: Int =>
       val serialized = serializer.serialize("topic", Headers.empty, i)
-      serialized shouldBe null
+      serialized.unsafeRunSync shouldBe null
     }
   }
 
   test("Serializer#empty") {
     val serializer =
-      Serializer.empty[Id, Int]
+      Serializer.empty[IO, Int]
 
     forAll { i: Int =>
       val serialized = serializer.serialize("topic", Headers.empty, i)
-      serialized shouldBe empty
+      serialized.unsafeRunSync shouldBe empty
     }
   }
 
   test("Serializer#option") {
     val serializer =
-      Serializer[Id, Option[String]]
+      Serializer[IO, Option[String]]
 
-    serializer.serialize("topic", Headers.empty, None) shouldBe null
+    serializer.serialize("topic", Headers.empty, None).unsafeRunSync shouldBe null
 
     forAll { s: String =>
-      serializer.serialize("topic", Headers.empty, Some(s)) shouldBe
-        Serializer[Id, String].serialize("topic", Headers.empty, s)
+      serializer.serialize("topic", Headers.empty, Some(s)).unsafeRunSync shouldBe
+        Serializer[IO, String].serialize("topic", Headers.empty, s).unsafeRunSync
     }
   }
 
   test("Serializer#unit") {
-    Serializer[Id, Unit].serialize("topic", Headers.empty, ()) shouldBe null
+    Serializer[IO, Unit].serialize("topic", Headers.empty, ()).unsafeRunSync shouldBe null
   }
 
   test("Serializer#toString") {
-    assert(Serializer[Id, Int].toString startsWith "Serializer$")
+    assert(Serializer[IO, Int].toString startsWith "Serializer$")
   }
 
   def roundtrip[A: Arbitrary: Eq](

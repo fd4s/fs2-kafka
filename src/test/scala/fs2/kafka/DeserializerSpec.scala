@@ -1,6 +1,5 @@
 package fs2.kafka
 
-import cats._
 import cats.effect.IO
 import cats.laws.discipline._
 import cats.effect.laws.util._
@@ -58,14 +57,17 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
 
     forAll { (topic: String, i: Int) =>
       val headers = Header("format", "int").headers
-      val serialized = Serializer[Id, Int].serialize(topic, Headers.empty, i)
+      val serialized = Serializer[IO, Int].serialize(topic, Headers.empty, i).unsafeRunSync
       val deserialized = deserializer.deserialize(topic, headers, serialized)
       deserialized.attempt.unsafeRunSync shouldBe Right(i)
     }
 
     forAll { (topic: String, i: Int) =>
       val serialized =
-        Serializer[Id, String].contramap[Int](_.toString).serialize(topic, Headers.empty, i)
+        Serializer[IO, String]
+          .contramap[Int](_.toString)
+          .serialize(topic, Headers.empty, i)
+          .unsafeRunSync
       val deserialized =
         Deserializer[IO, String].map(_.toInt).attempt.deserialize(topic, Headers.empty, serialized)
       deserialized.unsafeRunSync shouldBe Right(i)
@@ -111,7 +113,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
       }
 
     forAll { i: Int =>
-      val serialized = Serializer[Id, Int].serialize("topic", Headers.empty, i)
+      val serialized = Serializer[IO, Int].serialize("topic", Headers.empty, i).unsafeRunSync
       val deserialized = deserializer.deserialize("topic", Headers.empty, serialized)
       deserialized.attempt.unsafeRunSync shouldBe Right(i)
     }
@@ -119,7 +121,10 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
     forAll { (topic: String, i: Int) =>
       whenever(topic != "topic") {
         val serialized =
-          Serializer[Id, String].contramap[Int](_.toString).serialize(topic, Headers.empty, i)
+          Serializer[IO, String]
+            .contramap[Int](_.toString)
+            .serialize(topic, Headers.empty, i)
+            .unsafeRunSync
         val deserialized =
           Deserializer[IO, String]
             .map(_.toInt)
@@ -137,7 +142,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
     deserializer.deserialize("topic", Headers.empty, null).unsafeRunSync shouldBe None
 
     forAll { s: String =>
-      val serialized = Serializer[Id, String].serialize("topic", Headers.empty, s)
+      val serialized = Serializer[IO, String].serialize("topic", Headers.empty, s).unsafeRunSync
       deserializer.deserialize("topic", Headers.empty, serialized).unsafeRunSync shouldBe Some(s)
     }
   }
