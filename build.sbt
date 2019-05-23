@@ -46,7 +46,7 @@ lazy val dependencySettings = Seq(
     "org.apache.kafka" %% "kafka" % kafkaVersion
   ).map(_ % Test),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.0" cross CrossVersion.binary)
+  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.1" cross CrossVersion.binary)
 )
 
 lazy val mdocSettings = Seq(
