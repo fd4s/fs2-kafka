@@ -21,7 +21,6 @@ import cats.implicits._
 import cats.MonadError
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
-import org.apache.kafka.common.utils.Bytes
 
 /**
   * Functional composable Kafka key- and record deserializer with
@@ -281,9 +280,6 @@ object Deserializer {
       override def raiseError[A](e: Throwable): Deserializer[F, A] =
         Deserializer.fail(e)
     }
-
-  implicit def bytes[F[_]](implicit F: Sync[F]): Deserializer[F, Bytes] =
-    Deserializer.lift(bytes => F.pure(new Bytes(bytes)))
 
   implicit def double[F[_]](implicit F: Sync[F]): Deserializer[F, Double] =
     Deserializer

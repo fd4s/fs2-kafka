@@ -21,7 +21,6 @@ import cats.effect.Sync
 import cats.implicits._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
-import org.apache.kafka.common.utils.Bytes
 
 /**
   * Functional composable Kafka key- and record serializer with
@@ -229,9 +228,6 @@ object Serializer {
       override def contramap[A, B](serializer: Serializer[F, A])(f: B => A): Serializer[F, B] =
         serializer.contramap(f)
     }
-
-  implicit def bytes[F[_]](implicit F: Sync[F]): Serializer[F, Bytes] =
-    Serializer.identity[F].contramap(_.get)
 
   implicit def double[F[_]](implicit F: Sync[F]): Serializer[F, Double] =
     Serializer.delegate {
