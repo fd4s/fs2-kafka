@@ -15,6 +15,7 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val scalaMinorVersion = minorVersion(scalaVersion)
+    val kafkaDocsVersion = minorVersion(kafkaVersion).filter(_ != '.')
 
     val settings = mdoc
       .MainSettings()
@@ -27,13 +28,14 @@ object Main {
           "DOCS_SCALA_MINOR_VERSION" -> scalaMinorVersion,
           "FS2_VERSION" -> fs2Version,
           "KAFKA_VERSION" -> kafkaVersion,
-          "KAFKA_DOCS_VERSION" -> minorVersion(kafkaVersion).filter(_ != '.'),
+          "KAFKA_DOCS_VERSION" -> kafkaDocsVersion,
           "SCALA_PUBLISH_VERSIONS" -> {
             val minorVersions = crossScalaVersions.map(minorVersion)
             if (minorVersions.size <= 2) minorVersions.mkString(" and ")
             else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
           },
-          "API_BASE_URL" -> s"https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_$scalaMinorVersion/$latestVersion/fs2-kafka_$scalaMinorVersion-$latestVersion-javadoc.jar/!/fs2/kafka"
+          "API_BASE_URL" -> s"https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_$scalaMinorVersion/$latestVersion/fs2-kafka_$scalaMinorVersion-$latestVersion-javadoc.jar/!/fs2/kafka",
+          "KAFKA_API_BASE_URL" -> s"https://kafka.apache.org/$kafkaDocsVersion/javadoc"
         )
       }
       .withScalacOptions(scalacOptions.mkString(" "))
