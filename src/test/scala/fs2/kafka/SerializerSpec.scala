@@ -5,7 +5,6 @@ import cats.effect.IO
 import cats.laws.discipline._
 import java.nio.charset.StandardCharsets
 import java.util.UUID
-import org.apache.kafka.common.utils.Bytes
 import org.scalacheck.Arbitrary
 import org.scalatest._
 import cats.effect.laws.util.TestContext
@@ -29,16 +28,6 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
       serializer
         .serialize(topic, Headers.empty, bytes)
         .unsafeRunSync shouldBe (Array(0.toByte) ++ bytes)
-    }
-  }
-
-  test("Serializer#bytes") {
-    val serializer =
-      Serializer.bytes[IO]
-
-    forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>
-      val serialized = serializer.serialize(topic, headers, new Bytes(bytes))
-      serialized.unsafeRunSync shouldBe bytes
     }
   }
 
