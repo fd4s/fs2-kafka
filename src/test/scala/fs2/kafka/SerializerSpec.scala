@@ -31,6 +31,28 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
     }
   }
 
+  test("Serializer#apply") {
+    val serializer =
+      Serializer[IO]
+
+    forAll { (topic: String, bytes: Array[Byte]) =>
+      serializer
+        .serialize(topic, Headers.empty, bytes)
+        .unsafeRunSync shouldBe bytes
+    }
+  }
+
+  test("Serializer#identity") {
+    val serializer =
+      Serializer.identity[IO]
+
+    forAll { (topic: String, bytes: Array[Byte]) =>
+      serializer
+        .serialize(topic, Headers.empty, bytes)
+        .unsafeRunSync shouldBe bytes
+    }
+  }
+
   test("Serializer#const") {
     val serializer =
       Serializer.const[IO, Int](Array())
@@ -62,6 +84,16 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
   test("Serializer#fail") {
     val serializer =
       Serializer.fail[IO, Int](new RuntimeException)
+
+    forAll { (topic: String, headers: Headers, i: Int) =>
+      val serialized = serializer.serialize(topic, headers, i)
+      assert(serialized.attempt.unsafeRunSync.isLeft)
+    }
+  }
+
+  test("Serializer#failWith") {
+    val serializer =
+      Serializer.failWith[IO, Int]("message")
 
     forAll { (topic: String, headers: Headers, i: Int) =>
       val serialized = serializer.serialize(topic, headers, i)
@@ -147,6 +179,23 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
             .unsafeRunSync
 
         serialized shouldBe expected
+      }
+    }
+  }
+
+  test("Serializer#topic.unknown") {
+    val serializer =
+      Serializer.topic {
+        case "topic" => Serializer[IO, Int]
+      }
+
+    forAll { (headers: Headers, int: Int) =>
+      assert {
+        serializer
+          .serialize("unknown", headers, int)
+          .attempt
+          .unsafeRunSync
+          .isLeft
       }
     }
   }
