@@ -17,6 +17,12 @@ final class HeadersSpec extends BaseSpec {
       assert(!Headers.empty.nonEmpty)
     }
 
+    it("should return false for exists") {
+      forAll { key: String =>
+        assert(!Headers.empty.exists(key))
+      }
+    }
+
     it("should not find any key") {
       assert(Headers.empty("key").isEmpty)
     }
@@ -176,6 +182,20 @@ final class HeadersSpec extends BaseSpec {
         )
 
       assert(headers("key").map(_.value.head) == Some(1.toByte))
+    }
+
+    it("should return true for existing key") {
+      forAll { key: String =>
+        assert(Header(key, "value").headers.exists(key))
+      }
+    }
+
+    it("should return false for non-existing key") {
+      forAll { key: String =>
+        whenever(key != "key") {
+          assert(!Header("key", "value").headers.exists(key))
+        }
+      }
     }
 
     it("should concat empty") {

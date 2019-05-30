@@ -21,7 +21,6 @@ import cats.effect.Sync
 import cats.implicits._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
-import org.apache.kafka.common.utils.Bytes
 
 /**
   * Functional composable Kafka key- and record serializer with
@@ -65,6 +64,9 @@ sealed abstract class Serializer[F[_], A] {
 object Serializer {
   def apply[F[_], A](implicit serializer: Serializer[F, A]): Serializer[F, A] = serializer
 
+  /** Alias for [[Serializer#identity]]. */
+  def apply[F[_]](implicit F: Sync[F]): Serializer[F, Array[Byte]] = identity
+
   /**
     * Creates a new [[Serializer]] which serializes
     * all values of type `A` as `null`.
@@ -99,10 +101,16 @@ object Serializer {
     * Creates a new [[Serializer]] which always fails
     * serialization with the specified exception `e`.
     */
-  def fail[F[_], A](e: Throwable)(
-    implicit F: Sync[F]
-  ): Serializer[F, A] =
+  def fail[F[_], A](e: Throwable)(implicit F: Sync[F]): Serializer[F, A] =
     Serializer.lift(_ => F.raiseError(e))
+
+  /**
+    * Creates a new [[Serializer]] which always fails
+    * serialization with a [[SerializationException]]
+    * using the specified message.
+    */
+  def failWith[F[_], A](message: String)(implicit F: Sync[F]): Serializer[F, A] =
+    Serializer.fail(SerializationException(message))
 
   /**
     * Creates a new [[Serializer]] which serializes all
@@ -167,14 +175,20 @@ object Serializer {
   def lift[F[_], A](f: A => F[Array[Byte]])(implicit F: Sync[F]): Serializer[F, A] =
     Serializer.instance((_, _, a) => f(a))
 
+  private[this] def unexpectedTopic[F[_], A](implicit F: Sync[F]): String => Serializer[F, A] =
+    topic => Serializer.fail(UnexpectedTopicException(topic))
+
   /**
     * Creates a new [[Serializer]] which can use different
     * [[Serializer]]s depending on the Kafka topic name to
     * which the bytes are going to be sent.
     */
-  def topic[F[_], A](f: String => Serializer[F, A])(implicit F: Sync[F]): Serializer[F, A] =
+  def topic[F[_], A](
+    f: PartialFunction[String, Serializer[F, A]]
+  )(implicit F: Sync[F]): Serializer[F, A] =
     Serializer.instance { (topic, headers, a) =>
-      f(topic).serialize(topic, headers, a)
+      f.applyOrElse(topic, unexpectedTopic)
+        .serialize(topic, headers, a)
     }
 
   /**
@@ -214,9 +228,6 @@ object Serializer {
       override def contramap[A, B](serializer: Serializer[F, A])(f: B => A): Serializer[F, B] =
         serializer.contramap(f)
     }
-
-  implicit def bytes[F[_]](implicit F: Sync[F]): Serializer[F, Bytes] =
-    Serializer.identity[F].contramap(_.get)
 
   implicit def double[F[_]](implicit F: Sync[F]): Serializer[F, Double] =
     Serializer.delegate {

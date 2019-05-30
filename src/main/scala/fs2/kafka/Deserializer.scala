@@ -21,7 +21,6 @@ import cats.implicits._
 import cats.MonadError
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
-import org.apache.kafka.common.utils.Bytes
 
 /**
   * Functional composable Kafka key- and record deserializer with
@@ -79,6 +78,9 @@ sealed abstract class Deserializer[F[_], A] {
 object Deserializer {
   def apply[F[_], A](implicit deserializer: Deserializer[F, A]): Deserializer[F, A] = deserializer
 
+  /** Alias for [[Deserializer#identity]]. */
+  def apply[F[_]](implicit F: Sync[F]): Deserializer[F, Array[Byte]] = identity
+
   /**
     * Creates a new [[Deserializer]] which deserializes
     * all bytes to the specified value of type `A`.
@@ -110,6 +112,14 @@ object Deserializer {
     implicit F: Sync[F]
   ): Deserializer[F, A] =
     Deserializer.lift(_ => F.raiseError(e))
+
+  /**
+    * Creates a new [[Deserializer]] which always fails
+    * deserialization with a [[SerializationException]]
+    * using the specified message.
+    */
+  def failWith[F[_], A](message: String)(implicit F: Sync[F]): Deserializer[F, A] =
+    Deserializer.fail(SerializationException(message))
 
   /**
     * Creates a new [[Deserializer]] which can use different
@@ -183,14 +193,20 @@ object Deserializer {
   def lift[F[_], A](f: Array[Byte] => F[A])(implicit F: Sync[F]): Deserializer[F, A] =
     Deserializer.instance((_, _, bytes) => f(bytes))
 
+  private[this] def unexpectedTopic[F[_], A](implicit F: Sync[F]): String => Deserializer[F, A] =
+    topic => Deserializer.fail(UnexpectedTopicException(topic))
+
   /**
     * Creates a new [[Deserializer]] which can use different
     * [[Deserializer]]s depending on the Kafka topic name
     * from which the serialized bytes came.
     */
-  def topic[F[_], A](f: String => Deserializer[F, A])(implicit F: Sync[F]): Deserializer[F, A] =
+  def topic[F[_], A](
+    f: PartialFunction[String, Deserializer[F, A]]
+  )(implicit F: Sync[F]): Deserializer[F, A] =
     Deserializer.instance { (topic, headers, bytes) =>
-      f(topic).deserialize(topic, headers, bytes)
+      f.applyOrElse(topic, unexpectedTopic)
+        .deserialize(topic, headers, bytes)
     }
 
   /**
@@ -264,9 +280,6 @@ object Deserializer {
       override def raiseError[A](e: Throwable): Deserializer[F, A] =
         Deserializer.fail(e)
     }
-
-  implicit def bytes[F[_]](implicit F: Sync[F]): Deserializer[F, Bytes] =
-    Deserializer.lift(bytes => F.pure(new Bytes(bytes)))
 
   implicit def double[F[_]](implicit F: Sync[F]): Deserializer[F, Double] =
     Deserializer
