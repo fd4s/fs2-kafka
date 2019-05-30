@@ -2,7 +2,7 @@ import ReleaseTransformations._
 
 val fs2Version = "1.0.4"
 
-val catsEffectVersion = "1.3.0"
+val catsEffectVersion = "1.3.1"
 
 val kafkaVersion = "2.2.0"
 
