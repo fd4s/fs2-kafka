@@ -19,7 +19,6 @@ package fs2.kafka
 import cats.Contravariant
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
-import org.apache.kafka.common.utils.Bytes
 
 /**
   * [[HeaderSerializer]] is a functional serializer for Kafka record
@@ -151,9 +150,6 @@ object HeaderSerializer {
       )(f: B => A): HeaderSerializer[B] =
         serializer.contramap(f)
     }
-
-  implicit val bytes: HeaderSerializer[Bytes] =
-    HeaderSerializer.identity.contramap(_.get)
 
   implicit val double: HeaderSerializer[Double] =
     HeaderSerializer.delegate {

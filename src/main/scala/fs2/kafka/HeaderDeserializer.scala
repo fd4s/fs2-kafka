@@ -20,7 +20,6 @@ import cats.{Eval, Monad}
 import cats.syntax.either._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
-import org.apache.kafka.common.utils.Bytes
 import scala.annotation.tailrec
 
 /**
@@ -210,9 +209,6 @@ object HeaderDeserializer {
           go(f(a))
         }
     }
-
-  implicit val bytes: HeaderDeserializer[Bytes] =
-    HeaderDeserializer.identity.map(bytes => new Bytes(bytes))
 
   implicit val double: HeaderDeserializer.Attempt[Double] =
     HeaderDeserializer.delegate {
