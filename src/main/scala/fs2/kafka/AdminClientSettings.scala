@@ -21,6 +21,7 @@ import cats.Show
 import org.apache.kafka.clients.admin.{AdminClient, AdminClientConfig}
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 /**
   * [[AdminClientSettings]] contain settings necessary to create a
@@ -36,6 +37,19 @@ import scala.concurrent.duration._
   * then apply any desired modifications on top of that instance.
   */
 sealed abstract class AdminClientSettings[F[_]] {
+
+  /**
+    * The `ExecutionContext` on which to run blocking Kafka operations.
+    * If not explicitly provided, a default `ExecutionContext` will be
+    * instantiated when creating a `KafkaAdminClient` instance.
+    */
+  def executionContext: Option[ExecutionContext]
+
+  /**
+    * Returns a new [[AdminClientSettings]] instance with the specified
+    * [[executionContext]] on which to run blocking Kafka operations.
+    */
+  def withExecutionContext(executionContext: ExecutionContext): AdminClientSettings[F]
 
   /**
     * Properties which can be provided when creating a Java `KafkaAdminClient`
@@ -202,10 +216,14 @@ sealed abstract class AdminClientSettings[F[_]] {
 
 object AdminClientSettings {
   private[this] final case class AdminClientSettingsImpl[F[_]](
+    override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     val createAdminClientWith: Map[String, String] => F[AdminClient]
   ) extends AdminClientSettings[F] {
+    override def withExecutionContext(executionContext: ExecutionContext): AdminClientSettings[F] =
+      copy(executionContext = Some(executionContext))
+
     override def withBootstrapServers(bootstrapServers: String): AdminClientSettings[F] =
       withProperty(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
 
@@ -272,6 +290,7 @@ object AdminClientSettings {
 
   def apply[F[_]](implicit F: Sync[F]): AdminClientSettings[F] =
     AdminClientSettingsImpl(
+      executionContext = None,
       properties = Map.empty,
       closeTimeout = 20.seconds,
       createAdminClientWith = properties =>

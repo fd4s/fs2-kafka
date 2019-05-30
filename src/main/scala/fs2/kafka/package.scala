@@ -350,7 +350,8 @@ package object kafka {
     * `Stream` context, you might prefer [[adminClientStream]].
     */
   def adminClientResource[F[_]](settings: AdminClientSettings[F])(
-    implicit F: Concurrent[F]
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
   ): Resource[F, KafkaAdminClient[F]] =
     KafkaAdminClient.resource(settings)
 
@@ -361,7 +362,8 @@ package object kafka {
     * use the [[adminClientResource]] function.
     */
   def adminClientStream[F[_]](settings: AdminClientSettings[F])(
-    implicit F: Concurrent[F]
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
   ): Stream[F, KafkaAdminClient[F]] =
     Stream.resource(adminClientResource(settings))
 
@@ -430,7 +432,8 @@ package object kafka {
   /**
     * Creates a new `ExecutionContext` backed by a single thread.
     * This is suitable for use with a single `KafkaConsumer`, and
-    * is required to be set when creating [[ConsumerSettings]].<br>
+    * is default unless a different context is set using
+    * [[ConsumerSettings#withExecutionContext]].<br>
     * <br>
     * If you already have an `ExecutionContext` for blocking code,
     * then you might prefer to use that over explicitly creating
@@ -452,7 +455,7 @@ package object kafka {
   /**
     * Creates a new `ExecutionContext` backed by the specified number
     * of `threads`. This is suitable for use with the same number of
-    * `KafkaConsumer`s, and is required to be set when creating a
+    * `KafkaConsumer`s, and can be specified when creating a
     * [[ConsumerSettings]] instance.<br>
     * <br>
     * If you already have an `ExecutionContext` for blocking code,
@@ -474,8 +477,9 @@ package object kafka {
 
   /**
     * Creates a new `ExecutionContext` backed by a single thread.
-    * This is suitable for use with a single `KafkaProducer`, and
-    * is required to be set when creating [[ProducerSettings]].<br>
+    * This is suitable for use with a single `KafkaProducer`,
+    * and is default unless a different context is set using
+    * [[ProducerSettings#withExecutionContext]].<br>
     * <br>
     * If you already have an `ExecutionContext` for blocking code,
     * then you might prefer to use that over explicitly creating
@@ -497,7 +501,7 @@ package object kafka {
   /**
     * Creates a new `ExecutionContext` backed by the specified number
     * of `threads`. This is suitable for use with the same number of
-    * `KafkaProducer`s, and is required to be set when creating a
+    * `KafkaProducer`s, and can be specified when creating a
     * [[ProducerSettings]] instance.<br>
     * <br>
     * If you already have an `ExecutionContext` for blocking code,
@@ -516,6 +520,52 @@ package object kafka {
     implicit F: Sync[F]
   ): Resource[F, ExecutionContext] =
     executionContextResource("fs2-kafka-producer", threads)
+
+  /**
+    * Creates a new `ExecutionContext` backed by a single thread.
+    * This is suitable for use with a single `KafkaAdminClient`,
+    * and is default unless a different context is set using
+    * [[AdminClientSettings#withExecutionContext]].<br>
+    * <br>
+    * If you already have an `ExecutionContext` for blocking code,
+    * then you might prefer to use that over explicitly creating
+    * one with this function.<br>
+    * <br>
+    * The thread created by this function will be of type daemon,
+    * and the `Resource` context will automatically shutdown the
+    * underlying `Executor` as part of finalization.<br>
+    * <br>
+    * You might prefer `adminClientExecutionContextStream`, which is
+    * returning a `Stream` instead of `Resource`. For convenience
+    * when working together with `Stream`s.
+    */
+  def adminClientExecutionContextResource[F[_]](
+    implicit F: Sync[F]
+  ): Resource[F, ExecutionContext] =
+    adminClientExecutionContextResource(1)
+
+  /**
+    * Creates a new `ExecutionContext` backed by the specified number
+    * of `threads`. This is suitable for use with the same number of
+    * `KafkaAdminClient`s, and can be specified when creating an
+    * [[AdminClientSettings]] instance.<br>
+    * <br>
+    * If you already have an `ExecutionContext` for blocking code,
+    * then you might prefer to use that over explicitly creating
+    * one with this function.<br>
+    * <br>
+    * The threads created by this function will be of type daemon,
+    * and the `Resource` context will automatically shutdown the
+    * underlying `Executor` as part of finalization.<br>
+    * <br>
+    * You might prefer `adminClientExecutionContextStream`, which is
+    * returning a `Stream` instead of `Resource`. For convenience
+    * when working together with `Stream`s.
+    */
+  def adminClientExecutionContextResource[F[_]](threads: Int)(
+    implicit F: Sync[F]
+  ): Resource[F, ExecutionContext] =
+    executionContextResource("fs2-kafka-admin-client", threads)
 
   private[this] def executionContextResource[F[_]](
     name: String,
@@ -578,6 +628,26 @@ package object kafka {
     implicit F: Sync[F]
   ): Stream[F, ExecutionContext] =
     Stream.resource(producerExecutionContextResource(threads))
+
+  /**
+    * Like `adminClientExecutionContextResource`, but returns a `Stream`
+    * rather than a `Resource`. This is for convenience when working
+    * together with `Stream`s.
+    */
+  def adminClientExecutionContextStream[F[_]](
+    implicit F: Sync[F]
+  ): Stream[F, ExecutionContext] =
+    Stream.resource(adminClientExecutionContextResource)
+
+  /**
+    * Like `adminClientExecutionContextResource`, but returns a `Stream`
+    * rather than a `Resource`. This is for convenience when working
+    * together with `Stream`s.
+    */
+  def adminClientExecutionContextStream[F[_]](threads: Int)(
+    implicit F: Sync[F]
+  ): Stream[F, ExecutionContext] =
+    Stream.resource(adminClientExecutionContextResource(threads))
 
   /**
     * Creates a new [[KafkaProducer]] in the `Resource` context,

@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.admin.AdminClientConfig
 import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext
 
 final class AdminClientSettingsSpec extends BaseSpec {
   describe("AdminClientSettings") {
@@ -126,6 +127,21 @@ final class AdminClientSettingsSpec extends BaseSpec {
           .attempt
           .unsafeRunSync()
           .isLeft
+      }
+    }
+
+    it("should provide withExecutionContext") {
+      assert {
+        settings
+          .withExecutionContext(ExecutionContext.global)
+          .executionContext
+          .isDefined
+      }
+    }
+
+    it("should not provide an executionContext unless set") {
+      assert {
+        settings.executionContext.isEmpty
       }
     }
 
