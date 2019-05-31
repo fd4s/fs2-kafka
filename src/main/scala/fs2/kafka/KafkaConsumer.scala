@@ -602,6 +602,8 @@ private[kafka] object KafkaConsumer {
     timer: Timer[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     for {
+      keyDeserializer <- Resource.liftF(settings.keyDeserializer)
+      valueDeserializer <- Resource.liftF(settings.valueDeserializer)
       id <- Resource.liftF(F.delay(new Object().hashCode))
       implicit0(jitter: Jitter[F]) <- Resource.liftF(Jitter.default[F])
       implicit0(logging: Logging[F]) <- Resource.liftF(Logging.default[F](id))
@@ -610,8 +612,6 @@ private[kafka] object KafkaConsumer {
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, Int](0))
       withConsumer <- WithConsumer(settings)
-      keyDeserializer <- Resource.liftF(settings.keyDeserializer)
-      valueDeserializer <- Resource.liftF(settings.valueDeserializer)
       actor = new KafkaConsumerActor(
         settings = settings,
         keyDeserializer = keyDeserializer,
