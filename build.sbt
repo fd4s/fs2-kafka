@@ -92,6 +92,7 @@ lazy val publishSettings =
         organizationName.value
       )
     ),
+    excludeFilter.in(headerSources) := HiddenFileFilter || "*OrElse.scala",
     developers := List(
       Developer(
         id = "vlovgr",
