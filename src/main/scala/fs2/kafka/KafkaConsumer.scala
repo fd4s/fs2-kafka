@@ -610,7 +610,16 @@ private[kafka] object KafkaConsumer {
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, Int](0))
       withConsumer <- WithConsumer(settings)
-      actor = new KafkaConsumerActor(settings, ref, requests, withConsumer)
+      keyDeserializer <- Resource.liftF(settings.keyDeserializer)
+      valueDeserializer <- Resource.liftF(settings.valueDeserializer)
+      actor = new KafkaConsumerActor(
+        settings = settings,
+        keyDeserializer = keyDeserializer,
+        valueDeserializer = valueDeserializer,
+        ref = ref,
+        requests = requests,
+        withConsumer = withConsumer
+      )
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
     } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id, withConsumer)
