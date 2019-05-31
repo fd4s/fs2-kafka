@@ -577,7 +577,7 @@ object ConsumerSettings {
   /**
     * Creates a new [[ConsumerSettings]] instance using the
     * specified [[Deserializer]]s for the key and value, in
-    * the case where both the key and  value deserializers
+    * the case where both the key and value deserializers
     * are wrapped in a creation effect.
     */
   def apply[F[_], K, V](

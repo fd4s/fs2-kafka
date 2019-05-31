@@ -66,45 +66,50 @@ private[kafka] object KafkaProducer {
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Resource[F, KafkaProducer[F, K, V]] =
-    WithProducer(settings).map { withProducer =>
-      new KafkaProducer[F, K, V] {
-        override def produce[G[+ _], P](
-          message: ProducerMessage[G, K, V, P]
-        ): F[F[ProducerResult[G, K, V, P]]] = {
-          implicit val G: Traverse[G] = message.traverse
+    Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
+      Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
+        WithProducer(settings).map { withProducer =>
+          new KafkaProducer[F, K, V] {
+            override def produce[G[+ _], P](
+              message: ProducerMessage[G, K, V, P]
+            ): F[F[ProducerResult[G, K, V, P]]] = {
+              implicit val G: Traverse[G] = message.traverse
 
-          withProducer { producer =>
-            message.records
-              .traverse(produceRecord(settings, producer))
-              .map(_.sequence.map(ProducerResult(_, message.passthrough)))
+              withProducer { producer =>
+                message.records
+                  .traverse(produceRecord(keySerializer, valueSerializer, producer))
+                  .map(_.sequence.map(ProducerResult(_, message.passthrough)))
+              }
+            }
+
+            override def producePassthrough[G[+ _], P](
+              message: ProducerMessage[G, K, V, P]
+            ): F[F[P]] = {
+              implicit val G: Traverse[G] = message.traverse
+
+              withProducer { producer =>
+                message.records
+                  .traverse(produceRecord(keySerializer, valueSerializer, producer))
+                  .map(_.sequence_.as(message.passthrough))
+              }
+            }
+
+            override def toString: String =
+              "KafkaProducer$" + System.identityHashCode(this)
           }
         }
-
-        override def producePassthrough[G[+ _], P](
-          message: ProducerMessage[G, K, V, P]
-        ): F[F[P]] = {
-          implicit val G: Traverse[G] = message.traverse
-
-          withProducer { producer =>
-            message.records
-              .traverse(produceRecord(settings, producer))
-              .map(_.sequence_.as(message.passthrough))
-          }
-        }
-
-        override def toString: String =
-          "KafkaProducer$" + System.identityHashCode(this)
       }
     }
 
   private[kafka] def produceRecord[F[_], K, V](
-    settings: ProducerSettings[F, K, V],
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V],
     producer: KafkaByteProducer
   )(
     implicit F: ConcurrentEffect[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
-      asJavaRecord(settings, record).flatMap { javaRecord =>
+      asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
         Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
           F.delay {
               producer.send(
@@ -126,25 +131,25 @@ private[kafka] object KafkaProducer {
     }
 
   private[this] def serializeToBytes[F[_], K, V](
-    settings: ProducerSettings[F, K, V],
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V],
     record: ProducerRecord[K, V]
   )(implicit F: Apply[F]): F[(Array[Byte], Array[Byte])] = {
     val keyBytes =
-      settings.keySerializer
-        .serialize(record.topic, record.headers, record.key)
+      keySerializer.serialize(record.topic, record.headers, record.key)
 
     val valueBytes =
-      settings.valueSerializer
-        .serialize(record.topic, record.headers, record.value)
+      valueSerializer.serialize(record.topic, record.headers, record.value)
 
     keyBytes.product(valueBytes)
   }
 
   private[this] def asJavaRecord[F[_], K, V](
-    settings: ProducerSettings[F, K, V],
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V],
     record: ProducerRecord[K, V]
   )(implicit F: Apply[F]): F[KafkaByteProducerRecord] =
-    serializeToBytes(settings, record).map {
+    serializeToBytes(keySerializer, valueSerializer, record).map {
       case (keyBytes, valueBytes) =>
         new KafkaByteProducerRecord(
           record.topic,

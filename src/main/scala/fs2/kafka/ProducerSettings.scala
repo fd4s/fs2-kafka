@@ -18,6 +18,7 @@ package fs2.kafka
 
 import cats.effect.Sync
 import cats.Show
+import fs2.kafka.internal._
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import scala.collection.JavaConverters._
@@ -42,12 +43,12 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   /**
     * The `Serializer` to use for serializing record keys.
     */
-  def keySerializer: Serializer[F, K]
+  def keySerializer: F[Serializer[F, K]]
 
   /**
     * The `Serializer` to use for serializing record values.
     */
-  def valueSerializer: Serializer[F, V]
+  def valueSerializer: F[Serializer[F, V]]
 
   /**
     * The `ExecutionContext` on which to run blocking Kafka operations.
@@ -267,8 +268,8 @@ sealed abstract class ProducerSettings[F[_], K, V] {
 
 object ProducerSettings {
   private[this] final case class ProducerSettingsImpl[F[_], K, V](
-    override val keySerializer: Serializer[F, K],
-    override val valueSerializer: Serializer[F, V],
+    override val keySerializer: F[Serializer[F, K]],
+    override val valueSerializer: F[Serializer[F, V]],
     override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
@@ -351,8 +352,8 @@ object ProducerSettings {
   }
 
   private[this] def create[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
+    keySerializer: F[Serializer[F, K]],
+    valueSerializer: F[Serializer[F, V]]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     ProducerSettingsImpl(
       keySerializer = keySerializer,
@@ -373,17 +374,47 @@ object ProducerSettings {
 
   /**
     * Creates a new [[ProducerSettings]] instance using the
-    * specified serializers for the key and value.<br>
-    * <br>
-    * Since some Kafka operations are blocking, these should
-    * be run on a dedicated `ExecutionContext`. When not set
-    * with [[ProducerSettings#withExecutionContext]], there
-    * will be a default created. The default context is the
-    * same as `producerExecutionContextResource`.
+    * specified [[Serializer]]s for the key and value.
     */
   def apply[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
+  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
+    create(F.pure(keySerializer), F.pure(valueSerializer))
+
+  /**
+    * Creates a new [[ProducerSettings]] instance using the
+    * specified [[Serializer]]s for the key and value, in
+    * the case where the key serializer is wrapped in a
+    * creation effect.
+    */
+  def apply[F[_], K, V](
+    keySerializer: F[Serializer[F, K]],
+    valueSerializer: Serializer[F, V]
+  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
+    create(keySerializer, F.pure(valueSerializer))
+
+  /**
+    * Creates a new [[ProducerSettings]] instance using the
+    * specified [[Serializer]]s for the key and value, in
+    * the case where the value serializer is wrapped in a
+    * creation effect.
+    */
+  def apply[F[_], K, V](
+    keySerializer: Serializer[F, K],
+    valueSerializer: F[Serializer[F, V]]
+  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
+    create(F.pure(keySerializer), valueSerializer)
+
+  /**
+    * Creates a new [[ProducerSettings]] instance using the
+    * specified [[Serializer]]s for the key and value, in
+    * the case where both the key and value serializers
+    * are wrapped in a creation effect.
+    */
+  def apply[F[_], K, V](
+    keySerializer: F[Serializer[F, K]],
+    valueSerializer: F[Serializer[F, V]]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     create(keySerializer, valueSerializer)
 
@@ -393,10 +424,10 @@ object ProducerSettings {
     */
   def apply[F[_], K, V](
     implicit F: Sync[F],
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
+    keySerializer: F[Serializer[F, K]] OrElse Serializer[F, K],
+    valueSerializer: F[Serializer[F, V]] OrElse Serializer[F, V]
   ): ProducerSettings[F, K, V] =
-    create(keySerializer, valueSerializer)
+    create(keySerializer.fold(identity, F.pure), valueSerializer.fold(identity, F.pure))
 
   implicit def producerSettingsShow[F[_], K, V]: Show[ProducerSettings[F, K, V]] =
     Show.fromToString
