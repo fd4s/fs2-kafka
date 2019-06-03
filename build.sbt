@@ -1,26 +1,31 @@
 import ReleaseTransformations._
 
+val catsEffectVersion = "2.0.0-M4"
+
 val catsVersion = "2.0.0-M4"
 
-val catsEffectVersion = "2.0.0-M4"
+val confluentVersion = "5.2.2"
 
 val fs2Version = "1.1.0-M1"
 
 val kafkaVersion = "2.3.0"
 
+val vulcanVersion = "0.2.0-M3"
+
+val scala212 = "2.12.8"
+
+val scala213 = "2.13.0"
+
 lazy val root = project
   .in(file("."))
   .settings(
-    dependencySettings,
-    coverageSettings,
-    noPublishSettings,
     mimaSettings,
-    scalaSettings,
-    testSettings,
+    noPublishSettings,
+    scalaVersion := scala212,
     console := (console in (core, Compile)).value,
     console in Test := (console in (core, Test)).value
   )
-  .aggregate(core)
+  .aggregate(core, vulcan)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -35,20 +40,41 @@ lazy val core = project
     testSettings
   )
 
+lazy val vulcan = project
+  .in(file("modules/vulcan"))
+  .settings(
+    moduleName := "fs2-kafka-vulcan",
+    name := moduleName.value,
+    dependencySettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "com.ovoenergy" %% "vulcan" % vulcanVersion,
+        "io.confluent" % "kafka-avro-serializer" % confluentVersion
+      )
+    ),
+    coverageSettings,
+    publishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(core)
+
 lazy val docs = project
   .in(file("docs"))
   .settings(
     moduleName := "fs2-kafka-docs",
     name := moduleName.value,
+    dependencySettings,
     noPublishSettings,
     scalaSettings,
     mdocSettings,
     buildInfoSettings
   )
-  .dependsOn(core)
-  .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin)
+  .dependsOn(core, vulcan)
+  .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin, ScalaUnidocPlugin)
 
 lazy val dependencySettings = Seq(
+  resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
     "co.fs2" %% "fs2-core" % fs2Version,
     "org.typelevel" %% "cats-effect" % catsEffectVersion,
@@ -62,7 +88,7 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= {
     if (!scalaVersion.value.startsWith("2.13"))
       Seq(
-        "io.github.embeddedkafka" %% "embedded-kafka" % "2.2.0",
+        "io.github.embeddedkafka" %% "embedded-kafka" % "2.3.0",
         "org.apache.kafka" %% "kafka" % kafkaVersion
       ).map(_ % Test)
     else Seq.empty
@@ -74,7 +100,19 @@ lazy val dependencySettings = Seq(
 lazy val mdocSettings = Seq(
   mdoc := run.in(Compile).evaluated,
   scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-  crossScalaVersions := Seq(scalaVersion.value)
+  crossScalaVersions := Seq(scala212),
+  unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(core, vulcan),
+  target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
+  cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
+  docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(unidoc in Compile).value,
+  // format: off
+  scalacOptions in (ScalaUnidoc, unidoc) ++= Seq(
+    "-doc-source-url", s"https://github.com/ovotech/fs2-kafka/tree/v${(latestVersion in ThisBuild).value}€{FILE_PATH}.scala",
+    "-sourcepath", baseDirectory.in(LocalRootProject).value.getAbsolutePath,
+    "-doc-title", "FS2 Kafka",
+    "-doc-version", s"v${(latestVersion in ThisBuild).value}"
+  )
+  // format: on
 )
 
 lazy val buildInfoSettings = Seq(
@@ -85,11 +123,24 @@ lazy val buildInfoSettings = Seq(
     scalacOptions,
     sourceDirectory,
     latestVersion in ThisBuild,
-    moduleName in core,
+    BuildInfoKey.map(moduleName in core) {
+      case (k, v) => "core" ++ k.capitalize -> v
+    },
+    BuildInfoKey.map(crossScalaVersions in core) {
+      case (k, v) => "core" ++ k.capitalize -> v
+    },
+    BuildInfoKey.map(moduleName in vulcan) {
+      case (k, v) => "vulcan" ++ k.capitalize -> v
+    },
+    BuildInfoKey.map(crossScalaVersions in vulcan) {
+      case (k, v) => "vulcan" ++ k.capitalize -> v
+    },
     organization in root,
-    crossScalaVersions in root,
+    crossScalaVersions in core,
     BuildInfoKey("fs2Version" -> fs2Version),
-    BuildInfoKey("kafkaVersion" -> kafkaVersion)
+    BuildInfoKey("kafkaVersion" -> kafkaVersion),
+    BuildInfoKey("vulcanVersion" -> vulcanVersion),
+    BuildInfoKey("confluentVersion" -> confluentVersion)
   )
 )
 
@@ -135,7 +186,7 @@ lazy val publishSettings =
         "scm:git@github.com:ovotech/fs2-kafka.git"
       )
     ),
-    releaseCrossBuild := true,
+    releaseCrossBuild := false, // See https://github.com/sbt/sbt-release/issues/214
     releaseUseGlobalVersion := true,
     releaseTagName := s"v${(version in ThisBuild).value}",
     releaseTagComment := s"Release version ${(version in ThisBuild).value}",
@@ -144,14 +195,14 @@ lazy val publishSettings =
       checkSnapshotDependencies,
       inquireVersions,
       runClean,
-      runTest,
+      releaseStepCommandAndRemaining("+test"),
       setReleaseVersion,
       setLatestVersion,
       releaseStepTask(updateSiteVariables in ThisBuild),
       releaseStepTask(addDateToReleaseNotes in ThisBuild),
       commitReleaseVersion,
       tagRelease,
-      publishArtifacts,
+      releaseStepCommandAndRemaining("+publish"),
       releaseStepCommand("sonatypeRelease"),
       setNextVersion,
       commitNextVersion,
@@ -161,12 +212,16 @@ lazy val publishSettings =
   )
 
 lazy val mimaSettings = Seq(
+  mimaFailOnNoPrevious := false,
   mimaPreviousArtifacts := {
-    if (publishArtifact.value)
+    val released = !unreleasedModuleNames.value.contains(moduleName.value)
+    val publishing = publishArtifact.value
+
+    if (publishing && released)
       binaryCompatibleVersions.value
         .map(version => organization.value %% moduleName.value % version)
     else
-      Set.empty
+      Set()
   },
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
@@ -185,8 +240,8 @@ lazy val noPublishSettings =
   )
 
 lazy val scalaSettings = Seq(
-  scalaVersion := "2.12.8",
-  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0"),
+  scalaVersion := scala212,
+  crossScalaVersions := Seq(scala212, scala213),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
@@ -239,9 +294,6 @@ def minorVersion(version: String): String = {
   s"$major.$minor"
 }
 
-val validateDocs = taskKey[Unit]("Validate documentation")
-validateDocs in ThisBuild := (run in (docs, Compile)).toTask(" ").value
-
 val releaseNotesFile = taskKey[File]("Release notes for current version")
 releaseNotesFile in ThisBuild := {
   val currentVersion = (version in ThisBuild).value
@@ -256,11 +308,12 @@ updateSiteVariables in ThisBuild := {
   val variables =
     Map[String, String](
       "organization" -> (organization in root).value,
-      "moduleName" -> (moduleName in core).value,
+      "coreModuleName" -> (moduleName in core).value,
+      "vulcanModuleName" -> (moduleName in vulcan).value,
       "latestVersion" -> (latestVersion in ThisBuild).value,
-      "scalaMinorVersion" -> minorVersion((scalaVersion in root).value),
+      "scalaMinorVersion" -> minorVersion((scalaVersion in core).value),
       "scalaPublishVersions" -> {
-        val minorVersions = (crossScalaVersions in root).value.map(minorVersion)
+        val minorVersions = (crossScalaVersions in core).value.map(minorVersion)
         if (minorVersions.size <= 2) minorVersions.mkString(" and ")
         else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
       }
@@ -331,14 +384,15 @@ def addCommandsAlias(name: String, values: List[String]) =
 addCommandsAlias(
   "validate",
   List(
-    "clean",
-    "coverage",
-    "test",
-    "coverageReport",
-    "mimaReportBinaryIssues",
+    "+clean",
+    "+coverage",
+    "+test",
+    "+coverageReport",
+    "+mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
     "headerCheck",
-    "doc"
+    "+doc",
+    "docs/run"
   )
 )

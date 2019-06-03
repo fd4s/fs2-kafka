@@ -18,7 +18,7 @@ Following are some general library implementation notes.
 To enable backpressured streaming of Kafka records, there are three pieces at work.
 
 1. The 'consumer stream' continually issues fetch requests as long as there is demand. There is some room to issue fetch requests even when there isn't demand, to allow prefetching of records. This is controlled using the `maxPrefetchBatches` setting. Fetch requests will only be issued as long as processing is fast enough, so that less than `maxPrefetchBatches` batches are prefetched.
-2. The 'consumer loop' handles fetch requests issued by the stream, as well as poll requests, and other requests (subscribe, seek, ...). Records are only fetched for topic-partitions where there is demand (pull-based). The consumer loop is mostly implemented by the internal `KafkaConsumerActor`.
+2. The 'consumer loop' handles fetch requests issued by the stream, as well as poll requests, and other requests (e.g. commit). Records are only fetched for partitions where there is demand (pull-based). `KafkaConsumerActor` mostly implements the consumer loop internally.
 3. The 'poll scheduler' which schedules poll requests via a poll queue (bounded to 1 element).
 
 These pieces are assembled in `KafkaConsumer` and run concurrently in independent `Fiber`s.
@@ -28,6 +28,6 @@ These pieces are assembled in `KafkaConsumer` and run concurrently in independen
 There are a few important points to understanding how the backpressure works.
 
 - FS2 streams are pull-based, meaning there isn't a messaging system instructing up-stream to slow down. Instead, up-stream is asked to produce elements whenever down-stream is pulling. It's possible to run the consumer and producer independently, and use an asynchronous non-blocking queue for communication. The producer can then slow down when the consumer isn't fast enough.
-- For performance reasons, we should not issue a request to Kafka for every record requested by down-stream. Instead, we fetch records in batches (size controlled by `max.poll.records`) and keep the records in memory until processed (either in `KafkaConsumerActor` or on a queue).
+- For performance reasons, we should not issue a request to Kafka for every record requested by down-stream. Instead, we fetch records in batches (size controlled by `max.poll.records`) and keep the records on a queue until processed.
 - Since the Java Kafka client `poll` blocks, we throttle poll requests to every `pollInterval`.
 - The `KafkaConsumerActor` only requests records for partitions where there is a fetch request.

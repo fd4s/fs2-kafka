@@ -6,6 +6,7 @@
       "consumers",
       "producers",
       "transactions",
+      "modules",
       "technical-details"
     ]
   }

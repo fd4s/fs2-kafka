@@ -136,6 +136,9 @@ private[kafka] object syntax {
       map.foreach(e => if (p(e._1)) builder += e._2)
       builder.result()
     }
+
+    def updatedIfAbsent(k: K, v: => V): Map[K, V] =
+      if (map.contains(k)) map else map.updated(k, v)
   }
 
   implicit final class JavaUtilCollectionSyntax[A](

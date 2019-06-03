@@ -13,6 +13,12 @@ object Main {
     s"$major.$minor"
   }
 
+  def minorVersionsString(versions: Seq[String]): String = {
+    val minorVersions = versions.map(minorVersion)
+    if (minorVersions.size <= 2) minorVersions.mkString(" and ")
+    else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
+  }
+
   def main(args: Array[String]): Unit = {
     val scalaMinorVersion = minorVersion(scalaVersion)
     val kafkaDocsVersion = minorVersion(kafkaVersion).filter(_ != '.')
@@ -22,19 +28,20 @@ object Main {
       .withSiteVariables {
         Map(
           "ORGANIZATION" -> organization,
-          "MODULE_NAME" -> moduleName,
+          "CORE_MODULE_NAME" -> coreModuleName,
+          "CORE_CROSS_SCALA_VERSIONS" -> minorVersionsString(coreCrossScalaVersions),
+          "VULCAN_MODULE_NAME" -> vulcanModuleName,
+          "VULCAN_CROSS_SCALA_VERSIONS" -> minorVersionsString(vulcanCrossScalaVersions),
           "LATEST_VERSION" -> latestVersion,
           "LATEST_MINOR_VERSION" -> minorVersion(latestVersion),
           "DOCS_SCALA_MINOR_VERSION" -> scalaMinorVersion,
           "FS2_VERSION" -> fs2Version,
           "KAFKA_VERSION" -> kafkaVersion,
+          "VULCAN_VERSION" -> vulcanVersion,
+          "CONFLUENT_VERSION" -> confluentVersion,
           "KAFKA_DOCS_VERSION" -> kafkaDocsVersion,
-          "SCALA_PUBLISH_VERSIONS" -> {
-            val minorVersions = crossScalaVersions.map(minorVersion)
-            if (minorVersions.size <= 2) minorVersions.mkString(" and ")
-            else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
-          },
-          "API_BASE_URL" -> s"https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_$scalaMinorVersion/$latestVersion/fs2-kafka_$scalaMinorVersion-$latestVersion-javadoc.jar/!/fs2/kafka",
+          "SCALA_PUBLISH_VERSIONS" -> minorVersionsString(crossScalaVersions),
+          "API_BASE_URL" -> s"/fs2-kafka/api/fs2/kafka",
           "KAFKA_API_BASE_URL" -> s"https://kafka.apache.org/$kafkaDocsVersion/javadoc"
         )
       }

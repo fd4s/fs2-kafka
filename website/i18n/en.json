@@ -8,6 +8,9 @@
       "consumers": {
         "title": "Consumers"
       },
+      "modules": {
+        "title": "Modules"
+      },
       "overview": {
         "title": "Overview"
       },

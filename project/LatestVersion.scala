@@ -9,6 +9,9 @@ object LatestVersion extends AutoPlugin {
     lazy val latestVersion: SettingKey[String] =
       settingKey[String]("Latest released version")
 
+    lazy val unreleasedModuleNames: SettingKey[Set[String]] =
+      settingKey[Set[String]]("Module names not yet released")
+
     lazy val binaryCompatibleVersions: SettingKey[Set[String]] =
       settingKey[Set[String]]("Released binary-compatible versions")
 
@@ -41,6 +44,8 @@ object LatestVersion extends AutoPlugin {
         s"""
           |latestVersion in ThisBuild := $newLatestVersionString
           |
+          |unreleasedModuleNames in ThisBuild := Set()
+          |
           |binaryCompatibleVersions in ThisBuild := $newBinaryCompatibleVersionsString
          """.stripMargin.trim + "\n"
 
@@ -57,6 +62,7 @@ object LatestVersion extends AutoPlugin {
       reapply(
         Seq(
           latestVersion in ThisBuild := newLatestVersion,
+          unreleasedModuleNames in ThisBuild := Set(),
           binaryCompatibleVersions in ThisBuild := newBinaryCompatibleVersions
         ),
         state
