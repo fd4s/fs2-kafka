@@ -255,7 +255,9 @@ final class ConsumerSettingsSpec extends BaseSpec {
     }
 
     it("should be able to implicitly create with and without deserializer creation effects") {
-      val deserializerInstance = Deserializer[IO, String]
+      val deserializerInstance =
+        Deserializer[IO, String]
+          .map(identity)
 
       implicit val deserializer: IO[Deserializer[IO, String]] =
         IO.pure(deserializerInstance)

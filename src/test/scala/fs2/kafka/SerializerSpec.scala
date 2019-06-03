@@ -313,25 +313,4 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
       Deserializer.short
     )
   }
-
-  test("should be able to create with and without serializer creation effects") {
-    val serializer = Serializer[IO, String]
-
-    ProducerSettings(serializer, serializer)
-    ProducerSettings(IO.pure(serializer), serializer)
-    ProducerSettings(serializer, IO.pure(serializer))
-    ProducerSettings(IO.pure(serializer), IO.pure(serializer))
-  }
-
-  test("should be able to implicitly create with and without serializer creation effects") {
-    val serializerInstance = Serializer[IO, String]
-
-    implicit val serializer: IO[Serializer[IO, String]] =
-      IO.pure(serializerInstance)
-
-    ProducerSettings[IO, Int, Int]
-    ProducerSettings[IO, String, Int].keySerializer.unsafeRunSync shouldBe serializerInstance
-    ProducerSettings[IO, Int, String].valueSerializer.unsafeRunSync shouldBe serializerInstance
-    ProducerSettings[IO, String, String]
-  }
 }
