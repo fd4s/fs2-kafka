@@ -57,6 +57,8 @@ import scala.collection.JavaConverters._
   */
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[F, K, V],
+  keyDeserializer: Deserializer[F, K],
+  valueDeserializer: Deserializer[F, V],
   ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
   withConsumer: WithConsumer[F]
@@ -305,11 +307,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           .fromVectorUnsafe(batch.records(partition).toVector)
           .traverse { record =>
             ConsumerRecord
-              .fromJava(
-                record = record,
-                keyDeserializer = settings.keyDeserializer,
-                valueDeserializer = settings.valueDeserializer
-              )
+              .fromJava(record, keyDeserializer, valueDeserializer)
               .map(message(_, partition))
           }
           .map((partition, _))

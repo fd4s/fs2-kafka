@@ -245,6 +245,29 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
+    it("should be able to create with and without deserializer creation effects") {
+      val deserializer = Deserializer[IO, String]
+
+      ConsumerSettings(deserializer, deserializer)
+      ConsumerSettings(IO.pure(deserializer), deserializer)
+      ConsumerSettings(deserializer, IO.pure(deserializer))
+      ConsumerSettings(IO.pure(deserializer), IO.pure(deserializer))
+    }
+
+    it("should be able to implicitly create with and without deserializer creation effects") {
+      val deserializerInstance =
+        Deserializer[IO, String]
+          .map(identity)
+
+      implicit val deserializer: IO[Deserializer[IO, String]] =
+        IO.pure(deserializerInstance)
+
+      ConsumerSettings[IO, Int, Int]
+      ConsumerSettings[IO, String, Int].keyDeserializer.unsafeRunSync shouldBe deserializerInstance
+      ConsumerSettings[IO, Int, String].valueDeserializer.unsafeRunSync shouldBe deserializerInstance
+      ConsumerSettings[IO, String, String]
+    }
+
     it("should have a Show instance and matching toString") {
       assert {
         settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default)" &&

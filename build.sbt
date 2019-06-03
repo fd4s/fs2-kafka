@@ -12,6 +12,7 @@ lazy val `fs2-kafka` = project
     moduleName := "fs2-kafka",
     name := moduleName.value,
     dependencySettings,
+    coverageSettings,
     publishSettings,
     mimaSettings,
     scalaSettings,
@@ -77,6 +78,12 @@ lazy val metadataSettings = Seq(
   organizationHomepage := Some(url("https://ovoenergy.com"))
 )
 
+lazy val coverageSettings = Seq(
+  coverageExcludedPackages := List(
+    "fs2.kafka.internal.OrElse"
+  ).mkString(";")
+)
+
 lazy val publishSettings =
   metadataSettings ++ Seq(
     publishMavenStyle := true,
@@ -92,6 +99,7 @@ lazy val publishSettings =
         organizationName.value
       )
     ),
+    excludeFilter.in(headerSources) := HiddenFileFilter || "*OrElse.scala",
     developers := List(
       Developer(
         id = "vlovgr",
