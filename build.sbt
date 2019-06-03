@@ -6,8 +6,22 @@ val catsEffectVersion = "1.3.1"
 
 val kafkaVersion = "2.2.0"
 
-lazy val `fs2-kafka` = project
+lazy val root = project
   .in(file("."))
+  .settings(
+    dependencySettings,
+    coverageSettings,
+    noPublishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings,
+    console := (console in (core, Compile)).value,
+    console in Test := (console in (core, Test)).value
+  )
+  .aggregate(core)
+
+lazy val core = project
+  .in(file("modules/core"))
   .settings(
     moduleName := "fs2-kafka",
     name := moduleName.value,
@@ -29,7 +43,7 @@ lazy val docs = project
     mdocSettings,
     buildInfoSettings
   )
-  .dependsOn(`fs2-kafka`)
+  .dependsOn(core)
   .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin)
 
 lazy val dependencySettings = Seq(
@@ -64,9 +78,9 @@ lazy val buildInfoSettings = Seq(
     scalacOptions,
     sourceDirectory,
     latestVersion in ThisBuild,
-    moduleName in `fs2-kafka`,
-    organization in `fs2-kafka`,
-    crossScalaVersions in `fs2-kafka`,
+    moduleName in core,
+    organization in root,
+    crossScalaVersions in root,
     BuildInfoKey("fs2Version" -> fs2Version),
     BuildInfoKey("kafkaVersion" -> kafkaVersion)
   )
@@ -174,7 +188,7 @@ lazy val mimaSettings = Seq(
 )
 
 lazy val noPublishSettings =
-  metadataSettings ++ Seq(
+  publishSettings ++ Seq(
     skip in publish := true,
     publishArtifact := false
   )
@@ -228,15 +242,15 @@ releaseNotesFile in ThisBuild := {
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 updateSiteVariables in ThisBuild := {
-  val file = (baseDirectory in `fs2-kafka`).value / "website" / "siteConfig.js"
+  val file = (baseDirectory in root).value / "website" / "siteConfig.js"
   val lines = IO.read(file).trim.split('\n').toVector
 
-  val scalaMinorVersion = minorVersion((scalaVersion in `fs2-kafka`).value)
+  val scalaMinorVersion = minorVersion((scalaVersion in root).value)
   val latestVersionString = (latestVersion in ThisBuild).value.toString
-  val organizationString = (organization in `fs2-kafka`).value
-  val moduleNameString = (moduleName in `fs2-kafka`).value
+  val organizationString = (organization in root).value
+  val moduleNameString = (moduleName in core).value
   val scalaPublishVersions = {
-    val minorVersions = (crossScalaVersions in `fs2-kafka`).value.map(minorVersion)
+    val minorVersions = (crossScalaVersions in root).value.map(minorVersion)
     if (minorVersions.size <= 2) minorVersions.mkString(" and ")
     else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
   }
@@ -248,7 +262,7 @@ updateSiteVariables in ThisBuild := {
   val newFileContents = newLines.mkString("", "\n", "\n")
   IO.write(file, newFileContents)
 
-  sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
+  sbtrelease.Vcs.detect((baseDirectory in root).value).foreach { vcs =>
     vcs.add(file.getAbsolutePath).!
     vcs
       .commit(
@@ -285,7 +299,7 @@ addDateToReleaseNotes in ThisBuild := {
   val newContents = IO.read(file).trim + s"\n\nReleased on $dateString.\n"
   IO.write(file, newContents)
 
-  sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
+  sbtrelease.Vcs.detect((baseDirectory in root).value).foreach { vcs =>
     vcs.add(file.getAbsolutePath).!
     vcs
       .commit(
