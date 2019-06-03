@@ -12,6 +12,7 @@ lazy val `fs2-kafka` = project
     moduleName := "fs2-kafka",
     name := moduleName.value,
     dependencySettings,
+    coverageSettings,
     publishSettings,
     mimaSettings,
     scalaSettings,
@@ -75,6 +76,12 @@ lazy val metadataSettings = Seq(
   organization := "com.ovoenergy",
   organizationName := "OVO Energy Limited",
   organizationHomepage := Some(url("https://ovoenergy.com"))
+)
+
+lazy val coverageSettings = Seq(
+  coverageExcludedPackages := List(
+    "fs2.kafka.internal.OrElse"
+  ).mkString(";")
 )
 
 lazy val publishSettings =
