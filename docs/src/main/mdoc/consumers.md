@@ -45,7 +45,7 @@ If the deserializer only needs access to the bytes, like in the case above, use 
 Deserializer.lift(bytes => IO.pure(bytes.dropWhile(_ == 0)))
 ```
 
-To support different deserializers for different topics, use `topic`.
+To support different deserializers for different topics, use `topic` to pattern match on the topic name.
 
 ```scala mdoc:silent
 Deserializer.topic[IO, String] {
@@ -69,7 +69,7 @@ Deserializer.headers[IO, String] { headers =>
 }
 ```
 
-In the example above, `failWith` raises a [`SerializationException`][serializationexception] with the provided message.
+In the example above, `failWith` raises a [`DeserializationException`][deserializationexception] with the provided message.
 
 ### Java Interoperability
 
@@ -197,7 +197,7 @@ Note that only automatic partition assignment is supported. Like in the [consume
 
 ## Record Streaming
 
-Once subscribed to at least one topic, we can use `stream` for a `Stream` of [`CommittableMessage`][committablemessage]s. Messages each contain a deserialized [`ConsumerRecord`][consumerrecord], as well as a [`CommittableOffset`][committableoffset] for managing [offset commits](#offset-commits). Streams guarantee records in topic-partition order, but not ordering across partitions. This is the same ordering guarantee that Kafka provides.
+Once subscribed to at least one topic, we can use `stream` for a `Stream` of [`CommittableMessage`][committablemessage]s. Each message contains a deserialized [`ConsumerRecord`][consumerrecord], as well as a [`CommittableOffset`][committableoffset] for managing [offset commits](#offset-commits). Streams guarantee records in topic-partition order, but not ordering across partitions. This is the same ordering guarantee that Kafka provides.
 
 ```scala mdoc:silent
 object ConsumerStreamExample extends IOApp {
@@ -310,5 +310,5 @@ If we're sure we need to commit every offset, we can `commit` individual [`Commi
 [headers]: @API_BASE_URL@/Headers.html
 [java-kafka-consumer]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/consumer/KafkaConsumer.html
 [kafkaconsumer]: @API_BASE_URL@/KafkaConsumer.html
-[serializationexception]: @API_BASE_URL@/SerializationException.html
+[deserializationexception]: @API_BASE_URL@/DeserializationException.html
 [unexpectedtopicexception]: @API_BASE_URL@/UnexpectedTopicException.html
