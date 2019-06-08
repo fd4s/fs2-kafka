@@ -46,7 +46,7 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     * [[ProducerResult]], you can instead use [[producePassthrough]] which
     * only keeps the passthrough value in the output.
     */
-  def produce[G[+ _], P](
+  def produce[G[+_], P](
     message: ProducerMessage[G, K, V, P]
   ): F[F[ProducerResult[G, K, V, P]]]
 
@@ -54,7 +54,7 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     * Like [[produce]] but only keeps the passthrough value of the
     * [[ProducerResult]] rather than the whole [[ProducerResult]].
     */
-  def producePassthrough[G[+ _], P](
+  def producePassthrough[G[+_], P](
     message: ProducerMessage[G, K, V, P]
   ): F[F[P]]
 }
@@ -70,7 +70,7 @@ private[kafka] object KafkaProducer {
       Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
         WithProducer(settings).map { withProducer =>
           new KafkaProducer[F, K, V] {
-            override def produce[G[+ _], P](
+            override def produce[G[+_], P](
               message: ProducerMessage[G, K, V, P]
             ): F[F[ProducerResult[G, K, V, P]]] = {
               implicit val G: Traverse[G] = message.traverse
@@ -82,7 +82,7 @@ private[kafka] object KafkaProducer {
               }
             }
 
-            override def producePassthrough[G[+ _], P](
+            override def producePassthrough[G[+_], P](
               message: ProducerMessage[G, K, V, P]
             ): F[F[P]] = {
               implicit val G: Traverse[G] = message.traverse
@@ -128,7 +128,7 @@ private[kafka] object KafkaProducer {
             }
             .as(deferred.get.rethrow)
         }
-    }
+      }
 
   private[this] def serializeToBytes[F[_], K, V](
     keySerializer: Serializer[F, K],

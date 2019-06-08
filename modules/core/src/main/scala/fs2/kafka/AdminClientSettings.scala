@@ -298,7 +298,7 @@ object AdminClientSettings {
           AdminClient.create {
             (properties: Map[String, AnyRef]).asJava
           }
-      }
+        }
     )
 
   implicit def adminClientSettingsShow[F[_]]: Show[AdminClientSettings[F]] =

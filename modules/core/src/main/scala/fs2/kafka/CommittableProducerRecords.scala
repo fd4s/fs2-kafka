@@ -34,7 +34,7 @@ import fs2.kafka.internal.syntax._
   * - `CommittableProducerRecords#one` to produce exactly one record within
   * the same transaction as the offset is committed.
   */
-sealed abstract class CommittableProducerRecords[F[_], G[+ _], +K, +V] {
+sealed abstract class CommittableProducerRecords[F[_], G[+_], +K, +V] {
 
   /** The records to produce. Can be empty to simply commit the offset. */
   def records: G[ProducerRecord[K, V]]
@@ -47,7 +47,7 @@ sealed abstract class CommittableProducerRecords[F[_], G[+ _], +K, +V] {
 }
 
 object CommittableProducerRecords {
-  private[this] final class CommittableProducerRecordsImpl[F[_], G[+ _], +K, +V](
+  private[this] final class CommittableProducerRecordsImpl[F[_], G[+_], +K, +V](
     override val records: G[ProducerRecord[K, V]],
     override val committableOffset: CommittableOffset[F],
     override val foldable: Foldable[G]
@@ -64,7 +64,7 @@ object CommittableProducerRecords {
     * more [[ProducerRecord]]s and committing an offset atomically within
     * a transaction.
     */
-  def apply[F[_], G[+ _], K, V](
+  def apply[F[_], G[+_], K, V](
     records: G[ProducerRecord[K, V]],
     committableOffset: CommittableOffset[F]
   )(implicit G: Foldable[G]): CommittableProducerRecords[F, G, K, V] =
@@ -81,7 +81,7 @@ object CommittableProducerRecords {
   ): CommittableProducerRecords[F, Id, K, V] =
     apply[F, Id, K, V](record, committableOffset)
 
-  implicit def committableProducerRecordsShow[F[_], G[+ _], K, V](
+  implicit def committableProducerRecordsShow[F[_], G[+_], K, V](
     implicit
     K: Show[K],
     V: Show[V]

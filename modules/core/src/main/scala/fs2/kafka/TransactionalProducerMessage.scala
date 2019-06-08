@@ -37,7 +37,7 @@ import fs2.kafka.internal.syntax._
   * commit exactly one offset, then emit a [[ProducerResult]] with the
   * results and specified passthrough value.
   */
-sealed abstract class TransactionalProducerMessage[F[_], G[+ _], +K, +V, +P] {
+sealed abstract class TransactionalProducerMessage[F[_], G[+_], +K, +V, +P] {
 
   /** The records to produce and commit. Can be empty for passthrough-only. */
   def records: Chunk[CommittableProducerRecords[F, G, K, V]]
@@ -47,7 +47,7 @@ sealed abstract class TransactionalProducerMessage[F[_], G[+ _], +K, +V, +P] {
 }
 
 object TransactionalProducerMessage {
-  private[this] final class TransactionalProducerMessageImpl[F[_], G[+ _], +K, +V, +P](
+  private[this] final class TransactionalProducerMessageImpl[F[_], G[+_], +K, +V, +P](
     override val records: Chunk[CommittableProducerRecords[F, G, K, V]],
     override val passthrough: P
   ) extends TransactionalProducerMessage[F, G, K, V, P] {
@@ -61,7 +61,7 @@ object TransactionalProducerMessage {
     * more [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the results and `Unit` passthrough value.
     */
-  def apply[F[_], G[+ _], K, V](
+  def apply[F[_], G[+_], K, V](
     records: Chunk[CommittableProducerRecords[F, G, K, V]]
   ): TransactionalProducerMessage[F, G, K, V, Unit] =
     apply(records, ())
@@ -71,7 +71,7 @@ object TransactionalProducerMessage {
     * more [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the results and specified passthrough value.
     */
-  def apply[F[_], G[+ _], K, V, P](
+  def apply[F[_], G[+_], K, V, P](
     records: Chunk[CommittableProducerRecords[F, G, K, V]],
     passthrough: P
   ): TransactionalProducerMessage[F, G, K, V, P] =
@@ -82,7 +82,7 @@ object TransactionalProducerMessage {
     * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the result and `Unit` passthrough value.
     */
-  def one[F[_], G[+ _], K, V](
+  def one[F[_], G[+_], K, V](
     record: CommittableProducerRecords[F, G, K, V]
   ): TransactionalProducerMessage[F, G, K, V, Unit] =
     one(record, ())
@@ -92,13 +92,13 @@ object TransactionalProducerMessage {
     * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the result and specified passthrough value.
     */
-  def one[F[_], G[+ _], K, V, P](
+  def one[F[_], G[+_], K, V, P](
     record: CommittableProducerRecords[F, G, K, V],
     passthrough: P
   ): TransactionalProducerMessage[F, G, K, V, P] =
     apply(Chunk.singleton(record), passthrough)
 
-  implicit def transactionalProducerMessageShow[F[_], G[+ _], K, V, P](
+  implicit def transactionalProducerMessageShow[F[_], G[+_], K, V, P](
     implicit
     K: Show[K],
     V: Show[V],

@@ -46,7 +46,7 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
     * [[ProducerResult]], you can instead use [[producePassthrough]] which
     * only keeps the passthrough value in the output.
     */
-  def produce[G[+ _], P](
+  def produce[G[+_], P](
     message: TransactionalProducerMessage[F, G, K, V, P]
   ): F[ProducerResult[Chunk, K, V, P]]
 
@@ -54,7 +54,7 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
     * Like [[produce]] but only keeps the passthrough value of the
     * [[ProducerResult]] rather than the whole [[ProducerResult]].
     */
-  def producePassthrough[G[+ _], P](
+  def producePassthrough[G[+_], P](
     message: TransactionalProducerMessage[F, G, K, V, P]
   ): F[P]
 }
@@ -76,19 +76,19 @@ private[kafka] object TransactionalKafkaProducer {
           }
           .map { withProducer =>
             new TransactionalKafkaProducer[F, K, V] {
-              override def produce[G[+ _], P](
+              override def produce[G[+_], P](
                 message: TransactionalProducerMessage[F, G, K, V, P]
               ): F[ProducerResult[Chunk, K, V, P]] =
                 produceTransaction(message)
                   .map(ProducerResult(_, message.passthrough))
 
-              override def producePassthrough[G[+ _], P](
+              override def producePassthrough[G[+_], P](
                 message: TransactionalProducerMessage[F, G, K, V, P]
               ): F[P] =
                 produceTransaction(message)
                   .as(message.passthrough)
 
-              private[this] def produceTransaction[G[+ _], P](
+              private[this] def produceTransaction[G[+_], P](
                 message: TransactionalProducerMessage[F, G, K, V, P]
               ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
                 if (message.records.isEmpty) F.pure(Chunk.empty)

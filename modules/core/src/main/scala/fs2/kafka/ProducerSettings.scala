@@ -369,7 +369,7 @@ object ProducerSettings {
             byteArraySerializer,
             byteArraySerializer
           )
-      }
+        }
     )
 
   /**
