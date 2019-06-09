@@ -38,11 +38,11 @@ object Main extends IOApp {
             .using(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)
-            .mapAsync(25) { message =>
-              processRecord(message.record)
+            .mapAsync(25) { committable =>
+              processRecord(committable.record)
                 .map { case (key, value) =>
                   val record = ProducerRecord("topic", key, value)
-                  ProducerMessage.one(record, message.committableOffset)
+                  ProducerRecords.one(record, committable.offset)
                 }
             }
             .evalMap(producer.producePassthrough)
