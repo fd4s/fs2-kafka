@@ -1,5 +1,4 @@
-.idea/
-node_modules/
+/website/build/
+/website/node_modules/
+/website/yarn.lock
 target/
-website/build/
-yarn.lock
