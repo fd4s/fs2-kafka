@@ -25,17 +25,17 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 /**
-  * Represents a producer of Kafka messages specialized for 'read-process-write'
+  * Represents a producer of Kafka records specialized for 'read-process-write'
   * streams, with the ability to atomically produce `ProducerRecord`s and commit
   * corresponding [[CommittableOffset]]s using [[produce]].<br>
   * <br>
-  * Records are wrapped in [[TransactionalProducerMessage]] which allow an
+  * Records are wrapped in [[TransactionalProducerRecords]] which allow an
   * arbitrary passthrough value to be included in the result.
   */
 sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
 
   /**
-    * Produces the `ProducerRecord`s in the specified [[TransactionalProducerMessage]]
+    * Produces the `ProducerRecord`s in the specified [[TransactionalProducerRecords]]
     * in four steps: first a transaction is initialized, then the records are placed
     * in the buffer of the producer, then the offsets of the records are sent to the
     * transaction, and lastly the transaction is committed. If errors or cancellation
@@ -47,7 +47,7 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
     * only keeps the passthrough value in the output.
     */
   def produce[G[+_], P](
-    message: TransactionalProducerMessage[F, G, K, V, P]
+    records: TransactionalProducerRecords[F, G, K, V, P]
   ): F[ProducerResult[Chunk, K, V, P]]
 
   /**
@@ -55,7 +55,7 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
     * [[ProducerResult]] rather than the whole [[ProducerResult]].
     */
   def producePassthrough[G[+_], P](
-    message: TransactionalProducerMessage[F, G, K, V, P]
+    records: TransactionalProducerRecords[F, G, K, V, P]
   ): F[P]
 }
 
@@ -77,31 +77,31 @@ private[kafka] object TransactionalKafkaProducer {
           .map { withProducer =>
             new TransactionalKafkaProducer[F, K, V] {
               override def produce[G[+_], P](
-                message: TransactionalProducerMessage[F, G, K, V, P]
+                records: TransactionalProducerRecords[F, G, K, V, P]
               ): F[ProducerResult[Chunk, K, V, P]] =
-                produceTransaction(message)
-                  .map(ProducerResult(_, message.passthrough))
+                produceTransaction(records)
+                  .map(ProducerResult(_, records.passthrough))
 
               override def producePassthrough[G[+_], P](
-                message: TransactionalProducerMessage[F, G, K, V, P]
+                records: TransactionalProducerRecords[F, G, K, V, P]
               ): F[P] =
-                produceTransaction(message)
-                  .as(message.passthrough)
+                produceTransaction(records)
+                  .as(records.passthrough)
 
               private[this] def produceTransaction[G[+_], P](
-                message: TransactionalProducerMessage[F, G, K, V, P]
+                records: TransactionalProducerRecords[F, G, K, V, P]
               ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
-                if (message.records.isEmpty) F.pure(Chunk.empty)
+                if (records.records.isEmpty) F.pure(Chunk.empty)
                 else {
                   var consumerGroupIds = Set.empty[String]
                   var existsOffsetWithoutGroupId = false
-                  val batch = CommittableOffsetBatch.fromFoldableMap(message.records) { record =>
-                    record.committableOffset.consumerGroupId match {
+                  val batch = CommittableOffsetBatch.fromFoldableMap(records.records) { record =>
+                    record.offset.consumerGroupId match {
                       case Some(groupId) => consumerGroupIds = consumerGroupIds + groupId
                       case None          => existsOffsetWithoutGroupId = true
                     }
 
-                    record.committableOffset
+                    record.offset
                   }
 
                   val consumerGroupId =
@@ -112,19 +112,19 @@ private[kafka] object TransactionalKafkaProducer {
                   consumerGroupId.flatMap { groupId =>
                     withProducer { producer =>
                       F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
-                        val records: ArrayBuffer[ProducerRecord[K, V]] =
-                          new ArrayBuffer(message.records.size)
+                        val producerRecords: ArrayBuffer[ProducerRecord[K, V]] =
+                          new ArrayBuffer(records.records.size)
 
-                        message.records.foreach { committable =>
+                        records.records.foreach { committable =>
                           committable.foldable.foldLeft(committable.records, ()) {
                             case (_, record) =>
-                              records += record
+                              producerRecords += record
                               ()
                           }
                         }
 
                         Chunk
-                          .buffer(records)
+                          .buffer(producerRecords)
                           .traverse(
                             KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
                           )

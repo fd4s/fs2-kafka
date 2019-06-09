@@ -18,7 +18,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
           .evalTap(_.subscribe(topic.r))
           .flatMap(_.stream)
           .take(produced.size.toLong)
-          .map(_.committableOffset)
+          .map(_.offset)
           .through(commitBatch)
           .compile
           .lastOrError

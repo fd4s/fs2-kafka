@@ -53,7 +53,7 @@ sealed abstract class CommittableOffset[F[_]] {
     * [[offsetAndMetadata]] from the [[topicPartition]] from
     * Kafka.<br>
     * <br>
-    * Required for committing messages within a transaction.
+    * Required for committing offsets within a transaction.
     */
   def consumerGroupId: Option[String]
 

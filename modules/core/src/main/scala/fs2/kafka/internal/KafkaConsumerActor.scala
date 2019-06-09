@@ -71,7 +71,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   import logging._
 
   private[this] type ConsumerRecords =
-    Map[TopicPartition, NonEmptyVector[CommittableMessage[F, K, V]]]
+    Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]]
 
   private[this] val consumerGroupId: Option[String] =
     settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG)
@@ -138,7 +138,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] def fetch(
     partition: TopicPartition,
     streamId: Int,
-    deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
+    deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
   ): F[Unit] = {
     val assigned =
       withConsumer { consumer =>
@@ -259,7 +259,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       assigned.flatMap(deferred.complete) >> withOnRebalance >> asStreaming
     }
 
-  private[this] val messageCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
+  private[this] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
       val commit =
         Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
@@ -283,20 +283,20 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     }
 
-  private[this] def message(
+  private[this] def committableConsumerRecord(
     record: ConsumerRecord[K, V],
     partition: TopicPartition
-  ): CommittableMessage[F, K, V] =
-    CommittableMessage(
+  ): CommittableConsumerRecord[F, K, V] =
+    CommittableConsumerRecord(
       record = record,
-      committableOffset = CommittableOffset(
+      offset = CommittableOffset(
         topicPartition = partition,
         consumerGroupId = consumerGroupId,
         offsetAndMetadata = new OffsetAndMetadata(
           record.offset + 1L,
           settings.recordMetadata(record)
         ),
-        commit = messageCommit
+        commit = offsetCommit
       )
     )
 
@@ -308,7 +308,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           .traverse { record =>
             ConsumerRecord
               .fromJava(record, keyDeserializer, valueDeserializer)
-              .map(message(_, partition))
+              .map(committableConsumerRecord(_, partition))
           }
           .map((partition, _))
       }
@@ -424,12 +424,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
 private[kafka] object KafkaConsumerActor {
   final case class FetchRequest[F[_], K, V](
-    deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
+    deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
   ) {
-    def completeRevoked(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
+    def completeRevoked(chunk: Chunk[CommittableConsumerRecord[F, K, V]]): F[Unit] =
       deferred.complete((chunk, FetchCompletedReason.TopicPartitionRevoked))
 
-    def completeRecords(chunk: Chunk[CommittableMessage[F, K, V]]): F[Unit] =
+    def completeRecords(chunk: Chunk[CommittableConsumerRecord[F, K, V]]): F[Unit] =
       deferred.complete((chunk, FetchCompletedReason.FetchedRecords))
 
     override def toString: String =
@@ -455,7 +455,7 @@ private[kafka] object KafkaConsumerActor {
     def withFetch(
       partition: TopicPartition,
       streamId: Int,
-      deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
+      deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
     ): (State[F, K, V], Option[FetchRequest[F, K, V]]) = {
       val oldPartitionFetches =
         fetches.get(partition)
@@ -569,7 +569,7 @@ private[kafka] object KafkaConsumerActor {
     final case class Fetch[F[_], K, V](
       partition: TopicPartition,
       streamId: Int,
-      deferred: Deferred[F, (Chunk[CommittableMessage[F, K, V]], FetchCompletedReason)]
+      deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
     ) extends Request[F, K, V]
 
     final case class Commit[F[_], K, V](

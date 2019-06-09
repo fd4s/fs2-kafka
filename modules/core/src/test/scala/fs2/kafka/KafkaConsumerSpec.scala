@@ -15,10 +15,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   type Consumer = KafkaConsumer[IO, String, String]
 
-  type ConsumerStream = Stream[IO, CommittableMessage[IO, String, String]]
+  type ConsumerStream = Stream[IO, CommittableConsumerRecord[IO, String, String]]
 
   describe("KafkaConsumer#stream") {
-    it("should consume all messages") {
+    it("should consume all records") {
       withKafka { (config, topic) =>
         createCustomTopic(topic, partitions = 3)
         val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
@@ -31,7 +31,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
             .evalMap(IO.sleep(3.seconds).as) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
-            .map(message => message.record.key -> message.record.value)
+            .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
             .compile
             .toVector
@@ -48,14 +48,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
         val producedTotal = produced1.size.toLong + produced2.size.toLong
 
-        val consumer = (queue: Queue[IO, CommittableMessage[IO, String, String]]) =>
+        val consumer = (queue: Queue[IO, CommittableConsumerRecord[IO, String, String]]) =>
           consumerStream[IO]
             .using(consumerSettings(config))
             .evalTap(_.subscribeTo(topic))
             .evalMap(_.stream.evalMap(queue.enqueue1).compile.drain.start.void)
 
         (for {
-          queue <- Stream.eval(Queue.unbounded[IO, CommittableMessage[IO, String, String]])
+          queue <- Stream.eval(Queue.unbounded[IO, CommittableConsumerRecord[IO, String, String]])
           ref <- Stream.eval(Ref.of[IO, Map[String, Int]](Map.empty))
           _ <- consumer(queue)
           _ <- Stream.eval(IO.sleep(5.seconds))
@@ -65,9 +65,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- Stream.eval(IO(publishToKafka(topic, produced2)))
           _ <- Stream.eval {
             queue.dequeue
-              .evalMap { message =>
+              .evalMap { committable =>
                 ref.modify { counts =>
-                  val key = message.record.key
+                  val key = committable.record.key
                   val newCounts = counts.updated(key, counts.get(key).getOrElse(0) + 1)
                   (newCounts, newCounts)
                 }
@@ -90,14 +90,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
     it("should read from the given offset") {
       withKafka {
-        seekTest(numMessages = 100, readOffset = 90)
+        seekTest(numRecords = 100, readOffset = 90)
       }
     }
 
     it("should fail to read from a negative offset") {
       withKafka {
         an[IllegalArgumentException] should be thrownBy seekTest(
-          numMessages = 100,
+          numRecords = 100,
           readOffset = -1
         )(_, _)
       }
@@ -106,7 +106,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     it("should fail to read from a partition not assigned to this consumer") {
       withKafka {
         an[IllegalStateException] should be thrownBy seekTest(
-          numMessages = 100,
+          numRecords = 100,
           readOffset = 90,
           partition = Some(123)
         )(_, _)
@@ -126,7 +126,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .flatMap { consumer =>
               consumer.stream
                 .take(produced.size.toLong)
-                .map(_.committableOffset)
+                .map(_.offset)
                 .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
                 .evalMap(batch => batch.commit.as(batch.offsets))
             }
@@ -260,7 +260,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .flatTap { consumer =>
             consumer.stream
               .take(produced.size.toLong)
-              .map(_.committableOffset)
+              .map(_.offset)
               .through(commitBatch)
           }
           .evalTap { consumer =>
@@ -303,13 +303,13 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
-    def seekTest(numMessages: Long, readOffset: Long, partition: Option[Int] = None)(
+    def seekTest(numRecords: Long, readOffset: Long, partition: Option[Int] = None)(
       config: EmbeddedKafkaConfig,
       topic: String
     ) = {
       createCustomTopic(topic)
 
-      val produced = (0L until numMessages).map(n => s"key-$n" -> s"value->$n")
+      val produced = (0L until numRecords).map(n => s"key-$n" -> s"value->$n")
       publishToKafka(topic, produced)
 
       val consumed =
@@ -319,7 +319,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             val validSeekParams =
               consumer.stream
                 .take(Math.max(readOffset, 1))
-                .map(_.committableOffset)
+                .map(_.offset)
                 .compile
                 .toList
                 .map(_.last)
@@ -337,7 +337,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             val setOffset =
               seekParams.flatMap { case (tp, o) => consumer.seek(tp, o) }
 
-            val consume = consumer.stream.take(numMessages - readOffset)
+            val consume = consumer.stream.take(numRecords - readOffset)
 
             Stream.eval(consumer.subscribeTo(topic)).drain ++
               (Stream.eval_(setOffset) ++ consume)

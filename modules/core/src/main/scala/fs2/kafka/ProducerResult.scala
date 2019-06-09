@@ -25,7 +25,7 @@ import org.apache.kafka.clients.producer.RecordMetadata
 
 /**
   * [[ProducerResult]] represents the result of having produced zero
-  * or more `ProducerRecord`s from a [[ProducerMessage]]. Finally, a
+  * or more `ProducerRecord`s from a [[ProducerRecords]]. Finally, a
   * passthrough value and `ProducerRecord`s along with respective
   * `RecordMetadata` are emitted in a [[ProducerResult]].<br>
   * <br>

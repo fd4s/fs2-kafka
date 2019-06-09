@@ -197,7 +197,7 @@ Note that only automatic partition assignment is supported. Like in the [consume
 
 ## Record Streaming
 
-Once subscribed to at least one topic, we can use `stream` for a `Stream` of [`CommittableMessage`][committablemessage]s. Each message contains a deserialized [`ConsumerRecord`][consumerrecord], as well as a [`CommittableOffset`][committableoffset] for managing [offset commits](#offset-commits). Streams guarantee records in topic-partition order, but not ordering across partitions. This is the same ordering guarantee that Kafka provides.
+Once subscribed to at least one topic, we can use `stream` for a `Stream` of [`CommittableConsumerRecord`][committableconsumerrecord]s. Each record contains a deserialized [`ConsumerRecord`][consumerrecord], as well as a [`CommittableOffset`][committableoffset] for managing [offset commits](#offset-commits). Streams guarantee records in topic-partition order, but not ordering across partitions. This is the same ordering guarantee that Kafka provides.
 
 ```scala mdoc:silent
 object ConsumerStreamExample extends IOApp {
@@ -219,8 +219,8 @@ When using `stream`, records on all assigned partitions end up in the same `Stre
 ```scala mdoc:silent
 object ConsumerPartitionedStreamExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
-    def processMessage(message: CommittableMessage[IO, String, String]): IO[Unit] =
-      IO(println(s"Processing message: $message"))
+    def processRecord(record: ConsumerRecord[String, String]): IO[Unit] =
+      IO(println(s"Processing record: $record"))
 
     val stream =
       consumerStream(consumerSettings)
@@ -228,7 +228,9 @@ object ConsumerPartitionedStreamExample extends IOApp {
         .flatMap(_.partitionedStream)
         .map { partitionStream =>
           partitionStream
-            .evalMap(processMessage)
+            .evalMap { committable =>
+              processRecord(committable.record)
+            }
         }
         .parJoinUnbounded
 
@@ -237,23 +239,25 @@ object ConsumerPartitionedStreamExample extends IOApp {
 }
 ```
 
-The `partitionStream` in the example above is a `Stream` of records for a single topic-partition. We define the processing per topic-partition rather than across all partitions, as was the case with `stream`. The example will run `processMessage` on every record, one-at-a-time in-order per topic-partition. However, multiple partitions are processed at the same time when using `parJoinUnbounded`.
+The `partitionStream` in the example above is a `Stream` of records for a single topic-partition. We define the processing per topic-partition rather than across all partitions, as was the case with `stream`. The example will run `processRecord` on every record, one-at-a-time in-order per topic-partition. However, multiple partitions are processed at the same time when using `parJoinUnbounded`.
 
 Note that we have to use `parJoinUnbounded` here so that all partitions are processed. While `parJoinUnbounded` doesn't limit the number of streams running concurrently, the actual limit is the number of assigned partitions. In fact, `stream` is just an alias for `partitionedStream.parJoinUnbounded`.
 
-When processing of records is independent of each other, as is the case with `processMessage` above, it's often easier and more performant to use `stream` and `mapAsync`, as seen in the example below. Generally, it's crucial to ensure there are no data races between processing of any two records.
+When processing of records is independent of each other, as is the case with `processRecord` above, it's often easier and more performant to use `stream` and `mapAsync`, as seen in the example below. Generally, it's crucial to ensure there are no data races between processing of any two records.
 
 ```scala mdoc:silent
 object ConsumerMapAsyncExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
-    def processMessage(message: CommittableMessage[IO, String, String]): IO[Unit] =
-      IO(println(s"Processing message: $message"))
+    def processRecord(record: ConsumerRecord[String, String]): IO[Unit] =
+      IO(println(s"Processing record: $record"))
 
     val stream =
       consumerStream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
-        .mapAsync(25)(processMessage)
+        .mapAsync(25) { committable =>
+          processRecord(committable.record)
+        }
 
     stream.compile.drain.as(ExitCode.Success)
   }
@@ -262,7 +266,7 @@ object ConsumerMapAsyncExample extends IOApp {
 
 ## Offset Commits
 
-Offsets commits are managed manually, which is important for ensuring at-least-once delivery. This means that, by [default](#default-settings), automatic offset commits are disabled. If you're sure you don't need at-least-once delivery, you can re-enable automatic offset commits using `withEnableAutoCommit` on [`ConsumerSettings`][consumersettings], and then ignore the [`CommittableOffset`][committableoffset] part of [`CommittableMessage`][committablemessage], keeping only the [`ConsumerRecord`][consumerrecord].
+Offsets commits are managed manually, which is important for ensuring at-least-once delivery. This means that, by [default](#default-settings), automatic offset commits are disabled. If you're sure you don't need at-least-once delivery, you can re-enable automatic offset commits using `withEnableAutoCommit` on [`ConsumerSettings`][consumersettings], and then ignore the [`CommittableOffset`][committableoffset] part of [`CommittableConsumerRecord`][committableconsumerrecord], keeping only the [`ConsumerRecord`][consumerrecord].
 
 Offset commits are usually done in batches for performance reasons. We normally don't need to commit every offset, but only the last processed offset. There is a trade-off in how much reprocessing we have to do when we restart versus the performance implication of committing more frequently. Depending on our situation, we'll then choose an appropriate frequency for offset commits.
 
@@ -271,16 +275,16 @@ We should keep the [`CommittableOffset`][committableoffset] in our `Stream` once
 ```scala mdoc:silent
 object ConsumerCommitBatchExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
-    def processMessage(message: CommittableMessage[IO, String, String]): IO[Unit] =
-      IO(println(s"Processing message: $message"))
+    def processRecord(record: ConsumerRecord[String, String]): IO[Unit] =
+      IO(println(s"Processing record: $record"))
 
     val stream =
       consumerStream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
-        .mapAsync(25) { message =>
-          processMessage(message)
-            .as(message.committableOffset)
+        .mapAsync(25) { committable =>
+          processRecord(committable.record)
+            .as(committable.offset)
         }
         .through(commitBatchWithin(500, 15.seconds))
 
@@ -298,7 +302,7 @@ For at-least-once delivery, offset commit has to be the last step in the stream.
 If we're sure we need to commit every offset, we can `commit` individual [`CommittableOffset`][committableoffset]s. Note there is a substantial performance implication to committing every offset, and it should be avoided when possible. The approach also limits parallelism, since offset commits need to preserve topic-partition ordering.
 
 [commitrecovery-default]: @API_BASE_URL@/CommitRecovery$.html#Default:fs2.kafka.CommitRecovery
-[committablemessage]: @API_BASE_URL@/CommittableMessage.html
+[committableconsumerrecord]: @API_BASE_URL@/CommittableConsumerRecord.html
 [committableoffset]: @API_BASE_URL@/CommittableOffset.html
 [committableoffsetbatch]: @API_BASE_URL@/CommittableOffsetBatch.html
 [committableoffsetbatch$]: @API_BASE_URL@/CommittableOffsetBatch$.html

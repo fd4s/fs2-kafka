@@ -40,7 +40,7 @@ sealed abstract class CommittableProducerRecords[F[_], G[+_], +K, +V] {
   def records: G[ProducerRecord[K, V]]
 
   /** The offset to commit. */
-  def committableOffset: CommittableOffset[F]
+  def offset: CommittableOffset[F]
 
   /** The `Foldable` instance for `G[_]`. Required by [[TransactionalKafkaProducer]]. */
   def foldable: Foldable[G]
@@ -49,13 +49,13 @@ sealed abstract class CommittableProducerRecords[F[_], G[+_], +K, +V] {
 object CommittableProducerRecords {
   private[this] final class CommittableProducerRecordsImpl[F[_], G[+_], +K, +V](
     override val records: G[ProducerRecord[K, V]],
-    override val committableOffset: CommittableOffset[F],
+    override val offset: CommittableOffset[F],
     override val foldable: Foldable[G]
   ) extends CommittableProducerRecords[F, G, K, V] {
     override def toString: String = {
       implicit val G: Foldable[G] = foldable
-      if (records.isEmpty) s"CommittableProducerRecords(<empty>, $committableOffset)"
-      else records.mkString("CommittableProducerRecords(", ", ", s", $committableOffset)")
+      if (records.isEmpty) s"CommittableProducerRecords(<empty>, $offset)"
+      else records.mkString("CommittableProducerRecords(", ", ", s", $offset)")
     }
   }
 
@@ -66,9 +66,9 @@ object CommittableProducerRecords {
     */
   def apply[F[_], G[+_], K, V](
     records: G[ProducerRecord[K, V]],
-    committableOffset: CommittableOffset[F]
+    offset: CommittableOffset[F]
   )(implicit G: Foldable[G]): CommittableProducerRecords[F, G, K, V] =
-    new CommittableProducerRecordsImpl(records, committableOffset, G)
+    new CommittableProducerRecordsImpl(records, offset, G)
 
   /**
     * Creates a new [[CommittableProducerRecords]] for producing exactly
@@ -77,9 +77,9 @@ object CommittableProducerRecords {
     */
   def one[F[_], K, V](
     record: ProducerRecord[K, V],
-    committableOffset: CommittableOffset[F]
+    offset: CommittableOffset[F]
   ): CommittableProducerRecords[F, Id, K, V] =
-    apply[F, Id, K, V](record, committableOffset)
+    apply[F, Id, K, V](record, offset)
 
   implicit def committableProducerRecordsShow[F[_], G[+_], K, V](
     implicit
@@ -89,12 +89,12 @@ object CommittableProducerRecords {
     Show.show { committable =>
       implicit val G: Foldable[G] = committable.foldable
       if (committable.records.isEmpty)
-        show"CommittableProducerRecords(<empty>, ${committable.committableOffset})"
+        show"CommittableProducerRecords(<empty>, ${committable.offset})"
       else
         committable.records.mkStringShow(
           "CommittableProducerRecords(",
           ", ",
-          s", ${committable.committableOffset})"
+          s", ${committable.offset})"
         )
     }
 }
