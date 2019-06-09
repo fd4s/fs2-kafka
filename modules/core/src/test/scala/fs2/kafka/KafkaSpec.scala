@@ -1,5 +1,6 @@
 package fs2.kafka
 
+import cats.ApplicativeError
 import cats.effect.IO
 import cats.effect.concurrent.Ref
 import fs2.{Chunk, Stream}
@@ -29,7 +30,7 @@ final class KafkaSpec extends BaseAsyncSpec {
 
   def exampleOffsets[F[_]](
     commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
-  ): List[CommittableOffset[F]] = List(
+  )(implicit F: ApplicativeError[F, Throwable]): List[CommittableOffset[F]] = List(
     CommittableOffset[F](
       new TopicPartition("topic", 0),
       new OffsetAndMetadata(1L),

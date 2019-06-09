@@ -75,21 +75,13 @@ private[kafka] object TransactionalKafkaProducer {
               ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
                 if (records.records.isEmpty) F.pure(Chunk.empty)
                 else {
-                  var consumerGroupIds = Set.empty[String]
-                  var existsOffsetWithoutGroupId = false
-                  val batch = CommittableOffsetBatch.fromFoldableMap(records.records) { record =>
-                    record.offset.consumerGroupId match {
-                      case Some(groupId) => consumerGroupIds = consumerGroupIds + groupId
-                      case None          => existsOffsetWithoutGroupId = true
-                    }
-
-                    record.offset
-                  }
+                  val batch =
+                    CommittableOffsetBatch.fromFoldableMap(records.records)(_.offset)
 
                   val consumerGroupId =
-                    if (existsOffsetWithoutGroupId || consumerGroupIds.size != 1)
-                      F.raiseError(ConsumerGroupException(consumerGroupIds))
-                    else F.pure(consumerGroupIds.head)
+                    if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
+                      F.raiseError(ConsumerGroupException(batch.consumerGroupIds))
+                    else F.pure(batch.consumerGroupIds.head)
 
                   consumerGroupId.flatMap { groupId =>
                     withProducer { producer =>
