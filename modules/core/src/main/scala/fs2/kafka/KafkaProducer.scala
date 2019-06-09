@@ -32,7 +32,7 @@ import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
   * used for keeping the [[CommittableOffset]]s, in order to commit
   * offsets, but any value can be used as passthrough value.
   */
-sealed abstract class KafkaProducer[F[_], K, V] {
+abstract class KafkaProducer[F[_], K, V] {
 
   /**
     * Produces the `ProducerRecord`s in the specified [[ProducerRecords]]
