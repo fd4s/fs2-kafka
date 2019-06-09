@@ -4,7 +4,7 @@ val catsEffectVersion = "1.3.1"
 
 val fs2Version = "1.0.4"
 
-val kafkaVersion = "2.2.0"
+val kafkaVersion = "2.2.1"
 
 lazy val root = project
   .in(file("."))
@@ -57,7 +57,7 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "cats-testkit" % "1.6.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "io.github.embeddedkafka" %% "embedded-kafka" % kafkaVersion,
+    "io.github.embeddedkafka" %% "embedded-kafka" % "2.2.0",
     "org.apache.kafka" %% "kafka" % kafkaVersion
   ).map(_ % Test),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
