@@ -1,7 +1,6 @@
 package fs2.kafka
 
 import cats.effect.{Sync, IO}
-import fs2.Stream
 import java.util.UUID
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.admin.AdminClientConfig
@@ -30,30 +29,11 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
       .withProperties(consumerProperties(config))
       .withRecordMetadata(_.timestamp.toString)
 
-  final def consumerSettingsExecutionContext(
-    config: EmbeddedKafkaConfig
-  ): Stream[IO, ConsumerSettings[IO, String, String]] =
-    consumerExecutionContextStream[IO].map { executionContext =>
-      ConsumerSettings[IO, String, String]
-        .withExecutionContext(executionContext)
-        .withProperties(consumerProperties(config))
-        .withRecordMetadata(_.timestamp.toString)
-    }
-
   final def producerSettings[F[_]](
     config: EmbeddedKafkaConfig
   )(implicit F: Sync[F]): ProducerSettings[F, String, String] =
     ProducerSettings[F, String, String]
       .withProperties(producerProperties(config))
-
-  final def producerSettingsExecutionContext[F[_]](
-    config: EmbeddedKafkaConfig
-  ): Stream[IO, ProducerSettings[IO, String, String]] =
-    producerExecutionContextStream[IO].map { executionContext =>
-      ProducerSettings[IO, String, String]
-        .withExecutionContext(executionContext)
-        .withProperties(producerProperties(config))
-    }
 
   final def adminClientProperties(config: EmbeddedKafkaConfig): Map[String, String] =
     Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}")

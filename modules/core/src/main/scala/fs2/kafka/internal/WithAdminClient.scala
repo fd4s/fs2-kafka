@@ -40,7 +40,7 @@ private[kafka] object WithAdminClient {
     val executionContextResource =
       settings.executionContext
         .map(Resource.pure[F, ExecutionContext])
-        .getOrElse(adminClientExecutionContextResource)
+        .getOrElse(ExecutionContexts.adminClient)
 
     executionContextResource.flatMap { executionContext =>
       Resource.make[F, WithAdminClient[F]] {

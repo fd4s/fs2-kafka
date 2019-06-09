@@ -36,7 +36,7 @@ private[kafka] object WithProducer {
     val executionContextResource =
       settings.executionContext
         .map(Resource.pure[F, ExecutionContext])
-        .getOrElse(producerExecutionContextResource)
+        .getOrElse(ExecutionContexts.producer)
 
     executionContextResource.flatMap { executionContext =>
       Resource.make[F, WithProducer[F]] {
