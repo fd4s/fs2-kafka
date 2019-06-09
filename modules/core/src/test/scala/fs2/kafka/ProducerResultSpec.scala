@@ -19,7 +19,7 @@ final class ProducerResultSpec extends BaseSpec {
           ProducerRecord("topic", "key", "value")
             .withPartition(1)
             .withTimestamp(0L)
-            .withHeaders(Header("key", Array[Byte]()).headers) ->
+            .withHeaders(Headers(Header("key", Array[Byte]()))) ->
             new RecordMetadata(new TopicPartition("topic", 0), 0L, 0L, 0L, 0L, 0, 0)
         )
 

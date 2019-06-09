@@ -32,7 +32,7 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("should concat non-empty") {
-      val headers = Header("key", Array[Byte]()).headers
+      val headers = Headers(Header("key", Array[Byte]()))
       assert(Headers.empty.concat(headers).toChain.size == 1)
     }
 
@@ -104,7 +104,7 @@ final class HeadersSpec extends BaseSpec {
 
   describe("Headers#nonEmpty.asJava") {
     val header = Header("key", Array[Byte]())
-    val headers = header.headers.asJava
+    val headers = Headers(header).asJava
 
     it("add(header) throws IllegalStateException") {
       a[IllegalStateException] should be thrownBy {
@@ -186,25 +186,25 @@ final class HeadersSpec extends BaseSpec {
 
     it("should return true for existing key") {
       forAll { key: String =>
-        assert(Header(key, "value").headers.exists(key))
+        assert(Headers(Header(key, "value")).exists(key))
       }
     }
 
     it("should return false for non-existing key") {
       forAll { key: String =>
         whenever(key != "key") {
-          assert(!Header("key", "value").headers.exists(key))
+          assert(!Headers(Header("key", "value")).exists(key))
         }
       }
     }
 
     it("should concat empty") {
-      val headers = Header("key", Array[Byte]()).headers
+      val headers = Headers(Header("key", Array[Byte]()))
       assert(headers.concat(Headers.empty).toChain.size == 1)
     }
 
     it("should concat non-empty") {
-      val headers = Header("key", Array[Byte]()).headers
+      val headers = Headers(Header("key", Array[Byte]()))
       assert(headers.concat(headers).toChain.size == 2)
     }
 

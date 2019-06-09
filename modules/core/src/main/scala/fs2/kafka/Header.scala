@@ -34,10 +34,6 @@ sealed abstract class Header extends org.apache.kafka.common.header.Header {
   /** The serialized header value. */
   override def value: Array[Byte]
 
-  /** Creates a new [[Headers]] instance with this header included. */
-  final def headers: Headers =
-    Headers(this)
-
   /** Deserializes the [[value]] to the specified type. */
   final def as[A](implicit deserializer: HeaderDeserializer[A]): A =
     deserializer.deserialize(value)

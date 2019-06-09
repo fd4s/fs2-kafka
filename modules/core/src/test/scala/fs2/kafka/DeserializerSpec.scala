@@ -54,7 +54,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
       }
 
     forAll { (topic: String, i: Int) =>
-      val headers = Header("format", "int").headers
+      val headers = Headers(Header("format", "int"))
       val serialized = Serializer[IO, Int].serialize(topic, Headers.empty, i).unsafeRunSync
       val deserialized = deserializer.deserialize(topic, headers, serialized)
       deserialized.attempt.unsafeRunSync shouldBe Right(i)
