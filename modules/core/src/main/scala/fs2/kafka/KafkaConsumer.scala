@@ -53,10 +53,10 @@ import scala.util.matching.Regex
   * which provide [[CommittableOffset]]s with the ability to commit
   * record offsets to Kafka. For performance reasons, offsets are
   * usually committed in batches using [[CommittableOffsetBatch]].
-  * Provided `Pipe`s, like [[commitBatch]] or [[commitBatchWithin]]
-  * are available for batch committing offsets. If you are not
-  * committing offsets to Kafka, you can simply discard the
-  * [[CommittableOffset]], and only make use of the record.<br>
+  * Provided `Pipe`s, like [[commitBatchWithin]] are available for
+  * batch committing offsets. If you are not committing offsets to
+  * Kafka, you can simply discard the [[CommittableOffset]], and
+  * only make use of the record.<br>
   * <br>
   * While it's technically possible to start more than one stream from a
   * single [[KafkaConsumer]], it is generally not recommended as there is

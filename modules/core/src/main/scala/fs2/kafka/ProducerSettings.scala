@@ -250,6 +250,18 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
+    * The maximum number of records to produce in the same batch.<br>
+    * <br>
+    * The default value is 100.
+    */
+  def parallelism: Int
+
+  /**
+    * Creates a new [[ProducerSettings]] with the specified [[parallelism]].
+    */
+  def withParallelism(parallelism: Int): ProducerSettings[F, K, V]
+
+  /**
     * Creates a new `Producer` using the [[properties]]. Note that this
     * operation should be bracketed, using e.g. `Resource`, to ensure
     * the `close` function on the producer is called.
@@ -273,6 +285,7 @@ object ProducerSettings {
     override val executionContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
+    override val parallelism: Int,
     val createProducerWith: Map[String, String] => F[KafkaByteProducer]
   ) extends ProducerSettings[F, K, V] {
     override def withExecutionContext(
@@ -339,6 +352,9 @@ object ProducerSettings {
     override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       copy(closeTimeout = closeTimeout)
 
+    override def withParallelism(parallelism: Int): ProducerSettings[F, K, V] =
+      copy(parallelism = parallelism)
+
     override def createProducer: F[KafkaByteProducer] =
       createProducerWith(properties)
 
@@ -361,6 +377,7 @@ object ProducerSettings {
       executionContext = None,
       properties = Map.empty,
       closeTimeout = 60.seconds,
+      parallelism = 100,
       createProducerWith = properties =>
         F.delay {
           val byteArraySerializer = new ByteArraySerializer

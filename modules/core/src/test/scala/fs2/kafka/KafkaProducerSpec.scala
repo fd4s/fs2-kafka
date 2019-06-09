@@ -19,7 +19,10 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
             case passthrough @ (key, value) =>
               ProducerRecords.one(ProducerRecord(topic, key, value), passthrough)
           })
-          batched <- Stream.eval(producer.producePassthrough(records)).buffer(toProduce.size)
+          batched <- Stream
+            .eval(producer.produce(records))
+            .map(_.map(_.passthrough))
+            .buffer(toProduce.size)
           passthrough <- Stream.eval(batched)
         } yield passthrough).compile.toVector.unsafeRunSync()
 

@@ -40,23 +40,11 @@ sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
     * in the buffer of the producer, then the offsets of the records are sent to the
     * transaction, and lastly the transaction is committed. If errors or cancellation
     * occurs, the transaction is aborted. The returned effect succeeds if the whole
-    * transaction completes successfully.<br>
-    * <br>
-    * If you're only interested in the passthrough value, and not the whole
-    * [[ProducerResult]], you can instead use [[producePassthrough]] which
-    * only keeps the passthrough value in the output.
+    * transaction completes successfully.
     */
   def produce[G[+_], P](
     records: TransactionalProducerRecords[F, G, K, V, P]
   ): F[ProducerResult[Chunk, K, V, P]]
-
-  /**
-    * Like [[produce]] but only keeps the passthrough value of the
-    * [[ProducerResult]] rather than the whole [[ProducerResult]].
-    */
-  def producePassthrough[G[+_], P](
-    records: TransactionalProducerRecords[F, G, K, V, P]
-  ): F[P]
 }
 
 private[kafka] object TransactionalKafkaProducer {
@@ -81,12 +69,6 @@ private[kafka] object TransactionalKafkaProducer {
               ): F[ProducerResult[Chunk, K, V, P]] =
                 produceTransaction(records)
                   .map(ProducerResult(_, records.passthrough))
-
-              override def producePassthrough[G[+_], P](
-                records: TransactionalProducerRecords[F, G, K, V, P]
-              ): F[P] =
-                produceTransaction(records)
-                  .as(records.passthrough)
 
               private[this] def produceTransaction[G[+_], P](
                 records: TransactionalProducerRecords[F, G, K, V, P]
