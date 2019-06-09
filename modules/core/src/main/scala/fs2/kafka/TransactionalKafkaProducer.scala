@@ -32,7 +32,7 @@ import scala.collection.mutable.ArrayBuffer
   * Records are wrapped in [[TransactionalProducerRecords]] which allow an
   * arbitrary passthrough value to be included in the result.
   */
-sealed abstract class TransactionalKafkaProducer[F[_], K, V] {
+abstract class TransactionalKafkaProducer[F[_], K, V] {
 
   /**
     * Produces the `ProducerRecord`s in the specified [[TransactionalProducerRecords]]
