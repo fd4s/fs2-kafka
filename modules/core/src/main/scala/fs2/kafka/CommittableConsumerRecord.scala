@@ -26,7 +26,7 @@ import cats.syntax.show._
   * batches, either using [[CommittableOffsetBatch]] or via pipes,
   * like [[commitBatch]] and [[commitBatchWithin]]. If you are not
   * committing offsets to Kafka then you can use [[record]] to get
-  * the underlying record and also discard the [[committableOffset]].<br>
+  * the underlying record and also discard the [[offset]].<br>
   * <br>
   * While normally not necessary, [[CommittableConsumerRecord#apply]]
   * can be used to create a new instance.
@@ -36,7 +36,7 @@ sealed abstract class CommittableConsumerRecord[F[_], +K, +V] {
   /**
     * The Kafka record for the [[CommittableConsumerRecord]]. If you
     * are not committing offsets to Kafka, simply use this to get the
-    * [[ConsumerRecord]] and discard the [[committableOffset]].
+    * [[ConsumerRecord]] and discard the [[offset]].
     */
   def record: ConsumerRecord[K, V]
 
@@ -47,16 +47,16 @@ sealed abstract class CommittableConsumerRecord[F[_], +K, +V] {
     * [[commitBatchWithin]] use [[CommittableOffsetBatch]] to batch
     * and commit offsets.
     */
-  def committableOffset: CommittableOffset[F]
+  def offset: CommittableOffset[F]
 }
 
 object CommittableConsumerRecord {
   private[this] final class CommittableConsumerRecordImpl[F[_], +K, +V](
     override val record: ConsumerRecord[K, V],
-    override val committableOffset: CommittableOffset[F]
+    override val offset: CommittableOffset[F]
   ) extends CommittableConsumerRecord[F, K, V] {
     override def toString: String =
-      s"CommittableConsumerRecord($record, $committableOffset)"
+      s"CommittableConsumerRecord($record, $offset)"
   }
 
   /**
@@ -66,18 +66,15 @@ object CommittableConsumerRecord {
     */
   def apply[F[_], K, V](
     record: ConsumerRecord[K, V],
-    committableOffset: CommittableOffset[F]
+    offset: CommittableOffset[F]
   ): CommittableConsumerRecord[F, K, V] =
-    new CommittableConsumerRecordImpl(
-      record = record,
-      committableOffset = committableOffset
-    )
+    new CommittableConsumerRecordImpl(record, offset)
 
   implicit def committableConsumerRecordShow[F[_], K, V](
     implicit
     K: Show[K],
     V: Show[V]
   ): Show[CommittableConsumerRecord[F, K, V]] = Show.show { cm =>
-    show"CommittableConsumerRecord(${cm.record}, ${cm.committableOffset})"
+    show"CommittableConsumerRecord(${cm.record}, ${cm.offset})"
   }
 }

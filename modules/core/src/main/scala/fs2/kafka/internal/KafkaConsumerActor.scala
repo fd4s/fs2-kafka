@@ -289,7 +289,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   ): CommittableConsumerRecord[F, K, V] =
     CommittableConsumerRecord(
       record = record,
-      committableOffset = CommittableOffset(
+      offset = CommittableOffset(
         topicPartition = partition,
         consumerGroupId = consumerGroupId,
         offsetAndMetadata = new OffsetAndMetadata(

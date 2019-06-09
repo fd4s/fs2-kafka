@@ -153,9 +153,9 @@ private[kafka] object LogEntry {
         case (append, (tp, ms)) =>
           append(tp.show)
           append(" -> { first: ")
-          append(ms.head.committableOffset.offsetAndMetadata.show)
+          append(ms.head.offset.offsetAndMetadata.show)
           append(", last: ")
-          append(ms.last.committableOffset.offsetAndMetadata.show)
+          append(ms.last.offset.offsetAndMetadata.show)
           append(" }")
       }("", ", ", "")
 

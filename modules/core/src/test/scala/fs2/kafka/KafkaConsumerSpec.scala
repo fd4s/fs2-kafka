@@ -126,7 +126,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .flatMap { consumer =>
               consumer.stream
                 .take(produced.size.toLong)
-                .map(_.committableOffset)
+                .map(_.offset)
                 .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
                 .evalMap(batch => batch.commit.as(batch.offsets))
             }
@@ -260,7 +260,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .flatTap { consumer =>
             consumer.stream
               .take(produced.size.toLong)
-              .map(_.committableOffset)
+              .map(_.offset)
               .through(commitBatch)
           }
           .evalTap { consumer =>
@@ -319,7 +319,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             val validSeekParams =
               consumer.stream
                 .take(Math.max(readOffset, 1))
-                .map(_.committableOffset)
+                .map(_.offset)
                 .compile
                 .toList
                 .map(_.last)

@@ -30,7 +30,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
           _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
           records <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
             case ((key, value), i) =>
-              val committableOffset =
+              val offset =
                 CommittableOffset[IO](
                   new TopicPartition(topic, (i % 3).toInt),
                   new OffsetAndMetadata(i),
@@ -41,7 +41,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
               TransactionalProducerRecords.one(
                 CommittableProducerRecords.one(
                   ProducerRecord(topic, key, value),
-                  committableOffset
+                  offset
                 ),
                 (key, value)
               )

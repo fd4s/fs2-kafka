@@ -96,12 +96,12 @@ private[kafka] object TransactionalKafkaProducer {
                   var consumerGroupIds = Set.empty[String]
                   var existsOffsetWithoutGroupId = false
                   val batch = CommittableOffsetBatch.fromFoldableMap(records.records) { record =>
-                    record.committableOffset.consumerGroupId match {
+                    record.offset.consumerGroupId match {
                       case Some(groupId) => consumerGroupIds = consumerGroupIds + groupId
                       case None          => existsOffsetWithoutGroupId = true
                     }
 
-                    record.committableOffset
+                    record.offset
                   }
 
                   val consumerGroupId =
