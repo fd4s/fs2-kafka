@@ -130,7 +130,7 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
       }
 
     forAll { (topic: String, i: Int) =>
-      val headers = Header("format", "int").headers
+      val headers = Headers(Header("format", "int"))
       val serialized = serializer.serialize(topic, headers, i)
       val expected = Serializer[IO, Int].serialize(topic, Headers.empty, i)
       serialized.unsafeRunSync shouldBe expected.unsafeRunSync
