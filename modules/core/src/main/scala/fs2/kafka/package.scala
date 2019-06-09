@@ -109,9 +109,9 @@ package object kafka {
     * [[commitBatchChunkOption]].<br>
     * <br>
     * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed message
-    * results in producing multiple messages, and an offset should only
-    * be committed once all of the messages have been produced.<br>
+    * be committed. This is particularly useful when a consumed record
+    * results in producing multiple records, and an offset should only
+    * be committed once all of the records have been produced.<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
     * like the produce effect from [[KafkaProducer.produce]], then
@@ -132,9 +132,9 @@ package object kafka {
     * [[commitBatchChunkOptionF]].<br>
     * <br>
     * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed message
-    * results in producing multiple messages, and an offset should only
-    * be committed once all of the messages have been produced.<br>
+    * be committed. This is particularly useful when a consumed record
+    * results in producing multiple records, and an offset should only
+    * be committed once all of the records have been produced.<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
     * producing records, you can use [[KafkaProducer.produce]] and
@@ -199,9 +199,9 @@ package object kafka {
     * use [[commitBatchOption]] instead.<br>
     * <br>
     * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed message
-    * results in producing multiple messages, and an offset should only
-    * be committed once all of the messages have been produced.<br>
+    * be committed. This is particularly useful when a consumed record
+    * results in producing multiple records, and an offset should only
+    * be committed once all of the records have been produced.<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
     * like the produce effect from [[KafkaProducer.produce]], then
@@ -222,9 +222,9 @@ package object kafka {
     * use [[commitBatchOptionF]] instead.<br>
     * <br>
     * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed message
-    * results in producing multiple messages, and an offset should only
-    * be committed once all of the messages have been produced.<br>
+    * be committed. This is particularly useful when a consumed record
+    * results in producing multiple records, and an offset should only
+    * be committed once all of the records have been produced.<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
     * producing records, you can use [[KafkaProducer.produce]] and
@@ -295,9 +295,9 @@ package object kafka {
     * offsets for that time window.<br>
     * <br>
     * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed message
-    * results in producing multiple messages, and an offset should only
-    * be committed once all of the messages have been produced.<br>
+    * be committed. This is particularly useful when a consumed record
+    * results in producing multiple records, and an offset should only
+    * be committed once all of the records have been produced.<br>
     * <br>
     * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
     * like the produce effect from [[KafkaProducer.produce]], then
@@ -321,9 +321,9 @@ package object kafka {
     * offsets for that time window.<br>
     * <br>
     * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed message
-    * results in producing multiple messages, and an offset should only
-    * be committed once all of the messages have been produced.<br>
+    * be committed. This is particularly useful when a consumed record
+    * results in producing multiple records, and an offset should only
+    * be committed once all of the records have been produced.<br>
     * <br>
     * Note that in order to enable offset commits in batches when also
     * producing records, you can use [[KafkaProducer.produce]] and

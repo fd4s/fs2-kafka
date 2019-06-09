@@ -259,7 +259,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       assigned.flatMap(deferred.complete) >> withOnRebalance >> asStreaming
     }
 
-  private[this] val messageCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
+  private[this] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
       val commit =
         Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
@@ -283,7 +283,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
     }
 
-  private[this] def message(
+  private[this] def committableConsumerRecord(
     record: ConsumerRecord[K, V],
     partition: TopicPartition
   ): CommittableConsumerRecord[F, K, V] =
@@ -296,7 +296,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           record.offset + 1L,
           settings.recordMetadata(record)
         ),
-        commit = messageCommit
+        commit = offsetCommit
       )
     )
 
@@ -308,7 +308,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           .traverse { record =>
             ConsumerRecord
               .fromJava(record, keyDeserializer, valueDeserializer)
-              .map(message(_, partition))
+              .map(committableConsumerRecord(_, partition))
           }
           .map((partition, _))
       }

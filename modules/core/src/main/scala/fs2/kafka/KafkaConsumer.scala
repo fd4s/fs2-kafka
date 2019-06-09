@@ -36,13 +36,13 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
 
 /**
-  * [[KafkaConsumer]] represents a consumer of Kafka messages, with the
+  * [[KafkaConsumer]] represents a consumer of Kafka records, with the
   * ability to `subscribe` to topics, start a single top-level stream,
   * and optionally control it via the provided [[fiber]] instance.<br>
   * <br>
   * The following top-level streams are provided.<br>
   * <br>
-  * - [[stream]] provides a single stream of messages, where the order
+  * - [[stream]] provides a single stream of records, where the order
   *   of records is guaranteed per topic-partition.<br>
   * - [[partitionedStream]] provides a stream with elements as streams
   *   that continually request records for a single partition. Order
@@ -61,9 +61,9 @@ import scala.util.matching.Regex
   * While it's technically possible to start more than one stream from a
   * single [[KafkaConsumer]], it is generally not recommended as there is
   * no guarantee which stream will receive which records, and there might
-  * be an overlap, in terms of duplicate messages, between the two streams.
+  * be an overlap, in terms of duplicate records, between the two streams.
   * If a first stream completes, possibly with error, there's no guarantee
-  * the stream has processed all of the messages it received, and a second
+  * the stream has processed all of the records it received, and a second
   * stream from the same [[KafkaConsumer]] might not be able to pick up where
   * the first one left off. Therefore, only create a single top-level stream
   * per [[KafkaConsumer]], and if you want to start a new stream if the first
@@ -107,7 +107,7 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 
   /**
     * Overrides the fetch offsets that the consumer will use when reading the
-    * next message. If this API is invoked for the same partition more than once,
+    * next record. If this API is invoked for the same partition more than once,
     * the latest offset will be used. Note that you may lose data if this API is
     * arbitrarily used in the middle of consumption to reset the fetch offsets.
     */

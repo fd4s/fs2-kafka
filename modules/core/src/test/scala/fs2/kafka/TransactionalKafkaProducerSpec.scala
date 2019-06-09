@@ -28,7 +28,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
               .withTransactionalId("transactions")
           )
           _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
-          message <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
+          records <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
             case ((key, value), i) =>
               val committableOffset =
                 CommittableOffset[IO](
@@ -38,7 +38,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
                   _ => IO.unit
                 )
 
-              TransactionalProducerMessage.one(
+              TransactionalProducerRecords.one(
                 CommittableProducerRecords.one(
                   ProducerRecord(topic, key, value),
                   committableOffset
@@ -46,7 +46,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
                 (key, value)
               )
           }
-          passthrough <- Stream.eval(producer.producePassthrough(message)).buffer(toProduce.size)
+          passthrough <- Stream.eval(producer.producePassthrough(records)).buffer(toProduce.size)
         } yield passthrough).compile.toVector.unsafeRunSync()
 
       produced should contain theSameElementsAs toProduce
@@ -77,7 +77,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
           producer <- transactionalProducerStream[IO, String, String](
             producerSettings[IO](config).withTransactionalId("transactions")
           )
-          records = toProduce.map {
+          recordsToProduce = toProduce.map {
             case (key, value) => ProducerRecord(topic, key, value)
           }
           offsets = toProduce.mapWithIndex {
@@ -89,8 +89,8 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
                 _ => IO.unit
               )
           }
-          message = TransactionalProducerMessage(
-            records.zip(offsets).map {
+          records = TransactionalProducerRecords(
+            recordsToProduce.zip(offsets).map {
               case (record, offset) =>
                 CommittableProducerRecords.one(
                   record,
@@ -99,7 +99,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
             },
             toPassthrough
           )
-          result <- Stream.eval(producer.produce(message))
+          result <- Stream.eval(producer.produce(records))
         } yield result).compile.lastOrError.unsafeRunSync()
 
       val records =
@@ -156,7 +156,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
                 }
               }
           )
-          records = toProduce.map {
+          recordsToProduce = toProduce.map {
             case (key, value) => ProducerRecord(topic, key, value)
           }
           offsets = toProduce.mapWithIndex {
@@ -168,8 +168,8 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
                 _ => IO.unit
               )
           }
-          message = TransactionalProducerMessage(
-            Chunk.seq(records.zip(offsets)).map {
+          records = TransactionalProducerRecords(
+            Chunk.seq(recordsToProduce.zip(offsets)).map {
               case (record, offset) =>
                 CommittableProducerRecords(
                   NonEmptyList.one(record),
@@ -178,7 +178,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
             },
             toPassthrough
           )
-          result <- Stream.eval(producer.produce(message).attempt)
+          result <- Stream.eval(producer.produce(records).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       produced shouldBe Left(error)

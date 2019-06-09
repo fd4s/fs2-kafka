@@ -25,7 +25,7 @@ import fs2.kafka.internal._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 
 /**
-  * [[KafkaProducer]] represents a producer of Kafka messages, with the
+  * [[KafkaProducer]] represents a producer of Kafka records, with the
   * ability to produce `ProducerRecord`s using [[produce]]. Records are
   * wrapped in [[ProducerRecords]] which allow an arbitrary value, that
   * is a passthrough, to be included in the result. Most often this is
