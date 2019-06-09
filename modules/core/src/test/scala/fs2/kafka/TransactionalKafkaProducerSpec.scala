@@ -46,7 +46,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
                 (key, value)
               )
           }
-          passthrough <- Stream.eval(producer.producePassthrough(records)).buffer(toProduce.size)
+          passthrough <- Stream
+            .eval(producer.produce(records))
+            .map(_.passthrough)
+            .buffer(toProduce.size)
         } yield passthrough).compile.toVector.unsafeRunSync()
 
       produced should contain theSameElementsAs toProduce

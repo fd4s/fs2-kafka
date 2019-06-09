@@ -27,9 +27,8 @@ import org.apache.kafka.common.TopicPartition
   * [[CommittableOffset]] represents an [[offsetAndMetadata]] for a
   * [[topicPartition]], along with the ability to commit that offset
   * to Kafka with [[commit]]. Note that offsets are normally committed
-  * in batches for performance reasons. Pipes like [[commitBatch]] and
-  * [[commitBatchWithin]] use [[CommittableOffsetBatch]] to commit the
-  * offsets in batches.<br>
+  * in batches for performance reasons. Pipes like [[commitBatchWithin]]
+  * use [[CommittableOffsetBatch]] to commit the offsets in batches.<br>
   * <br>
   * While normally not necessary, [[CommittableOffset#apply]] can be
   * used to create a new instance.
@@ -76,9 +75,8 @@ sealed abstract class CommittableOffset[F[_]] {
   /**
     * Commits the [[offsetAndMetadata]] for the [[topicPartition]] to
     * Kafka. Note that offsets are normally committed in batches for
-    * performance reasons. Prefer to use pipes like [[commitBatch]]
-    * or [[commitBatchWithin]], or [[CommittableOffsetBatch]] for
-    * that reason.
+    * performance reasons. Prefer pipes like [[commitBatchWithin]]
+    * or [[CommittableOffsetBatch]] for that reason.
     */
   def commit: F[Unit]
 

@@ -16,9 +16,7 @@
 
 package fs2
 
-import cats.Applicative
 import cats.effect._
-import cats.syntax.traverse._
 import scala.concurrent.duration.FiniteDuration
 
 package object kafka {
@@ -61,284 +59,42 @@ package object kafka {
     org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
   /**
-    * Commits offsets in batches determined by the `Chunk`s of the
-    * underlying `Stream`. If you want more explicit control over
-    * how batches are created, instead use [[commitBatchChunk]].<br>
-    * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produce]], then
-    * there is a [[commitBatchF]] function for that instead.
-    *
-    * @see [[commitBatchWithin]] for committing offset batches every `n`
-    *      offsets or time window of length `d`, whichever happens first
-    */
-  def commitBatch[F[_]](
-    implicit F: Applicative[F]
-  ): Pipe[F, CommittableOffset[F], Unit] =
-    _.chunks.through(commitBatchChunk)
-
-  /**
-    * Commits offsets in batches determined by the `Chunk`s of the
-    * underlying `Stream`. If you want more explicit control over
-    * how batches are created, instead use [[commitBatchChunkF]].<br>
-    * <br>
-    * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produce]] and
-    * keep the [[CommittableOffset]] as passthrough value.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produce`, then there is a
-    * [[commitBatch]] function for that instead.
-    *
-    * @see [[commitBatchWithinF]] for committing offset batches every `n`
-    *      offsets or time window of length `d`, whichever happens first
-    */
-  def commitBatchF[F[_]](
-    implicit F: Applicative[F]
-  ): Pipe[F, F[CommittableOffset[F]], Unit] =
-    _.chunks.through(commitBatchChunkF)
-
-  /**
-    * Commits offsets in batches determined by the `Chunks` of the
-    * underlying `Stream`. If you want more explicit control over
-    * how batches are created, you can instead make use of
-    * [[commitBatchChunkOption]].<br>
-    * <br>
-    * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed record
-    * results in producing multiple records, and an offset should only
-    * be committed once all of the records have been produced.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produce]], then
-    * there is a [[commitBatchOptionF]] function for that instead.
-    *
-    * @see [[commitBatchOptionWithin]] for committing offset batches every
-    *     `n` offsets or time window of length `d`, whichever happens first
-    */
-  def commitBatchOption[F[_]](
-    implicit F: Applicative[F]
-  ): Pipe[F, Option[CommittableOffset[F]], Unit] =
-    _.chunks.through(commitBatchChunkOption)
-
-  /**
-    * Commits offsets in batches determined by the `Chunks` of the
-    * underlying `Stream`. If you want more explicit control over
-    * how batches are created, you can instead make use of
-    * [[commitBatchChunkOptionF]].<br>
-    * <br>
-    * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed record
-    * results in producing multiple records, and an offset should only
-    * be committed once all of the records have been produced.<br>
-    * <br>
-    * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produce]] and
-    * keep the [[CommittableOffset]] as passthrough value.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produce`, then there is a
-    * [[commitBatchOption]] function for that instead.
-    *
-    * @see [[commitBatchOptionWithinF]] for committing offset batches every
-    *     `n` offsets or time window of length `d`, whichever happens first
-    */
-  def commitBatchOptionF[F[_]](
-    implicit F: Applicative[F]
-  ): Pipe[F, F[Option[CommittableOffset[F]]], Unit] =
-    _.chunks.through(commitBatchChunkOptionF)
-
-  /**
-    * Commits offsets in batches determined by `Chunk`s. This allows
-    * you to explicitly control how offset batches are created. If you
-    * want to use the underlying `Chunk`s of the `Stream`, simply
-    * use [[commitBatch]] instead.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produce]], then
-    * there is a [[commitBatchChunkF]] function for that instead.
-    *
-    * @see [[commitBatchWithin]] for committing offset batches every `n`
-    *      offsets or time window of length `d`, whichever happens first
-    */
-  def commitBatchChunk[F[_]](
-    implicit F: Applicative[F]
-  ): Pipe[F, Chunk[CommittableOffset[F]], Unit] =
-    _.evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
-
-  /**
-    * Commits offsets in batches determined by `Chunk`s. This allows
-    * you to explicitly control how offset batches are created. If you
-    * want to use the underlying `Chunk`s of the `Stream`, simply
-    * use [[commitBatchF]] instead.<br>
-    * <br>
-    * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produce]] and
-    * keep the [[CommittableOffset]] as passthrough value.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produce`, then there is a
-    * [[commitBatchChunk]] function for that instead.
-    *
-    * @see [[commitBatchWithinF]] for committing offset batches every `n`
-    *      offsets or time window of length `d`, whichever happens first
-    */
-  def commitBatchChunkF[F[_]](
-    implicit F: Applicative[F]
-  ): Pipe[F, Chunk[F[CommittableOffset[F]]], Unit] =
-    _.evalMap(_.sequence).through(commitBatchChunk)
-
-  /**
-    * Commits offsets in batches determined by `Chunk`s. This allows
-    * you to explicitly control how offset batches are created. If you
-    * want to use the underlying `Chunk`s of the `Stream`, simply
-    * use [[commitBatchOption]] instead.<br>
-    * <br>
-    * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed record
-    * results in producing multiple records, and an offset should only
-    * be committed once all of the records have been produced.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produce]], then
-    * there is a [[commitBatchChunkOptionF]] for that instead.
-    *
-    * @see [[commitBatchOptionWithin]] for committing offset batches every
-    *     `n` offsets or time window of length `d`, whichever happens first
-    */
-  def commitBatchChunkOption[F[_]](
-    implicit F: Applicative[F]
-  ): Pipe[F, Chunk[Option[CommittableOffset[F]]], Unit] =
-    _.evalMap(CommittableOffsetBatch.fromFoldableOption(_).commit)
-
-  /**
-    * Commits offsets in batches determined by `Chunk`s. This allows
-    * you to explicitly control how offset batches are created. If you
-    * want to use the underlying `Chunk`s of the `Stream`, simply
-    * use [[commitBatchOptionF]] instead.<br>
-    * <br>
-    * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed record
-    * results in producing multiple records, and an offset should only
-    * be committed once all of the records have been produced.<br>
-    * <br>
-    * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produce]] and
-    * keep the [[CommittableOffset]] as passthrough value.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produce`, then there is a
-    * [[commitBatchChunkOption]] function for that instead.
-    *
-    * @see [[commitBatchOptionWithinF]] for committing offset batches every
-    *     `n` offsets or time window of length `d`, whichever happens first
-    */
-  def commitBatchChunkOptionF[F[_]](
-    implicit F: Applicative[F]
-  ): Pipe[F, Chunk[F[Option[CommittableOffset[F]]]], Unit] =
-    _.evalMap(_.sequence).through(commitBatchChunkOption)
-
-  /**
     * Commits offsets in batches of every `n` offsets or time window
     * of length `d`, whichever happens first. If there are no offsets
     * to commit within a time window, no attempt will be made to commit
-    * offsets for that time window.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produce]], then
-    * there is a [[commitBatchWithinF]] function for that instead.
-    *
-    * @see [[commitBatch]] for using the underlying `Chunk`s of
-    *      the `Stream` as offset commit batches
-    * @see [[commitBatchChunk]] for committing offset batches with
-    *      explicit control over how offset batches are determined
+    * offsets for that time window.
     */
   def commitBatchWithin[F[_]](n: Int, d: FiniteDuration)(
     implicit F: Concurrent[F],
     timer: Timer[F]
   ): Pipe[F, CommittableOffset[F], Unit] =
-    _.groupWithin(n, d).through(commitBatchChunk)
+    _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 
   /**
-    * Commits offsets in batches of every `n` offsets or time window
-    * of length `d`, whichever happens first. If there are no offsets
-    * to commit within a time window, no attempt will be made to commit
-    * offsets for that time window.<br>
-    * <br>
-    * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produce]] and
-    * keep the [[CommittableOffset]] as passthrough value.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produce`, then there is a
-    * [[commitBatchWithin]] function for that instead.
-    *
-    * @see [[commitBatchF]] for using the underlying `Chunk`s of
-    *      the `Stream` as offset commit batches
-    * @see [[commitBatchChunkF]] for committing offset batches with
-    *      explicit control over how offset batches are determined
+    * Creates a [[KafkaProducer]] using the provided settings and
+    * produces record in batches, limiting the number of records
+    * in the same batch using [[ProducerSettings#parallelism]].
     */
-  def commitBatchWithinF[F[_]](n: Int, d: FiniteDuration)(
-    implicit F: Concurrent[F],
-    timer: Timer[F]
-  ): Pipe[F, F[CommittableOffset[F]], Unit] =
-    _.groupWithin(n, d).through(commitBatchChunkF)
+  def produce[F[_], G[+_], K, V, P](
+    settings: ProducerSettings[F, K, V]
+  )(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F]
+  ): Pipe[F, ProducerRecords[G, K, V, P], ProducerResult[G, K, V, P]] =
+    records => producerStream(settings).flatMap(produce(settings, _).apply(records))
 
   /**
-    * Commits offsets in batches of every `n` offsets or time window
-    * of length `d`, whichever happens first. If there are no offsets
-    * to commit within a time window, no attempt will be made to commit
-    * offsets for that time window.<br>
-    * <br>
-    * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed record
-    * results in producing multiple records, and an offset should only
-    * be committed once all of the records have been produced.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are wrapped in an effect `F[_]`,
-    * like the produce effect from [[KafkaProducer.produce]], then
-    * there is a [[commitBatchOptionWithinF]] for that instead.
-    *
-    * @see [[commitBatchOption]] for using the underlying `Chunk`s of
-    *      the `Stream` as offset commit batches
-    * @see [[commitBatchChunkOption]] for committing offset batches with
-    *      explicit control over how offset batches are determined
+    * Produces records in batches using the provided [[KafkaProducer]].
+    * The number of records in the same batch is limited using the
+    * [[ProducerSettings#parallelism]] setting.
     */
-  def commitBatchOptionWithin[F[_]](n: Int, d: FiniteDuration)(
-    implicit F: Concurrent[F],
-    timer: Timer[F]
-  ): Pipe[F, Option[CommittableOffset[F]], Unit] =
-    _.groupWithin(n, d).through(commitBatchChunkOption)
-
-  /**
-    * Commits offsets in batches of every `n` offsets or time window
-    * of length `d`, whichever happens first. If there are no offsets
-    * to commit within a time window, no attempt will be made to commit
-    * offsets for that time window.<br>
-    * <br>
-    * The offsets are wrapped in `Option` and only present offsets will
-    * be committed. This is particularly useful when a consumed record
-    * results in producing multiple records, and an offset should only
-    * be committed once all of the records have been produced.<br>
-    * <br>
-    * Note that in order to enable offset commits in batches when also
-    * producing records, you can use [[KafkaProducer.produce]] and
-    * keep the [[CommittableOffset]] as passthrough value.<br>
-    * <br>
-    * If your [[CommittableOffset]]s are not wrapped in an effect `F[_]`,
-    * like the produce effect from `produce`, then there is a
-    * [[commitBatchOptionWithin]] function for that instead.
-    *
-    * @see [[commitBatchOptionF]] for using the underlying `Chunk`s of
-    *      the `Stream` as offset commit batches
-    * @see [[commitBatchChunkOptionF]] for committing offset batches with
-    *      explicit control over how offset batches are determined
-    */
-  def commitBatchOptionWithinF[F[_]](n: Int, d: FiniteDuration)(
-    implicit F: Concurrent[F],
-    timer: Timer[F]
-  ): Pipe[F, F[Option[CommittableOffset[F]]], Unit] =
-    _.groupWithin(n, d).through(commitBatchChunkOptionF)
+  def produce[F[_], G[+_], K, V, P](
+    settings: ProducerSettings[F, K, V],
+    producer: KafkaProducer[F, K, V]
+  )(
+    implicit F: ConcurrentEffect[F]
+  ): Pipe[F, ProducerRecords[G, K, V, P], ProducerResult[G, K, V, P]] =
+    _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
 
   /**
     * Creates a new [[KafkaAdminClient]] in the `Resource` context,

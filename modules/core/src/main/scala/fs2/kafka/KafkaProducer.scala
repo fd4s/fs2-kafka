@@ -32,7 +32,7 @@ import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
   * used for keeping the [[CommittableOffset]]s, in order to commit
   * offsets, but any value can be used as passthrough value.
   */
-sealed abstract class KafkaProducer[F[_], K, V] {
+abstract class KafkaProducer[F[_], K, V] {
 
   /**
     * Produces the `ProducerRecord`s in the specified [[ProducerRecords]]
@@ -40,23 +40,11 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     * producer, and the second effect waits for the records to have been
     * sent. Note that it is very slow to wait for individual records to
     * complete sending, but if you're sure that's what you want, then
-    * simply `flatten` the result from this function.<br>
-    * <br>
-    * If you're only interested in the passthrough value, and not the whole
-    * [[ProducerResult]], you can instead use [[producePassthrough]] which
-    * only keeps the passthrough value in the output.
+    * simply `flatten` the result from this function.
     */
   def produce[G[+_], P](
     records: ProducerRecords[G, K, V, P]
   ): F[F[ProducerResult[G, K, V, P]]]
-
-  /**
-    * Like [[produce]] but only keeps the passthrough value of the
-    * [[ProducerResult]] rather than the whole [[ProducerResult]].
-    */
-  def producePassthrough[G[+_], P](
-    records: ProducerRecords[G, K, V, P]
-  ): F[F[P]]
 }
 
 private[kafka] object KafkaProducer {
@@ -79,18 +67,6 @@ private[kafka] object KafkaProducer {
                 records.records
                   .traverse(produceRecord(keySerializer, valueSerializer, producer))
                   .map(_.sequence.map(ProducerResult(_, records.passthrough)))
-              }
-            }
-
-            override def producePassthrough[G[+_], P](
-              records: ProducerRecords[G, K, V, P]
-            ): F[F[P]] = {
-              implicit val G: Traverse[G] = records.traverse
-
-              withProducer { producer =>
-                records.records
-                  .traverse(produceRecord(keySerializer, valueSerializer, producer))
-                  .map(_.sequence_.as(records.passthrough))
               }
             }
 
