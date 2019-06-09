@@ -1,8 +1,8 @@
 import ReleaseTransformations._
 
-val fs2Version = "1.0.4"
-
 val catsEffectVersion = "1.3.1"
+
+val fs2Version = "1.0.4"
 
 val kafkaVersion = "2.2.0"
 
@@ -165,23 +165,7 @@ lazy val mimaSettings = Seq(
     import com.typesafe.tools.mima.core._
     // format: off
     Seq(
-      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withDeliveryTimeout"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.apply"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withMaxPrefetchBatches"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.maxPrefetchBatches"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.copy"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.asJava"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.withKey"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.concat"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.createTopic"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.createTopics"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.describeCluster"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.assignment"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.position"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToBeginning"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToEnd")
+      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*")
     )
     // format: on
   }
@@ -245,19 +229,25 @@ updateSiteVariables in ThisBuild := {
   val file = (baseDirectory in root).value / "website" / "siteConfig.js"
   val lines = IO.read(file).trim.split('\n').toVector
 
-  val scalaMinorVersion = minorVersion((scalaVersion in root).value)
-  val latestVersionString = (latestVersion in ThisBuild).value.toString
-  val organizationString = (organization in root).value
-  val moduleNameString = (moduleName in core).value
-  val scalaPublishVersions = {
-    val minorVersions = (crossScalaVersions in root).value.map(minorVersion)
-    if (minorVersions.size <= 2) minorVersions.mkString(" and ")
-    else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
-  }
+  val variables =
+    Map[String, String](
+      "organization" -> (organization in root).value,
+      "moduleName" -> (moduleName in core).value,
+      "latestVersion" -> (latestVersion in ThisBuild).value,
+      "scalaMinorVersion" -> minorVersion((scalaVersion in root).value),
+      "scalaPublishVersions" -> {
+        val minorVersions = (crossScalaVersions in root).value.map(minorVersion)
+        if (minorVersions.size <= 2) minorVersions.mkString(" and ")
+        else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
+      }
+    )
+
+  val newLine =
+    variables.toList
+      .map { case (k, v) => s"$k: '$v'" }
+      .mkString("const buildInfo = { ", ", ", " };")
 
   val lineIndex = lines.indexWhere(_.trim.startsWith("const buildInfo"))
-  val newLine =
-    s"const buildInfo = { organization: '$organizationString', moduleName: '$moduleNameString', latestVersion: '$latestVersionString', scalaMinorVersion: '$scalaMinorVersion', scalaPublishVersions: '$scalaPublishVersions' };"
   val newLines = lines.updated(lineIndex, newLine)
   val newFileContents = newLines.mkString("", "\n", "\n")
   IO.write(file, newFileContents)
