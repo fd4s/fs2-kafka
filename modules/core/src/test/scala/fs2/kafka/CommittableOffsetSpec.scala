@@ -1,5 +1,6 @@
 package fs2.kafka
 
+import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
@@ -11,12 +12,12 @@ final class CommittableOffsetSpec extends BaseSpec {
       val offsetAndMetadata = new OffsetAndMetadata(0L, "metadata")
       var committed: Map[TopicPartition, OffsetAndMetadata] = null
 
-      CommittableOffset[Id](
+      CommittableOffset[IO](
         partition,
         offsetAndMetadata,
         consumerGroupId = None,
-        committed = _
-      ).commit
+        commit = offsets => IO { committed = offsets }
+      ).commit.unsafeRunSync()
 
       assert(committed == Map(partition -> offsetAndMetadata))
     }
@@ -26,7 +27,7 @@ final class CommittableOffsetSpec extends BaseSpec {
 
       assert {
         val offsetAndMetadata = new OffsetAndMetadata(0L, "metadata")
-        val offset = CommittableOffset[Id](partition, offsetAndMetadata, None, _ => ())
+        val offset = CommittableOffset[IO](partition, offsetAndMetadata, None, _ => IO.unit)
 
         offset.toString == "CommittableOffset(topic-0 -> (0, metadata))" &&
         offset.show == offset.toString
@@ -34,7 +35,8 @@ final class CommittableOffsetSpec extends BaseSpec {
 
       assert {
         val offsetAndMetadata = new OffsetAndMetadata(0L, "metadata")
-        val offset = CommittableOffset[Id](partition, offsetAndMetadata, Some("the-group"), _ => ())
+        val offset =
+          CommittableOffset[IO](partition, offsetAndMetadata, Some("the-group"), _ => IO.unit)
 
         offset.toString == "CommittableOffset(topic-0 -> (0, metadata), the-group)" &&
         offset.show == offset.toString
@@ -42,7 +44,7 @@ final class CommittableOffsetSpec extends BaseSpec {
 
       assert {
         val offsetAndMetadata = new OffsetAndMetadata(0L)
-        val offset = CommittableOffset[Id](partition, offsetAndMetadata, None, _ => ())
+        val offset = CommittableOffset[IO](partition, offsetAndMetadata, None, _ => IO.unit)
 
         offset.toString == "CommittableOffset(topic-0 -> 0)" &&
         offset.show == offset.toString
@@ -50,7 +52,8 @@ final class CommittableOffsetSpec extends BaseSpec {
 
       assert {
         val offsetAndMetadata = new OffsetAndMetadata(0L)
-        val offset = CommittableOffset[Id](partition, offsetAndMetadata, Some("the-group"), _ => ())
+        val offset =
+          CommittableOffset[IO](partition, offsetAndMetadata, Some("the-group"), _ => IO.unit)
 
         offset.toString == "CommittableOffset(topic-0 -> 0, the-group)" &&
         offset.show == offset.toString

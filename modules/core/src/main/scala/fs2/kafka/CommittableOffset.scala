@@ -16,6 +16,7 @@
 
 package fs2.kafka
 
+import cats.ApplicativeError
 import cats.instances.string._
 import cats.Show
 import cats.syntax.show._
@@ -100,7 +101,7 @@ object CommittableOffset {
     offsetAndMetadata: OffsetAndMetadata,
     consumerGroupId: Option[String],
     commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
-  ): CommittableOffset[F] = {
+  )(implicit F: ApplicativeError[F, Throwable]): CommittableOffset[F] = {
     val _topicPartition = topicPartition
     val _offsetAndMetadata = offsetAndMetadata
     val _consumerGroupId = consumerGroupId
@@ -120,7 +121,7 @@ object CommittableOffset {
         Map(_topicPartition -> _offsetAndMetadata)
 
       override def batch: CommittableOffsetBatch[F] =
-        CommittableOffsetBatch(offsets, _commit)
+        CommittableOffsetBatch(offsets, consumerGroupId.toSet, consumerGroupId.isEmpty, _commit)
 
       override def commit: F[Unit] =
         _commit(offsets)

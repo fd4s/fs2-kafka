@@ -19,9 +19,8 @@ package fs2.kafka
 import org.apache.kafka.common.KafkaException
 
 /**
-  * [[ConsumerGroupException]] indicates that one of the two following
-  * conditions occurred before records were produced transactionally
-  * with the [[TransactionalKafkaProducer]].<br>
+  * Indicates that one or more of the following conditions occurred
+  * while attempting to commit offsets.<br>
   * <br>
   * - There were [[CommittableOffset]]s without a consumer group ID.<br>
   * - There were [[CommittableOffset]]s for multiple consumer group IDs.
@@ -29,7 +28,7 @@ import org.apache.kafka.common.KafkaException
 sealed abstract class ConsumerGroupException(groupIds: Set[String])
     extends KafkaException({
       val groupIdsString = groupIds.toList.sorted.mkString(", ")
-      s"multiple or missing consumer group ids in transaction [$groupIdsString]"
+      s"multiple or missing consumer group ids [$groupIdsString]"
     })
 
 private[kafka] object ConsumerGroupException {

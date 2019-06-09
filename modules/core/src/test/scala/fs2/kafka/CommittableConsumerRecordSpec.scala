@@ -1,5 +1,6 @@
 package fs2.kafka
 
+import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
@@ -10,11 +11,11 @@ final class CommittableConsumerRecordSpec extends BaseSpec {
       val record =
         CommittableConsumerRecord(
           ConsumerRecord("topic", 0, 0L, "key", "value"),
-          CommittableOffset[Id](
+          CommittableOffset[IO](
             topicPartition = new TopicPartition("topic", 0),
             offsetAndMetadata = new OffsetAndMetadata(0L),
             consumerGroupId = Some("the-group"),
-            commit = _ => ()
+            commit = _ => IO.unit
           )
         )
 

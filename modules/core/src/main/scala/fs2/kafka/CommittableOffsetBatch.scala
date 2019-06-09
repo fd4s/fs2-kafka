@@ -16,6 +16,7 @@
 
 package fs2.kafka
 
+import cats.ApplicativeError
 import cats.instances.list._
 import cats.syntax.foldable._
 import cats.syntax.show._
@@ -67,7 +68,39 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
   def offsets: Map[TopicPartition, OffsetAndMetadata]
 
   /**
+    * The consumer group IDs for the [[offsets]] in the batch.
+    * For the batch to be valid and for [[commit]] to succeed,
+    * there should be exactly one ID in the set and the flag
+    * [[consumerGroupIdsMissing]] should be `false`.<br>
+    * <br>
+    * There might be more than one consumer group ID in the set
+    * if offsets from multiple consumers, with different group
+    * IDs, have accidentally been mixed. The set might also be
+    * empty if no consumer group IDs have been specified.
+    */
+  def consumerGroupIds: Set[String]
+
+  /**
+    * `true` if any offset in the batch came from a consumer
+    * without a group ID; `false` otherwise. For the batch to
+    * be valid and for [[commit]] to succeed, this flag must
+    * be `false` and there should be exactly one consumer
+    * group ID in [[consumerGroupIds]].
+    */
+  def consumerGroupIdsMissing: Boolean
+
+  /**
     * Commits the [[offsets]] to Kafka in a single commit.
+    * For the batch to be valid and for commit to succeed,
+    * the following conditions must hold:<br>
+    * - [[consumerGroupIdsMissing]] must be false, and<br>
+    * - [[consumerGroupIds]] must have exactly one ID.<br>
+    * <br>
+    * If one of the conditions above do not hold, there will
+    * be a [[ConsumerGroupException]] exception raised and a
+    * commit will not be attempted. If [[offsets]] is empty
+    * then these conditions do not need to hold, as there
+    * is nothing to commit.
     */
   def commit: F[Unit]
 }
@@ -75,29 +108,45 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
 object CommittableOffsetBatch {
   private[kafka] def apply[F[_]](
     offsets: Map[TopicPartition, OffsetAndMetadata],
+    consumerGroupIds: Set[String],
+    consumerGroupIdsMissing: Boolean,
     commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
-  ): CommittableOffsetBatch[F] = {
+  )(implicit F: ApplicativeError[F, Throwable]): CommittableOffsetBatch[F] = {
     val _offsets = offsets
+    val _consumerGroupIds = consumerGroupIds
+    val _consumerGroupIdsMissing = consumerGroupIdsMissing
     val _commit = commit
 
     new CommittableOffsetBatch[F] {
       override def updated(that: CommittableOffset[F]): CommittableOffsetBatch[F] =
         CommittableOffsetBatch(
           _offsets.updated(that.topicPartition, that.offsetAndMetadata),
+          that.consumerGroupId.fold(_consumerGroupIds)(_consumerGroupIds + _),
+          _consumerGroupIdsMissing || that.consumerGroupId.isEmpty,
           _commit
         )
 
       override def updated(that: CommittableOffsetBatch[F]): CommittableOffsetBatch[F] =
         CommittableOffsetBatch(
           _offsets ++ that.offsets,
+          _consumerGroupIds ++ that.consumerGroupIds,
+          _consumerGroupIdsMissing || that.consumerGroupIdsMissing,
           _commit
         )
 
       override val offsets: Map[TopicPartition, OffsetAndMetadata] =
         _offsets
 
+      override val consumerGroupIds: Set[String] =
+        _consumerGroupIds
+
+      override val consumerGroupIdsMissing: Boolean =
+        _consumerGroupIdsMissing
+
       override def commit: F[Unit] =
-        _commit(offsets)
+        if (_consumerGroupIdsMissing || _consumerGroupIds.size != 1)
+          F.raiseError(ConsumerGroupException(consumerGroupIds))
+        else _commit(offsets)
 
       override def toString: String =
         Show[CommittableOffsetBatch[F]].show(this)
@@ -120,7 +169,7 @@ object CommittableOffsetBatch {
     * @see [[CommittableOffsetBatch#fromFoldableOption]]
     */
   def fromFoldable[F[_], G[_]](offsets: G[CommittableOffset[F]])(
-    implicit F: Applicative[F],
+    implicit F: ApplicativeError[F, Throwable],
     G: Foldable[G]
   ): CommittableOffsetBatch[F] =
     fromFoldableMap(offsets)(identity)
@@ -142,11 +191,13 @@ object CommittableOffsetBatch {
     * @see [[CommittableOffsetBatch#fromFoldableOption]]
     */
   def fromFoldableMap[F[_], G[_], A](ga: G[A])(f: A => CommittableOffset[F])(
-    implicit F: Applicative[F],
+    implicit F: ApplicativeError[F, Throwable],
     G: Foldable[G]
   ): CommittableOffsetBatch[F] = {
     var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
     var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
+    var consumerGroupIds: Set[String] = Set.empty
+    var consumerGroupIdsMissing: Boolean = false
     var empty: Boolean = true
 
     ga.foldLeft(()) { (_, a) =>
@@ -158,10 +209,14 @@ object CommittableOffsetBatch {
       }
 
       offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
+      offset.consumerGroupId match {
+        case Some(consumerGroupId) => consumerGroupIds = consumerGroupIds + consumerGroupId
+        case None                  => consumerGroupIdsMissing = true
+      }
     }
 
     if (empty) CommittableOffsetBatch.empty[F]
-    else CommittableOffsetBatch(offsetsMap, commit)
+    else CommittableOffsetBatch(offsetsMap, consumerGroupIds, consumerGroupIdsMissing, commit)
   }
 
   /**
@@ -183,11 +238,13 @@ object CommittableOffsetBatch {
     * @see [[CommittableOffsetBatch#fromFoldableMap]]
     */
   def fromFoldableOption[F[_], G[_]](offsets: G[Option[CommittableOffset[F]]])(
-    implicit F: Applicative[F],
+    implicit F: ApplicativeError[F, Throwable],
     G: Foldable[G]
   ): CommittableOffsetBatch[F] = {
     var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
     var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
+    var consumerGroupIds: Set[String] = Set.empty
+    var consumerGroupIdsMissing: Boolean = false
     var empty: Boolean = true
 
     offsets.foldLeft(()) {
@@ -198,11 +255,15 @@ object CommittableOffsetBatch {
         }
 
         offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
+        offset.consumerGroupId match {
+          case Some(consumerGroupId) => consumerGroupIds = consumerGroupIds + consumerGroupId
+          case None                  => consumerGroupIdsMissing = true
+        }
       case (_, None) => ()
     }
 
     if (empty) CommittableOffsetBatch.empty[F]
-    else CommittableOffsetBatch(offsetsMap, commit)
+    else CommittableOffsetBatch(offsetsMap, consumerGroupIds, consumerGroupIdsMissing, commit)
   }
 
   /**
@@ -223,6 +284,12 @@ object CommittableOffsetBatch {
 
       override val offsets: Map[TopicPartition, OffsetAndMetadata] =
         Map.empty
+
+      override val consumerGroupIds: Set[String] =
+        Set.empty
+
+      override val consumerGroupIdsMissing: Boolean =
+        false
 
       override val commit: F[Unit] =
         F.unit

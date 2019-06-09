@@ -1,6 +1,6 @@
 package fs2.kafka
 
-import cats.Applicative
+import cats.ApplicativeError
 import cats.effect._
 import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -30,7 +30,7 @@ trait BaseGenerators {
     Arbitrary(genOffsetAndMetadata)
 
   def genCommittableOffset[F[_]](
-    implicit F: Applicative[F]
+    implicit F: ApplicativeError[F, Throwable]
   ): Gen[CommittableOffset[F]] =
     for {
       topicPartition <- genTopicPartition
@@ -44,18 +44,18 @@ trait BaseGenerators {
     )
 
   implicit def arbCommittableOffset[F[_]](
-    implicit F: Applicative[F]
+    implicit F: ApplicativeError[F, Throwable]
   ): Arbitrary[CommittableOffset[F]] =
     Arbitrary(genCommittableOffset[F])
 
   def genCommittableOffsetBatch[F[_]](
-    implicit F: Applicative[F]
+    implicit F: ApplicativeError[F, Throwable]
   ): Gen[CommittableOffsetBatch[F]] =
     arbitrary[Map[TopicPartition, OffsetAndMetadata]]
-      .map(CommittableOffsetBatch[F](_, _ => F.unit))
+      .map(CommittableOffsetBatch[F](_, Set.empty, false, _ => F.unit))
 
   implicit def arbCommittableOffsetBatch[F[_]](
-    implicit F: Applicative[F]
+    implicit F: ApplicativeError[F, Throwable]
   ): Arbitrary[CommittableOffsetBatch[F]] =
     Arbitrary(genCommittableOffsetBatch[F])
 
