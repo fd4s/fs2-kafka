@@ -4,11 +4,11 @@ import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
-final class CommittableMessageSpec extends BaseSpec {
-  describe("CommittableMessage") {
+final class CommittableConsumerRecordSpec extends BaseSpec {
+  describe("CommittableConsumerRecord") {
     it("should have a Show instance and matching toString") {
-      val message =
-        CommittableMessage(
+      val record =
+        CommittableConsumerRecord(
           ConsumerRecord("topic", 0, 0L, "key", "value"),
           CommittableOffset[Id](
             topicPartition = new TopicPartition("topic", 0),
@@ -19,8 +19,8 @@ final class CommittableMessageSpec extends BaseSpec {
         )
 
       assert {
-        message.toString == "CommittableMessage(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))" &&
-        message.show == "CommittableMessage(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))"
+        record.toString == "CommittableConsumerRecord(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))" &&
+        record.show == "CommittableConsumerRecord(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))"
       }
     }
   }

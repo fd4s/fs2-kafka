@@ -15,7 +15,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   type Consumer = KafkaConsumer[IO, String, String]
 
-  type ConsumerStream = Stream[IO, CommittableMessage[IO, String, String]]
+  type ConsumerStream = Stream[IO, CommittableConsumerRecord[IO, String, String]]
 
   describe("KafkaConsumer#stream") {
     it("should consume all messages") {
@@ -48,14 +48,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
         val producedTotal = produced1.size.toLong + produced2.size.toLong
 
-        val consumer = (queue: Queue[IO, CommittableMessage[IO, String, String]]) =>
+        val consumer = (queue: Queue[IO, CommittableConsumerRecord[IO, String, String]]) =>
           consumerStream[IO]
             .using(consumerSettings(config))
             .evalTap(_.subscribeTo(topic))
             .evalMap(_.stream.evalMap(queue.enqueue1).compile.drain.start.void)
 
         (for {
-          queue <- Stream.eval(Queue.unbounded[IO, CommittableMessage[IO, String, String]])
+          queue <- Stream.eval(Queue.unbounded[IO, CommittableConsumerRecord[IO, String, String]])
           ref <- Stream.eval(Ref.of[IO, Map[String, Int]](Map.empty))
           _ <- consumer(queue)
           _ <- Stream.eval(IO.sleep(5.seconds))
