@@ -22,26 +22,26 @@ import cats.syntax.show._
 import fs2.kafka.internal.syntax._
 
 /**
-  * [[ProducerMessage]] represents zero or more `ProducerRecord`s,
+  * [[ProducerRecords]] represents zero or more `ProducerRecord`s,
   * together with an arbitrary passthrough value, all of which can
-  * be used with [[KafkaProducer]]. [[ProducerMessage]]s can be
+  * be used with [[KafkaProducer]]. [[ProducerRecords]]s can be
   * created using one of the following options.<br>
   * <br>
-  * - `ProducerMessage#apply` to produce zero or more records
+  * - `ProducerRecords#apply` to produce zero or more records
   * and then emit a [[ProducerResult]] with the results and
   * specified passthrough value.<br>
-  * - `ProducerMessage#one` to produce exactly one record and
+  * - `ProducerRecords#one` to produce exactly one record and
   * then emit a [[ProducerResult]] with the result and specified
   * passthrough value.<br>
   * <br>
   * The [[passthrough]] and [[records]] can be retrieved from an
-  * existing [[ProducerMessage]] instance.<br>
+  * existing [[ProducerRecords]] instance.<br>
   * <br>
-  * For a [[ProducerMessage]] to be usable by [[KafkaProducer]],
+  * For a [[ProducerRecords]] to be usable by [[KafkaProducer]],
   * it needs a `Traverse[F]` instance. This requirement is
-  * captured in [[ProducerMessage]] as [[traverse]].
+  * captured in [[ProducerRecords]] as [[traverse]].
   */
-sealed abstract class ProducerMessage[F[+_], +K, +V, +P] {
+sealed abstract class ProducerRecords[F[+_], +K, +V, +P] {
 
   /** The records to produce. Can be empty for passthrough-only. */
   def records: F[ProducerRecord[K, V]]
@@ -53,21 +53,21 @@ sealed abstract class ProducerMessage[F[+_], +K, +V, +P] {
   def traverse: Traverse[F]
 }
 
-object ProducerMessage {
-  private[this] final class ProducerMessageImpl[F[+_], +K, +V, +P](
+object ProducerRecords {
+  private[this] final class ProducerRecordsImpl[F[+_], +K, +V, +P](
     override val records: F[ProducerRecord[K, V]],
     override val passthrough: P,
     override val traverse: Traverse[F]
-  ) extends ProducerMessage[F, K, V, P] {
+  ) extends ProducerRecords[F, K, V, P] {
     override def toString: String = {
       implicit val F: Foldable[F] = traverse
-      if (records.isEmpty) s"ProducerMessage(<empty>, $passthrough)"
-      else records.mkString("ProducerMessage(", ", ", s", $passthrough)")
+      if (records.isEmpty) s"ProducerRecords(<empty>, $passthrough)"
+      else records.mkString("ProducerRecords(", ", ", s", $passthrough)")
     }
   }
 
   /**
-    * Creates a new [[ProducerMessage]] for producing zero or more
+    * Creates a new [[ProducerRecords]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and `Unit` passthrough value.
     */
@@ -75,11 +75,11 @@ object ProducerMessage {
     records: F[ProducerRecord[K, V]]
   )(
     implicit F: Traverse[F]
-  ): ProducerMessage[F, K, V, Unit] =
+  ): ProducerRecords[F, K, V, Unit] =
     apply(records, ())
 
   /**
-    * Creates a new [[ProducerMessage]] for producing zero or more
+    * Creates a new [[ProducerRecords]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
     */
@@ -88,38 +88,38 @@ object ProducerMessage {
     passthrough: P
   )(
     implicit F: Traverse[F]
-  ): ProducerMessage[F, K, V, P] =
-    new ProducerMessageImpl(records, passthrough, F)
+  ): ProducerRecords[F, K, V, P] =
+    new ProducerRecordsImpl(records, passthrough, F)
 
   /**
-    * Creates a new [[ProducerMessage]] for producing exactly one
+    * Creates a new [[ProducerRecords]] for producing exactly one
     * `ProducerRecord`, then emitting a [[ProducerResult]] with
     * the result and `Unit` passthrough value.
     */
   def one[K, V](
     record: ProducerRecord[K, V]
-  ): ProducerMessage[Id, K, V, Unit] =
+  ): ProducerRecords[Id, K, V, Unit] =
     one(record, ())
 
   /**
-    * Creates a new [[ProducerMessage]] for producing exactly one
+    * Creates a new [[ProducerRecords]] for producing exactly one
     * `ProducerRecord`, then emitting a [[ProducerResult]] with
     * the result and specified passthrough value.
     */
   def one[K, V, P](
     record: ProducerRecord[K, V],
     passthrough: P
-  ): ProducerMessage[Id, K, V, P] =
+  ): ProducerRecords[Id, K, V, P] =
     apply[Id, K, V, P](record, passthrough)
 
-  implicit def producerMessageShow[F[+_], K, V, P](
+  implicit def producerRecordsShow[F[+_], K, V, P](
     implicit
     K: Show[K],
     V: Show[V],
     P: Show[P]
-  ): Show[ProducerMessage[F, K, V, P]] = Show.show { message =>
-    implicit val F: Foldable[F] = message.traverse
-    if (message.records.isEmpty) show"ProducerMessage(<empty>, ${message.passthrough})"
-    else message.records.mkStringShow("ProducerMessage(", ", ", s", ${message.passthrough})")
+  ): Show[ProducerRecords[F, K, V, P]] = Show.show { records =>
+    implicit val F: Foldable[F] = records.traverse
+    if (records.records.isEmpty) show"ProducerRecords(<empty>, ${records.passthrough})"
+    else records.records.mkStringShow("ProducerRecords(", ", ", s", ${records.passthrough})")
   }
 }

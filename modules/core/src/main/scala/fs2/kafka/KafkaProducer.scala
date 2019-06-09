@@ -27,7 +27,7 @@ import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 /**
   * [[KafkaProducer]] represents a producer of Kafka messages, with the
   * ability to produce `ProducerRecord`s using [[produce]]. Records are
-  * wrapped in [[ProducerMessage]] which allow an arbitrary value, that
+  * wrapped in [[ProducerRecords]] which allow an arbitrary value, that
   * is a passthrough, to be included in the result. Most often this is
   * used for keeping the [[CommittableOffset]]s, in order to commit
   * offsets, but any value can be used as passthrough value.
@@ -35,7 +35,7 @@ import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 sealed abstract class KafkaProducer[F[_], K, V] {
 
   /**
-    * Produces the `ProducerRecord`s in the specified [[ProducerMessage]]
+    * Produces the `ProducerRecord`s in the specified [[ProducerRecords]]
     * in two steps: the first effect puts the records in the buffer of the
     * producer, and the second effect waits for the records to have been
     * sent. Note that it is very slow to wait for individual records to
@@ -47,7 +47,7 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     * only keeps the passthrough value in the output.
     */
   def produce[G[+_], P](
-    message: ProducerMessage[G, K, V, P]
+    records: ProducerRecords[G, K, V, P]
   ): F[F[ProducerResult[G, K, V, P]]]
 
   /**
@@ -55,7 +55,7 @@ sealed abstract class KafkaProducer[F[_], K, V] {
     * [[ProducerResult]] rather than the whole [[ProducerResult]].
     */
   def producePassthrough[G[+_], P](
-    message: ProducerMessage[G, K, V, P]
+    records: ProducerRecords[G, K, V, P]
   ): F[F[P]]
 }
 
@@ -71,26 +71,26 @@ private[kafka] object KafkaProducer {
         WithProducer(settings).map { withProducer =>
           new KafkaProducer[F, K, V] {
             override def produce[G[+_], P](
-              message: ProducerMessage[G, K, V, P]
+              records: ProducerRecords[G, K, V, P]
             ): F[F[ProducerResult[G, K, V, P]]] = {
-              implicit val G: Traverse[G] = message.traverse
+              implicit val G: Traverse[G] = records.traverse
 
               withProducer { producer =>
-                message.records
+                records.records
                   .traverse(produceRecord(keySerializer, valueSerializer, producer))
-                  .map(_.sequence.map(ProducerResult(_, message.passthrough)))
+                  .map(_.sequence.map(ProducerResult(_, records.passthrough)))
               }
             }
 
             override def producePassthrough[G[+_], P](
-              message: ProducerMessage[G, K, V, P]
+              records: ProducerRecords[G, K, V, P]
             ): F[F[P]] = {
-              implicit val G: Traverse[G] = message.traverse
+              implicit val G: Traverse[G] = records.traverse
 
               withProducer { producer =>
-                message.records
+                records.records
                   .traverse(produceRecord(keySerializer, valueSerializer, producer))
-                  .map(_.sequence_.as(message.passthrough))
+                  .map(_.sequence_.as(records.passthrough))
               }
             }
 
