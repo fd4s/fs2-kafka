@@ -120,7 +120,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         publishToKafka(topic, produced)
 
         val committed =
-          consumerSettingsExecutionContext(config)
+          Stream(consumerSettings[IO](config))
             .flatMap(consumerStream[IO].using)
             .evalTap(_.subscribe(topic.r))
             .flatMap { consumer =>

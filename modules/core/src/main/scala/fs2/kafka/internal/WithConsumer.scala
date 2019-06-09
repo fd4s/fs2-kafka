@@ -36,7 +36,7 @@ private[kafka] object WithConsumer {
     val executionContextResource =
       settings.executionContext
         .map(Resource.pure[F, ExecutionContext])
-        .getOrElse(consumerExecutionContextResource)
+        .getOrElse(ExecutionContexts.consumer)
 
     executionContextResource.flatMap { executionContext =>
       Resource.make[F, WithConsumer[F]] {

@@ -12,7 +12,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val produced =
         (for {
-          settings <- producerSettingsExecutionContext(config)
+          settings <- Stream(producerSettings[IO](config))
           producer <- producerStream[IO].using(settings)
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           records <- Stream.chunk(Chunk.seq(toProduce).map {

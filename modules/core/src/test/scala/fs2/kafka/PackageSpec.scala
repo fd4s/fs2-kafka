@@ -57,24 +57,4 @@ final class PackageSpec extends BaseKafkaSpec {
       transactionalProducerStream[IO].using(settings)
     }
   }
-
-  describe("creating consumer execution contexts") {
-    it("should support defined syntax") {
-      consumerExecutionContextResource[IO]
-      consumerExecutionContextResource[IO](1)
-
-      consumerExecutionContextStream[IO]
-      consumerExecutionContextStream[IO](1)
-    }
-  }
-
-  describe("creating producer execution contexts") {
-    it("should support defined syntax") {
-      producerExecutionContextResource[IO]
-      producerExecutionContextResource[IO](1)
-
-      producerExecutionContextStream[IO]
-      producerExecutionContextStream[IO](1)
-    }
-  }
 }
