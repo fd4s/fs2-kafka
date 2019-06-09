@@ -54,7 +54,7 @@ lazy val dependencySettings = Seq(
   ),
   libraryDependencies ++= Seq(
     "org.scalatest" %% "scalatest" % "3.0.7",
-    "org.typelevel" %% "cats-testkit" % "1.6.0",
+    "org.typelevel" %% "cats-testkit" % "1.6.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "io.github.embeddedkafka" %% "embedded-kafka" % kafkaVersion,
