@@ -1,11 +1,12 @@
 package fs2.kafka
 
 import cats.effect.{ContextShift, IO, Timer}
-import org.scalatest.{Assertions, FunSpec, Matchers}
+import org.scalatest.{Assertions, Matchers}
+import org.scalatest.funspec.AnyFunSpec
 
 import scala.concurrent.ExecutionContext
 
-abstract class BaseAsyncSpec extends FunSpec with Assertions with Matchers {
+abstract class BaseAsyncSpec extends AnyFunSpec with Assertions with Matchers {
   implicit val contextShift: ContextShift[IO] =
     IO.contextShift(ExecutionContext.global)
 
