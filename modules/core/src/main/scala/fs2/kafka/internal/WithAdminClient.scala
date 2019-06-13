@@ -16,17 +16,15 @@
 
 package fs2.kafka.internal
 
-import cats.effect._
+import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
 import cats.implicits._
-import fs2.kafka._
+import fs2.kafka.AdminClientSettings
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.common.KafkaFuture
 
 private[kafka] sealed abstract class WithAdminClient[F[_]] {
   def apply[A](f: AdminClient => KafkaFuture[A]): F[A]
-
-  def close: F[Unit]
 }
 
 private[kafka] object WithAdminClient {
@@ -42,22 +40,24 @@ private[kafka] object WithAdminClient {
         .getOrElse(Blockers.adminClient)
 
     blockerResource.flatMap { blocker =>
-      Resource.make[F, WithAdminClient[F]] {
-        settings.createAdminClient
-          .map { adminClient =>
+      Resource[F, WithAdminClient[F]] {
+        settings.createAdminClient.map { adminClient =>
+          val withAdminClient =
             new WithAdminClient[F] {
               override def apply[A](f: AdminClient => KafkaFuture[A]): F[A] =
                 context.blockOn(blocker) {
                   F.suspend(f(adminClient).cancelable)
                 }
-
-              override def close: F[Unit] =
-                context.blockOn(blocker) {
-                  F.delay(adminClient.close(settings.closeTimeout.asJava))
-                }
             }
-          }
-      }(_.close)
+
+          val close =
+            context.blockOn(blocker) {
+              F.delay(adminClient.close(settings.closeTimeout.asJava))
+            }
+
+          (withAdminClient, close)
+        }
+      }
     }
   }
 }
