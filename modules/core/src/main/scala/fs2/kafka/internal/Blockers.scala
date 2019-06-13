@@ -22,20 +22,18 @@ import scala.concurrent.ExecutionContext
 
 private[kafka] object Blockers {
   def consumer[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
-    executionContextResource("fs2-kafka-consumer")
+    blocker("fs2-kafka-consumer")
 
   def producer[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
-    executionContextResource("fs2-kafka-producer")
+    blocker("fs2-kafka-producer")
 
   def adminClient[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
-    executionContextResource("fs2-kafka-admin-client")
+    blocker("fs2-kafka-admin-client")
 
-  private[this] def executionContextResource[F[_]](
-    name: String
-  )(implicit F: Sync[F]): Resource[F, Blocker] =
-    Resource
-      .make {
-        F.delay {
+  private[this] def blocker[F[_]](name: String)(implicit F: Sync[F]): Resource[F, Blocker] =
+    Resource {
+      F.delay {
+        val executor =
           Executors.newSingleThreadExecutor(
             new ThreadFactory {
               override def newThread(runnable: Runnable): Thread = {
@@ -46,11 +44,16 @@ private[kafka] object Blockers {
               }
             }
           )
-        }
-      }(executor => F.delay(executor.shutdown()))
-      .map { executor =>
-        Blocker.liftExecutionContext {
-          ExecutionContext.fromExecutor(executor)
-        }
+
+        val blocker =
+          Blocker.liftExecutionContext {
+            ExecutionContext.fromExecutor(executor)
+          }
+
+        val shutdown =
+          F.delay(executor.shutdown())
+
+        (blocker, shutdown)
       }
+    }
 }
