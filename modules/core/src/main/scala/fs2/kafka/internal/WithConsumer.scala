@@ -20,7 +20,6 @@ import cats.effect._
 import cats.implicits._
 import fs2.kafka._
 import fs2.kafka.internal.syntax._
-import scala.concurrent.ExecutionContext
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
   def apply[A](f: KafkaByteConsumer => F[A]): F[A]
@@ -33,12 +32,12 @@ private[kafka] object WithConsumer {
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, WithConsumer[F]] = {
-    val executionContextResource =
-      settings.executionContext
-        .map(Resource.pure[F, ExecutionContext])
-        .getOrElse(ExecutionContexts.consumer)
+    val blockerResource =
+      settings.blocker
+        .map(Resource.pure[F, Blocker])
+        .getOrElse(Blockers.consumer)
 
-    executionContextResource.flatMap { executionContext =>
+    blockerResource.flatMap { blocker =>
       Resource.make[F, WithConsumer[F]] {
         settings.createConsumer
           .flatMap(Synchronized[F].of)
@@ -46,7 +45,7 @@ private[kafka] object WithConsumer {
             new WithConsumer[F] {
               override def apply[A](f: KafkaByteConsumer => F[A]): F[A] =
                 synchronizedConsumer.use { consumer =>
-                  context.evalOn(executionContext) {
+                  context.blockOn(blocker) {
                     f(consumer)
                   }
                 }

@@ -1,10 +1,9 @@
 package fs2.kafka
 
-import cats.effect.IO
+import cats.effect.{Blocker, IO}
 import cats.implicits._
 import org.apache.kafka.clients.admin.AdminClientConfig
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
 
 final class AdminClientSettingsSpec extends BaseSpec {
   describe("AdminClientSettings") {
@@ -130,18 +129,24 @@ final class AdminClientSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should provide withExecutionContext") {
+    it("should provide withBlocker") {
       assert {
-        settings
-          .withExecutionContext(ExecutionContext.global)
-          .executionContext
-          .isDefined
+        Blocker[IO]
+          .use { blocker =>
+            IO {
+              settings
+                .withBlocker(blocker)
+                .blocker
+                .isDefined
+            }
+          }
+          .unsafeRunSync()
       }
     }
 
-    it("should not provide an executionContext unless set") {
+    it("should not provide a blocker unless set") {
       assert {
-        settings.executionContext.isEmpty
+        settings.blocker.isEmpty
       }
     }
 

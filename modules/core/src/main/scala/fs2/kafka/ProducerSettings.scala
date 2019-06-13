@@ -16,14 +16,13 @@
 
 package fs2.kafka
 
-import cats.effect.Sync
+import cats.effect.{Blocker, Sync}
 import cats.Show
 import fs2.kafka.internal._
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
 
 /**
   * [[ProducerSettings]] contain settings necessary to create a [[KafkaProducer]].
@@ -51,19 +50,17 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   def valueSerializer: F[Serializer[F, V]]
 
   /**
-    * The `ExecutionContext` on which to run blocking Kafka operations.
-    * If not explicitly provided, a default `ExecutionContext` will be
-    * instantiated when creating a `KafkaProducer` instance.
+    * The `Blocker` to use for blocking Kafka operations. If not
+    * explicitly provided, a default `Blocker` will be created
+    * when creating a `KafkaProducer` instance.
     */
-  def executionContext: Option[ExecutionContext]
+  def blocker: Option[Blocker]
 
   /**
-    * Returns a new [[ProducerSettings]] instance with the specified
-    * [[executionContext]] on which to run blocking Kafka operations.
+    * Returns a new [[ProducerSettings]] instance with the
+    * specified [[blocker]] to use for blocking operations.
     */
-  def withExecutionContext(
-    executionContext: ExecutionContext
-  ): ProducerSettings[F, K, V]
+  def withBlocker(blocker: Blocker): ProducerSettings[F, K, V]
 
   /**
     * Properties which can be provided when creating a Java `KafkaProducer`
@@ -282,16 +279,14 @@ object ProducerSettings {
   private[this] final case class ProducerSettingsImpl[F[_], K, V](
     override val keySerializer: F[Serializer[F, K]],
     override val valueSerializer: F[Serializer[F, V]],
-    override val executionContext: Option[ExecutionContext],
+    override val blocker: Option[Blocker],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val parallelism: Int,
     val createProducerWith: Map[String, String] => F[KafkaByteProducer]
   ) extends ProducerSettings[F, K, V] {
-    override def withExecutionContext(
-      executionContext: ExecutionContext
-    ): ProducerSettings[F, K, V] =
-      copy(executionContext = Some(executionContext))
+    override def withBlocker(blocker: Blocker): ProducerSettings[F, K, V] =
+      copy(blocker = Some(blocker))
 
     override def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -374,7 +369,7 @@ object ProducerSettings {
     ProducerSettingsImpl(
       keySerializer = keySerializer,
       valueSerializer = valueSerializer,
-      executionContext = None,
+      blocker = None,
       properties = Map.empty,
       closeTimeout = 60.seconds,
       parallelism = 100,

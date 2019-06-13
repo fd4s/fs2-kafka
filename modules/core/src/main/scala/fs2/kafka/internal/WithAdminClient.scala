@@ -22,7 +22,6 @@ import fs2.kafka._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.common.KafkaFuture
-import scala.concurrent.ExecutionContext
 
 private[kafka] sealed abstract class WithAdminClient[F[_]] {
   def apply[A](f: AdminClient => KafkaFuture[A]): F[A]
@@ -37,23 +36,23 @@ private[kafka] object WithAdminClient {
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, WithAdminClient[F]] = {
-    val executionContextResource =
-      settings.executionContext
-        .map(Resource.pure[F, ExecutionContext])
-        .getOrElse(ExecutionContexts.adminClient)
+    val blockerResource =
+      settings.blocker
+        .map(Resource.pure[F, Blocker])
+        .getOrElse(Blockers.adminClient)
 
-    executionContextResource.flatMap { executionContext =>
+    blockerResource.flatMap { blocker =>
       Resource.make[F, WithAdminClient[F]] {
         settings.createAdminClient
           .map { adminClient =>
             new WithAdminClient[F] {
               override def apply[A](f: AdminClient => KafkaFuture[A]): F[A] =
-                context.evalOn(executionContext) {
+                context.blockOn(blocker) {
                   F.suspend(f(adminClient).cancelable)
                 }
 
               override def close: F[Unit] =
-                context.evalOn(executionContext) {
+                context.blockOn(blocker) {
                   F.delay(adminClient.close(settings.closeTimeout.asJava))
                 }
             }
