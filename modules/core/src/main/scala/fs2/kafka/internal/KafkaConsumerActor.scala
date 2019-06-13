@@ -23,6 +23,7 @@ import cats.implicits._
 import fs2.Chunk
 import fs2.concurrent.Queue
 import fs2.kafka._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogEntry._
@@ -38,7 +39,6 @@ import org.apache.kafka.clients.consumer.{
 }
 import org.apache.kafka.common.TopicPartition
 import scala.collection.immutable.SortedSet
-import scala.collection.JavaConverters._
 
 /**
   * [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to

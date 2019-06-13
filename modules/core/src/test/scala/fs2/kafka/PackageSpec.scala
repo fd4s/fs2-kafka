@@ -2,7 +2,7 @@ package fs2.kafka
 
 import cats.effect.IO
 
-final class PackageSpec extends BaseKafkaSpec {
+final class PackageSpec extends BaseAsyncSpec {
   describe("creating admin clients") {
     it("should support defined syntax") {
       val settings =

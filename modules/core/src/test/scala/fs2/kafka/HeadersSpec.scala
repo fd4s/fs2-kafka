@@ -1,7 +1,7 @@
 package fs2.kafka
 
 import cats.data.Chain
-import scala.collection.JavaConverters._
+import fs2.kafka.internal.converters.collection._
 
 final class HeadersSpec extends BaseSpec {
   describe("Headers#empty") {

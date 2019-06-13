@@ -21,6 +21,7 @@ import cats.effect.{CancelToken, Concurrent, Sync}
 import cats.effect.concurrent.Ref
 import cats.implicits._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
+import fs2.kafka.internal.converters.unsafeWrapArray
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util
@@ -226,8 +227,10 @@ private[kafka] object syntax {
   ) extends AnyVal {
     def asScala: Headers =
       Headers.fromSeq {
-        headers.toArray.map { header =>
-          Header(header.key, header.value)
+        unsafeWrapArray {
+          headers.toArray.map { header =>
+            Header(header.key, header.value)
+          }
         }
       }
   }

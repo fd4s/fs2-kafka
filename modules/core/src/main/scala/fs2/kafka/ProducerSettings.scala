@@ -19,9 +19,9 @@ package fs2.kafka
 import cats.effect.{Blocker, Sync}
 import cats.Show
 import fs2.kafka.internal._
+import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 
 /**
