@@ -20,7 +20,6 @@ import cats.effect._
 import cats.implicits._
 import fs2.kafka._
 import fs2.kafka.internal.syntax._
-import scala.concurrent.ExecutionContext
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
   def apply[A](f: KafkaByteProducer => F[A]): F[A]
@@ -33,18 +32,18 @@ private[kafka] object WithProducer {
     implicit F: Sync[F],
     context: ContextShift[F]
   ): Resource[F, WithProducer[F]] = {
-    val executionContextResource =
-      settings.executionContext
-        .map(Resource.pure[F, ExecutionContext])
-        .getOrElse(ExecutionContexts.producer)
+    val blockerResource =
+      settings.blocker
+        .map(Resource.pure[F, Blocker])
+        .getOrElse(Blockers.producer)
 
-    executionContextResource.flatMap { executionContext =>
+    blockerResource.flatMap { blocker =>
       Resource.make[F, WithProducer[F]] {
         settings.createProducer
           .map { producer =>
             new WithProducer[F] {
               override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
-                context.evalOn(executionContext) {
+                context.blockOn(blocker) {
                   f(producer)
                 }
             }

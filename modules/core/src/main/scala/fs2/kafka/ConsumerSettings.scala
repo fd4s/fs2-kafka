@@ -16,7 +16,7 @@
 
 package fs2.kafka
 
-import cats.effect.Sync
+import cats.effect.{Blocker, Sync}
 import cats.Show
 import fs2.kafka.internal._
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -24,7 +24,6 @@ import org.apache.kafka.common.requests.OffsetFetchResponse
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
 
 /**
   * [[ConsumerSettings]] contain settings necessary to create a
@@ -60,19 +59,17 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   def valueDeserializer: F[Deserializer[F, V]]
 
   /**
-    * The `ExecutionContext` on which to run blocking Kafka operations.
-    * If not explicitly provided, a default `ExecutionContext` will be
-    * instantiated when creating a `KafkaConsumer` instance.
+    * The `Blocker` to use for blocking Kafka operations. If not
+    * explicitly provided, a default `Blocker` will be created
+    * when creating a `KafkaConsumer` instance.
     */
-  def executionContext: Option[ExecutionContext]
+  def blocker: Option[Blocker]
 
   /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * [[executionContext]] on which to run blocking Kafka operations.
+    * Returns a new [[ConsumerSettings]] instance with the
+    * specified [[blocker]] to use for blocking operations.
     */
-  def withExecutionContext(
-    executionContext: ExecutionContext
-  ): ConsumerSettings[F, K, V]
+  def withBlocker(blocker: Blocker): ConsumerSettings[F, K, V]
 
   /**
     * Properties which can be provided when creating a Java `KafkaConsumer`
@@ -383,7 +380,7 @@ object ConsumerSettings {
   private[this] final case class ConsumerSettingsImpl[F[_], K, V](
     override val keyDeserializer: F[Deserializer[F, K]],
     override val valueDeserializer: F[Deserializer[F, V]],
-    override val executionContext: Option[ExecutionContext],
+    override val blocker: Option[Blocker],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val commitTimeout: FiniteDuration,
@@ -394,10 +391,8 @@ object ConsumerSettings {
     override val maxPrefetchBatches: Int,
     val createConsumerWith: Map[String, String] => F[KafkaByteConsumer]
   ) extends ConsumerSettings[F, K, V] {
-    override def withExecutionContext(
-      executionContext: ExecutionContext
-    ): ConsumerSettings[F, K, V] =
-      copy(executionContext = Some(executionContext))
+    override def withBlocker(blocker: Blocker): ConsumerSettings[F, K, V] =
+      copy(blocker = Some(blocker))
 
     override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -517,7 +512,7 @@ object ConsumerSettings {
     ConsumerSettingsImpl(
       keyDeserializer = keyDeserializer,
       valueDeserializer = valueDeserializer,
-      executionContext = None,
+      blocker = None,
       properties = Map(
         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "none",
         ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"

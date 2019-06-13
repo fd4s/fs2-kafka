@@ -16,23 +16,23 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Resource, Sync}
+import cats.effect.{Blocker, Resource, Sync}
 import java.util.concurrent.{Executors, ThreadFactory}
 import scala.concurrent.ExecutionContext
 
-private[kafka] object ExecutionContexts {
-  def consumer[F[_]](implicit F: Sync[F]): Resource[F, ExecutionContext] =
+private[kafka] object Blockers {
+  def consumer[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
     executionContextResource("fs2-kafka-consumer")
 
-  def producer[F[_]](implicit F: Sync[F]): Resource[F, ExecutionContext] =
+  def producer[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
     executionContextResource("fs2-kafka-producer")
 
-  def adminClient[F[_]](implicit F: Sync[F]): Resource[F, ExecutionContext] =
+  def adminClient[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
     executionContextResource("fs2-kafka-admin-client")
 
   private[this] def executionContextResource[F[_]](
     name: String
-  )(implicit F: Sync[F]): Resource[F, ExecutionContext] =
+  )(implicit F: Sync[F]): Resource[F, Blocker] =
     Resource
       .make {
         F.delay {
@@ -48,5 +48,9 @@ private[kafka] object ExecutionContexts {
           )
         }
       }(executor => F.delay(executor.shutdown()))
-      .map(ExecutionContext.fromExecutor)
+      .map { executor =>
+        Blocker.liftExecutionContext {
+          ExecutionContext.fromExecutor(executor)
+        }
+      }
 }

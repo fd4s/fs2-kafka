@@ -1,18 +1,18 @@
 package fs2.kafka
 
-import cats.effect.IO
+import cats.effect.{Blocker, IO}
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerConfig
-
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 final class ConsumerSettingsSpec extends BaseSpec {
   describe("ConsumerSettings") {
-    it("should be able to override execution context") {
+    it("should be able to set blocker") {
       assert {
-        settings.executionContext.isEmpty &&
-        settingsWithContext.executionContext.nonEmpty
+        settings.blocker.isEmpty &&
+        settingWithBlocker.use { settings =>
+          IO(settings.blocker.nonEmpty)
+        }.unsafeRunSync
       }
     }
 
@@ -282,7 +282,9 @@ final class ConsumerSettingsSpec extends BaseSpec {
       valueDeserializer = Deserializer[IO, String]
     )
 
-  val settingsWithContext =
-    ConsumerSettings[IO, String, String]
-      .withExecutionContext(ExecutionContext.global)
+  val settingWithBlocker =
+    Blocker[IO].map { blocker =>
+      ConsumerSettings[IO, String, String]
+        .withBlocker(blocker)
+    }
 }
