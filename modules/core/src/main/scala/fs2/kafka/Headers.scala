@@ -18,8 +18,8 @@ package fs2.kafka
 
 import cats.data.{Chain, NonEmptyChain}
 import cats.Show
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
-import scala.collection.JavaConverters._
 
 /**
   * [[Headers]] represent an immutable append-only collection

@@ -1,13 +1,13 @@
 package fs2.kafka
 
 import cats.effect.{Sync, IO}
+import fs2.kafka.internal.converters.collection._
 import java.util.UUID
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{ConsumerConfig, KafkaConsumer => KConsumer}
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import scala.collection.JavaConverters._
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
   implicit final val stringSerializer: KafkaSerializer[String] =

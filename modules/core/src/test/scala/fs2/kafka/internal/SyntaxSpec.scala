@@ -19,10 +19,10 @@ final class SyntaxSpec extends BaseSpec {
   }
 
   describe("Map#filterKeysStrictValuesList") {
-    it("should be the same as filterKeys(p).values.toList") {
+    it("should be the same as toList.collect") {
       forAll { (m: Map[Int, Int], p: Int => Boolean) =>
         assert {
-          m.filterKeysStrictValuesList(p) == m.filterKeys(p).values.toList
+          m.filterKeysStrictValuesList(p) == m.toList.collect { case (k, v) if (p(k)) => v }
         }
       }
     }

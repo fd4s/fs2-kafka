@@ -57,10 +57,16 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "org.typelevel" %% "cats-testkit" % catsVersion,
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "io.github.embeddedkafka" %% "embedded-kafka" % "2.2.0",
-    "org.apache.kafka" %% "kafka" % kafkaVersion
+    "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
+  libraryDependencies ++= {
+    if (!scalaVersion.value.startsWith("2.13"))
+      Seq(
+        "io.github.embeddedkafka" %% "embedded-kafka" % "2.2.0",
+        "org.apache.kafka" %% "kafka" % kafkaVersion
+      ).map(_ % Test)
+    else Seq.empty
+  },
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.3" cross CrossVersion.binary)
 )
@@ -180,7 +186,7 @@ lazy val noPublishSettings =
 
 lazy val scalaSettings = Seq(
   scalaVersion := "2.12.8",
-  crossScalaVersions := Seq("2.11.12", scalaVersion.value),
+  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0"),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
@@ -199,7 +205,12 @@ lazy val scalaSettings = Seq(
     "-Xfuture",
     "-Ywarn-unused",
     "-Ypartial-unification"
-  ),
+  ).filter {
+    case ("-Yno-adapted-args" | "-Ypartial-unification" | "-Xfuture")
+        if scalaVersion.value.startsWith("2.13") =>
+      false
+    case _ => true
+  },
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
   scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value
 )
@@ -207,7 +218,19 @@ lazy val scalaSettings = Seq(
 lazy val testSettings = Seq(
   logBuffered in Test := false,
   parallelExecution in Test := false,
-  testOptions in Test += Tests.Argument("-oDF")
+  testOptions in Test += Tests.Argument("-oDF"),
+  excludeFilter.in(Test, unmanagedSources) := {
+    if (scalaVersion.value.startsWith("2.13"))
+      HiddenFileFilter ||
+      "BaseKafkaSpec.scala" ||
+      "HeaderDeserializerSpec.scala" ||
+      "KafkaAdminClientSpec.scala" ||
+      "KafkaConsumerSpec.scala" ||
+      "KafkaProducerSpec.scala" ||
+      "TransactionalKafkaProducerSpec.scala"
+    else
+      (excludeFilter.in(Test, unmanagedSources)).value
+  }
 )
 
 def minorVersion(version: String): String = {

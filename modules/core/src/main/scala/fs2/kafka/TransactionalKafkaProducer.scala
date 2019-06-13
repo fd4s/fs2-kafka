@@ -20,8 +20,8 @@ import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, Resource}
 import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.internal._
+import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
-import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 /**

@@ -25,13 +25,13 @@ import cats.implicits._
 import fs2.{Chunk, Stream}
 import fs2.concurrent.Queue
 import fs2.kafka.internal._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
 import java.util
 import org.apache.kafka.common.TopicPartition
 import scala.collection.immutable.SortedSet
-import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
 

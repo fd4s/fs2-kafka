@@ -17,7 +17,7 @@ libraryDependencies += "@ORGANIZATION@" %% "@MODULE_NAME@" % "@LATEST_VERSION@"
 
 Published for Scala @SCALA_PUBLISH_VERSIONS@. For changes, refer to the [release notes](https://github.com/ovotech/fs2-kafka/releases).
 
-Remember to enable partial unification by adding the following line to `build.sbt`.
+For Scala 2.11 and 2.12, enable partial unification by adding the following line to `build.sbt`.
 
 ```scala
 scalacOptions += "-Ypartial-unification"
