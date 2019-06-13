@@ -16,9 +16,9 @@
 
 package fs2.kafka.internal
 
-import cats.effect._
+import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
 import cats.implicits._
-import fs2.kafka._
+import fs2.kafka.{KafkaByteConsumer, ConsumerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
@@ -38,23 +38,27 @@ private[kafka] object WithConsumer {
         .getOrElse(Blockers.consumer)
 
     blockerResource.flatMap { blocker =>
-      Resource.make[F, WithConsumer[F]] {
+      Resource[F, WithConsumer[F]] {
         settings.createConsumer
           .flatMap(Synchronized[F].of)
           .map { synchronizedConsumer =>
-            new WithConsumer[F] {
-              override def apply[A](f: KafkaByteConsumer => F[A]): F[A] =
-                synchronizedConsumer.use { consumer =>
-                  context.blockOn(blocker) {
-                    f(consumer)
+            val withConsumer =
+              new WithConsumer[F] {
+                override def apply[A](f: KafkaByteConsumer => F[A]): F[A] =
+                  synchronizedConsumer.use { consumer =>
+                    context.blockOn(blocker) {
+                      f(consumer)
+                    }
                   }
-                }
-            }
+              }
+
+            val close =
+              withConsumer { consumer =>
+                F.delay(consumer.close(settings.closeTimeout.asJava))
+              }
+
+            (withConsumer, close)
           }
-      } { withConsumer =>
-        withConsumer { consumer =>
-          F.delay(consumer.close(settings.closeTimeout.asJava))
-        }
       }
     }
   }
