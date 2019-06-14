@@ -11,11 +11,17 @@
       "overview": {
         "title": "Overview"
       },
+      "producers": {
+        "title": "Producers"
+      },
       "quick-example": {
         "title": "Quick Example"
       },
       "technical-details": {
         "title": "Technical Details"
+      },
+      "transactions": {
+        "title": "Transactions"
       }
     },
     "links": {

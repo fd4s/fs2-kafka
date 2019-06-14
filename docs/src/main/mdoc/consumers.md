@@ -50,7 +50,7 @@ To support different deserializers for different topics, use `topic` to pattern 
 ```scala mdoc:silent
 Deserializer.topic[IO, String] {
   case "first"  => Deserializer[IO, String]
-  case "second" => Deserializer[IO, Int].map(_.toString)
+  case "second" => Deserializer[IO, Int].map(_.show)
 }
 ```
 
@@ -62,7 +62,7 @@ Use `headers` for different deserializers depending on record headers.
 Deserializer.headers[IO, String] { headers =>
   headers("format").map(_.as[String]) match {
     case Some("string") => Deserializer[IO, String]
-    case Some("int")    => Deserializer[IO, Int].map(_.toString)
+    case Some("int")    => Deserializer[IO, Int].map(_.show)
     case Some(format)   => Deserializer.failWith(s"unknown format: $format")
     case None           => Deserializer.failWith("format header is missing")
   }
@@ -126,7 +126,7 @@ ConsumerSettings(
  .withGroupId("group")
 ```
 
-[`ConsumerSettings`][consumersettings] provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use `withProperty` or `withProperties` together with constants from [`ConsumerConfig`][consumer-config]. Available properties for the Java Kafka consumer are described in the [documentation](http://kafka.apache.org/documentation/#consumerconfigs).
+[`ConsumerSettings`][consumersettings] provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use `withProperty` or `withProperties` together with constants from [`ConsumerConfig`][consumerconfig]. Available properties for the Java Kafka consumer are described in the [documentation](http://kafka.apache.org/documentation/#consumerconfigs).
 
 ### Default Settings
 
@@ -148,7 +148,7 @@ In addition, there are several settings specific to the library.
 
 - `withCreateConsumer` changes how the underlying Java Kafka consumer is created. The default merely creates a Java `KafkaConsumer` instance using set properties, but this function allows overriding the behaviour for e.g. testing purposes.
 
-- `withExecutionContext` sets the `ExecutionContext` on which blocking Java Kafka consumer functions are executed. Unless specified, a default fixed single-thread pool is created as part of consumer initialization, with the thread name using the `fs2-kafka-consumer` prefix.
+- `withBlocker` sets the `Blocker` on which blocking Java Kafka consumer functions are executed. Unless specified, a default fixed single-thread pool is created as part of consumer initialization, with the thread name using the `fs2-kafka-consumer` prefix.
 
 - `withMaxPrefetchBatches` adjusts the maximum number of record batches per topic-partition to prefetch before backpressure is applied. The default is 2, meaning there can be up to 2 record batches per topic-partition waiting to be processed.
 
@@ -306,7 +306,7 @@ If we're sure we need to commit every offset, we can `commit` individual [`Commi
 [committableoffset]: @API_BASE_URL@/CommittableOffset.html
 [committableoffsetbatch]: @API_BASE_URL@/CommittableOffsetBatch.html
 [committableoffsetbatch$]: @API_BASE_URL@/CommittableOffsetBatch$.html
-[consumer-config]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/consumer/ConsumerConfig.html
+[consumerconfig]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/consumer/ConsumerConfig.html
 [consumerrecord]: @API_BASE_URL@/ConsumerRecord.html
 [consumersettings]: @API_BASE_URL@/ConsumerSettings.html
 [deserializer]: @API_BASE_URL@/Deserializer.html

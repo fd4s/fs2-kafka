@@ -247,7 +247,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
-    * The maximum number of records to produce in the same batch.<br>
+    * The maximum number of [[ProducerRecords]] to produce in the same batch.<br>
     * <br>
     * The default value is 100.
     */
