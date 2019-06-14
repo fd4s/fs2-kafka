@@ -4,6 +4,8 @@
       "overview",
       "quick-example",
       "consumers",
+      "producers",
+      "transactions",
       "technical-details"
     ]
   }
