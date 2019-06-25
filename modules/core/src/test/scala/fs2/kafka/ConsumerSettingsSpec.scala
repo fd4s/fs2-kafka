@@ -42,6 +42,24 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
+    it("should provide withAllowAutoCreateTopics") {
+      assert {
+        settings
+          .withAllowAutoCreateTopics(false)
+          .properties(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG)
+          .contains("false")
+      }
+    }
+
+    it("should provide withClientRack") {
+      assert {
+        settings
+          .withClientRack("client-rack")
+          .properties(ConsumerConfig.CLIENT_RACK_CONFIG)
+          .contains("client-rack")
+      }
+    }
+
     it("should provide withClientId") {
       assert {
         settings

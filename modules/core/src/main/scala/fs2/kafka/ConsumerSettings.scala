@@ -234,6 +234,29 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   def withIsolationLevel(isolationLevel: IsolationLevel): ConsumerSettings[F, K, V]
 
   /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * allow auto create topics. This is equivalent to setting the
+    * following property using the [[withProperty]] function, except
+    * you can specify it with a `Boolean` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG
+    * }}}
+    */
+  def withAllowAutoCreateTopics(allowAutoCreateTopics: Boolean): ConsumerSettings[F, K, V]
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * client rack. This is equivalent to setting the following
+    * property using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.CLIENT_RACK_CONFIG
+    * }}}
+    */
+  def withClientRack(clientRack: String): ConsumerSettings[F, K, V]
+
+  /**
     * Includes a property with the specified `key` and `value`.
     * The key should be one of the keys in `ConsumerConfig`,
     * and the value should be a valid choice for the key.
@@ -460,6 +483,14 @@ object ConsumerSettings {
           case IsolationLevel.ReadUncommittedIsolationLevel => "read_uncommitted"
         }
       )
+
+    override def withAllowAutoCreateTopics(
+      allowAutoCreateTopics: Boolean
+    ): ConsumerSettings[F, K, V] =
+      withProperty(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, allowAutoCreateTopics.toString)
+
+    override def withClientRack(clientRack: String): ConsumerSettings[F, K, V] =
+      withProperty(ConsumerConfig.CLIENT_RACK_CONFIG, clientRack)
 
     override def withProperty(key: String, value: String): ConsumerSettings[F, K, V] =
       copy(properties = properties.updated(key, value))
