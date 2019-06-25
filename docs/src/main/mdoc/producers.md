@@ -78,9 +78,8 @@ If we have a Java Kafka serializer, use `delegate` to create a `Serializer`.
 ```scala mdoc:silent
 Serializer.delegate[IO, String] {
   new KafkaSerializer[String] {
-    def serialize(topic: String, value: String): Array[Byte] = value.getBytes("UTF-8")
-    def configure(configs: java.util.Map[String, _], isKey: Boolean): Unit = ()
-    def close(): Unit = ()
+    def serialize(topic: String, value: String): Array[Byte] =
+      value.getBytes("UTF-8")
   }
 }
 ```
@@ -94,9 +93,6 @@ Serializer.delegate[IO, String] {
       println(s"serializing record on topic $topic")
       value.getBytes("UTF-8")
     }
-
-    def configure(configs: java.util.Map[String, _], isKey: Boolean): Unit = ()
-    def close(): Unit = ()
   }
 }.suspend
 ```
