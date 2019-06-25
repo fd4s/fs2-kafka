@@ -6,7 +6,7 @@ val catsEffectVersion = "2.0.0-M4"
 
 val fs2Version = "1.1.0-M1"
 
-val kafkaVersion = "2.2.1"
+val kafkaVersion = "2.3.0"
 
 lazy val root = project
   .in(file("."))
