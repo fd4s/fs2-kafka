@@ -89,3 +89,5 @@ Note binary- and source-compatibility is not guaranteed between milestone releas
 [#152]: https://github.com/ovotech/fs2-kafka/pull/152
 [#153]: https://github.com/ovotech/fs2-kafka/pull/153
 [#154]: https://github.com/ovotech/fs2-kafka/pull/154
+
+Released on 2019-07-04.
