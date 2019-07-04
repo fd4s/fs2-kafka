@@ -1,0 +1,264 @@
+<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>Consumers · FS2 Kafka</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta name="description" content="&lt;p&gt;Consumers support subscribing to topics, record streaming and deserialization, as well as miscellaneous utility functionality, such as seeking to offsets, or checking what the end offsets are for a topic. Consumers make use of the [Java Kafka consumer][java-kafka-consumer], which becomes especially important for &lt;a href=&quot;#settings&quot;&gt;settings&lt;/a&gt;. For consumer implementation details, refer to the &lt;a href=&quot;/fs2-kafka/docs/technical-details&quot;&gt;technical details&lt;/a&gt; section.&lt;/p&gt;
+"/><meta name="docsearch:language" content="en"/><meta property="og:title" content="Consumers · FS2 Kafka"/><meta property="og:type" content="website"/><meta property="og:url" content="https://ovotech.github.io/fs2-kafka/fs2-kafka/"/><meta property="og:description" content="&lt;p&gt;Consumers support subscribing to topics, record streaming and deserialization, as well as miscellaneous utility functionality, such as seeking to offsets, or checking what the end offsets are for a topic. Consumers make use of the [Java Kafka consumer][java-kafka-consumer], which becomes especially important for &lt;a href=&quot;#settings&quot;&gt;settings&lt;/a&gt;. For consumer implementation details, refer to the &lt;a href=&quot;/fs2-kafka/docs/technical-details&quot;&gt;technical details&lt;/a&gt; section.&lt;/p&gt;
+"/><meta name="twitter:card" content="summary"/><link rel="shortcut icon" href="/fs2-kafka/img/favicon.png"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css"/><link rel="stylesheet" href="/fs2-kafka/css/main.css"/><script src="/fs2-kafka/js/codetabs.js"></script></head><body class="sideNavVisible separateOnPageNav"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/fs2-kafka/"><img class="logo" src="/fs2-kafka/img/fs2-kafka.white.svg" alt="FS2 Kafka"/><h2 class="headerTitleWithLogo">FS2 Kafka</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li class=""><a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/index.html" target="_self">API Docs</a></li><li class="siteNavGroupActive"><a href="/fs2-kafka/docs/overview" target="_self">Documentation</a></li><li class=""><a href="https://github.com/ovotech/fs2-kafka" target="_self">GitHub</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="container docsNavContainer" id="docsNav"><nav class="toc"><div class="toggleNav"><section class="navWrapper wrapper"><div class="navBreadcrumb wrapper"><div class="navToggle" id="navToggler"><i></i></div><h2><i>›</i><span>Documentation</span></h2><div class="tocToggler" id="tocToggler"><i class="icon-toc"></i></div></div><div class="navGroups"><div class="navGroup"><h3 class="navGroupCategoryTitle">Documentation</h3><ul class=""><li class="navListItem"><a class="navItem" href="/fs2-kafka/docs/overview">Overview</a></li><li class="navListItem"><a class="navItem" href="/fs2-kafka/docs/quick-example">Quick Example</a></li><li class="navListItem navListItemActive"><a class="navItem" href="/fs2-kafka/docs/consumers">Consumers</a></li><li class="navListItem"><a class="navItem" href="/fs2-kafka/docs/producers">Producers</a></li><li class="navListItem"><a class="navItem" href="/fs2-kafka/docs/transactions">Transactions</a></li><li class="navListItem"><a class="navItem" href="/fs2-kafka/docs/technical-details">Technical Details</a></li></ul></div></div></section></div><script>
+            var coll = document.getElementsByClassName('collapsible');
+            var checkActiveCategory = true;
+            for (var i = 0; i < coll.length; i++) {
+              var links = coll[i].nextElementSibling.getElementsByTagName('*');
+              if (checkActiveCategory){
+                for (var j = 0; j < links.length; j++) {
+                  if (links[j].classList.contains('navListItemActive')){
+                    coll[i].nextElementSibling.classList.toggle('hide');
+                    coll[i].childNodes[1].classList.toggle('rotate');
+                    checkActiveCategory = false;
+                    break;
+                  }
+                }
+              }
+
+              coll[i].addEventListener('click', function() {
+                var arrow = this.childNodes[1];
+                arrow.classList.toggle('rotate');
+                var content = this.nextElementSibling;
+                content.classList.toggle('hide');
+              });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+              createToggler('#navToggler', '#docsNav', 'docsSliderActive');
+              createToggler('#tocToggler', 'body', 'tocActive');
+
+              const headings = document.querySelector('.toc-headings');
+              headings && headings.addEventListener('click', function(event) {
+                if (event.target.tagName === 'A') {
+                  document.body.classList.remove('tocActive');
+                }
+              }, false);
+
+              function createToggler(togglerSelector, targetSelector, className) {
+                var toggler = document.querySelector(togglerSelector);
+                var target = document.querySelector(targetSelector);
+
+                if (!toggler) {
+                  return;
+                }
+
+                toggler.onclick = function(event) {
+                  event.preventDefault();
+
+                  target.classList.toggle(className);
+                };
+              }
+            });
+        </script></nav></div><div class="container mainContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 class="postHeaderTitle">Consumers</h1></header><article><div><span><p>Consumers support subscribing to topics, record streaming and deserialization, as well as miscellaneous utility functionality, such as seeking to offsets, or checking what the end offsets are for a topic. Consumers make use of the <a href="https://kafka.apache.org/23/javadoc/?org/apache/kafka/clients/consumer/KafkaConsumer.html">Java Kafka consumer</a>, which becomes especially important for <a href="#settings">settings</a>. For consumer implementation details, refer to the <a href="/fs2-kafka/docs/technical-details">technical details</a> section.</p>
+<p>The following imports are assumed throughout this page.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect._
+<span class="hljs-keyword">import</span> cats.implicits._
+<span class="hljs-keyword">import</span> fs2.kafka._
+<span class="hljs-keyword">import</span> scala.concurrent.duration._
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" id="deserializers"></a><a href="#deserializers" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Deserializers</h2>
+<p><a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/Deserializer.html"><code>Deserializer</code></a> describes functional composable deserializers for record keys and values. We generally require two deserializers: one for the record key and one for the record value. Deserializers are provided implicitly for many standard library types, including:</p>
+<ul>
+<li><code>Array[Byte]</code>, <code>Double</code>, <code>Float</code>, <code>Int</code>, <code>Long</code>, <code>Short</code>, <code>String</code>, and <code>UUID</code>.</li>
+</ul>
+<p>There are also deserializers for types which carry special meaning:</p>
+<ul>
+<li><p><code>Option[A]</code> to deserialize occurrances of <code>null</code> as <code>None</code>, and</p></li>
+<li><p><code>Unit</code> to ignore the serialized bytes and always use <code>()</code>.</p></li>
+</ul>
+<p>For more involved types, we need to resort to custom deserializers.</p>
+<h3><a class="anchor" aria-hidden="true" id="custom-deserializers"></a><a href="#custom-deserializers" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Custom Deserializers</h3>
+<p><code>Deserializer[F[_], A]</code> describes a function <code>Array[Byte] =&gt; F[A]</code>, while also having access to the topic name and record <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/Headers.html"><code>Headers</code></a>. There are many <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/Deserializer$.html">functions</a> available for creating custom deserializers, with the most basic one being <code>instance</code>, which simply creates a deserializer from a provided function.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-type">Deserializer</span>.instance {
+  (topic, headers, bytes) =&gt;
+    <span class="hljs-type">IO</span>.pure(bytes.dropWhile(_ == <span class="hljs-number">0</span>))
+}
+</code></pre>
+<p>If the deserializer only needs access to the bytes, like in the case above, use <code>lift</code>.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-type">Deserializer</span>.lift(bytes =&gt; <span class="hljs-type">IO</span>.pure(bytes.dropWhile(_ == <span class="hljs-number">0</span>)))
+</code></pre>
+<p>To support different deserializers for different topics, use <code>topic</code> to pattern match on the topic name.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-type">Deserializer</span>.topic[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>] {
+  <span class="hljs-keyword">case</span> <span class="hljs-string">"first"</span>  =&gt; <span class="hljs-type">Deserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>]
+  <span class="hljs-keyword">case</span> <span class="hljs-string">"second"</span> =&gt; <span class="hljs-type">Deserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Int</span>].map(_.show)
+}
+</code></pre>
+<p>For unmatched topics, an <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/UnexpectedTopicException.html"><code>UnexpectedTopicException</code></a> is raised.</p>
+<p>Use <code>headers</code> for different deserializers depending on record headers.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-type">Deserializer</span>.headers[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>] { headers =&gt;
+  headers(<span class="hljs-string">"format"</span>).map(_.as[<span class="hljs-type">String</span>]) <span class="hljs-keyword">match</span> {
+    <span class="hljs-keyword">case</span> <span class="hljs-type">Some</span>(<span class="hljs-string">"string"</span>) =&gt; <span class="hljs-type">Deserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>]
+    <span class="hljs-keyword">case</span> <span class="hljs-type">Some</span>(<span class="hljs-string">"int"</span>)    =&gt; <span class="hljs-type">Deserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Int</span>].map(_.show)
+    <span class="hljs-keyword">case</span> <span class="hljs-type">Some</span>(format)   =&gt; <span class="hljs-type">Deserializer</span>.failWith(<span class="hljs-string">s"unknown format: <span class="hljs-subst">$format</span>"</span>)
+    <span class="hljs-keyword">case</span> <span class="hljs-type">None</span>           =&gt; <span class="hljs-type">Deserializer</span>.failWith(<span class="hljs-string">"format header is missing"</span>)
+  }
+}
+</code></pre>
+<p>In the example above, <code>failWith</code> raises a <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/DeserializationException.html"><code>DeserializationException</code></a> with the provided message.</p>
+<h3><a class="anchor" aria-hidden="true" id="java-interoperability"></a><a href="#java-interoperability" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Java Interoperability</h3>
+<p>If we have a Java Kafka deserializer, use <code>delegate</code> to create a <code>Deserializer</code>.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-type">Deserializer</span>.delegate[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>] {
+  <span class="hljs-keyword">new</span> <span class="hljs-type">KafkaDeserializer</span>[<span class="hljs-type">String</span>] {
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">deserialize</span></span>(topic: <span class="hljs-type">String</span>, data: <span class="hljs-type">Array</span>[<span class="hljs-type">Byte</span>]): <span class="hljs-type">String</span> =
+      <span class="hljs-keyword">new</span> <span class="hljs-type">String</span>(data)
+  }
+}
+</code></pre>
+<p>If the deserializer performs <em>side effects</em>, follow with <code>suspend</code> to capture them properly.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-type">Deserializer</span>.delegate[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>] {
+   <span class="hljs-keyword">new</span> <span class="hljs-type">KafkaDeserializer</span>[<span class="hljs-type">String</span>] {
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">deserialize</span></span>(topic: <span class="hljs-type">String</span>, data: <span class="hljs-type">Array</span>[<span class="hljs-type">Byte</span>]): <span class="hljs-type">String</span> = {
+      println(<span class="hljs-string">s"deserializing record on topic <span class="hljs-subst">$topic</span>"</span>)
+      <span class="hljs-keyword">new</span> <span class="hljs-type">String</span>(data)
+    }
+  }
+}.suspend
+</code></pre>
+<p>Note that <code>close</code> and <code>configure</code> won't be called for the delegates.</p>
+<h2><a class="anchor" aria-hidden="true" id="settings"></a><a href="#settings" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Settings</h2>
+<p>In order to create a <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/KafkaConsumer.html"><code>KafkaConsumer</code></a>, we first need to create <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a>. At the very minimum, settings include the effect type to use, and the key and value deserializers. More generally, <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a> contain everything necessary to create a <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/KafkaConsumer.html"><code>KafkaConsumer</code></a>. If deserializers are available implicitly for the key and value type, we can use the syntax in the following example.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> consumerSettings =
+  <span class="hljs-type">ConsumerSettings</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]
+    .withAutoOffsetReset(<span class="hljs-type">AutoOffsetReset</span>.<span class="hljs-type">Earliest</span>)
+    .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+    .withGroupId(<span class="hljs-string">"group"</span>)
+</code></pre>
+<p>We can also specify the deserializers explicitly when necessary.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-type">ConsumerSettings</span>(
+  keyDeserializer = <span class="hljs-type">Deserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>],
+  valueDeserializer = <span class="hljs-type">Deserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>]
+).withAutoOffsetReset(<span class="hljs-type">AutoOffsetReset</span>.<span class="hljs-type">Earliest</span>)
+ .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+ .withGroupId(<span class="hljs-string">"group"</span>)
+</code></pre>
+<p><a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a> provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use <code>withProperty</code> or <code>withProperties</code> together with constants from <a href="https://kafka.apache.org/23/javadoc/?org/apache/kafka/clients/consumer/ConsumerConfig.html"><code>ConsumerConfig</code></a>. Available properties for the Java Kafka consumer are described in the <a href="http://kafka.apache.org/documentation/#consumerconfigs">documentation</a>.</p>
+<h3><a class="anchor" aria-hidden="true" id="default-settings"></a><a href="#default-settings" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Default Settings</h3>
+<p>The following Java Kafka consumer properties are overridden by default.</p>
+<ul>
+<li><p><code>auto.offset.reset</code> is set to <code>none</code>, to avoid the surprising <code>latest</code> default.</p></li>
+<li><p><code>enable.auto.commit</code> is set to <code>false</code>, since offset commits are managed manually.</p></li>
+</ul>
+<p>Use <code>withAutoOffsetReset</code> and <code>withEnableAutoCommit</code> to change these properties.</p>
+<p>In addition, there are several settings specific to the library.</p>
+<ul>
+<li><p><code>withCloseTimeout</code> controls the timeout when waiting for consumer shutdown. Default is 20 seconds.</p></li>
+<li><p><code>withCommitRecovery</code> defines how offset commit exceptions are recovered. See <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommitRecovery$.html#Default:fs2.kafka.CommitRecovery"><code>CommitRecovery.Default</code></a>.</p></li>
+<li><p><code>withCommitTimeout</code> sets the timeout for offset commits. Default is 15 seconds.</p></li>
+<li><p><code>withCreateConsumer</code> changes how the underlying Java Kafka consumer is created. The default merely creates a Java <code>KafkaConsumer</code> instance using set properties, but this function allows overriding the behaviour for e.g. testing purposes.</p></li>
+<li><p><code>withBlocker</code> sets the <code>Blocker</code> on which blocking Java Kafka consumer functions are executed. Unless specified, a default fixed single-thread pool is created as part of consumer initialization, with the thread name using the <code>fs2-kafka-consumer</code> prefix.</p></li>
+<li><p><code>withMaxPrefetchBatches</code> adjusts the maximum number of record batches per topic-partition to prefetch before backpressure is applied. The default is 2, meaning there can be up to 2 record batches per topic-partition waiting to be processed.</p></li>
+<li><p><code>withPollInterval</code> alters how often consumer <code>poll</code> should take place. Default is 50 milliseconds.</p></li>
+<li><p><code>withPollTimeout</code> modifies for how long <code>poll</code> is allowed to block. Default is 50 milliseconds.</p></li>
+<li><p><code>withRecordMetadata</code> defines what metadata to include in <code>OffsetAndMetadata</code> for consumed records. This effectively allows us to store metadata along with offsets when committed to Kafka. The default is for no metadata to be included.</p></li>
+</ul>
+<h2><a class="anchor" aria-hidden="true" id="consumer-creation"></a><a href="#consumer-creation" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Consumer Creation</h2>
+<p>Once <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a> is defined, use <code>consumerStream</code> to create a <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/KafkaConsumer.html"><code>KafkaConsumer</code></a> instance.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+    <span class="hljs-keyword">val</span> stream =
+      consumerStream(consumerSettings)
+
+    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+  }
+}
+</code></pre>
+<p>There is also <code>consumerResource</code> for when it's preferable to work with <code>Resource</code>. Both these functions create an underlying Java Kafka consumer and start work in the background to support record streaming. In addition, they both also guarantee resource cleanup (closing the Kafka consumer and stopping background work).</p>
+<p>In the example above, we simply create the consumer and then immediately shutdown after resource cleanup. <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/KafkaConsumer.html"><code>KafkaConsumer</code></a> supports much of the Java Kafka consumer functionality in addition to record streaming, but for streaming records, we first have to subscribe to a topic.</p>
+<h2><a class="anchor" aria-hidden="true" id="topic-subscription"></a><a href="#topic-subscription" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Topic Subscription</h2>
+<p>We can use <code>subscribe</code> with a non-empty collection of topics, or <code>subscribeTo</code> for varargs support. There is also an option to <code>subscribe</code> using a <code>Regex</code> regular expression for the topic names, in case the exact topic names are not known up-front.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerSubscribeExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+    <span class="hljs-keyword">val</span> stream =
+      consumerStream(consumerSettings)
+        .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
+
+    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+  }
+}
+</code></pre>
+<p>Note that only automatic partition assignment is supported. Like in the <a href="#consumer-creation">consumer creation</a> section, the example above only creates a consumer (guaranteeing resource cleanup) and subscribes to a topic. No records are yet streamed from the topic, for which we'll have to use <code>stream</code> or <code>partitionedStream</code>.</p>
+<h2><a class="anchor" aria-hidden="true" id="record-streaming"></a><a href="#record-streaming" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Record Streaming</h2>
+<p>Once subscribed to at least one topic, we can use <code>stream</code> for a <code>Stream</code> of <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommittableConsumerRecord.html"><code>CommittableConsumerRecord</code></a>s. Each record contains a deserialized <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/ConsumerRecord.html"><code>ConsumerRecord</code></a>, as well as a <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommittableOffset.html"><code>CommittableOffset</code></a> for managing <a href="#offset-commits">offset commits</a>. Streams guarantee records in topic-partition order, but not ordering across partitions. This is the same ordering guarantee that Kafka provides.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerStreamExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+    <span class="hljs-keyword">val</span> stream =
+      consumerStream(consumerSettings)
+        .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
+        .flatMap(_.stream)
+
+    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+  }
+}
+</code></pre>
+<p>Note that this is an infinite stream, meaning it will only terminate if it's interrupted, errors, or if we turn it into a finite stream (using e.g. <code>take</code>). It's usually desired that consumer streams keep running indefinitely, so that incoming records get processed quickly — one notable exception being when testing streams.</p>
+<p>When using <code>stream</code>, records on all assigned partitions end up in the same <code>Stream</code>. Depending on how records are processed, we might want to separate records per topic-partition. This exact functionality is provided by <code>partitionedStream</code>.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerPartitionedStreamExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
+      <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
+
+    <span class="hljs-keyword">val</span> stream =
+      consumerStream(consumerSettings)
+        .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
+        .flatMap(_.partitionedStream)
+        .map { partitionStream =&gt;
+          partitionStream
+            .evalMap { committable =&gt;
+              processRecord(committable.record)
+            }
+        }
+        .parJoinUnbounded
+
+    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+  }
+}
+</code></pre>
+<p>The <code>partitionStream</code> in the example above is a <code>Stream</code> of records for a single topic-partition. We define the processing per topic-partition rather than across all partitions, as was the case with <code>stream</code>. The example will run <code>processRecord</code> on every record, one-at-a-time in-order per topic-partition. However, multiple partitions are processed at the same time when using <code>parJoinUnbounded</code>.</p>
+<p>Note that we have to use <code>parJoinUnbounded</code> here so that all partitions are processed. While <code>parJoinUnbounded</code> doesn't limit the number of streams running concurrently, the actual limit is the number of assigned partitions. In fact, <code>stream</code> is just an alias for <code>partitionedStream.parJoinUnbounded</code>.</p>
+<p>When processing of records is independent of each other, as is the case with <code>processRecord</code> above, it's often easier and more performant to use <code>stream</code> and <code>mapAsync</code>, as seen in the example below. Generally, it's crucial to ensure there are no data races between processing of any two records.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerMapAsyncExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
+      <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
+
+    <span class="hljs-keyword">val</span> stream =
+      consumerStream(consumerSettings)
+        .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
+        .flatMap(_.stream)
+        .mapAsync(<span class="hljs-number">25</span>) { committable =&gt;
+          processRecord(committable.record)
+        }
+
+    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+  }
+}
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" id="offset-commits"></a><a href="#offset-commits" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Offset Commits</h2>
+<p>Offsets commits are managed manually, which is important for ensuring at-least-once delivery. This means that, by <a href="#default-settings">default</a>, automatic offset commits are disabled. If you're sure you don't need at-least-once delivery, you can re-enable automatic offset commits using <code>withEnableAutoCommit</code> on <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a>, and then ignore the <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommittableOffset.html"><code>CommittableOffset</code></a> part of <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommittableConsumerRecord.html"><code>CommittableConsumerRecord</code></a>, keeping only the <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/ConsumerRecord.html"><code>ConsumerRecord</code></a>.</p>
+<p>Offset commits are usually done in batches for performance reasons. We normally don't need to commit every offset, but only the last processed offset. There is a trade-off in how much reprocessing we have to do when we restart versus the performance implication of committing more frequently. Depending on our situation, we'll then choose an appropriate frequency for offset commits.</p>
+<p>We should keep the <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommittableOffset.html"><code>CommittableOffset</code></a> in our <code>Stream</code> once we've finished processing the record. For at-least-once delivery, it's essential that offset commits preserve topic-partition ordering, so we have to make sure we keep offsets in the same order as we receive them. There are then several functions available for common batch committing scenarios, like <code>commitBatch</code>, <code>commitBatchOption</code>, and <code>commitBatchWithin</code>.</p>
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerCommitBatchExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
+  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
+      <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
+
+    <span class="hljs-keyword">val</span> stream =
+      consumerStream(consumerSettings)
+        .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
+        .flatMap(_.stream)
+        .mapAsync(<span class="hljs-number">25</span>) { committable =&gt;
+          processRecord(committable.record)
+            .as(committable.offset)
+        }
+        .through(commitBatchWithin(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
+
+    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+  }
+}
+</code></pre>
+<p>The example above commits once every 500 offsets or 15 seconds, whichever happens first. Alternatively, <code>commitBatch</code> uses the underlying chunking of the <code>Stream</code>, committing once every <code>Chunk</code>, while the <code>commitBatchOption</code> function does the same except when offsets are wrapped in <code>Option</code>.</p>
+<p>The batch commit functions uses <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommittableOffsetBatch.html"><code>CommittableOffsetBatch</code></a> and provided <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommittableOffsetBatch$.html">functions</a> for batching offsets. For more involved batch commit scenarios, we can use <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommittableOffsetBatch.html"><code>CommittableOffsetBatch</code></a> to batch offsets, while having custom logic to determine batch frequency.</p>
+<p>For at-least-once delivery, offset commit has to be the last step in the stream. Anything that happens after offset commit cannot be part of the at-least-once guarantee. This is the main reason why batch commit functions return <code>Unit</code>, as they should always be the last part of the stream definition.</p>
+<p>If we're sure we need to commit every offset, we can <code>commit</code> individual <a href="https://oss.sonatype.org/service/local/repositories/releases/archive/com/ovoenergy/fs2-kafka_2.12/0.20.0-M1/fs2-kafka_2.12-0.20.0-M1-javadoc.jar/!/fs2/kafka/CommittableOffset.html"><code>CommittableOffset</code></a>s. Note there is a substantial performance implication to committing every offset, and it should be avoided when possible. The approach also limits parallelism, since offset commits need to preserve topic-partition ordering.</p>
+</span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="/fs2-kafka/docs/quick-example"><span class="arrow-prev">← </span><span>Quick Example</span></a><a class="docs-next button" href="/fs2-kafka/docs/producers"><span>Producers</span><span class="arrow-next"> →</span></a></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#deserializers">Deserializers</a><ul class="toc-headings"><li><a href="#custom-deserializers">Custom Deserializers</a></li><li><a href="#java-interoperability">Java Interoperability</a></li></ul></li><li><a href="#settings">Settings</a><ul class="toc-headings"><li><a href="#default-settings">Default Settings</a></li></ul></li><li><a href="#consumer-creation">Consumer Creation</a></li><li><a href="#topic-subscription">Topic Subscription</a></li><li><a href="#record-streaming">Record Streaming</a></li><li><a href="#offset-commits">Offset Commits</a></li></ul></nav></div><footer class="nav-footer" id="footer"><hr class="separator"/><section class="copyright">Copyright © 2018-2019 OVO Energy Limited.<br/>Icon by <a href="https://www.flaticon.com/authors/franco-averta" rel="noopener">Franco Averta</a>. <a href="https://creativecommons.org/licenses/by/3.0" rel="noopener">CC BY 3.0</a>.</section></footer></div></body></html>
