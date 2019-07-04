@@ -1,6 +1,6 @@
-const React = require('react');
+const React = require("react");
 
-const CompLibrary = require('../../core/CompLibrary.js');
+const CompLibrary = require("../../core/CompLibrary.js");
 
 const MarkdownBlock = CompLibrary.MarkdownBlock;
 const Container = CompLibrary.Container;
@@ -8,10 +8,10 @@ const GridBlock = CompLibrary.GridBlock;
 
 class HomeSplash extends React.Component {
   render() {
-    const {siteConfig, language = ''} = this.props;
-    const {baseUrl, docsUrl} = siteConfig;
-    const docsPart = `${docsUrl ? `${docsUrl}/` : ''}`;
-    const langPart = `${language ? `${language}/` : ''}`;
+    const { siteConfig, language = "" } = this.props;
+    const { baseUrl, docsUrl } = siteConfig;
+    const docsPart = `${docsUrl ? `${docsUrl}/` : ""}`;
+    const langPart = `${language ? `${language}/` : ""}`;
     const docUrl = doc => `${baseUrl}${docsPart}${langPart}${doc}`;
 
     const SplashContainer = props => (
@@ -65,15 +65,25 @@ class HomeSplash extends React.Component {
 
 class Index extends React.Component {
   render() {
-    const {config: siteConfig, language = ''} = this.props;
-    const {baseUrl, buildInfo} = siteConfig;
-    const {organization, moduleName, latestVersion, scalaPublishVersions} = buildInfo;
+    const { config: siteConfig, language = "" } = this.props;
+    const { baseUrl, buildInfo } = siteConfig;
+    const {
+      latestVersion,
+      moduleName,
+      organization,
+      scalaPublishVersions
+    } = buildInfo;
+
+    const latestVersionBadge = latestVersion
+      .replace("-", "--")
+      .replace("_", "__");
 
     const Block = props => (
       <Container
-        padding={['bottom', 'top']}
+        padding={["bottom", "top"]}
         id={props.id}
-        background={props.background}>
+        background={props.background}
+      >
         <GridBlock
           align="center"
           contents={props.children}
@@ -82,10 +92,9 @@ class Index extends React.Component {
       </Container>
     );
 
-    const index =
-`[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Gitter](https://img.shields.io/gitter/room/ovotech/fs2-kafka.svg?colorB=36bc97)](https://gitter.im/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v${latestVersion}-orange.svg)](https://index.scala-lang.org/ovotech/fs2-kafka)
+    const index = `[![Travis](https://img.shields.io/travis/ovotech/fs2-kafka/master.svg)](https://travis-ci.org/ovotech/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/ovotech/fs2-kafka.svg)](https://codecov.io/gh/ovotech/fs2-kafka) [![Gitter](https://img.shields.io/gitter/room/ovotech/fs2-kafka.svg?colorB=36bc97)](https://gitter.im/ovotech/fs2-kafka) [![Version](https://img.shields.io/badge/version-v${latestVersionBadge}-orange.svg)](https://index.scala-lang.org/ovotech/fs2-kafka)
 
-Functional streams for Kafka with [FS2](https://fs2.io) and the official Apache Kafka client.  
+Functional streams for Kafka with [FS2](https://fs2.io) and the official Apache Kafka client.<br>
 Project is under active development. Feedback and contributions welcome.
 
 ### Getting Started
@@ -96,16 +105,14 @@ libraryDependencies += "${organization}" %% "${moduleName}" % "${latestVersion}"
 \`\`\`
 
 Published for Scala ${scalaPublishVersions}. For changes, refer to the [release notes](https://github.com/ovotech/fs2-kafka/releases).
-`.trim()
+`.trim();
 
     return (
       <div>
         <HomeSplash siteConfig={siteConfig} language={language} />
         <div className="mainContainer">
           <div className="index">
-            <MarkdownBlock>
-              {index}
-            </MarkdownBlock>
+            <MarkdownBlock>{index}</MarkdownBlock>
           </div>
         </div>
       </div>
