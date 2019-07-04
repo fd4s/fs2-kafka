@@ -1,15 +1,34 @@
 import ReleaseTransformations._
 
-val fs2Version = "1.0.4"
+val catsVersion = "2.0.0-M4"
 
-val kafkaVersion = "2.2.0"
+val catsEffectVersion = "2.0.0-M4"
 
-lazy val `fs2-kafka` = project
+val fs2Version = "1.1.0-M1"
+
+val kafkaVersion = "2.3.0"
+
+lazy val root = project
   .in(file("."))
+  .settings(
+    dependencySettings,
+    coverageSettings,
+    noPublishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings,
+    console := (console in (core, Compile)).value,
+    console in Test := (console in (core, Test)).value
+  )
+  .aggregate(core)
+
+lazy val core = project
+  .in(file("modules/core"))
   .settings(
     moduleName := "fs2-kafka",
     name := moduleName.value,
     dependencySettings,
+    coverageSettings,
     publishSettings,
     mimaSettings,
     scalaSettings,
@@ -26,28 +45,35 @@ lazy val docs = project
     mdocSettings,
     buildInfoSettings
   )
-  .dependsOn(`fs2-kafka`)
+  .dependsOn(core)
   .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin)
 
 lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "co.fs2" %% "fs2-core" % fs2Version,
+    "org.typelevel" %% "cats-effect" % catsEffectVersion,
     "org.apache.kafka" % "kafka-clients" % kafkaVersion
   ),
   libraryDependencies ++= Seq(
-    "org.scalatest" %% "scalatest" % "3.0.5",
-    "org.typelevel" %% "cats-testkit" % "1.6.0",
-    "org.scalacheck" %% "scalacheck" % "1.14.0",
-    "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "io.github.embeddedkafka" %% "embedded-kafka" % "2.1.0",
-    "org.apache.kafka" %% "kafka" % kafkaVersion
+    "org.typelevel" %% "cats-testkit" % catsVersion,
+    "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
+    "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
-  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0-M4")
+  libraryDependencies ++= {
+    if (!scalaVersion.value.startsWith("2.13"))
+      Seq(
+        "io.github.embeddedkafka" %% "embedded-kafka" % "2.2.0",
+        "org.apache.kafka" %% "kafka" % kafkaVersion
+      ).map(_ % Test)
+    else Seq.empty
+  },
+  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
+  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.3" cross CrossVersion.binary)
 )
 
 lazy val mdocSettings = Seq(
   mdoc := run.in(Compile).evaluated,
-  scalacOptions -= "-Xfatal-warnings",
+  scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
   crossScalaVersions := Seq(scalaVersion.value)
 )
 
@@ -59,9 +85,9 @@ lazy val buildInfoSettings = Seq(
     scalacOptions,
     sourceDirectory,
     latestVersion in ThisBuild,
-    moduleName in `fs2-kafka`,
-    organization in `fs2-kafka`,
-    crossScalaVersions in `fs2-kafka`,
+    moduleName in core,
+    organization in root,
+    crossScalaVersions in root,
     BuildInfoKey("fs2Version" -> fs2Version),
     BuildInfoKey("kafkaVersion" -> kafkaVersion)
   )
@@ -71,6 +97,12 @@ lazy val metadataSettings = Seq(
   organization := "com.ovoenergy",
   organizationName := "OVO Energy Limited",
   organizationHomepage := Some(url("https://ovoenergy.com"))
+)
+
+lazy val coverageSettings = Seq(
+  coverageExcludedPackages := List(
+    "fs2.kafka.internal.OrElse"
+  ).mkString(";")
 )
 
 lazy val publishSettings =
@@ -88,6 +120,7 @@ lazy val publishSettings =
         organizationName.value
       )
     ),
+    excludeFilter.in(headerSources) := HiddenFileFilter || "*OrElse.scala",
     developers := List(
       Developer(
         id = "vlovgr",
@@ -139,37 +172,21 @@ lazy val mimaSettings = Seq(
     import com.typesafe.tools.mima.core._
     // format: off
     Seq(
-      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withDeliveryTimeout"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.apply"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withMaxPrefetchBatches"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.maxPrefetchBatches"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.copy"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.ConsumerSettings#ConsumerSettingsImpl.this"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.asJava"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.withKey"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Headers.concat"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.createTopic"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.createTopics"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.describeCluster"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.assignment"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.position"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToBeginning"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.seekToEnd")
+      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*")
     )
     // format: on
   }
 )
 
 lazy val noPublishSettings =
-  metadataSettings ++ Seq(
+  publishSettings ++ Seq(
     skip in publish := true,
     publishArtifact := false
   )
 
 lazy val scalaSettings = Seq(
   scalaVersion := "2.12.8",
-  crossScalaVersions := Seq("2.11.12", scalaVersion.value),
+  crossScalaVersions := Seq("2.11.12", scalaVersion.value, "2.13.0"),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
@@ -188,7 +205,12 @@ lazy val scalaSettings = Seq(
     "-Xfuture",
     "-Ywarn-unused",
     "-Ypartial-unification"
-  ),
+  ).filter {
+    case ("-Yno-adapted-args" | "-Ypartial-unification" | "-Xfuture")
+        if scalaVersion.value.startsWith("2.13") =>
+      false
+    case _ => true
+  },
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
   scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value
 )
@@ -196,7 +218,19 @@ lazy val scalaSettings = Seq(
 lazy val testSettings = Seq(
   logBuffered in Test := false,
   parallelExecution in Test := false,
-  testOptions in Test += Tests.Argument("-oDF")
+  testOptions in Test += Tests.Argument("-oDF"),
+  excludeFilter.in(Test, unmanagedSources) := {
+    if (scalaVersion.value.startsWith("2.13"))
+      HiddenFileFilter ||
+      "BaseKafkaSpec.scala" ||
+      "HeaderDeserializerSpec.scala" ||
+      "KafkaAdminClientSpec.scala" ||
+      "KafkaConsumerSpec.scala" ||
+      "KafkaProducerSpec.scala" ||
+      "TransactionalKafkaProducerSpec.scala"
+    else
+      (excludeFilter.in(Test, unmanagedSources)).value
+  }
 )
 
 def minorVersion(version: String): String = {
@@ -216,27 +250,33 @@ releaseNotesFile in ThisBuild := {
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 updateSiteVariables in ThisBuild := {
-  val file = (baseDirectory in `fs2-kafka`).value / "website" / "siteConfig.js"
+  val file = (baseDirectory in root).value / "website" / "siteConfig.js"
   val lines = IO.read(file).trim.split('\n').toVector
 
-  val scalaMinorVersion = minorVersion((scalaVersion in `fs2-kafka`).value)
-  val latestVersionString = (latestVersion in ThisBuild).value.toString
-  val organizationString = (organization in `fs2-kafka`).value
-  val moduleNameString = (moduleName in `fs2-kafka`).value
-  val scalaPublishVersions = {
-    val minorVersions = (crossScalaVersions in `fs2-kafka`).value.map(minorVersion)
-    if (minorVersions.size <= 2) minorVersions.mkString(" and ")
-    else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
-  }
+  val variables =
+    Map[String, String](
+      "organization" -> (organization in root).value,
+      "moduleName" -> (moduleName in core).value,
+      "latestVersion" -> (latestVersion in ThisBuild).value,
+      "scalaMinorVersion" -> minorVersion((scalaVersion in root).value),
+      "scalaPublishVersions" -> {
+        val minorVersions = (crossScalaVersions in root).value.map(minorVersion)
+        if (minorVersions.size <= 2) minorVersions.mkString(" and ")
+        else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
+      }
+    )
+
+  val newLine =
+    variables.toList
+      .map { case (k, v) => s"$k: '$v'" }
+      .mkString("const buildInfo = { ", ", ", " };")
 
   val lineIndex = lines.indexWhere(_.trim.startsWith("const buildInfo"))
-  val newLine =
-    s"const buildInfo = { organization: '$organizationString', moduleName: '$moduleNameString', latestVersion: '$latestVersionString', scalaMinorVersion: '$scalaMinorVersion', scalaPublishVersions: '$scalaPublishVersions' };"
   val newLines = lines.updated(lineIndex, newLine)
   val newFileContents = newLines.mkString("", "\n", "\n")
   IO.write(file, newFileContents)
 
-  sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
+  sbtrelease.Vcs.detect((baseDirectory in root).value).foreach { vcs =>
     vcs.add(file.getAbsolutePath).!
     vcs
       .commit(
@@ -273,7 +313,7 @@ addDateToReleaseNotes in ThisBuild := {
   val newContents = IO.read(file).trim + s"\n\nReleased on $dateString.\n"
   IO.write(file, newContents)
 
-  sbtrelease.Vcs.detect((baseDirectory in `fs2-kafka`).value).foreach { vcs =>
+  sbtrelease.Vcs.detect((baseDirectory in root).value).foreach { vcs =>
     vcs.add(file.getAbsolutePath).!
     vcs
       .commit(
