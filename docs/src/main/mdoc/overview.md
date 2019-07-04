@@ -28,6 +28,8 @@ scalacOptions += "-Ypartial-unification"
 Backwards binary-compatibility for the library is guaranteed between patch versions.<br>
 For example, `@LATEST_MINOR_VERSION@.x` is backwards binary-compatible with `@LATEST_MINOR_VERSION@.y` for any `x > y`.
 
+Please note binary-compatibility is not guaranteed between milestone releases.
+
 ## Dependencies
 
 Has a minimal set of dependencies:
