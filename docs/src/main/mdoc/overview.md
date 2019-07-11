@@ -9,15 +9,18 @@ Documentation is kept up-to-date with new releases, currently documenting v@LATE
 
 ## Getting Started
 
-To get started with [sbt](https://scala-sbt.org), simply add the following line to your `build.sbt` file.
+To get started with [sbt](https://scala-sbt.org), simply add the following lines to your `build.sbt` file.
 
 ```scala
-libraryDependencies += "@ORGANIZATION@" %% "@MODULE_NAME@" % "@LATEST_VERSION@"
+libraryDependencies ++= Seq(
+  "@ORGANIZATION@" %% "@CORE_MODULE_NAME@",
+  "@ORGANIZATION@" %% "@VULCAN_MODULE_NAME@"
+).map(_ % "@LATEST_VERSION@")
 ```
 
 Published for Scala @SCALA_PUBLISH_VERSIONS@. For changes, refer to the [release notes](https://github.com/ovotech/fs2-kafka/releases).
 
-For Scala 2.11 and 2.12, enable partial unification by adding the following line to `build.sbt`.
+For Scala 2.12, enable partial unification by adding the following line to `build.sbt`.
 
 ```scala
 scalacOptions += "-Ypartial-unification"
@@ -32,10 +35,12 @@ Please note binary-compatibility is not guaranteed between milestone releases.
 
 ## Dependencies
 
-Has a minimal set of dependencies:
+Refer to the table below for dependencies and version support across modules.
 
-- FS2 v@FS2_VERSION@ ([Documentation](https://fs2.io), [GitHub](https://github.com/functional-streams-for-scala/fs2)), and
-- Apache Kafka Client v@KAFKA_VERSION@ ([Documentation](https://kafka.apache.org/@KAFKA_DOCS_VERSION@/documentation.html), [GitHub](https://github.com/apache/kafka)).
+| Module                 | Dependencies                                                                                                                                                         | Scala                               |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `@CORE_MODULE_NAME@`   | [FS2 @FS2_VERSION@](https://github.com/functional-streams-for-scala/fs2), [Apache Kafka Client @KAFKA_VERSION@](https://github.com/apache/kafka)                     | Scala @CORE_CROSS_SCALA_VERSIONS@   |
+| `@VULCAN_MODULE_NAME@` | [Vulcan @VULCAN_VERSION@](https://github.com/ovotech/vulcan), [Confluent Kafka Avro Serializer @CONFLUENT_VERSION@](https://github.com/confluentinc/schema-registry) | Scala @VULCAN_CROSS_SCALA_VERSIONS@ |
 
 ## Inspiration
 

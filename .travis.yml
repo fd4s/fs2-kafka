@@ -1,16 +1,13 @@
 language: scala
 scala:
-  - 2.11.12
   - 2.12.8
-  - 2.13.0
 jdk:
-  - openjdk11
+  - oraclejdk8
 cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION validate
-  - if [[ $TRAVIS_SCALA_VERSION == 2.12* ]]; then sbt ++$TRAVIS_SCALA_VERSION validateDocs; fi
+  - sbt validate
 after_success:
   - bash <(curl -s https://codecov.io/bash)
