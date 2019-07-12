@@ -1,0 +1,5 @@
+### Changes
+
+- Add [`fs2-kafka-vulcan`](https://ovotech.github.io/fs2-kafka/docs/modules#vulcan) for integration with [vulcan](https://ovotech.github.io/vulcan). ([#156][#156])
+
+[#156]: https://github.com/ovotech/fs2-kafka/pull/156
