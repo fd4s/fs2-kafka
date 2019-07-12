@@ -1,7 +1,7 @@
-latestVersion in ThisBuild := "0.20.0-M1"
+latestVersion in ThisBuild := "0.20.0-M2"
 
-unreleasedModuleNames in ThisBuild := Set(
-  "fs2-kafka-vulcan"
+unreleasedModuleNames in ThisBuild := Set()
+
+binaryCompatibleVersions in ThisBuild := Set(
+  "0.20.0-M2"
 )
-
-binaryCompatibleVersions in ThisBuild := Set()
