@@ -195,7 +195,7 @@ lazy val publishSettings =
       checkSnapshotDependencies,
       inquireVersions,
       runClean,
-      releaseStepCommandAndRemaining("+test"),
+      releaseStepCommandAndRemaining("+compile"),
       setReleaseVersion,
       setLatestVersion,
       releaseStepTask(updateSiteVariables in ThisBuild),
