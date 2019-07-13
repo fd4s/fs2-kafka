@@ -212,7 +212,6 @@ lazy val publishSettings =
   )
 
 lazy val mimaSettings = Seq(
-  mimaFailOnNoPrevious := false,
   mimaPreviousArtifacts := {
     val released = !unreleasedModuleNames.value.contains(moduleName.value)
     val publishing = publishArtifact.value
