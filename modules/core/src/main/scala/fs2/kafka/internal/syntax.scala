@@ -139,6 +139,21 @@ private[kafka] object syntax {
 
     def updatedIfAbsent(k: K, v: => V): Map[K, V] =
       if (map.contains(k)) map else map.updated(k, v)
+
+  }
+
+  implicit final class IterableMapSyntax[K, V[_], A](
+    private val map: Map[K, V[A]]
+  ) extends AnyVal {
+    def asJavaMap(implicit F: Foldable[V]): util.Map[K, util.Collection[A]] = {
+      import scala.collection.JavaConverters
+
+      val transformedMap = map.map { x =>
+        val values: util.Collection[A] = x._2.asJava
+        x._1 -> values
+      }
+      JavaConverters.mapAsJavaMapConverter(transformedMap).asJava
+    }
   }
 
   implicit final class JavaUtilCollectionSyntax[A](

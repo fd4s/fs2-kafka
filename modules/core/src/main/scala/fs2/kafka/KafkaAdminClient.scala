@@ -23,6 +23,7 @@ import fs2.kafka.internal.WithAdminClient
 import fs2.kafka.KafkaAdminClient._
 import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.{Node, TopicPartition}
 
 /**
@@ -82,6 +83,13 @@ sealed abstract class KafkaAdminClient[F[_]] {
   def describeTopics[G[_]](topics: G[String])(
     implicit G: Foldable[G]
   ): F[Map[String, TopicDescription]]
+
+  /**
+    * Updates the configuration for the specified resources.
+    */
+  def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
+    implicit G: Foldable[G]
+  ): F[Unit]
 
   /**
     * Lists consumer groups. Returns group ids using:
@@ -168,6 +176,12 @@ object KafkaAdminClient {
     topics: G[String]
   )(implicit G: Foldable[G]): F[Map[String, TopicDescription]] =
     withAdminClient(_.describeTopics(topics.asJava).all.map(_.toMap))
+
+  private[this] def alterConfigsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    configs: Map[ConfigResource, G[AlterConfigOp]]
+  )(implicit G: Foldable[G]): F[Unit] =
+    withAdminClient(_.incrementalAlterConfigs(configs.asJavaMap).all.void)
 
   sealed abstract class DescribeCluster[F[_]] {
 
@@ -376,6 +390,11 @@ object KafkaAdminClient {
           implicit G: Foldable[G]
         ): F[Map[String, TopicDescription]] =
           describeTopicsWith(client, topics)
+
+        override def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
+          implicit G: Foldable[G]
+        ): F[Unit] =
+          alterConfigsWith(client, configs)
 
         override def listConsumerGroups: ListConsumerGroups[F] =
           listConsumerGroupsWith(client)
