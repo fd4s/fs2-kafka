@@ -68,10 +68,9 @@ class Index extends React.Component {
     const { config: siteConfig, language = "" } = this.props;
     const { baseUrl, buildInfo } = siteConfig;
     const {
-      latestVersion,
-      coreModuleName,
-      vulcanModuleName,
       organization,
+      coreModuleName,
+      latestVersion,
       scalaPublishVersions
     } = buildInfo;
 
@@ -99,13 +98,10 @@ Functional streams for Kafka with [FS2](https://fs2.io) and the official Apache 
 Project is under active development. Feedback and contributions welcome.
 
 ### Getting Started
-To get started with [sbt](https://scala-sbt.org), simply add the following lines to your \`build.sbt\` file.
+To get started with [sbt](https://scala-sbt.org), simply add the following line to your \`build.sbt\` file.
 
 \`\`\`scala
-libraryDependencies ++= Seq(
-  "${organization}" %% "${coreModuleName}",
-  "${organization}" %% "${vulcanModuleName}"
-).map(_ % "${latestVersion}")
+libraryDependencies += "${organization}" %% "${coreModuleName}" % "${latestVersion}"
 \`\`\`
 
 Published for Scala ${scalaPublishVersions}. For changes, refer to the [release notes](https://github.com/ovotech/fs2-kafka/releases).
