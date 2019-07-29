@@ -7,7 +7,7 @@ The following sections describe the additional modules.
 
 ## Vulcan
 
-The `@VULCAN_MODULE_NAME@` module provides Avro serialization support.
+The `@VULCAN_MODULE_NAME@` module provides [Avro](https://avro.apache.org) serialization support using [Vulcan](https://ovotech.github.io/vulcan).
 
 We start by defining the type we want to serialize or deserialize, and create a `Codec`.
 
