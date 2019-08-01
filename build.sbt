@@ -93,7 +93,7 @@ lazy val dependencySettings = Seq(
       ).map(_ % Test)
     else Seq.empty
   },
-  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
+  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.3" cross CrossVersion.binary)
 )
 
