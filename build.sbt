@@ -1,10 +1,10 @@
 import ReleaseTransformations._
 
-val catsEffectVersion = "2.0.0-M4"
+val catsEffectVersion = "2.0.0-M5"
 
 val catsVersion = "2.0.0-M4"
 
-val confluentVersion = "5.2.2"
+val confluentVersion = "5.3.0"
 
 val fs2Version = "1.1.0-M1"
 
@@ -93,7 +93,7 @@ lazy val dependencySettings = Seq(
       ).map(_ % Test)
     else Seq.empty
   },
-  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
+  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.3" cross CrossVersion.binary)
 )
 
@@ -308,9 +308,7 @@ updateSiteVariables in ThisBuild := {
     Map[String, String](
       "organization" -> (organization in root).value,
       "coreModuleName" -> (moduleName in core).value,
-      "vulcanModuleName" -> (moduleName in vulcan).value,
       "latestVersion" -> (latestVersion in ThisBuild).value,
-      "scalaMinorVersion" -> minorVersion((scalaVersion in core).value),
       "scalaPublishVersions" -> {
         val minorVersions = (crossScalaVersions in core).value.map(minorVersion)
         if (minorVersions.size <= 2) minorVersions.mkString(" and ")

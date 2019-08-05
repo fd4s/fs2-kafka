@@ -9,13 +9,10 @@ Documentation is kept up-to-date with new releases, currently documenting v@LATE
 
 ## Getting Started
 
-To get started with [sbt](https://scala-sbt.org), simply add the following lines to your `build.sbt` file.
+To get started with [sbt](https://scala-sbt.org), simply add the following line to your `build.sbt` file.
 
 ```scala
-libraryDependencies ++= Seq(
-  "@ORGANIZATION@" %% "@CORE_MODULE_NAME@",
-  "@ORGANIZATION@" %% "@VULCAN_MODULE_NAME@"
-).map(_ % "@LATEST_VERSION@")
+libraryDependencies += "@ORGANIZATION@" %% "@CORE_MODULE_NAME@" % "@LATEST_VERSION@"
 ```
 
 Published for Scala @SCALA_PUBLISH_VERSIONS@. For changes, refer to the [release notes](https://github.com/ovotech/fs2-kafka/releases).
@@ -24,6 +21,16 @@ For Scala 2.12, enable partial unification by adding the following line to `buil
 
 ```scala
 scalacOptions += "-Ypartial-unification"
+```
+
+### Modules
+
+For [Avro](https://avro.apache.org) support using [Vulcan](modules.md#vulcan), add the following lines to your `build.sbt` file.
+
+```scala
+resolvers += "confluent" at "https://packages.confluent.io/maven/"
+
+libraryDependencies += "@ORGANIZATION@" %% "@VULCAN_MODULE_NAME@" % "@LATEST_VERSION@"
 ```
 
 ### Compatibility
