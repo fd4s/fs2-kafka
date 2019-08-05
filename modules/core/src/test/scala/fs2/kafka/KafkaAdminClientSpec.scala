@@ -2,8 +2,10 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.implicits._
-import org.apache.kafka.clients.admin.NewTopic
+import org.apache.kafka.clients.admin.AlterConfigOp.OpType
+import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewTopic}
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.config.ConfigResource
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
   describe("KafkaAdminClient") {
@@ -104,6 +106,13 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
             createAgain <- adminClient.createTopics(List(newTopic)).attempt
             _ <- IO(assert(createAgain.isLeft))
             _ <- IO(assert(postCreateNames.contains(newTopic.name)))
+            alteredConfigs <- adminClient.alterConfigs {
+              Map(
+                new ConfigResource(ConfigResource.Type.TOPIC, "new-test-topic") ->
+                  List(new AlterConfigOp(new ConfigEntry("cleanup.policy", "delete"), OpType.SET))
+              )
+            }.attempt
+            _ <- IO(assert(alteredConfigs.isRight))
           } yield ()
         }.unsafeRunSync
       }
