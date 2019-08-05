@@ -22,6 +22,7 @@ import cats.effect.concurrent.Ref
 import cats.implicits._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
+import fs2.kafka.internal.converters.collection._
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util
@@ -142,18 +143,11 @@ private[kafka] object syntax {
 
   }
 
-  implicit final class IterableMapSyntax[K, V[_], A](
-    private val map: Map[K, V[A]]
+  implicit final class MapWrappedValueSyntax[F[_], K, V](
+    private val map: Map[K, F[V]]
   ) extends AnyVal {
-    def asJavaMap(implicit F: Foldable[V]): util.Map[K, util.Collection[A]] = {
-      import scala.collection.JavaConverters
-
-      val transformedMap = map.map { x =>
-        val values: util.Collection[A] = x._2.asJava
-        x._1 -> values
-      }
-      JavaConverters.mapAsJavaMapConverter(transformedMap).asJava
-    }
+    def asJavaMap(implicit F: Foldable[F]): util.Map[K, util.Collection[V]] =
+      map.map { case (k, fv) => k -> (fv.asJava: util.Collection[V]) }.asJava
   }
 
   implicit final class JavaUtilCollectionSyntax[A](

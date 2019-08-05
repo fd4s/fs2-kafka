@@ -106,18 +106,16 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
             createAgain <- adminClient.createTopics(List(newTopic)).attempt
             _ <- IO(assert(createAgain.isLeft))
             _ <- IO(assert(postCreateNames.contains(newTopic.name)))
-            configs = createConfigs
-            updateConfigs <- adminClient.alterConfigs(configs).attempt
-            _ <- IO(assert(updateConfigs.isRight))
+            alteredConfigs <- adminClient.alterConfigs {
+              Map(
+                new ConfigResource(ConfigResource.Type.TOPIC, "new-test-topic") ->
+                  List(new AlterConfigOp(new ConfigEntry("cleanup.policy", "delete"), OpType.SET))
+              )
+            }.attempt
+            _ <- IO(assert(alteredConfigs.isRight))
           } yield ()
         }.unsafeRunSync
       }
     }
   }
-
-  private def createConfigs = Map(new ConfigResource(ConfigResource.Type.TOPIC, "new-test-topic") -> List(
-      new AlterConfigOp(new ConfigEntry("cleanup.policy", "delete"), OpType.SET
-        )
-    )
-  )
 }
