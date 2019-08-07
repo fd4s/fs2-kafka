@@ -9,6 +9,7 @@ import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 import org.apache.kafka.common.TopicPartition
 
+import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
@@ -350,6 +351,81 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .unsafeRunSync()
 
       consumed should contain theSameElementsAs produced.drop(readOffset.toInt)
+    }
+  }
+
+  describe("KafkaConsumer#assignmentStream") {
+    it("should stream assignment updates to listeners") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 3)
+
+        val consumer =
+          for {
+            queue <- Stream.eval(Queue.noneTerminated[IO, SortedSet[TopicPartition]])
+            _ <- consumerStream[IO]
+              .using(consumerSettings(config))
+              .evalTap(_.subscribeTo(topic))
+              .evalMap { consumer =>
+                consumer.assignmentStream
+                  .concurrently(consumer.stream)
+                  .evalMap(as => queue.enqueue1(Some(as)))
+                  .compile
+                  .drain
+                  .start
+                  .void
+              }
+          } yield {
+            queue
+          }
+
+        (for {
+          queue1 <- consumer
+          _ <- Stream.eval(IO.sleep(5.seconds))
+          queue2 <- consumer
+          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- Stream.eval(queue1.enqueue1(None))
+          _ <- Stream.eval(queue2.enqueue1(None))
+          consumer1Updates <- Stream.eval(queue1.dequeue.compile.toList)
+          consumer2Updates <- Stream.eval(queue2.dequeue.compile.toList)
+          _ <- Stream.eval(IO(assert {
+            // Startup assignments (zero), initial assignments (all topics),
+            // revoke all on 2nd joining (zero), assign rebalanced set (< 3)
+            consumer1Updates.length == 4 &&
+            consumer1Updates.head.isEmpty &&
+            consumer1Updates(1).size == 3 &&
+            consumer1Updates(2).isEmpty &&
+            consumer1Updates(3).size < 3 &&
+            // Startup assignments (zero), initial assignments (< 3)
+            consumer2Updates.length == 2
+            consumer2Updates.head.isEmpty &&
+            consumer2Updates(1).size < 3 &&
+            (consumer1Updates(3) ++ consumer2Updates(1)) == consumer1Updates(1)
+          }))
+        } yield ()).compile.drain.unsafeRunSync
+      }
+    }
+
+    it("begin from the current assignments") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 3)
+
+        (for {
+          consumer <- consumerStream[IO]
+            .using(consumerSettings(config))
+            .evalTap(_.subscribeTo(topic))
+          _ <- Stream.eval(IO.sleep(5.seconds)).concurrently(consumer.stream)
+          queue <- Stream.eval(Queue.noneTerminated[IO, SortedSet[TopicPartition]])
+          _ <- Stream.eval(
+            consumer.assignmentStream.evalTap(as => queue.enqueue1(Some(as))).compile.drain.start
+          )
+          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- Stream.eval(queue.enqueue1(None))
+          updates <- Stream.eval(queue.dequeue.compile.toList)
+          _ <- Stream.eval(IO(assert {
+            updates.length == 1 && updates.head.size == 3
+          }))
+        } yield ()).compile.drain.unsafeRunSync
+      }
     }
   }
 }

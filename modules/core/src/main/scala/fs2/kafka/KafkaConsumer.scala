@@ -106,6 +106,13 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
   def assignment: F[SortedSet[TopicPartition]]
 
   /**
+    * `Stream` where the elements are the set of `TopicPartition`s currently
+    * assigned to this consumer. The stream emits whenever a rebalance changes
+    * partition assignments.
+    */
+  def assignmentStream: Stream[F, SortedSet[TopicPartition]]
+
+  /**
     * Overrides the fetch offsets that the consumer will use when reading the
     * next record. If this API is invoked for the same partition more than once,
     * the latest offset will be used. Note that you may lose data if this API is
@@ -468,12 +475,35 @@ private[kafka] object KafkaConsumer {
             }
         }
 
-      override def assignment: F[SortedSet[TopicPartition]] =
-        request { deferred =>
-          Request.Assignment(
-            deferred = deferred,
-            onRebalance = None
-          )
+      override def assignment: F[SortedSet[TopicPartition]] = assignment(Option.empty)
+
+      private def assignment(
+        onRebalance: Option[OnRebalance[F, K, V]]
+      ): F[SortedSet[TopicPartition]] =
+        request(deferred => Request.Assignment(deferred = deferred, onRebalance = onRebalance))
+
+      override def assignmentStream: Stream[F, SortedSet[TopicPartition]] =
+        Stream.eval(Queue.unbounded[F, SortedSet[TopicPartition]]).flatMap { updateQueue =>
+          val setup = for {
+            currentAssignments <- assignment
+            assignmentRef <- Ref.of(currentAssignments)
+            onAssigned = (newPartitions: SortedSet[TopicPartition]) =>
+              for {
+                _ <- assignmentRef.update(_ ++ newPartitions)
+                newAssignment <- assignmentRef.get
+                _ <- updateQueue.enqueue1(newAssignment)
+              } yield ()
+            onRevoked = (revokedPartitions: SortedSet[TopicPartition]) =>
+              for {
+                _ <- assignmentRef.update(_ -- revokedPartitions)
+                newAssignment <- assignmentRef.get
+                _ <- updateQueue.enqueue1(newAssignment)
+              } yield ()
+            updated <- assignment(Some(OnRebalance(onAssigned, onRevoked)))
+            _ <- updateQueue.enqueue1(updated)
+          } yield ()
+
+          Stream.eval(setup) >> updateQueue.dequeue.changes
         }
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
