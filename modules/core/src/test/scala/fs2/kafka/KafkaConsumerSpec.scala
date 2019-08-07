@@ -4,11 +4,12 @@ import cats.effect.IO
 import cats.effect.concurrent.Ref
 import cats.implicits._
 import fs2.Stream
-import fs2.concurrent.Queue
+import fs2.concurrent.{NoneTerminatedQueue, Queue}
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 import org.apache.kafka.common.TopicPartition
 
+import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
@@ -350,6 +351,41 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .unsafeRunSync()
 
       consumed should contain theSameElementsAs produced.drop(readOffset.toInt)
+    }
+  }
+
+  describe("KafkaConsumer#assignmentStream") {
+    it("should stream assignment updates to listeners") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 3)
+
+        val consumer = (queue: NoneTerminatedQueue[IO, SortedSet[TopicPartition]]) =>
+          consumerStream[IO]
+            .using(consumerSettings(config))
+            .evalTap(_.subscribeTo(topic))
+            .evalMap { consumer =>
+              consumer.assignmentStream
+                .evalMap(as => queue.enqueue1(Some(as)))
+                .compile
+                .drain
+                .start
+                .void
+            }
+
+        (for {
+          queue <- Stream.eval(Queue.noneTerminated[IO, SortedSet[TopicPartition]])
+          _ <- consumer(queue)
+          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- consumer(queue)
+          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- Stream.eval(queue.enqueue1(None))
+          allUpdates <- Stream.eval(queue.dequeue.compile.toList)
+          _ <- Stream.eval(IO(assert {
+            println(allUpdates)
+            allUpdates.length == 3
+          }))
+        } yield ()).compile.drain.unsafeRunSync
+      }
     }
   }
 }

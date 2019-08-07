@@ -105,6 +105,9 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
     */
   def assignment: F[SortedSet[TopicPartition]]
 
+  /** Doc TODO */
+  def assignmentStream: Stream[F, SortedSet[TopicPartition]]
+
   /**
     * Overrides the fetch offsets that the consumer will use when reading the
     * next record. If this API is invoked for the same partition more than once,
@@ -468,13 +471,30 @@ private[kafka] object KafkaConsumer {
             }
         }
 
-      override def assignment: F[SortedSet[TopicPartition]] =
-        request { deferred =>
-          Request.Assignment(
-            deferred = deferred,
-            onRebalance = None
-          )
-        }
+      override def assignment: F[SortedSet[TopicPartition]] = assignment(Option.empty)
+
+      private def assignment(
+        onRebalance: Option[OnRebalance[F, K, V]]
+      ): F[SortedSet[TopicPartition]] =
+        request(deferred => Request.Assignment(deferred = deferred, onRebalance = onRebalance))
+
+      override def assignmentStream: Stream[F, SortedSet[TopicPartition]] =
+        Stream
+          .eval(Queue.unbounded[F, SortedSet[TopicPartition]])
+          .evalTap { assignmentQueue =>
+            val onUpdate =
+              (tps: SortedSet[TopicPartition]) => {
+                println(s"Update: $tps")
+                assignment.flatMap(assignmentQueue.enqueue1)
+              }
+            assignment(Some(OnRebalance(onUpdate, onUpdate)))
+              .map { tps =>
+                println(s"Init: $tps")
+                tps
+              }
+              .flatMap(assignmentQueue.enqueue1)
+          }
+          .flatMap(_.dequeue)
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
         withConsumer { consumer =>
