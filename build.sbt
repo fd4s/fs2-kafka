@@ -1,6 +1,6 @@
 import ReleaseTransformations._
 
-val catsEffectVersion = "2.0.0-M5"
+val catsEffectVersion = "2.0.0-RC1"
 
 val catsVersion = "2.0.0-M4"
 
