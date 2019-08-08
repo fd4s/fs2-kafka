@@ -489,6 +489,10 @@ private[kafka] object KafkaConsumer {
         }
 
       override def assignmentStream: Stream[F, SortedSet[TopicPartition]] = {
+        // NOTE: `initialAssignmentDone` is needed here to guard against the
+        // race condition when a rebalance triggers after the listeners are
+        // registered but before `assignmentRef` can be updated with initial
+        // assignments.
         def onRebalanceWith(
           updateQueue: Queue[F, SortedSet[TopicPartition]],
           assignmentRef: Ref[F, SortedSet[TopicPartition]],
