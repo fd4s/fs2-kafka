@@ -475,36 +475,67 @@ private[kafka] object KafkaConsumer {
             }
         }
 
-      override def assignment: F[SortedSet[TopicPartition]] = assignment(Option.empty)
+      override def assignment: F[SortedSet[TopicPartition]] =
+        assignment(Option.empty)
 
       private def assignment(
         onRebalance: Option[OnRebalance[F, K, V]]
       ): F[SortedSet[TopicPartition]] =
-        request(deferred => Request.Assignment(deferred = deferred, onRebalance = onRebalance))
-
-      override def assignmentStream: Stream[F, SortedSet[TopicPartition]] =
-        Stream.eval(Queue.unbounded[F, SortedSet[TopicPartition]]).flatMap { updateQueue =>
-          val setup = for {
-            currentAssignments <- assignment
-            assignmentRef <- Ref.of(currentAssignments)
-            onAssigned = (newPartitions: SortedSet[TopicPartition]) =>
-              for {
-                _ <- assignmentRef.update(_ ++ newPartitions)
-                newAssignment <- assignmentRef.get
-                _ <- updateQueue.enqueue1(newAssignment)
-              } yield ()
-            onRevoked = (revokedPartitions: SortedSet[TopicPartition]) =>
-              for {
-                _ <- assignmentRef.update(_ -- revokedPartitions)
-                newAssignment <- assignmentRef.get
-                _ <- updateQueue.enqueue1(newAssignment)
-              } yield ()
-            updated <- assignment(Some(OnRebalance(onAssigned, onRevoked)))
-            _ <- updateQueue.enqueue1(updated)
-          } yield ()
-
-          Stream.eval(setup) >> updateQueue.dequeue.changes
+        request { deferred =>
+          Request.Assignment(
+            deferred = deferred,
+            onRebalance = onRebalance
+          )
         }
+
+      override def assignmentStream: Stream[F, SortedSet[TopicPartition]] = {
+        def onRebalanceWith(
+          updateQueue: Queue[F, SortedSet[TopicPartition]],
+          assignmentRef: Ref[F, SortedSet[TopicPartition]],
+          initialAssignmentDone: F[Unit]
+        ): OnRebalance[F, K, V] =
+          OnRebalance(
+            onAssigned = assigned =>
+              initialAssignmentDone >>
+                assignmentRef
+                  .modify { assignment =>
+                    val newAssignment = assignment ++ assigned
+                    (newAssignment, newAssignment)
+                  }
+                  .flatMap(updateQueue.enqueue1),
+            onRevoked = revoked =>
+              initialAssignmentDone >>
+                assignmentRef
+                  .modify { assignment =>
+                    val newAssignment = assignment -- revoked
+                    (newAssignment, newAssignment)
+                  }
+                  .flatMap(updateQueue.enqueue1)
+          )
+
+        Stream.eval {
+          Queue.unbounded[F, SortedSet[TopicPartition]].flatMap { updateQueue =>
+            Ref[F].of(SortedSet.empty[TopicPartition]).flatMap { assignmentRef =>
+              Deferred[F, Unit].flatMap { initialAssignmentDeferred =>
+                val onRebalance =
+                  onRebalanceWith(
+                    updateQueue = updateQueue,
+                    assignmentRef = assignmentRef,
+                    initialAssignmentDone = initialAssignmentDeferred.get
+                  )
+
+                assignment(Some(onRebalance))
+                  .flatMap { initialAssignment =>
+                    assignmentRef.set(initialAssignment) >>
+                      updateQueue.enqueue1(initialAssignment) >>
+                      initialAssignmentDeferred.complete(())
+                  }
+                  .as(updateQueue.dequeue.changes)
+              }
+            }
+          }
+        }.flatten
+      }
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
         withConsumer { consumer =>
