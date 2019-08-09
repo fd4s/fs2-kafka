@@ -75,7 +75,7 @@ package object kafka {
     * produces record in batches, limiting the number of records
     * in the same batch using [[ProducerSettings#parallelism]].
     */
-  def produce[F[_], G[+_], K, V, P](
+  def produce[F[_], G[+ _], K, V, P](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
@@ -88,7 +88,7 @@ package object kafka {
     * The number of records in the same batch is limited using the
     * [[ProducerSettings#parallelism]] setting.
     */
-  def produce[F[_], G[+_], K, V, P](
+  def produce[F[_], G[+ _], K, V, P](
     settings: ProducerSettings[F, K, V],
     producer: KafkaProducer[F, K, V]
   )(
@@ -257,7 +257,7 @@ package object kafka {
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    TransactionalKafkaProducer.resource(settings)
+    new TransactionalKafkaProducer.Builder[F, K, V](settings).withConstantId
 
   /**
     * Alternative version of `transactionalProducerResource` where the `F[_]`
