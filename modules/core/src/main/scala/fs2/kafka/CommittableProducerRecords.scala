@@ -60,19 +60,27 @@ object CommittableProducerRecords {
     * more [[ProducerRecord]]s and committing an offset atomically within
     * a transaction.
     */
-  def apply[F[_], G[+_], K, V](
+  def apply[F[_], G[+ _], K, V](
     records: G[ProducerRecord[K, V]],
     offset: CommittableOffset[F]
   )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] = {
-    val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]]()
-
-    G.foldLeft(records, ()) {
-      case (_, record) =>
-        buf += record
-        ()
+    val numRecords = G.size(records)
+    val chunk = if (numRecords <= 1) {
+      G.get(records)(0) match {
+        case None         => Chunk.empty[ProducerRecord[K, V]]
+        case Some(record) => Chunk.singleton(record)
+      }
+    } else {
+      val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](G.size(records).toInt)
+      G.foldLeft(records, ()) {
+        case (_, record) =>
+          buf += record
+          ()
+      }
+      Chunk.buffer(buf)
     }
 
-    new CommittableProducerRecordsImpl(Chunk.buffer(buf), offset)
+    new CommittableProducerRecordsImpl(chunk, offset)
   }
 
   /**
@@ -84,7 +92,7 @@ object CommittableProducerRecords {
     record: ProducerRecord[K, V],
     offset: CommittableOffset[F]
   ): CommittableProducerRecords[F, K, V] =
-    apply[F, Id, K, V](record, offset)
+    new CommittableProducerRecordsImpl(Chunk.singleton(record), offset)
 
   implicit def committableProducerRecordsShow[F[_], K, V](
     implicit

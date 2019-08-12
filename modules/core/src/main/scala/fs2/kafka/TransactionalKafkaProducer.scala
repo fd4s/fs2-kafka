@@ -16,13 +16,16 @@
 
 package fs2.kafka
 
+import cats.Parallel
 import cats.effect.{Blocker, ConcurrentEffect, ContextShift, ExitCase, Resource}
 import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.internal._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.clients.producer.RecordMetadata
+import org.apache.kafka.clients.producer.{ProducerConfig, RecordMetadata}
+
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * Represents a producer of Kafka records specialized for 'read-process-write'
@@ -54,8 +57,12 @@ private[kafka] object TransactionalKafkaProducer {
     * a [[TransactionalKafkaProducer]], allowing users to decide how transactional
     * IDs are computed as a follow-up step to registering producer settings.
     */
-  class Builder[F[_], K, V] private[kafka] (settings: ProducerSettings[F, K, V])(
+  class Builder[F[_], G[_], K, V] private[kafka] (
+    settings: ProducerSettings[F, K, V],
+    transactionTimeout: Option[FiniteDuration]
+  )(
     implicit F: ConcurrentEffect[F],
+    P: Parallel[F, G],
     context: ContextShift[F]
   ) {
 
@@ -76,7 +83,7 @@ private[kafka] object TransactionalKafkaProducer {
                 ): F[ProducerResult[Chunk, K, V, P]] =
                   grouper(records.records)
                     .flatMap { recordGroups =>
-                      recordGroups.flatTraverse {
+                      recordGroups.parFlatTraverse {
                         case (producer, recordGroup) =>
                           produceTransaction(producer, recordGroup)
                       }
@@ -137,6 +144,17 @@ private[kafka] object TransactionalKafkaProducer {
         }
       }
 
+    private def create(id: String): F[KafkaByteProducer] =
+      transactionTimeout
+        .fold(settings) { timeout =>
+          settings.withProperty(
+            ProducerConfig.TRANSACTION_TIMEOUT_CONFIG,
+            timeout.toMillis.toString
+          )
+        }
+        .withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, id)
+        .createProducer
+
     private def init(blocker: Blocker)(producer: KafkaByteProducer): F[Unit] =
       context.blockOn(blocker)(F.delay(producer.initTransactions()))
 
@@ -151,11 +169,14 @@ private[kafka] object TransactionalKafkaProducer {
       * single instance in the consumer group. True exactly-once processing is
       * only guaranteed by running separate producers with unique transactional
       * IDs per topic/partition processed by the group.
+      *
+      * @param transactionalId the constant ID to use in all transactions initialized
+      *                        by the constructed producer
       */
-    def withConstantId: Resource[F, TransactionalKafkaProducer[F, K, V]] =
+    def withConstantId(transactionalId: String): Resource[F, TransactionalKafkaProducer[F, K, V]] =
       resource { blocker =>
         Resource
-          .make(settings.createProducer)(close(blocker))
+          .make(create(transactionalId))(close(blocker))
           .evalTap(init(blocker))
           .map { producer => records =>
             F.pure(Chunk.singleton(producer -> records))

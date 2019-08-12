@@ -10,13 +10,18 @@ import fs2.kafka.internal.converters.collection._
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.ProducerFencedException
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.scalatest.OptionValues
+import org.scalatest.{EitherValues, OptionValues}
 
-class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
+import scala.concurrent.duration._
 
-  private def builder(settings: ProducerSettings[IO, String, String]) =
-    new TransactionalKafkaProducer.Builder(settings)
+class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues with EitherValues {
+
+  private def builder(
+    settings: ProducerSettings[IO, String, String],
+    timeout: Option[FiniteDuration] = None
+  ) = new TransactionalKafkaProducer.Builder(settings, timeout)
 
   describe("TransactionalKafkaProducer#withConstantId") {
     it("should be able to produce single records in a transaction") {
@@ -27,7 +32,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
         val produced =
           (for {
             producer <- Stream.resource {
-              builder(producerSettings[IO](config).withTransactionalId("transactions")).withConstantId
+              builder(producerSettings[IO](config)).withConstantId("transactions")
             }
             _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
             records <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
@@ -81,7 +86,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
         val produced =
           (for {
             producer <- Stream.resource {
-              builder(producerSettings[IO](config).withTransactionalId("transactions")).withConstantId
+              builder(producerSettings[IO](config)).withConstantId("transactions")
             }
             recordsToProduce = toProduce.map {
               case (key, value) => ProducerRecord(topic, key, value)
@@ -143,7 +148,6 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
             producer <- Stream.resource {
               builder {
                 producerSettings[IO](config)
-                  .withTransactionalId("transactions")
                   .withCreateProducer { properties =>
                     IO.delay {
                       new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
@@ -163,7 +167,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
                       }
                     }
                   }
-              }.withConstantId
+              }.withConstantId("transactions")
             }
             recordsToProduce = toProduce.map {
               case (key, value) => ProducerRecord(topic, key, value)
@@ -191,6 +195,63 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues {
           } yield result).compile.lastOrError.unsafeRunSync()
 
         produced shouldBe Left(error)
+
+        val consumedOrError = {
+          implicit val transactionalConfig: EmbeddedKafkaConfig = EmbeddedKafkaConfig(
+            kafkaPort = config.kafkaPort,
+            zooKeeperPort = config.zooKeeperPort,
+            customConsumerProperties =
+              Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+          )
+          Either.catchNonFatal(consumeFirstKeyedMessageFrom[String, String](topic))
+        }
+
+        consumedOrError.isLeft shouldBe true
+      }
+    }
+
+    it("should use user-specified transaction timeouts") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 3)
+        val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n")
+
+        val produced =
+          (for {
+            producer <- Stream.resource {
+              builder(
+                producerSettings[IO](config).withCreateProducer { properties =>
+                  IO.delay {
+                    new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
+                      (properties: Map[String, AnyRef]).asJava,
+                      new ByteArraySerializer,
+                      new ByteArraySerializer
+                    ) {
+                      override def commitTransaction(): Unit = {
+                        Thread.sleep(2 * transactionTimeoutInterval.toMillis)
+                        super.commitTransaction()
+                      }
+                    }
+                  }
+                },
+                Some(transactionTimeoutInterval - 250.millis)
+              ).withConstantId("transactions")
+            }
+            recordsToProduce = toProduce.map {
+              case (key, value) => ProducerRecord(topic, key, value)
+            }
+            offset = CommittableOffset(
+              new TopicPartition(topic, 1),
+              new OffsetAndMetadata(recordsToProduce.length.toLong),
+              Some("group"),
+              _ => IO.unit
+            )
+            records = TransactionalProducerRecords.one(
+              CommittableProducerRecords(recordsToProduce, offset)
+            )
+            result <- Stream.eval(producer.produce(records).attempt)
+          } yield result).compile.lastOrError.unsafeRunSync()
+
+        produced.left.value shouldBe a[ProducerFencedException]
 
         val consumedOrError = {
           implicit val transactionalConfig: EmbeddedKafkaConfig = EmbeddedKafkaConfig(
