@@ -2,7 +2,7 @@ import ReleaseTransformations._
 
 val catsEffectVersion = "2.0.0-RC1"
 
-val catsVersion = "2.0.0-M4"
+val catsVersion = "2.0.0-RC1"
 
 val confluentVersion = "5.3.0"
 
@@ -10,7 +10,7 @@ val fs2Version = "1.1.0-M1"
 
 val kafkaVersion = "2.3.0"
 
-val vulcanVersion = "0.2.0-M3"
+val vulcanVersion = "0.2.0-RC1"
 
 val scala212 = "2.12.8"
 
@@ -81,7 +81,8 @@ lazy val dependencySettings = Seq(
     "org.apache.kafka" % "kafka-clients" % kafkaVersion
   ),
   libraryDependencies ++= Seq(
-    "org.typelevel" %% "cats-testkit" % catsVersion,
+    "org.scalatestplus" %% "scalatestplus-scalacheck" % "1.0.0-SNAP8",
+    "org.typelevel" %% "discipline-scalatest" % "1.0.0-M1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
@@ -246,7 +247,6 @@ lazy val scalaSettings = Seq(
     "-encoding",
     "UTF-8",
     "-feature",
-    "-language:existentials",
     "-language:higherKinds",
     "-language:implicitConversions",
     "-unchecked",
@@ -256,12 +256,10 @@ lazy val scalaSettings = Seq(
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard",
-    "-Xfuture",
     "-Ywarn-unused",
     "-Ypartial-unification"
   ).filter {
-    case ("-Yno-adapted-args" | "-Ypartial-unification" | "-Xfuture")
-        if scalaVersion.value.startsWith("2.13") =>
+    case ("-Yno-adapted-args" | "-Ypartial-unification") if scalaVersion.value.startsWith("2.13") =>
       false
     case _ => true
   },
