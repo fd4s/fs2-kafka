@@ -166,11 +166,12 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should be able to create with and without serializer creation effects") {
       val serializer = Serializer[IO, String]
+      val recordSerializer = Serializer.Record.lift(serializer)
 
       ProducerSettings(serializer, serializer)
-      ProducerSettings(IO.pure(serializer), serializer)
-      ProducerSettings(serializer, IO.pure(serializer))
-      ProducerSettings(IO.pure(serializer), IO.pure(serializer))
+      ProducerSettings(recordSerializer, serializer)
+      ProducerSettings(serializer, recordSerializer)
+      ProducerSettings(recordSerializer, recordSerializer)
     }
 
     it("should be able to implicitly create with and without serializer creation effects") {
@@ -178,8 +179,8 @@ final class ProducerSettingsSpec extends BaseSpec {
         Serializer[IO, String]
           .mapBytes(identity)
 
-      implicit val serializer: IO[Serializer[IO, String]] =
-        IO.pure(serializerInstance)
+      implicit val serializer: Serializer.Record[IO, String] =
+        Serializer.Record.lift(serializerInstance)
 
       ProducerSettings[IO, Int, Int]
       ProducerSettings[IO, String, Int].keySerializer.unsafeRunSync shouldBe serializerInstance

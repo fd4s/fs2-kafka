@@ -152,9 +152,7 @@ lazy val metadataSettings = Seq(
 )
 
 lazy val coverageSettings = Seq(
-  coverageExcludedPackages := List(
-    "fs2.kafka.internal.OrElse"
-  ).mkString(";")
+  coverageExcludedPackages := List().mkString(";")
 )
 
 lazy val publishSettings =
@@ -172,7 +170,7 @@ lazy val publishSettings =
         organizationName.value
       )
     ),
-    excludeFilter.in(headerSources) := HiddenFileFilter || "*OrElse.scala",
+    excludeFilter.in(headerSources) := HiddenFileFilter,
     developers := List(
       Developer(
         id = "vlovgr",

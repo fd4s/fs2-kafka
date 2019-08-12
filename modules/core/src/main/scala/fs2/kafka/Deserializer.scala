@@ -16,9 +16,9 @@
 
 package fs2.kafka
 
+import cats.{Applicative, MonadError}
 import cats.effect.Sync
 import cats.implicits._
-import cats.MonadError
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
@@ -329,4 +329,60 @@ object Deserializer {
 
   implicit def uuid[F[_]](implicit F: Sync[F]): Deserializer[F, UUID] =
     Deserializer.string[F].map(UUID.fromString).suspend
+
+  /**
+    * Deserializer which may vary depending on whether a record
+    * key or value is being deserialized, and which may require
+    * a creation effect.
+    */
+  sealed abstract class Record[F[_], A] {
+    def forKey: F[Deserializer[F, A]]
+
+    def forValue: F[Deserializer[F, A]]
+  }
+
+  object Record {
+    def apply[F[_], A](
+      implicit deserializer: Deserializer.Record[F, A]
+    ): Deserializer.Record[F, A] =
+      deserializer
+
+    def const[F[_], A](
+      deserializer: => F[Deserializer[F, A]]
+    ): Deserializer.Record[F, A] =
+      Deserializer.Record.instance(
+        forKey = deserializer,
+        forValue = deserializer
+      )
+
+    def instance[F[_], A](
+      forKey: => F[Deserializer[F, A]],
+      forValue: => F[Deserializer[F, A]]
+    ): Deserializer.Record[F, A] = {
+      def _forKey = forKey
+      def _forValue = forValue
+
+      new Deserializer.Record[F, A] {
+        override def forKey: F[Deserializer[F, A]] =
+          _forKey
+
+        override def forValue: F[Deserializer[F, A]] =
+          _forValue
+
+        override def toString: String =
+          "Deserializer.Record$" + System.identityHashCode(this)
+      }
+    }
+
+    def lift[F[_], A](deserializer: => Deserializer[F, A])(
+      implicit F: Applicative[F]
+    ): Deserializer.Record[F, A] =
+      Deserializer.Record.const(F.pure(deserializer))
+
+    implicit def lift[F[_], A](
+      implicit F: Applicative[F],
+      deserializer: Deserializer[F, A]
+    ): Deserializer.Record[F, A] =
+      Deserializer.Record.lift(deserializer)
+  }
 }

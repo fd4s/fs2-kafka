@@ -9,37 +9,23 @@ import _root_.vulcan.Codec
 final class PackageSpec extends AnyFunSpec {
   describe("avroSerializer") {
     it("should be available given explicit settings") {
-      avroSerializer(avroSettings[Test])
-    }
-
-    it("should be available given implicit settings") {
-      implicit val settings: AvroSettings[IO, Test] =
-        avroSettings
-
-      implicitly[IO[Serializer[IO, Test]]]
+      avroSerializer[Test].using(avroSettings)
     }
   }
 
   describe("avroDeserializer") {
     it("should be available given explicit settings") {
-      avroDeserializer(avroSettings[Test])
-    }
-
-    it("should be available given implicit settings") {
-      implicit val settings: AvroSettings[IO, Test] =
-        avroSettings
-
-      implicitly[IO[Deserializer[IO, Test]]]
+      avroDeserializer[Test].using(avroSettings)
     }
   }
 
   describe("avroSerializer/avroDeserializer") {
     it("should be able to do roundtrip serialization") {
       (for {
-        serializer <- avroSerializer(avroSettings[Test])
+        serializer <- avroSerializer[Test].using(avroSettings).forValue
         test = Test("test")
         serialized <- serializer.serialize("topic", Headers.empty, test)
-        deserializer <- avroDeserializer(avroSettings[Test])
+        deserializer <- avroDeserializer[Test].using(avroSettings).forValue
         deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
       } yield assert(deserialized == test)).unsafeRunSync
     }
@@ -57,9 +43,6 @@ final class PackageSpec extends AnyFunSpec {
       }
   }
 
-  def avroSettings[A]: AvroSettings[IO, A] =
-    AvroSettings(schemaRegistryClientSettings)
-
   val schemaRegistryClient: MockSchemaRegistryClient =
     new MockSchemaRegistryClient()
 
@@ -70,4 +53,7 @@ final class PackageSpec extends AnyFunSpec {
       .withCreateSchemaRegistryClient { (_, _, _) =>
         IO.pure(schemaRegistryClient)
       }
+
+  val avroSettings: AvroSettings[IO] =
+    AvroSettings(schemaRegistryClientSettings)
 }

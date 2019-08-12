@@ -23,8 +23,8 @@ import fs2.kafka.internal.converters.collection._
 /**
   * Describes how to create a `SchemaRegistryClient` and which
   * settings should be used. Settings are tailored for default
-  * implementation `CachedSchemaRegistryClient`.<br>
-  * <br>
+  * implementation `CachedSchemaRegistryClient`.
+  *
   * Use `SchemaRegistryClient#apply` to create an instance.
   */
 sealed abstract class SchemaRegistryClientSettings[F[_]] {
@@ -35,8 +35,8 @@ sealed abstract class SchemaRegistryClientSettings[F[_]] {
   def baseUrl: String
 
   /**
-    * The maximum number of schemas to cache in the client.<br>
-    * <br>
+    * The maximum number of schemas to cache in the client.
+    *
     * The default value is 1000.
     */
   def maxCacheSize: Int
@@ -158,11 +158,6 @@ object SchemaRegistryClientSettings {
       createSchemaRegistryClientWith = (baseUrl, maxCacheSize, properties) =>
         F.delay(new CachedSchemaRegistryClient(baseUrl, maxCacheSize, properties.asJava))
     )
-
-  def apply[F[_]](
-    implicit settings: SchemaRegistryClientSettings[F]
-  ): SchemaRegistryClientSettings[F] =
-    settings
 
   implicit def schemaRegistryClientSettingsShow[F[_]]: Show[SchemaRegistryClientSettings[F]] =
     Show.fromToString
