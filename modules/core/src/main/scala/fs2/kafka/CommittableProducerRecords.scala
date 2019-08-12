@@ -60,7 +60,7 @@ object CommittableProducerRecords {
     * more [[ProducerRecord]]s and committing an offset atomically within
     * a transaction.
     */
-  def apply[F[_], G[+ _], K, V](
+  def apply[F[_], G[+_], K, V](
     records: G[ProducerRecord[K, V]],
     offset: CommittableOffset[F]
   )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] = {
