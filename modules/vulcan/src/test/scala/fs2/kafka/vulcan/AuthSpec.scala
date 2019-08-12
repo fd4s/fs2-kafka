@@ -22,6 +22,17 @@ final class AuthSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
     }
   }
 
+  describe("Auth.Bearer") {
+    it("should not include the token in toString") {
+      forAll { token: String =>
+        whenever(!"Bearer".contains(token)) {
+          val auth = Auth.Bearer(token)
+          assert(!auth.toString.contains(token))
+        }
+      }
+    }
+  }
+
   describe("Auth.None") {
     it("should have None as toString") {
       assert(Auth.None.toString == "None")

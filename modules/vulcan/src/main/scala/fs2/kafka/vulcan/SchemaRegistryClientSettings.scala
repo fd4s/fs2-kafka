@@ -115,6 +115,12 @@ object SchemaRegistryClientSettings {
             "schema.registry.basic.auth.user.info" -> s"$username:$password"
           )
 
+        case Auth.BearerAuth(token) =>
+          withProperties(
+            "bearer.auth.credentials.source" -> "STATIC_TOKEN",
+            "bearer.auth.token" -> token
+          )
+
         case Auth.NoAuth =>
           this
       }
