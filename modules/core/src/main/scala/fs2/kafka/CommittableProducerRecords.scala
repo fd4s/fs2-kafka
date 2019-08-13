@@ -64,14 +64,14 @@ object CommittableProducerRecords {
     records: G[ProducerRecord[K, V]],
     offset: CommittableOffset[F]
   )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] = {
-    val numRecords = G.size(records)
+    val numRecords = G.size(records).toInt
     val chunk = if (numRecords <= 1) {
       G.get(records)(0) match {
         case None         => Chunk.empty[ProducerRecord[K, V]]
         case Some(record) => Chunk.singleton(record)
       }
     } else {
-      val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](G.size(records).toInt)
+      val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](numRecords)
       G.foldLeft(records, ()) {
         case (_, record) =>
           buf += record
