@@ -79,6 +79,16 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
+    it("should provide withGroupInstanceId") {
+      assert {
+        settings.properties.get(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG).isEmpty &&
+        settings
+          .withGroupInstanceId("group-instance-id")
+          .properties(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG)
+          .contains("group-instance-id")
+      }
+    }
+
     it("should provide withMaxPollRecords") {
       assert {
         settings

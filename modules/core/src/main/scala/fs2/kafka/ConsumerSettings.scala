@@ -124,6 +124,17 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
+    * group instance id. This is equivalent to setting the following
+    * property using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.GROUP_INSTANCE_ID_CONFIG
+    * }}}
+    */
+  def withGroupInstanceId(groupInstanceId: String): ConsumerSettings[F, K, V]
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
     * max poll records. This is equivalent to setting the following
     * property using the [[withProperty]] function, except you can
     * specify it with an `Int` instead of a `String`.
@@ -434,6 +445,9 @@ object ConsumerSettings {
 
     override def withGroupId(groupId: String): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId)
+
+    override def withGroupInstanceId(groupInstanceId: String): ConsumerSettings[F, K, V] =
+      withProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, groupInstanceId)
 
     override def withMaxPollRecords(maxPollRecords: Int): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords.toString)
