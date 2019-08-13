@@ -16,7 +16,7 @@
 
 package fs2.kafka
 
-import cats.Contravariant
+import cats.{Applicative, Contravariant}
 import cats.effect.Sync
 import cats.implicits._
 import java.nio.charset.{Charset, StandardCharsets}
@@ -267,4 +267,60 @@ object Serializer {
 
   implicit def uuid[F[_]](implicit F: Sync[F]): Serializer[F, UUID] =
     Serializer.string[F].contramap(_.toString)
+
+  /**
+    * Serializer which may vary depending on whether a record
+    * key or value is being serialized, and which may require
+    * a creation effect.
+    */
+  sealed abstract class Record[F[_], A] {
+    def forKey: F[Serializer[F, A]]
+
+    def forValue: F[Serializer[F, A]]
+  }
+
+  object Record {
+    def apply[F[_], A](
+      implicit serializer: Serializer.Record[F, A]
+    ): Serializer.Record[F, A] =
+      serializer
+
+    def const[F[_], A](
+      serializer: => F[Serializer[F, A]]
+    ): Serializer.Record[F, A] =
+      Serializer.Record.instance(
+        forKey = serializer,
+        forValue = serializer
+      )
+
+    def instance[F[_], A](
+      forKey: => F[Serializer[F, A]],
+      forValue: => F[Serializer[F, A]]
+    ): Serializer.Record[F, A] = {
+      def _forKey = forKey
+      def _forValue = forValue
+
+      new Serializer.Record[F, A] {
+        override def forKey: F[Serializer[F, A]] =
+          _forKey
+
+        override def forValue: F[Serializer[F, A]] =
+          _forValue
+
+        override def toString: String =
+          "Serializer.Record$" + System.identityHashCode(this)
+      }
+    }
+
+    def lift[F[_], A](serializer: => Serializer[F, A])(
+      implicit F: Applicative[F]
+    ): Serializer.Record[F, A] =
+      Serializer.Record.const(F.pure(serializer))
+
+    implicit def lift[F[_], A](
+      implicit F: Applicative[F],
+      serializer: Serializer[F, A]
+    ): Serializer.Record[F, A] =
+      Serializer.Record.lift(serializer)
+  }
 }

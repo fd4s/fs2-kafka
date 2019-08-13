@@ -18,7 +18,6 @@ package fs2.kafka
 
 import cats.effect.{Blocker, Sync}
 import cats.Show
-import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
@@ -566,62 +565,51 @@ object ConsumerSettings {
         }
     )
 
-  /**
-    * Creates a new [[ConsumerSettings]] instance using the
-    * specified [[Deserializer]]s for the key and value.
-    */
   def apply[F[_], K, V](
     keyDeserializer: Deserializer[F, K],
     valueDeserializer: Deserializer[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
-    create(F.pure(keyDeserializer), F.pure(valueDeserializer))
+    create(
+      keyDeserializer = F.pure(keyDeserializer),
+      valueDeserializer = F.pure(valueDeserializer)
+    )
 
-  /**
-    * Creates a new [[ConsumerSettings]] instance using the
-    * specified [[Deserializer]]s for the key and value, in
-    * the case where the key deserializer is wrapped in a
-    * creation effect.
-    */
   def apply[F[_], K, V](
-    keyDeserializer: F[Deserializer[F, K]],
+    keyDeserializer: Deserializer.Record[F, K],
     valueDeserializer: Deserializer[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
-    create(keyDeserializer, F.pure(valueDeserializer))
+    create(
+      keyDeserializer = keyDeserializer.forKey,
+      valueDeserializer = F.pure(valueDeserializer)
+    )
 
-  /**
-    * Creates a new [[ConsumerSettings]] instance using the
-    * specified [[Deserializer]]s for the key and value, in
-    * the case where the value deserializer is wrapped in a
-    * creation effect.
-    */
   def apply[F[_], K, V](
     keyDeserializer: Deserializer[F, K],
-    valueDeserializer: F[Deserializer[F, V]]
+    valueDeserializer: Deserializer.Record[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
-    create(F.pure(keyDeserializer), valueDeserializer)
+    create(
+      keyDeserializer = F.pure(keyDeserializer),
+      valueDeserializer = valueDeserializer.forValue
+    )
 
-  /**
-    * Creates a new [[ConsumerSettings]] instance using the
-    * specified [[Deserializer]]s for the key and value, in
-    * the case where both the key and value deserializers
-    * are wrapped in a creation effect.
-    */
   def apply[F[_], K, V](
-    keyDeserializer: F[Deserializer[F, K]],
-    valueDeserializer: F[Deserializer[F, V]]
+    keyDeserializer: Deserializer.Record[F, K],
+    valueDeserializer: Deserializer.Record[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
-    create(keyDeserializer, valueDeserializer)
+    create(
+      keyDeserializer = keyDeserializer.forKey,
+      valueDeserializer = valueDeserializer.forValue
+    )
 
-  /**
-    * Creates a new [[ConsumerSettings]] instance using
-    * implicit [[Deserializer]]s for the key and value.
-    */
   def apply[F[_], K, V](
     implicit F: Sync[F],
-    keyDeserializer: F[Deserializer[F, K]] OrElse Deserializer[F, K],
-    valueDeserializer: F[Deserializer[F, V]] OrElse Deserializer[F, V]
+    keyDeserializer: Deserializer.Record[F, K],
+    valueDeserializer: Deserializer.Record[F, V]
   ): ConsumerSettings[F, K, V] =
-    create(keyDeserializer.fold(identity, F.pure), valueDeserializer.fold(identity, F.pure))
+    create(
+      keyDeserializer = keyDeserializer.forKey,
+      valueDeserializer = valueDeserializer.forValue
+    )
 
   implicit def consumerSettingsShow[F[_], K, V]: Show[ConsumerSettings[F, K, V]] =
     Show.fromToString

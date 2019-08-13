@@ -18,7 +18,6 @@ package fs2.kafka.vulcan
 
 import cats.effect.Sync
 import cats.implicits._
-import cats.Show
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 
@@ -26,11 +25,11 @@ import fs2.kafka.internal.syntax._
   * Describes how to create a `KafkaAvroDeserializer` and a
   * `KafkaAvroSerializer` and which settings should be used.
   * Settings are tailored for the Confluent Kafka Avro
-  * serializers and deserializers.<br>
-  * <br>
-  * Use `AvroSettings#apply` to create an instance.
+  * serializers and deserializers.
+  *
+  * Use `AvroSettings.apply` to create an instance.
   */
-sealed abstract class AvroSettings[F[_], A] {
+sealed abstract class AvroSettings[F[_]] {
 
   /**
     * The `SchemaRegistryClient` to use for the serializers
@@ -41,29 +40,29 @@ sealed abstract class AvroSettings[F[_], A] {
   /**
     * Creates a new `AvroSettings` instance with the specified
     * setting for whether serializers should register schemas
-    * automatically or not.<br>
-    * <br>
+    * automatically or not.
+    *
     * The default value is `true`.
     */
-  def withAutoRegisterSchemas(autoRegisterSchemas: Boolean): AvroSettings[F, A]
+  def withAutoRegisterSchemas(autoRegisterSchemas: Boolean): AvroSettings[F]
 
   /**
     * Creates a new `AvroSettings` instance with the specified
     * key subject name strategy. This is the class name of the
-    * strategy which should be used.<br>
-    * <br>
+    * strategy which should be used.
+    *
     * The default value is `io.confluent.kafka.serializers.subject.TopicNameStrategy`.
     */
-  def withKeySubjectNameStrategy(keySubjectNameStrategy: String): AvroSettings[F, A]
+  def withKeySubjectNameStrategy(keySubjectNameStrategy: String): AvroSettings[F]
 
   /**
     * Creates a new `AvroSettings` instance with the specified
     * value subject name strategy. This is the class name of
-    * the strategy which should be used.<br>
-    * <br>
+    * the strategy which should be used.
+    *
     * The default value is `io.confluent.kafka.serializers.subject.TopicNameStrategy`.
     */
-  def withValueSubjectNameStrategy(valueSubjectNameStrategy: String): AvroSettings[F, A]
+  def withValueSubjectNameStrategy(valueSubjectNameStrategy: String): AvroSettings[F]
 
   /**
     * Properties provided when creating a Confluent Kafka Avro
@@ -76,140 +75,125 @@ sealed abstract class AvroSettings[F[_], A] {
     * Creates a new [[AvroSettings]] instance including a
     * property with the specified key and value.
     */
-  def withProperty(key: String, value: String): AvroSettings[F, A]
+  def withProperty(key: String, value: String): AvroSettings[F]
 
   /**
     * Creates a new [[AvroSettings]] instance including
     * properties with the specified keys and values.
     */
-  def withProperties(properties: (String, String)*): AvroSettings[F, A]
+  def withProperties(properties: (String, String)*): AvroSettings[F]
 
   /**
     * Creates a new [[AvroSettings]] instance including
     * properties with the specified keys and values.
     */
-  def withProperties(properties: Map[String, String]): AvroSettings[F, A]
-
-  /**
-    * Returns `true` if the settings are for a record key;
-    * false if the settings are for a record value.<br>
-    * <br>
-    * The default value is `false`.
-    */
-  def isKey: Boolean
-
-  /**
-    * Creates a new `AvroSettings` instance with the
-    * specified setting for [[isKey]].
-    */
-  def withIsKey(isKey: Boolean): AvroSettings[F, A]
+  def withProperties(properties: Map[String, String]): AvroSettings[F]
 
   /**
     * Creates a new `KafkaAvroDeserializer` using the settings
-    * contained within this [[AvroSettings]] instance.
+    * contained within this [[AvroSettings]] instance, and the
+    * specified `isKey` flag, denoting whether a record key or
+    * value is being deserialized.
     */
-  def createAvroDeserializer: F[KafkaAvroDeserializer]
+  def createAvroDeserializer(isKey: Boolean): F[KafkaAvroDeserializer]
 
   /**
     * Creates a new `KafkaAvroSerializer` using the settings
-    * contained within this [[AvroSettings]] instance.
+    * contained within this [[AvroSettings]] instance, and the
+    * specified `isKey` flag, denoting whether a record key or
+    * value is being serialized.
     */
-  def createAvroSerializer: F[KafkaAvroSerializer]
+  def createAvroSerializer(isKey: Boolean): F[KafkaAvroSerializer]
 
   /**
     * Creates a new [[AvroSettings]] instance with the specified
-    * function for creating new `KafkaAvroDeserializer`s from
-    * settings. The arguments are [[schemaRegistryClient]],
-    * [[isKey]], and [[properties]].
+    * function for creating `KafkaAvroDeserializer`s from settings.
+    * The arguments are [[schemaRegistryClient]], `isKey`, and
+    * [[properties]].
     */
   def withCreateAvroDeserializer(
     // format: off
     createAvroDeserializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[KafkaAvroDeserializer]
     // format: on
-  ): AvroSettings[F, A]
+  ): AvroSettings[F]
 
   /**
     * Creates a new [[AvroSettings]] instance with the specified
-    * function for creating new `KafkaAvroSerializer`s from
-    * settings. The arguments are [[schemaRegistryClient]],
-    * [[isKey]], and [[properties]].
+    * function for creating `KafkaAvroSerializer`s from settings.
+    * The arguments are [[schemaRegistryClient]], `isKey`, and
+    * [[properties]].
     */
   def withCreateAvroSerializer(
     // format: off
     createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[KafkaAvroSerializer]
     // format: on
-  ): AvroSettings[F, A]
+  ): AvroSettings[F]
 }
 
 object AvroSettings {
-  private[this] final case class AvroSettingsImpl[F[_], A](
+  private[this] final case class AvroSettingsImpl[F[_]](
     override val schemaRegistryClient: F[SchemaRegistryClient],
     override val properties: Map[String, String],
-    override val isKey: Boolean,
     // format: off
     val createAvroDeserializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[KafkaAvroDeserializer],
     val createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[KafkaAvroSerializer]
     // format: on
-  ) extends AvroSettings[F, A] {
-    override def withAutoRegisterSchemas(autoRegisterSchemas: Boolean): AvroSettings[F, A] =
+  ) extends AvroSettings[F] {
+    override def withAutoRegisterSchemas(autoRegisterSchemas: Boolean): AvroSettings[F] =
       withProperty("auto.register.schemas", autoRegisterSchemas.toString)
 
     override def withKeySubjectNameStrategy(
       keySubjectNameStrategy: String
-    ): AvroSettings[F, A] =
+    ): AvroSettings[F] =
       withProperty("key.subject.name.strategy", keySubjectNameStrategy)
 
     override def withValueSubjectNameStrategy(
       valueSubjectNameStrategy: String
-    ): AvroSettings[F, A] =
+    ): AvroSettings[F] =
       withProperty("value.subject.name.strategy", valueSubjectNameStrategy)
 
-    override def withProperty(key: String, value: String): AvroSettings[F, A] =
+    override def withProperty(key: String, value: String): AvroSettings[F] =
       copy(properties = properties.updated(key, value))
 
-    override def withProperties(properties: (String, String)*): AvroSettings[F, A] =
+    override def withProperties(properties: (String, String)*): AvroSettings[F] =
       copy(properties = this.properties ++ properties.toMap)
 
-    override def withProperties(properties: Map[String, String]): AvroSettings[F, A] =
+    override def withProperties(properties: Map[String, String]): AvroSettings[F] =
       copy(properties = this.properties ++ properties)
 
-    override def withIsKey(isKey: Boolean): AvroSettings[F, A] =
-      copy(isKey = isKey)
-
-    override def createAvroDeserializer: F[KafkaAvroDeserializer] =
+    override def createAvroDeserializer(isKey: Boolean): F[KafkaAvroDeserializer] =
       createAvroDeserializerWith(schemaRegistryClient, isKey, properties)
 
-    override def createAvroSerializer: F[KafkaAvroSerializer] =
+    override def createAvroSerializer(isKey: Boolean): F[KafkaAvroSerializer] =
       createAvroSerializerWith(schemaRegistryClient, isKey, properties)
 
-    def withCreateAvroDeserializer(
+    override def withCreateAvroDeserializer(
       // format: off
       createAvroDeserializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[KafkaAvroDeserializer]
       // format: on
-    ): AvroSettings[F, A] =
+    ): AvroSettings[F] =
       copy(createAvroDeserializerWith = createAvroDeserializerWith)
 
-    def withCreateAvroSerializer(
+    override def withCreateAvroSerializer(
       // format: off
       createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[KafkaAvroSerializer]
       // format: on
-    ): AvroSettings[F, A] =
+    ): AvroSettings[F] =
       copy(createAvroSerializerWith = createAvroSerializerWith)
 
     override def toString: String =
-      s"AvroSettings(isKey = $isKey)"
+      "AvroSettings$" + System.identityHashCode(this)
   }
 
-  private[this] def withDefaults[F[_], A](properties: Map[String, String]) =
+  private[this] def withDefaults(properties: Map[String, String]) =
     properties.updatedIfAbsent("schema.registry.url", "").asJava
 
-  private[this] def create[F[_], A](
+  private[this] def create[F[_]](
     schemaRegistryClient: F[SchemaRegistryClient]
-  )(implicit F: Sync[F]): AvroSettings[F, A] =
+  )(implicit F: Sync[F]): AvroSettings[F] =
     AvroSettingsImpl(
       schemaRegistryClient = schemaRegistryClient,
       properties = Map.empty,
-      isKey = false,
       createAvroDeserializerWith = (schemaRegistryClient, isKey, properties) =>
         schemaRegistryClient.flatMap { schemaRegistryClient =>
           F.delay {
@@ -228,19 +212,13 @@ object AvroSettings {
         }
     )
 
-  def apply[F[_], A](
+  def apply[F[_]](
     schemaRegistryClientSettings: SchemaRegistryClientSettings[F]
-  )(implicit F: Sync[F]): AvroSettings[F, A] =
+  )(implicit F: Sync[F]): AvroSettings[F] =
     create(schemaRegistryClientSettings.createSchemaRegistryClient)
 
-  def apply[F[_], A](
+  def apply[F[_]](
     schemaRegistryClient: SchemaRegistryClient
-  )(implicit F: Sync[F]): AvroSettings[F, A] =
+  )(implicit F: Sync[F]): AvroSettings[F] =
     create(F.pure(schemaRegistryClient))
-
-  def apply[F[_], A](implicit settings: AvroSettings[F, A]): AvroSettings[F, A] =
-    settings
-
-  implicit def avroSettingsShow[F[_], A]: Show[AvroSettings[F, A]] =
-    Show.fromToString
 }

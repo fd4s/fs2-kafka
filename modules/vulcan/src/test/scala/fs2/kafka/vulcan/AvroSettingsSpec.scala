@@ -1,7 +1,6 @@
 package fs2.kafka.vulcan
 
 import cats.effect.IO
-import cats.implicits._
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatestplus.scalacheck._
 
@@ -15,16 +14,6 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
             .properties
             .get("auto.register.schemas")
             .contains(value.toString)
-        }
-      }
-    }
-
-    it("should provide withIsKey") {
-      forAll { (value: Boolean) =>
-        assert {
-          settings
-            .withIsKey(value)
-            .isKey == value
         }
       }
     }
@@ -89,7 +78,7 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
           .withCreateAvroDeserializer {
             case _ => IO.raiseError(new RuntimeException)
           }
-          .createAvroDeserializer
+          .createAvroDeserializer(isKey = false)
           .attempt
           .unsafeRunSync
           .isLeft
@@ -102,36 +91,23 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
           .withCreateAvroSerializer {
             case _ => IO.raiseError(new RuntimeException)
           }
-          .createAvroSerializer
+          .createAvroSerializer(isKey = false)
           .attempt
           .unsafeRunSync
           .isLeft
       }
     }
 
-    it("should provide summoner via apply") {
-      implicit val avroSettings: AvroSettings[IO, Int] =
-        settings
-
-      AvroSettings[IO, Int]
-    }
-
     it("should provide toString") {
       assert {
-        settings.toString == "AvroSettings(isKey = false)"
-      }
-    }
-
-    it("should provide Show") {
-      assert {
-        settings.show == "AvroSettings(isKey = false)"
+        settings.toString.startsWith("AvroSettings$")
       }
     }
   }
 
-  val settings: AvroSettings[IO, Int] =
+  val settings: AvroSettings[IO] =
     AvroSettings(SchemaRegistryClientSettings[IO]("baseUrl"))
 
-  val settingsWithClient: AvroSettings[IO, Int] =
+  val settingsWithClient: AvroSettings[IO] =
     AvroSettings(null: SchemaRegistryClient)
 }

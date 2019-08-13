@@ -29,23 +29,33 @@ implicit val personCodec: Codec[Person] =
   }
 ```
 
-We then define `AvroSettings` for `Person`, describing the schema registry settings.
+We then define `AvroSettings`, describing the schema registry settings.
 
 ```scala mdoc:silent
 import cats.effect.IO
-import fs2.kafka.vulcan._
+import fs2.kafka.vulcan.{Auth, AvroSettings, SchemaRegistryClientSettings}
 
-implicit val avroSettings: AvroSettings[IO, Person] =
+val avroSettings =
   AvroSettings {
     SchemaRegistryClientSettings[IO]("http://localhost:8081")
       .withAuth(Auth.Basic("username", "password"))
-      .withMaxCacheSize(100)
   }
 ```
 
-We can use `withIsKey(true)` on `AvroSettings` when the type is used as record key. We can also disable the automatic schema registration when producing using `withAutoRegisterSchemas(false)`. The settings above will create one schema registry client per `Serializer` or `Deserializer` instance.
+We can then create a `Serializer` and `Deserializer` instance for `Person`.
 
-When both `Codec` and `AvroSettings` are available implicitly for the type, we will be able to create settings (`ConsumerSettings` and `ProducerSettings`) without explicitly specifying the `Serializer` or `Deserializer`, like seen in the following example.
+```scala mdoc:silent
+import fs2.kafka.{Deserializer, Serializer}
+import fs2.kafka.vulcan.{avroDeserializer, avroSerializer}
+
+implicit val personSerializer: Serializer.Record[IO, Person] =
+  avroSerializer[Person].using(avroSettings)
+
+implicit val personDeserializer: Deserializer.Record[IO, Person] =
+  avroDeserializer[Person].using(avroSettings)
+```
+
+Finally, we can create settings, passing the `Serializer`s and `Deserializer`s implicitly.
 
 ```scala mdoc:silent
 import fs2.kafka.{AutoOffsetReset, ConsumerSettings, ProducerSettings}
@@ -68,13 +78,13 @@ import fs2.kafka.{Deserializer, Serializer}
 
 ConsumerSettings(
   keyDeserializer = Deserializer[IO, String],
-  valueDeserializer = avroDeserializer(avroSettings)
+  valueDeserializer = personDeserializer
 ).withAutoOffsetReset(AutoOffsetReset.Earliest)
  .withBootstrapServers("localhost")
  .withGroupId("group")
 
 ProducerSettings(
   keySerializer = Serializer[IO, String],
-  valueSerializer = avroSerializer(avroSettings)
+  valueSerializer = personSerializer
 ).withBootstrapServers("localhost")
 ```

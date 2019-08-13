@@ -18,7 +18,6 @@ package fs2.kafka
 
 import cats.effect.{Blocker, Sync}
 import cats.Show
-import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
@@ -384,62 +383,51 @@ object ProducerSettings {
         }
     )
 
-  /**
-    * Creates a new [[ProducerSettings]] instance using the
-    * specified [[Serializer]]s for the key and value.
-    */
   def apply[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
-    create(F.pure(keySerializer), F.pure(valueSerializer))
+    create(
+      keySerializer = F.pure(keySerializer),
+      valueSerializer = F.pure(valueSerializer)
+    )
 
-  /**
-    * Creates a new [[ProducerSettings]] instance using the
-    * specified [[Serializer]]s for the key and value, in
-    * the case where the key serializer is wrapped in a
-    * creation effect.
-    */
   def apply[F[_], K, V](
-    keySerializer: F[Serializer[F, K]],
+    keySerializer: Serializer.Record[F, K],
     valueSerializer: Serializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
-    create(keySerializer, F.pure(valueSerializer))
+    create(
+      keySerializer = keySerializer.forKey,
+      valueSerializer = F.pure(valueSerializer)
+    )
 
-  /**
-    * Creates a new [[ProducerSettings]] instance using the
-    * specified [[Serializer]]s for the key and value, in
-    * the case where the value serializer is wrapped in a
-    * creation effect.
-    */
   def apply[F[_], K, V](
     keySerializer: Serializer[F, K],
-    valueSerializer: F[Serializer[F, V]]
+    valueSerializer: Serializer.Record[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
-    create(F.pure(keySerializer), valueSerializer)
+    create(
+      keySerializer = F.pure(keySerializer),
+      valueSerializer = valueSerializer.forValue
+    )
 
-  /**
-    * Creates a new [[ProducerSettings]] instance using the
-    * specified [[Serializer]]s for the key and value, in
-    * the case where both the key and value serializers
-    * are wrapped in a creation effect.
-    */
   def apply[F[_], K, V](
-    keySerializer: F[Serializer[F, K]],
-    valueSerializer: F[Serializer[F, V]]
+    keySerializer: Serializer.Record[F, K],
+    valueSerializer: Serializer.Record[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
-    create(keySerializer, valueSerializer)
+    create(
+      keySerializer = keySerializer.forKey,
+      valueSerializer = valueSerializer.forValue
+    )
 
-  /**
-    * Creates a new [[ProducerSettings]] instance using
-    * implicit [[Serializer]]s for the key and value.
-    */
   def apply[F[_], K, V](
     implicit F: Sync[F],
-    keySerializer: F[Serializer[F, K]] OrElse Serializer[F, K],
-    valueSerializer: F[Serializer[F, V]] OrElse Serializer[F, V]
+    keySerializer: Serializer.Record[F, K],
+    valueSerializer: Serializer.Record[F, V]
   ): ProducerSettings[F, K, V] =
-    create(keySerializer.fold(identity, F.pure), valueSerializer.fold(identity, F.pure))
+    create(
+      keySerializer = keySerializer.forKey,
+      valueSerializer = valueSerializer.forValue
+    )
 
   implicit def producerSettingsShow[F[_], K, V]: Show[ProducerSettings[F, K, V]] =
     Show.fromToString

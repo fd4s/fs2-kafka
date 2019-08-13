@@ -113,13 +113,6 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
       }
     }
 
-    it("should provide summoner via apply") {
-      implicit val schemaRegistryClientSettings: SchemaRegistryClientSettings[IO] =
-        settings
-
-      SchemaRegistryClientSettings[IO]
-    }
-
     it("should provide toString") {
       assert {
         settings.toString == "SchemaRegistryClientSettings(baseUrl = baseUrl, maxCacheSize = 1000)"

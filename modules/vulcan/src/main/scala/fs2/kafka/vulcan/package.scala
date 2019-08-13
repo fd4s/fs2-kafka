@@ -17,8 +17,6 @@
 package fs2.kafka
 
 import _root_.vulcan.Codec
-import cats.effect.Sync
-import cats.implicits._
 
 package object vulcan {
 
@@ -38,69 +36,9 @@ package object vulcan {
   type KafkaAvroSerializer =
     io.confluent.kafka.serializers.KafkaAvroSerializer
 
-  /**
-    * Creates an Avro `Deserializer` using specified [[AvroSettings]].
-    */
-  def avroDeserializer[F[_], A](
-    settings: AvroSettings[F, A]
-  )(
-    implicit F: Sync[F],
-    codec: Codec[A]
-  ): F[Deserializer[F, A]] =
-    codec.schema match {
-      case Right(schema) =>
-        settings.createAvroDeserializer.map { deserializer =>
-          Deserializer.instance { (topic, _, bytes) =>
-            F.suspend {
-              codec.decode(deserializer.deserialize(topic, bytes, schema), schema) match {
-                case Right(a)    => F.pure(a)
-                case Left(error) => F.raiseError(error.throwable)
-              }
-            }
-          }
-        }
+  def avroDeserializer[A](implicit codec: Codec[A]): AvroDeserializer[A] =
+    new AvroDeserializer(codec)
 
-      case Left(error) =>
-        F.raiseError(error.throwable)
-    }
-
-  implicit def avroDeserializer[F[_], A](
-    implicit F: Sync[F],
-    codec: Codec[A],
-    settings: AvroSettings[F, A]
-  ): F[Deserializer[F, A]] =
-    avroDeserializer(settings)
-
-  /**
-    * Creates an Avro `Serializer` using specified [[AvroSettings]].
-    */
-  def avroSerializer[F[_], A](
-    settings: AvroSettings[F, A]
-  )(
-    implicit F: Sync[F],
-    codec: Codec[A]
-  ): F[Serializer[F, A]] =
-    codec.schema match {
-      case Right(schema) =>
-        settings.createAvroSerializer.map { serializer =>
-          Serializer.instance { (topic, _, a) =>
-            F.suspend {
-              codec.encode(a, schema) match {
-                case Right(value) => F.pure(serializer.serialize(topic, value))
-                case Left(error)  => F.raiseError(error.throwable)
-              }
-            }
-          }
-        }
-
-      case Left(error) =>
-        F.raiseError(error.throwable)
-    }
-
-  implicit def avroSerializer[F[_], A](
-    implicit F: Sync[F],
-    codec: Codec[A],
-    settings: AvroSettings[F, A]
-  ): F[Serializer[F, A]] =
-    avroSerializer(settings)
+  def avroSerializer[A](implicit codec: Codec[A]): AvroSerializer[A] =
+    new AvroSerializer(codec)
 }
