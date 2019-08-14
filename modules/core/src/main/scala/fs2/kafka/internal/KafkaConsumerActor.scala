@@ -553,7 +553,7 @@ private[kafka] object KafkaConsumerActor {
     private[this] val pollInstance: Poll[Nothing, Nothing, Nothing] =
       Poll[Nothing, Nothing, Nothing]()
 
-    def poll[F[_], K, V]: Poll[F, K, V] =
+    def poll[F[_], K, V]: Request[F, K, V] =
       pollInstance.asInstanceOf[Poll[F, K, V]]
 
     final case class SubscribeTopics[F[_], K, V](
