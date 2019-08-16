@@ -15,7 +15,9 @@ Kafka transactions are supported through a [`TransactionalKafkaProducer`][transa
 
 Following is an example where transactions are used to consume, process, produce, and commit.
 
-```scala mdoc
+```scala
+// TODO: Fix this and re-enable mdoc after re-adding transactional syntax
+
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
 import fs2.kafka._
