@@ -17,15 +17,20 @@
 package fs2.kafka
 
 import cats.Parallel
+import cats.effect.concurrent.{Ref, Semaphore}
 import cats.effect.{Blocker, ConcurrentEffect, ContextShift, ExitCase, Resource}
 import cats.implicits._
-import fs2.Chunk
+import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.{ProducerConfig, RecordMetadata}
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.ProducerFencedException
 
 import scala.concurrent.duration.FiniteDuration
+import scala.collection.immutable.SortedSet
+import scala.collection.mutable
 
 /**
   * Represents a producer of Kafka records specialized for 'read-process-write'
@@ -182,6 +187,103 @@ private[kafka] object TransactionalKafkaProducer {
           .map { producer => records =>
             F.pure(Chunk.singleton(producer -> records))
           }
+      }
+
+    /**
+      * Construct a [[TransactionalKafkaProducer]] which uses dynamic transactional IDs
+      * based on the topic/partitions of the offsets being committed transactionally.
+      *
+      * Kafka sets transactional IDs as static config on a per-producer basis, so
+      * support for dynamic IDs requires managing a "raw" producer per topic/partition.
+      * To avoid the overhead of spinning up a new producer instance per-publish, this
+      * producer maintains a mapping from topic/partition to Kafka producer. The mapping
+      * is refreshed whenever topic/partitions are rebalanced.
+      *
+      * Attempts to produce messages tied to offsets from a topic/partition that this
+      * producer doesn't know about will fail. This failure can also occur when partitions
+      * are rebalanced between the points of consuming and committing an offset.
+      *
+      * @param transactionalIdPrefix prefix to use in all IDs initialized by the constructed
+      *                              producer
+      * @param assignments stream of "current assignments" which emits when the assignment
+      *                    of upstream consumer(s) which will stream records to the
+      *                    created producer are rebalanced
+      */
+    def withDynamicIds(
+      transactionalIdPrefix: String,
+      assignments: Stream[F, SortedSet[TopicPartition]]
+    ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
+      resource { blocker =>
+        Resource.liftF(Ref[F].of(Map.empty[TopicPartition, KafkaByteProducer])).flatMap {
+          producerRef =>
+            Resource.liftF(Semaphore[F](0L)).flatMap { semaphore =>
+              val trackAssignments = assignments
+                .evalMap { newAssignments =>
+                  producerRef.get
+                    .flatMap { existingProducers =>
+                      val prevAssignments = existingProducers.keySet
+                      val toCreate = newAssignments.diff(prevAssignments)
+                      val toClose = prevAssignments.diff(newAssignments)
+
+                      val createNew = toCreate.toList.parTraverse { topicPartition =>
+                        val uniqueId =
+                          s"$transactionalIdPrefix.${topicPartition.topic()}.${topicPartition.partition()}"
+
+                        create(uniqueId)
+                          .flatTap(init(blocker))
+                          .map(topicPartition -> _)
+                      }
+
+                      val closeOld = toClose.toList.parTraverse { topicPartition =>
+                        close(blocker)(existingProducers(topicPartition)).as(topicPartition)
+                      }
+
+                      semaphore.acquireN(existingProducers.size.toLong) >>
+                        (createNew, closeOld).parMapN {
+                          case (newPairs, oldKeys) =>
+                            existingProducers -- oldKeys ++ newPairs
+                        }
+                    }
+                    .flatMap { newAssignments =>
+                      producerRef.set(newAssignments) >>
+                        semaphore.releaseN(newAssignments.size.toLong)
+                    }
+                }
+                .compile
+                .drain
+
+              Resource.make(F.start(trackAssignments))(_.cancel).as { recordsChunk =>
+                val buf = new mutable.HashMap[TopicPartition, mutable.ArrayBuffer[Records]]()
+
+                recordsChunk.foreach { records =>
+                  val tp = records.offset.topicPartition
+                  buf.get(tp) match {
+                    case None =>
+                      buf.update(tp, mutable.ArrayBuffer(records))
+                    case Some(existing) =>
+                      existing += records
+                  }
+                }
+
+                buf.toVector
+                  .traverse {
+                    case (topicPartition, records) =>
+                      semaphore.withPermit {
+                        producerRef.get.flatMap {
+                          _.get(topicPartition)
+                            .liftTo[F](
+                              new ProducerFencedException(
+                                s"$topicPartition not assigned to producer with prefix $transactionalIdPrefix"
+                              )
+                            )
+                            .map(_ -> Chunk.buffer(records))
+                        }
+                      }
+                  }
+                  .map(Chunk.vector)
+              }
+            }
+        }
       }
   }
 }
