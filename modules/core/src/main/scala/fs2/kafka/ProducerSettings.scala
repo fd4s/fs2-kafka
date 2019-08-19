@@ -190,29 +190,6 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
-    * Returns a new [[ProducerSettings]] instance with the specified
-    * transactional ID. This is equivalent to setting the following
-    * property using the [[withProperty]] function.
-    *
-    * {{{
-    * ProducerConfig.TRANSACTIONAL_ID_CONFIG
-    * }}}
-    */
-  def withTransactionalId(transactionalId: String): ProducerSettings[F, K, V]
-
-  /**
-    * Returns a new [[ProducerSettings]] instance with the specified
-    * transaction timeout. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with a `FiniteDuration` instead of a `String`.
-    *
-    * {{{
-    * ProducerConfig.TRANSACTION_TIMEOUT_CONFIG
-    * }}}
-    */
-  def withTransactionTimeout(transactionTimeout: FiniteDuration): ProducerSettings[F, K, V]
-
-  /**
     * Includes a property with the specified `key` and `value`.
     * The key should be one of the keys in `ProducerConfig`,
     * and the value should be a valid choice for the key.
@@ -325,14 +302,6 @@ object ProducerSettings {
 
     override def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeout.toMillis.toString)
-
-    override def withTransactionalId(transactionalId: String): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId)
-
-    override def withTransactionTimeout(
-      transactionTimeout: FiniteDuration
-    ): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, transactionTimeout.toMillis.toString)
 
     override def withProperty(key: String, value: String): ProducerSettings[F, K, V] =
       copy(properties = properties.updated(key, value))

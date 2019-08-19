@@ -37,20 +37,20 @@ import fs2.kafka.internal.syntax._
   * commit exactly one offset, then emit a [[ProducerResult]] with the
   * results and specified passthrough value.
   */
-sealed abstract class TransactionalProducerRecords[F[_], G[+_], +K, +V, +P] {
+sealed abstract class TransactionalProducerRecords[F[_], +K, +V, +P] {
 
   /** The records to produce and commit. Can be empty for passthrough-only. */
-  def records: Chunk[CommittableProducerRecords[F, G, K, V]]
+  def records: Chunk[CommittableProducerRecords[F, K, V]]
 
   /** The passthrough to emit once all [[records]] have been produced and committed. */
   def passthrough: P
 }
 
 object TransactionalProducerRecords {
-  private[this] final class TransactionalProducerRecordsImpl[F[_], G[+_], +K, +V, +P](
-    override val records: Chunk[CommittableProducerRecords[F, G, K, V]],
+  private[this] final class TransactionalProducerRecordsImpl[F[_], +K, +V, +P](
+    override val records: Chunk[CommittableProducerRecords[F, K, V]],
     override val passthrough: P
-  ) extends TransactionalProducerRecords[F, G, K, V, P] {
+  ) extends TransactionalProducerRecords[F, K, V, P] {
     override def toString: String =
       if (records.isEmpty) s"TransactionalProducerRecords(<empty>, $passthrough)"
       else records.mkString("TransactionalProducerRecords(", ", ", s", $passthrough)")
@@ -61,9 +61,9 @@ object TransactionalProducerRecords {
     * more [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the results and `Unit` passthrough value.
     */
-  def apply[F[_], G[+_], K, V](
-    records: Chunk[CommittableProducerRecords[F, G, K, V]]
-  ): TransactionalProducerRecords[F, G, K, V, Unit] =
+  def apply[F[_], K, V](
+    records: Chunk[CommittableProducerRecords[F, K, V]]
+  ): TransactionalProducerRecords[F, K, V, Unit] =
     apply(records, ())
 
   /**
@@ -71,10 +71,10 @@ object TransactionalProducerRecords {
     * more [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the results and specified passthrough value.
     */
-  def apply[F[_], G[+_], K, V, P](
-    records: Chunk[CommittableProducerRecords[F, G, K, V]],
+  def apply[F[_], K, V, P](
+    records: Chunk[CommittableProducerRecords[F, K, V]],
     passthrough: P
-  ): TransactionalProducerRecords[F, G, K, V, P] =
+  ): TransactionalProducerRecords[F, K, V, P] =
     new TransactionalProducerRecordsImpl(records, passthrough)
 
   /**
@@ -82,9 +82,9 @@ object TransactionalProducerRecords {
     * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the result and `Unit` passthrough value.
     */
-  def one[F[_], G[+_], K, V](
-    record: CommittableProducerRecords[F, G, K, V]
-  ): TransactionalProducerRecords[F, G, K, V, Unit] =
+  def one[F[_], K, V](
+    record: CommittableProducerRecords[F, K, V]
+  ): TransactionalProducerRecords[F, K, V, Unit] =
     one(record, ())
 
   /**
@@ -92,18 +92,18 @@ object TransactionalProducerRecords {
     * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the result and specified passthrough value.
     */
-  def one[F[_], G[+_], K, V, P](
-    record: CommittableProducerRecords[F, G, K, V],
+  def one[F[_], K, V, P](
+    record: CommittableProducerRecords[F, K, V],
     passthrough: P
-  ): TransactionalProducerRecords[F, G, K, V, P] =
+  ): TransactionalProducerRecords[F, K, V, P] =
     apply(Chunk.singleton(record), passthrough)
 
-  implicit def transactionalProducerRecordsShow[F[_], G[+_], K, V, P](
+  implicit def transactionalProducerRecordsShow[F[_], K, V, P](
     implicit
     K: Show[K],
     V: Show[V],
     P: Show[P]
-  ): Show[TransactionalProducerRecords[F, G, K, V, P]] =
+  ): Show[TransactionalProducerRecords[F, K, V, P]] =
     Show.show { records =>
       if (records.records.isEmpty)
         show"TransactionalProducerRecords(<empty>, ${records.passthrough})"
