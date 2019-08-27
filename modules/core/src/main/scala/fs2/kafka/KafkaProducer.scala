@@ -20,7 +20,6 @@ import cats.Apply
 import cats.effect._
 import cats.effect.concurrent.Deferred
 import cats.implicits._
-import cats.Traverse
 import fs2.kafka.internal._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 
@@ -42,9 +41,9 @@ abstract class KafkaProducer[F[_], K, V] {
     * complete sending, but if you're sure that's what you want, then
     * simply `flatten` the result from this function.
     */
-  def produce[G[+_], P](
-    records: ProducerRecords[G, K, V, P]
-  ): F[F[ProducerResult[G, K, V, P]]]
+  def produce[P](
+    records: ProducerRecords[K, V, P]
+  ): F[F[ProducerResult[K, V, P]]]
 }
 
 private[kafka] object KafkaProducer {
@@ -58,11 +57,9 @@ private[kafka] object KafkaProducer {
       Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
         WithProducer(settings).map { withProducer =>
           new KafkaProducer[F, K, V] {
-            override def produce[G[+_], P](
-              records: ProducerRecords[G, K, V, P]
-            ): F[F[ProducerResult[G, K, V, P]]] = {
-              implicit val G: Traverse[G] = records.traverse
-
+            override def produce[P](
+              records: ProducerRecords[K, V, P]
+            ): F[F[ProducerResult[K, V, P]]] = {
               withProducer { producer =>
                 records.records
                   .traverse(produceRecord(keySerializer, valueSerializer, producer))

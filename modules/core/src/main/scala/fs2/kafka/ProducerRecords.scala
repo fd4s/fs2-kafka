@@ -16,10 +16,12 @@
 
 package fs2.kafka
 
-import cats.{Foldable, Show, Traverse}
-import cats.syntax.foldable._
+import cats.{Show, Traverse}
 import cats.syntax.show._
+import fs2.Chunk
 import fs2.kafka.internal.syntax._
+
+import scala.collection.mutable
 
 /**
   * [[ProducerRecords]] represents zero or more `ProducerRecord`s,
@@ -36,31 +38,22 @@ import fs2.kafka.internal.syntax._
   * <br>
   * The [[passthrough]] and [[records]] can be retrieved from an
   * existing [[ProducerRecords]] instance.<br>
-  * <br>
-  * For a [[ProducerRecords]] to be usable by [[KafkaProducer]],
-  * it needs a `Traverse[F]` instance. This requirement is
-  * captured in [[ProducerRecords]] as [[traverse]].
   */
-sealed abstract class ProducerRecords[F[+_], +K, +V, +P] {
+sealed abstract class ProducerRecords[+K, +V, +P] {
 
   /** The records to produce. Can be empty for passthrough-only. */
-  def records: F[ProducerRecord[K, V]]
+  def records: Chunk[ProducerRecord[K, V]]
 
   /** The passthrough to emit once all [[records]] have been produced. */
   def passthrough: P
-
-  /** The traverse instance for `F[_]`. Required by [[KafkaProducer]]. */
-  def traverse: Traverse[F]
 }
 
 object ProducerRecords {
-  private[this] final class ProducerRecordsImpl[F[+_], +K, +V, +P](
-    override val records: F[ProducerRecord[K, V]],
-    override val passthrough: P,
-    override val traverse: Traverse[F]
-  ) extends ProducerRecords[F, K, V, P] {
+  private[this] final class ProducerRecordsImpl[+K, +V, +P](
+    override val records: Chunk[ProducerRecord[K, V]],
+    override val passthrough: P
+  ) extends ProducerRecords[K, V, P] {
     override def toString: String = {
-      implicit val F: Foldable[F] = traverse
       if (records.isEmpty) s"ProducerRecords(<empty>, $passthrough)"
       else records.mkString("ProducerRecords(", ", ", s", $passthrough)")
     }
@@ -71,11 +64,11 @@ object ProducerRecords {
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and `Unit` passthrough value.
     */
-  def apply[F[+_], K, V](
+  def apply[F[+ _], K, V](
     records: F[ProducerRecord[K, V]]
   )(
     implicit F: Traverse[F]
-  ): ProducerRecords[F, K, V, Unit] =
+  ): ProducerRecords[K, V, Unit] =
     apply(records, ())
 
   /**
@@ -83,13 +76,29 @@ object ProducerRecords {
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
     */
-  def apply[F[+_], K, V, P](
+  def apply[F[+ _], K, V, P](
     records: F[ProducerRecord[K, V]],
     passthrough: P
   )(
     implicit F: Traverse[F]
-  ): ProducerRecords[F, K, V, P] =
-    new ProducerRecordsImpl(records, passthrough, F)
+  ): ProducerRecords[K, V, P] = {
+    val numRecords = F.size(records).toInt
+    val chunk = if (numRecords <= 1) {
+      F.get(records)(0) match {
+        case None         => Chunk.empty[ProducerRecord[K, V]]
+        case Some(record) => Chunk.singleton(record)
+      }
+    } else {
+      val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](numRecords)
+      F.foldLeft(records, ()) {
+        case (_, record) =>
+          buf += record
+          ()
+      }
+      Chunk.buffer(buf)
+    }
+    new ProducerRecordsImpl(chunk, passthrough)
+  }
 
   /**
     * Creates a new [[ProducerRecords]] for producing exactly one
@@ -98,7 +107,7 @@ object ProducerRecords {
     */
   def one[K, V](
     record: ProducerRecord[K, V]
-  ): ProducerRecords[Id, K, V, Unit] =
+  ): ProducerRecords[K, V, Unit] =
     one(record, ())
 
   /**
@@ -109,16 +118,15 @@ object ProducerRecords {
   def one[K, V, P](
     record: ProducerRecord[K, V],
     passthrough: P
-  ): ProducerRecords[Id, K, V, P] =
-    apply[Id, K, V, P](record, passthrough)
+  ): ProducerRecords[K, V, P] =
+    new ProducerRecordsImpl(Chunk.singleton(record), passthrough)
 
-  implicit def producerRecordsShow[F[+_], K, V, P](
+  implicit def producerRecordsShow[K, V, P](
     implicit
     K: Show[K],
     V: Show[V],
     P: Show[P]
-  ): Show[ProducerRecords[F, K, V, P]] = Show.show { records =>
-    implicit val F: Foldable[F] = records.traverse
+  ): Show[ProducerRecords[K, V, P]] = Show.show { records =>
     if (records.records.isEmpty) show"ProducerRecords(<empty>, ${records.passthrough})"
     else records.records.mkStringShow("ProducerRecords(", ", ", s", ${records.passthrough})")
   }

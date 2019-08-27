@@ -76,12 +76,12 @@ package object kafka {
     * produces record in batches, limiting the number of records
     * in the same batch using [[ProducerSettings#parallelism]].
     */
-  def produce[F[_], G[+_], K, V, P](
+  def produce[F[_], K, V, P](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
-  ): Pipe[F, ProducerRecords[G, K, V, P], ProducerResult[G, K, V, P]] =
+  ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
     records => producerStream(settings).flatMap(produce(settings, _).apply(records))
 
   /**
@@ -89,12 +89,12 @@ package object kafka {
     * The number of records in the same batch is limited using the
     * [[ProducerSettings#parallelism]] setting.
     */
-  def produce[F[_], G[+_], K, V, P](
+  def produce[F[_], K, V, P](
     settings: ProducerSettings[F, K, V],
     producer: KafkaProducer[F, K, V]
   )(
     implicit F: ConcurrentEffect[F]
-  ): Pipe[F, ProducerRecords[G, K, V, P], ProducerResult[G, K, V, P]] =
+  ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
     _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
 
   /**
