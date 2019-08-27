@@ -42,4 +42,19 @@ final class PackageSpec extends BaseAsyncSpec {
       producerStream[IO].using(settings)
     }
   }
+
+  describe("creating transactional producers") {
+    it("should support defined syntax") {
+      val settings =
+        ProducerSettings[IO, String, String]
+
+      transactionalProducerResource[IO, String, String](settings, "id")
+      transactionalProducerResource[IO].toString should startWith("TransactionalProducerResource$")
+      transactionalProducerResource[IO].using(settings, "id")
+
+      transactionalProducerStream[IO, String, String](settings, "id")
+      transactionalProducerStream[IO].toString should startWith("TransactionalProducerStream$")
+      transactionalProducerStream[IO].using(settings, "id")
+    }
+  }
 }

@@ -15,9 +15,7 @@ Kafka transactions are supported through a [`TransactionalKafkaProducer`][transa
 
 Following is an example where transactions are used to consume, process, produce, and commit.
 
-```scala
-// TODO: Fix this and re-enable mdoc after re-adding transactional syntax
-
+```scala mdoc
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
 import fs2.kafka._
@@ -37,12 +35,11 @@ object Main extends IOApp {
 
     val producerSettings =
       ProducerSettings[IO, String, String]
-        .withTransactionalId("transactions")
         .withBootstrapServers("localhost")
 
     val stream =
       transactionalProducerStream[IO]
-        .using(producerSettings)
+        .using(producerSettings, "transaction-id")
         .flatMap { producer =>
           consumerStream[IO]
             .using(consumerSettings)
