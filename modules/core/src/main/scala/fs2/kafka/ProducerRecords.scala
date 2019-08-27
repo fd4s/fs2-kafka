@@ -64,7 +64,7 @@ object ProducerRecords {
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and `Unit` passthrough value.
     */
-  def apply[F[+ _], K, V](
+  def apply[F[+_], K, V](
     records: F[ProducerRecord[K, V]]
   )(
     implicit F: Traverse[F]
@@ -76,7 +76,7 @@ object ProducerRecords {
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
     */
-  def apply[F[+ _], K, V, P](
+  def apply[F[+_], K, V, P](
     records: F[ProducerRecord[K, V]],
     passthrough: P
   )(
