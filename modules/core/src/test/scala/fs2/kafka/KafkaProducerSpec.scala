@@ -55,7 +55,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         produced.records.map {
           case (record, _) =>
             record.key -> record.value
-        }
+        }.toList
 
       assert(records == toProduce && produced.passthrough == toPassthrough)
 

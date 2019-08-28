@@ -16,9 +16,9 @@
 
 package fs2.kafka
 
-import cats.syntax.foldable._
 import cats.syntax.show._
-import cats.{Foldable, Show}
+import cats.Show
+import fs2.Chunk
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.producer.RecordMetadata
@@ -34,24 +34,23 @@ import org.apache.kafka.clients.producer.RecordMetadata
   * <br>
   * Use [[ProducerResult#apply]] to create a new [[ProducerResult]].
   */
-sealed abstract class ProducerResult[F[+_], +K, +V, +P] {
+sealed abstract class ProducerResult[+K, +V, +P] {
 
   /**
     * The records produced along with respective metadata.
     * Can be empty for passthrough-only.
     */
-  def records: F[(ProducerRecord[K, V], RecordMetadata)]
+  def records: Chunk[(ProducerRecord[K, V], RecordMetadata)]
 
   /** The passthrough value. */
   def passthrough: P
 }
 
 object ProducerResult {
-  private[this] final class ProducerResultImpl[F[+_], +K, +V, +P](
-    override val records: F[(ProducerRecord[K, V], RecordMetadata)],
+  private[this] final class ProducerResultImpl[+K, +V, +P](
+    override val records: Chunk[(ProducerRecord[K, V], RecordMetadata)],
     override val passthrough: P
-  )(implicit F: Foldable[F])
-      extends ProducerResult[F, K, V, P] {
+  ) extends ProducerResult[K, V, P] {
 
     override def toString: String = {
       if (records.isEmpty)
@@ -75,21 +74,18 @@ object ProducerResult {
     * or more `ProducerRecord`s, finally emitting a passthrough
     * value and the `ProducerRecord`s with `RecordMetadata`.
     */
-  def apply[F[+_], K, V, P](
-    records: F[(ProducerRecord[K, V], RecordMetadata)],
+  def apply[K, V, P](
+    records: Chunk[(ProducerRecord[K, V], RecordMetadata)],
     passthrough: P
-  )(
-    implicit F: Foldable[F]
-  ): ProducerResult[F, K, V, P] =
+  ): ProducerResult[K, V, P] =
     new ProducerResultImpl(records, passthrough)
 
-  implicit def producerResultShow[F[+_], K, V, P](
+  implicit def producerResultShow[K, V, P](
     implicit
-    F: Foldable[F],
     K: Show[K],
     V: Show[V],
     P: Show[P]
-  ): Show[ProducerResult[F, K, V, P]] = Show.show { result =>
+  ): Show[ProducerResult[K, V, P]] = Show.show { result =>
     if (result.records.isEmpty)
       show"ProducerResult(<empty>, ${result.passthrough})"
     else

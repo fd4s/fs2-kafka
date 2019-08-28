@@ -47,7 +47,7 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
     */
   def produce[P](
     records: TransactionalProducerRecords[F, K, V, P]
-  ): F[ProducerResult[Chunk, K, V, P]]
+  ): F[ProducerResult[K, V, P]]
 }
 
 private[kafka] object TransactionalKafkaProducer {
@@ -81,7 +81,7 @@ private[kafka] object TransactionalKafkaProducer {
                 new TransactionalKafkaProducer[F, K, V] {
                   override def produce[P](
                     records: TransactionalProducerRecords[F, K, V, P]
-                  ): F[ProducerResult[Chunk, K, V, P]] =
+                  ): F[ProducerResult[K, V, P]] =
                     grouper(records.records)
                       .flatMap { recordGroups =>
                         recordGroups.parFlatTraverse {
