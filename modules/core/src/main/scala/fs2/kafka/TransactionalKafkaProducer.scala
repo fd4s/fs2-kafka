@@ -21,9 +21,7 @@ import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.clients.producer.{ProducerConfig, RecordMetadata}
-
-import scala.concurrent.duration.FiniteDuration
+import org.apache.kafka.clients.producer.RecordMetadata
 
 /**
   * Represents a producer of Kafka records specialized for 'read-process-write'
@@ -49,83 +47,65 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
 }
 
 private[kafka] object TransactionalKafkaProducer {
-  def resource[F[_], K, V](
-    settings: ProducerSettings[F, K, V],
-    transactionalId: String,
-    transactionTimeout: Option[FiniteDuration]
-  )(
+  def resource[F[_], K, V](settings: TransactionalProducerSettings[F, K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
-      Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
-        val fullSettings = {
-          val base = settings.withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId)
+    Resource.liftF(settings.baseSettings.keySerializer).flatMap { keySerializer =>
+      Resource.liftF(settings.baseSettings.valueSerializer).flatMap { valueSerializer =>
+        WithProducer(settings).map { withProducer =>
+          new TransactionalKafkaProducer[F, K, V] {
+            override def produce[P](
+              records: TransactionalProducerRecords[F, K, V, P]
+            ): F[ProducerResult[K, V, P]] =
+              produceTransaction(records)
+                .map(ProducerResult(_, records.passthrough))
 
-          transactionTimeout.fold(base) { t =>
-            base.withProperty(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, t.toMillis.toString)
-          }
-        }
+            private[this] def produceTransaction[P](
+              records: TransactionalProducerRecords[F, K, V, P]
+            ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
+              if (records.records.isEmpty) F.pure(Chunk.empty)
+              else {
+                val batch =
+                  CommittableOffsetBatch.fromFoldableMap(records.records)(_.offset)
 
-        WithProducer(fullSettings)
-          .evalTap { withProducer =>
-            withProducer { producer =>
-              F.delay(producer.initTransactions())
-            }
-          }
-          .map { withProducer =>
-            new TransactionalKafkaProducer[F, K, V] {
-              override def produce[P](
-                records: TransactionalProducerRecords[F, K, V, P]
-              ): F[ProducerResult[K, V, P]] =
-                produceTransaction(records)
-                  .map(ProducerResult(_, records.passthrough))
+                val consumerGroupId =
+                  if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
+                    F.raiseError(ConsumerGroupException(batch.consumerGroupIds))
+                  else F.pure(batch.consumerGroupIds.head)
 
-              private[this] def produceTransaction[P](
-                records: TransactionalProducerRecords[F, K, V, P]
-              ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
-                if (records.records.isEmpty) F.pure(Chunk.empty)
-                else {
-                  val batch =
-                    CommittableOffsetBatch.fromFoldableMap(records.records)(_.offset)
-
-                  val consumerGroupId =
-                    if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
-                      F.raiseError(ConsumerGroupException(batch.consumerGroupIds))
-                    else F.pure(batch.consumerGroupIds.head)
-
-                  consumerGroupId.flatMap { groupId =>
-                    withProducer { producer =>
-                      F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
-                        records.records
-                          .flatMap(_.records)
-                          .traverse(
-                            KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
-                          )
-                          .map(_.sequence)
-                          .flatTap { _ =>
-                            F.delay {
-                              producer.sendOffsetsToTransaction(
-                                batch.offsets.asJava,
-                                groupId
-                              )
-                            }
+                consumerGroupId.flatMap { groupId =>
+                  withProducer { producer =>
+                    F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
+                      records.records
+                        .flatMap(_.records)
+                        .traverse(
+                          KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
+                        )
+                        .map(_.sequence)
+                        .flatTap { _ =>
+                          F.delay {
+                            producer.sendOffsetsToTransaction(
+                              batch.offsets.asJava,
+                              groupId
+                            )
                           }
-                      } {
-                        case (_, ExitCase.Completed) =>
-                          F.delay(producer.commitTransaction())
-                        case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
-                          F.delay(producer.abortTransaction())
-                      }
-                    }.flatten
-                  }
+                        }
+                    } {
+                      case (_, ExitCase.Completed) =>
+                        F.delay(producer.commitTransaction())
+                      case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
+                        F.delay(producer.abortTransaction())
+                    }
+                  }.flatten
                 }
               }
-
-              override def toString: String =
-                "TransactionalKafkaProducer$" + System.identityHashCode(this)
             }
+
+            override def toString: String =
+              "TransactionalKafkaProducer$" + System.identityHashCode(this)
           }
+        }
       }
     }
 }

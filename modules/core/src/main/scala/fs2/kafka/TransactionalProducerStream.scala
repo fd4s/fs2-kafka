@@ -19,8 +19,6 @@ package fs2.kafka
 import cats.effect.{ConcurrentEffect, ContextShift}
 import fs2.Stream
 
-import scala.concurrent.duration.FiniteDuration
-
 /**
   * [[TransactionalProducerStream]] provides support for inferring
   * the key and value type from [[ProducerSettings]] when using
@@ -39,14 +37,10 @@ final class TransactionalProducerStream[F[_]] private[kafka] (
     * This is equivalent to using `transactionalProducerStream` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](
-    settings: ProducerSettings[F, K, V],
-    transactionalId: String,
-    transactionTimeout: Option[FiniteDuration] = None
-  )(
+  def using[K, V](settings: TransactionalProducerSettings[F, K, V])(
     implicit context: ContextShift[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
-    transactionalProducerStream(settings, transactionalId, transactionTimeout)(F, context)
+    transactionalProducerStream(settings)(F, context)
 
   override def toString: String =
     "TransactionalProducerStream$" + System.identityHashCode(this)

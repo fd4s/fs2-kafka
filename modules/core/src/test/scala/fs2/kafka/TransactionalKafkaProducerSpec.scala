@@ -25,7 +25,9 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues wit
 
       val produced =
         (for {
-          producer <- transactionalProducerStream(producerSettings[IO](config), "transactions")
+          producer <- transactionalProducerStream(
+            TransactionalProducerSettings("id", producerSettings[IO](config))
+          )
           _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
           records <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
             case ((key, value), i) =>
@@ -76,7 +78,9 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues wit
 
       val produced =
         (for {
-          producer <- transactionalProducerStream(producerSettings[IO](config), "transactions")
+          producer <- transactionalProducerStream(
+            TransactionalProducerSettings("id", producerSettings[IO](config))
+          )
           recordsToProduce = toProduce.map {
             case (key, value) => ProducerRecord(topic, key, value)
           }
@@ -134,8 +138,9 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues wit
       val produced =
         (for {
           producer <- transactionalProducerStream(
-            producerSettings[IO](config)
-              .withCreateProducer { properties =>
+            TransactionalProducerSettings(
+              "id",
+              producerSettings[IO](config).withCreateProducer { properties =>
                 IO.delay {
                   new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
                     (properties: Map[String, AnyRef]).asJava,
@@ -153,8 +158,8 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues wit
                       }
                   }
                 }
-              },
-            "transactions"
+              }
+            )
           )
           recordsToProduce = toProduce.map {
             case (key, value) => ProducerRecord(topic, key, value)
@@ -204,22 +209,23 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues wit
       val produced =
         (for {
           producer <- transactionalProducerStream(
-            producerSettings[IO](config).withCreateProducer { properties =>
-              IO.delay {
-                new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
-                  (properties: Map[String, AnyRef]).asJava,
-                  new ByteArraySerializer,
-                  new ByteArraySerializer
-                ) {
-                  override def commitTransaction(): Unit = {
-                    Thread.sleep(2 * transactionTimeoutInterval.toMillis)
-                    super.commitTransaction()
+            TransactionalProducerSettings(
+              "id",
+              producerSettings[IO](config).withCreateProducer { properties =>
+                IO.delay {
+                  new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
+                    (properties: Map[String, AnyRef]).asJava,
+                    new ByteArraySerializer,
+                    new ByteArraySerializer
+                  ) {
+                    override def commitTransaction(): Unit = {
+                      Thread.sleep(2 * transactionTimeoutInterval.toMillis)
+                      super.commitTransaction()
+                    }
                   }
                 }
               }
-            },
-            "transactions",
-            Some(transactionTimeoutInterval - 250.millis)
+            ).withTransactionTimeout(transactionTimeoutInterval - 250.millis)
           )
           recordsToProduce = toProduce.map {
             case (key, value) => ProducerRecord(topic, key, value)

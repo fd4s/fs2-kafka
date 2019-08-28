@@ -248,18 +248,16 @@ package object kafka {
     * type can be inferred, which allows you to use the following syntax.
     *
     * {{{
-    * transactionalProducerResource[F].using(settings, id, timeout)
+    * transactionalProducerResource[F].using(settings)
     * }}}
     */
   def transactionalProducerResource[F[_], K, V](
-    settings: ProducerSettings[F, K, V],
-    transactionalId: String,
-    transactionTimeout: Option[FiniteDuration] = None
+    settings: TransactionalProducerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    TransactionalKafkaProducer.resource(settings, transactionalId, transactionTimeout)
+    TransactionalKafkaProducer.resource(settings)
 
   /**
     * Alternative version of `transactionalProducerResource` where the `F[_]`
@@ -268,7 +266,7 @@ package object kafka {
     * the following syntax.
     *
     * {{{
-    * transactionalProducerResource[F].using(settings, id, timeout)
+    * transactionalProducerResource[F].using(settings)
     * }}}
     */
   def transactionalProducerResource[F[_]](
@@ -283,18 +281,16 @@ package object kafka {
     * type can be inferred, which allows you to use the following syntax.
     *
     * {{{
-    * transactionalProducerStream[F].using(settings, id, timeout)
+    * transactionalProducerStream[F].using(settings)
     * }}}
     */
   def transactionalProducerStream[F[_], K, V](
-    settings: ProducerSettings[F, K, V],
-    transactionalId: String,
-    transactionTimeout: Option[FiniteDuration] = None
+    settings: TransactionalProducerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
-    Stream.resource(transactionalProducerResource(settings, transactionalId, transactionTimeout))
+    Stream.resource(transactionalProducerResource(settings))
 
   /**
     * Alternative version of `transactionalProducerStream` where the `F[_]`
@@ -303,7 +299,7 @@ package object kafka {
     * the following syntax.
     *
     * {{{
-    * transactionalProducerStream[F].using(settings, id, timeout)
+    * transactionalProducerStream[F].using(settings)
     * }}}
     */
   def transactionalProducerStream[F[_]](

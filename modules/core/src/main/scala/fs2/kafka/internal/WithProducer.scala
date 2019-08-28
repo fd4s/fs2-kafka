@@ -18,7 +18,7 @@ package fs2.kafka.internal
 
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 import cats.implicits._
-import fs2.kafka.{KafkaByteProducer, ProducerSettings}
+import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
@@ -51,6 +51,39 @@ private[kafka] object WithProducer {
           val close =
             withProducer { producer =>
               F.delay(producer.close(settings.closeTimeout.asJava))
+            }
+
+          (withProducer, close)
+        }
+      }
+    }
+  }
+
+  def apply[F[_], K, V](
+    settings: TransactionalProducerSettings[F, K, V]
+  )(
+    implicit F: Sync[F],
+    context: ContextShift[F]
+  ): Resource[F, WithProducer[F]] = {
+    val blockerResource =
+      settings.baseSettings.blocker
+        .map(Resource.pure[F, Blocker])
+        .getOrElse(Blockers.producer)
+
+    blockerResource.flatMap { blocker =>
+      Resource[F, WithProducer[F]] {
+        settings.createProducer.map { producer =>
+          val withProducer =
+            new WithProducer[F] {
+              override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
+                context.blockOn(blocker) {
+                  f(producer)
+                }
+            }
+
+          val close =
+            withProducer { producer =>
+              F.delay(producer.close(settings.baseSettings.closeTimeout.asJava))
             }
 
           (withProducer, close)

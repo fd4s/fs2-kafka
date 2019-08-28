@@ -18,8 +18,6 @@ package fs2.kafka
 
 import cats.effect.{ConcurrentEffect, ContextShift, Resource}
 
-import scala.concurrent.duration.FiniteDuration
-
 /**
   * [[TransactionalProducerResource]] provides support for inferring
   * the key and value type from [[ProducerSettings]] when using
@@ -38,14 +36,10 @@ final class TransactionalProducerResource[F[_]] private[kafka] (
     * This is equivalent to using `transactionalProducerResource` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](
-    settings: ProducerSettings[F, K, V],
-    transactionalId: String,
-    transactionTimeout: Option[FiniteDuration] = None
-  )(
+  def using[K, V](settings: TransactionalProducerSettings[F, K, V])(
     implicit context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    transactionalProducerResource(settings, transactionalId, transactionTimeout)(F, context)
+    transactionalProducerResource(settings)(F, context)
 
   override def toString: String =
     "TransactionalProducerResource$" + System.identityHashCode(this)
