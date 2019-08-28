@@ -33,13 +33,15 @@ object Main extends IOApp {
         .withBootstrapServers("localhost")
         .withGroupId("group")
 
-    val producerSettings =
+    val producerSettings = TransactionalProducerSettings(
+      "transaction-id",
       ProducerSettings[IO, String, String]
         .withBootstrapServers("localhost")
+    )
 
     val stream =
       transactionalProducerStream[IO]
-        .using(producerSettings, "transaction-id")
+        .using(producerSettings)
         .flatMap { producer =>
           consumerStream[IO]
             .using(consumerSettings)
