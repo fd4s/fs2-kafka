@@ -48,7 +48,7 @@ final class SynchronizedSpec extends BaseAsyncSpec {
               if (n % 50 == 0)
                 fiber.cancel.as(fiberUnit)
               else IO.pure(fiber)
-          }
+            }
         used <- (1 to 1000).toList.map(use).combineAll
         _ <- used.join
       } yield true).unsafeRunSync

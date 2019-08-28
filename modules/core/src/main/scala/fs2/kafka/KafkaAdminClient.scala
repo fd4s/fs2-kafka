@@ -153,8 +153,8 @@ sealed abstract class KafkaAdminClient[F[_]] {
   def listTopics: ListTopics[F]
 
   /**
-   * Increase the number of partitions for different topics
-   */
+    * Increase the number of partitions for different topics
+    */
   def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit]
 }
 
