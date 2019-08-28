@@ -6,6 +6,7 @@ import org.apache.kafka.clients.admin.AlterConfigOp.OpType
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewTopic}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.config.ConfigResource
+import org.apache.kafka.clients.admin.NewPartitions
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
   describe("KafkaAdminClient") {
@@ -113,6 +114,13 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
               )
             }.attempt
             _ <- IO(assert(alteredConfigs.isRight))
+            createPartitions <- adminClient.createPartitions(
+              Map(topic -> NewPartitions.increaseTo(4))).attempt
+            _ <- IO(assert(createPartitions.isRight))
+            describedTopics <- adminClient.describeTopics(topic :: Nil)
+            _ <- IO(assert(describedTopics.size == 1))
+            _ <- IO(assert(
+              describedTopics.headOption.map(_._2.partitions.size == 4).getOrElse(false)))
           } yield ()
         }.unsafeRunSync
       }
