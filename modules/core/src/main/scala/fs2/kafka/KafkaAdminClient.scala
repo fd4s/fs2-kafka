@@ -18,6 +18,7 @@ package fs2.kafka
 
 import cats.effect._
 import cats.Foldable
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.internal.WithAdminClient
 import fs2.kafka.KafkaAdminClient._
@@ -150,6 +151,11 @@ sealed abstract class KafkaAdminClient[F[_]] {
     * }}}
     */
   def listTopics: ListTopics[F]
+
+  /**
+    * Increase the number of partitions for different topics
+    */
+  def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit]
 }
 
 object KafkaAdminClient {
@@ -362,6 +368,12 @@ object KafkaAdminClient {
         s"ListConsumerGroupOffsetsForPartitions(groupId = $groupId, partitions = $partitions)"
     }
 
+  private[this] def createPartitionsWith[F[_]](
+    withAdminClient: WithAdminClient[F],
+    newPartitions: Map[String, NewPartitions]
+  ): F[Unit] =
+    withAdminClient(_.createPartitions(newPartitions.asJava).all.void)
+
   private[kafka] def resource[F[_]](
     settings: AdminClientSettings[F]
   )(
@@ -404,6 +416,9 @@ object KafkaAdminClient {
 
         override def listTopics: ListTopics[F] =
           listTopicsWith(client)
+
+        override def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit] =
+          createPartitionsWith(client, newPartitions)
 
         override def toString: String =
           "KafkaAdminClient$" + System.identityHashCode(this)
