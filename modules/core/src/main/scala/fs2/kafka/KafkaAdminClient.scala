@@ -156,6 +156,13 @@ sealed abstract class KafkaAdminClient[F[_]] {
     * Increase the number of partitions for different topics
     */
   def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit]
+
+  /**
+    * Deletes the specified topics.
+    */
+  def deleteTopics[G[_]](topics: G[String])(
+    implicit G: Foldable[G]
+  ): F[Unit]
 }
 
 object KafkaAdminClient {
@@ -374,6 +381,12 @@ object KafkaAdminClient {
   ): F[Unit] =
     withAdminClient(_.createPartitions(newPartitions.asJava).all.void)
 
+  private[this] def deleteTopicsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    topics: G[String]
+  )(implicit G: Foldable[G]): F[Unit] =
+    withAdminClient(_.deleteTopics(topics.asJava).all.void)
+
   private[kafka] def resource[F[_]](
     settings: AdminClientSettings[F]
   )(
@@ -419,6 +432,9 @@ object KafkaAdminClient {
 
         override def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit] =
           createPartitionsWith(client, newPartitions)
+
+        override def deleteTopics[G[_]](topics: G[String])(implicit G: Foldable[G]): F[Unit] =
+          deleteTopicsWith(client, topics)
 
         override def toString: String =
           "KafkaAdminClient$" + System.identityHashCode(this)
