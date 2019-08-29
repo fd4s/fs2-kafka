@@ -107,13 +107,14 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
             createAgain <- adminClient.createTopics(List(newTopic)).attempt
             _ <- IO(assert(createAgain.isLeft))
             _ <- IO(assert(postCreateNames.contains(newTopic.name)))
+            cr = new ConfigResource(ConfigResource.Type.TOPIC, "new-test-topic")
+            ce = new ConfigEntry("cleanup.policy", "delete")
             alteredConfigs <- adminClient.alterConfigs {
-              Map(
-                new ConfigResource(ConfigResource.Type.TOPIC, "new-test-topic") ->
-                  List(new AlterConfigOp(new ConfigEntry("cleanup.policy", "delete"), OpType.SET))
-              )
+              Map(cr -> List(new AlterConfigOp(ce, OpType.SET)))
             }.attempt
             _ <- IO(assert(alteredConfigs.isRight))
+            describedConfigs <- adminClient.describeConfigs(List(cr)).attempt
+            _ <- IO(assert(describedConfigs.toOption.flatMap(_.get(cr)).map(_.contains(ce)).getOrElse(false)))
             createPartitions <- adminClient
               .createPartitions(Map(topic -> NewPartitions.increaseTo(4)))
               .attempt
