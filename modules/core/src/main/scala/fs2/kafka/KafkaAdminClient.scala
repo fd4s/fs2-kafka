@@ -168,6 +168,13 @@ sealed abstract class KafkaAdminClient[F[_]] {
   def deleteTopics[G[_]](topics: G[String])(
     implicit G: Foldable[G]
   ): F[Unit]
+
+  /**
+    * Describes the configurations for the specified resources.
+    */
+  def describeConfigs[G[_]](resources: G[ConfigResource])(
+    implicit G: Foldable[G]
+  ): F[Map[ConfigResource, List[ConfigEntry]]]
 }
 
 object KafkaAdminClient {
@@ -398,6 +405,12 @@ object KafkaAdminClient {
   )(implicit G: Foldable[G]): F[Unit] =
     withAdminClient(_.deleteTopics(topics.asJava).all.void)
 
+  private[this] def describeConfigsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    resources: G[ConfigResource]
+  )(implicit G: Foldable[G]): F[Map[ConfigResource, List[ConfigEntry]]] =
+    withAdminClient(_.describeConfigs(resources.asJava).all.map(_.toMap.mapValues(_.entries().toList)))
+
   private[kafka] def resource[F[_]](
     settings: AdminClientSettings[F]
   )(
@@ -449,6 +462,11 @@ object KafkaAdminClient {
 
         override def deleteTopics[G[_]](topics: G[String])(implicit G: Foldable[G]): F[Unit] =
           deleteTopicsWith(client, topics)
+
+        override def describeConfigs[G[_]](resources: G[ConfigResource])(
+          implicit G: Foldable[G]
+        ): F[Map[ConfigResource, List[ConfigEntry]]] =
+          describeConfigsWith(client, resources)
 
         override def toString: String =
           "KafkaAdminClient$" + System.identityHashCode(this)
