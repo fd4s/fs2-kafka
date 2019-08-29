@@ -129,6 +129,12 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
             _ <- IO(assert(deleteTopics.isRight))
             describedTopics <- adminClient.describeTopics(topic :: Nil).attempt
             _ <- IO(assert(describedTopics.leftMap(_.getMessage()) == Left("This server does not host this topic-partition.")))
+            deleteTopic <- adminClient
+              .deleteTopic(newTopic.name())
+              .attempt
+            _ <- IO(assert(deleteTopic.isRight))
+            describedTopic <- adminClient.describeTopics(newTopic.name() :: Nil).attempt
+            _ <- IO(assert(describedTopic.leftMap(_.getMessage()) == Left("This server does not host this topic-partition.")))
           } yield ()
         }.unsafeRunSync
       }
