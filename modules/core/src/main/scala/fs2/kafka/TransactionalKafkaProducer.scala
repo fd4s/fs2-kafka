@@ -16,16 +16,12 @@
 
 package fs2.kafka
 
-import cats.Parallel
-import cats.effect.{Blocker, ConcurrentEffect, ContextShift, ExitCase, Resource}
+import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, Resource}
 import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.internal._
-import fs2.kafka.internal.syntax._
 import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.clients.producer.{ProducerConfig, RecordMetadata}
-
-import scala.concurrent.duration.FiniteDuration
+import org.apache.kafka.clients.producer.RecordMetadata
 
 /**
   * Represents a producer of Kafka records specialized for 'read-process-write'
@@ -51,137 +47,67 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
 }
 
 private[kafka] object TransactionalKafkaProducer {
-
-  /**
-    * Support class capturing core functionality required to implement
-    * a [[TransactionalKafkaProducer]], allowing users to decide how transactional
-    * IDs are computed as a follow-up step to registering producer settings.
-    */
-  class Builder[F[_], G[_], K, V] private[kafka] (
-    settings: ProducerSettings[F, K, V],
-    transactionTimeout: Option[FiniteDuration]
+  def resource[F[_], K, V](
+    settings: TransactionalProducerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
-    P: Parallel[F, G],
     context: ContextShift[F]
-  ) {
+  ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
+    Resource.liftF(settings.producerSettings.keySerializer).flatMap { keySerializer =>
+      Resource.liftF(settings.producerSettings.valueSerializer).flatMap { valueSerializer =>
+        WithProducer(settings).map { withProducer =>
+          new TransactionalKafkaProducer[F, K, V] {
+            override def produce[P](
+              records: TransactionalProducerRecords[F, K, V, P]
+            ): F[ProducerResult[K, V, P]] =
+              produceTransaction(records)
+                .map(ProducerResult(_, records.passthrough))
 
-    type Records = CommittableProducerRecords[F, K, V]
-    type RecordsChunk = Chunk[Records]
-    type RecordGrouper = RecordsChunk => F[Chunk[(KafkaByteProducer, RecordsChunk)]]
+            private[this] def produceTransaction[P](
+              records: TransactionalProducerRecords[F, K, V, P]
+            ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
+              if (records.records.isEmpty) F.pure(Chunk.empty)
+              else {
+                val batch =
+                  CommittableOffsetBatch.fromFoldableMap(records.records)(_.offset)
 
-    private[this] def resource(
-      buildGrouper: Blocker => Resource[F, RecordGrouper]
-    ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-      Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
-        Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
-          settings.blocker.fold(Blockers.transactionalProducer)(Resource.pure[F, Blocker]).flatMap {
-            blocker =>
-              buildGrouper(blocker).map { grouper =>
-                new TransactionalKafkaProducer[F, K, V] {
-                  override def produce[P](
-                    records: TransactionalProducerRecords[F, K, V, P]
-                  ): F[ProducerResult[K, V, P]] =
-                    grouper(records.records)
-                      .flatMap { recordGroups =>
-                        recordGroups.parFlatTraverse {
-                          case (producer, recordGroup) =>
-                            produceTransaction(producer, recordGroup)
+                val consumerGroupId =
+                  if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
+                    F.raiseError(ConsumerGroupException(batch.consumerGroupIds))
+                  else F.pure(batch.consumerGroupIds.head)
+
+                consumerGroupId.flatMap { groupId =>
+                  withProducer { producer =>
+                    F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
+                      records.records
+                        .flatMap(_.records)
+                        .traverse(
+                          KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
+                        )
+                        .map(_.sequence)
+                        .flatTap { _ =>
+                          F.delay {
+                            producer.sendOffsetsToTransaction(
+                              batch.offsets.asJava,
+                              groupId
+                            )
+                          }
                         }
-                      }
-                      .map(ProducerResult(_, records.passthrough))
-
-                  private[this] def produceTransaction(
-                    producer: KafkaByteProducer,
-                    records: RecordsChunk
-                  ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-                    if (records.isEmpty) {
-                      F.pure(Chunk.empty)
-                    } else {
-                      val batch = CommittableOffsetBatch.fromFoldableMap(records)(_.offset)
-
-                      val consumerGroupId =
-                        if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1) {
-                          F.raiseError[String](ConsumerGroupException(batch.consumerGroupIds))
-                        } else {
-                          F.pure(batch.consumerGroupIds.head)
-                        }
-
-                      consumerGroupId.flatMap { groupId =>
-                        records.flatTraverse { committable =>
-                          context
-                            .blockOn(blocker) {
-                              F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
-                                committable.records
-                                  .traverse(
-                                    KafkaProducer
-                                      .produceRecord(keySerializer, valueSerializer, producer)
-                                  )
-                                  .flatMap(_.sequence)
-                                  .flatTap { _ =>
-                                    F.delay {
-                                      producer.sendOffsetsToTransaction(
-                                        batch.offsets.asJava,
-                                        groupId
-                                      )
-                                    }
-                                  }
-                              } {
-                                case (_, ExitCase.Completed) =>
-                                  F.delay(producer.commitTransaction())
-                                case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
-                                  F.delay(producer.abortTransaction())
-                              }
-                            }
-                        }
-                      }
+                    } {
+                      case (_, ExitCase.Completed) =>
+                        F.delay(producer.commitTransaction())
+                      case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
+                        F.delay(producer.abortTransaction())
                     }
-
-                  override def toString: String =
-                    "TransactionalKafkaProducer$" + System.identityHashCode(this)
+                  }.flatten
                 }
               }
+            }
+
+            override def toString: String =
+              "TransactionalKafkaProducer$" + System.identityHashCode(this)
           }
         }
       }
-
-    private def create(id: String): F[KafkaByteProducer] =
-      transactionTimeout
-        .fold(settings) { timeout =>
-          settings.withProperty(
-            ProducerConfig.TRANSACTION_TIMEOUT_CONFIG,
-            timeout.toMillis.toString
-          )
-        }
-        .withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, id)
-        .createProducer
-
-    private def init(blocker: Blocker)(producer: KafkaByteProducer): F[Unit] =
-      context.blockOn(blocker)(F.delay(producer.initTransactions()))
-
-    private def close(blocker: Blocker)(producer: KafkaByteProducer): F[Unit] =
-      context.blockOn(blocker)(F.delay(producer.close(settings.closeTimeout.asJava)))
-
-    /**
-      * Construct a [[TransactionalKafkaProducer]] which uses a constant ID
-      * for all transactions.
-      *
-      * NOTE: This mode only guarantees exactly-once processing if you have a
-      * single instance in the consumer group. True exactly-once processing is
-      * only guaranteed by running separate producers with unique transactional
-      * IDs per topic/partition processed by the group.
-      *
-      * @param transactionalId the constant ID to use in all transactions initialized
-      *                        by the constructed producer
-      */
-    def withConstantId(transactionalId: String): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-      resource { blocker =>
-        Resource
-          .make(create(transactionalId))(close(blocker))
-          .evalTap(init(blocker))
-          .map { producer => records =>
-            F.pure(Chunk.singleton(producer -> records))
-          }
-      }
-  }
+    }
 }

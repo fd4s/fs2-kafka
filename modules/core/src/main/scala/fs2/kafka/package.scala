@@ -17,7 +17,6 @@
 package fs2
 
 import cats.effect._
-
 import scala.concurrent.duration.FiniteDuration
 
 package object kafka {
@@ -241,4 +240,70 @@ package object kafka {
     */
   def producerStream[F[_]](implicit F: ConcurrentEffect[F]): ProducerStream[F] =
     new ProducerStream[F](F)
+
+  /**
+    * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context,
+    * using the specified [[TransactionalProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and the key and
+    * value type can be inferred, which allows you to use the following syntax.
+    *
+    * {{{
+    * transactionalProducerResource[F].using(settings)
+    * }}}
+    */
+  def transactionalProducerResource[F[_], K, V](
+    settings: TransactionalProducerSettings[F, K, V]
+  )(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F]
+  ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
+    TransactionalKafkaProducer.resource(settings)
+
+  /**
+    * Alternative version of `transactionalProducerResource` where the `F[_]`
+    * is specified explicitly, and where the key and value type can be
+    * inferred from the [[TransactionalProducerSettings]]. This allows
+    * you to use the following syntax.
+    *
+    * {{{
+    * transactionalProducerResource[F].using(settings)
+    * }}}
+    */
+  def transactionalProducerResource[F[_]](
+    implicit F: ConcurrentEffect[F]
+  ): TransactionalProducerResource[F] =
+    new TransactionalProducerResource(F)
+
+  /**
+    * Creates a new [[TransactionalKafkaProducer]] in the `Stream` context,
+    * using the specified [[TransactionalProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and the key and
+    * value type can be inferred, which allows you to use the following syntax.
+    *
+    * {{{
+    * transactionalProducerStream[F].using(settings)
+    * }}}
+    */
+  def transactionalProducerStream[F[_], K, V](
+    settings: TransactionalProducerSettings[F, K, V]
+  )(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F]
+  ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
+    Stream.resource(transactionalProducerResource(settings))
+
+  /**
+    * Alternative version of `transactionalProducerStream` where the `F[_]`
+    * is specified explicitly, and where the key and value type can be
+    * inferred from the [[TransactionalProducerSettings]]. This allows
+    * you to use the following syntax.
+    *
+    * {{{
+    * transactionalProducerStream[F].using(settings)
+    * }}}
+    */
+  def transactionalProducerStream[F[_]](
+    implicit F: ConcurrentEffect[F]
+  ): TransactionalProducerStream[F] =
+    new TransactionalProducerStream(F)
 }

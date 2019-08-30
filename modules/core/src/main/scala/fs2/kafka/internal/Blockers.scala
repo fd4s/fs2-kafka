@@ -17,45 +17,43 @@
 package fs2.kafka.internal
 
 import cats.effect.{Blocker, Resource, Sync}
-import java.util.concurrent.{ExecutorService, Executors, ThreadFactory}
-
+import java.util.concurrent.{Executors, ThreadFactory}
 import scala.concurrent.ExecutionContext
 
 private[kafka] object Blockers {
   def consumer[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
-    singleThreadBlocker("fs2-kafka-consumer")
+    blocker("fs2-kafka-consumer")
 
   def producer[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
-    singleThreadBlocker("fs2-kafka-producer")
-
-  def transactionalProducer[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
-    cachingBlocker("fs2-kafka-transactional-producer")
+    blocker("fs2-kafka-producer")
 
   def adminClient[F[_]](implicit F: Sync[F]): Resource[F, Blocker] =
-    singleThreadBlocker("fs2-kafka-admin-client")
+    blocker("fs2-kafka-admin-client")
 
-  private[this] def singleThreadBlocker[F[_]](
-    name: String
-  )(implicit F: Sync[F]): Resource[F, Blocker] =
-    blocker(F.delay(Executors.newSingleThreadExecutor(threadFactory(name))))
+  private[this] def blocker[F[_]](name: String)(implicit F: Sync[F]): Resource[F, Blocker] =
+    Resource {
+      F.delay {
+        val executor =
+          Executors.newSingleThreadExecutor(
+            new ThreadFactory {
+              override def newThread(runnable: Runnable): Thread = {
+                val thread = new Thread(runnable)
+                thread.setName(s"$name-${thread.getId}")
+                thread.setDaemon(true)
+                thread
+              }
+            }
+          )
 
-  private[this] def cachingBlocker[F[_]](name: String)(implicit F: Sync[F]): Resource[F, Blocker] =
-    blocker(F.delay(Executors.newCachedThreadPool(threadFactory(name))))
+        val blocker =
+          Blocker.liftExecutionContext {
+            ExecutionContext.fromExecutor(executor)
+          }
 
-  private[this] def threadFactory(name: String): ThreadFactory =
-    new ThreadFactory {
-      override def newThread(runnable: Runnable): Thread = {
-        val thread = new Thread(runnable)
-        thread.setName(s"$name-${thread.getId}")
-        thread.setDaemon(true)
-        thread
+        val shutdown =
+          F.delay(executor.shutdown())
+
+        (blocker, shutdown)
       }
-    }
-
-  private[this] def blocker[F[_]](
-    executor: F[ExecutorService]
-  )(implicit F: Sync[F]): Resource[F, Blocker] =
-    Resource.make(executor)(es => F.delay(es.shutdown())).map { es =>
-      Blocker.liftExecutionContext(ExecutionContext.fromExecutor(es))
     }
 }

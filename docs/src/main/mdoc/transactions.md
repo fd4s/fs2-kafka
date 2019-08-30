@@ -5,7 +5,7 @@ title: Transactions
 
 Kafka transactions are supported through a [`TransactionalKafkaProducer`][transactionalkafkaproducer]. In order to use transactions, the following steps should be taken. For details on [consumers](consumers.md) and [producers](producers.md), see the respective sections.
 
-- Use `withTransactionalId(transactionalId)` on `ProducerSettings`.
+- Create a `TransactionalProducerSettings` specifying the transactional ID.
 
 - Use `withIsolationLevel(IsolationLevel.ReadCommitted)` on `ConsumerSettings`.
 
@@ -15,9 +15,7 @@ Kafka transactions are supported through a [`TransactionalKafkaProducer`][transa
 
 Following is an example where transactions are used to consume, process, produce, and commit.
 
-```scala
-// TODO: Fix this and re-enable mdoc after re-adding transactional syntax
-
+```scala mdoc
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.functor._
 import fs2.kafka._
@@ -36,9 +34,11 @@ object Main extends IOApp {
         .withGroupId("group")
 
     val producerSettings =
-      ProducerSettings[IO, String, String]
-        .withTransactionalId("transactions")
-        .withBootstrapServers("localhost")
+      TransactionalProducerSettings(
+        "transactional-id",
+        ProducerSettings[IO, String, String]
+          .withBootstrapServers("localhost")
+      )
 
     val stream =
       transactionalProducerStream[IO]
