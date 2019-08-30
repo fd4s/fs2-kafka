@@ -5,7 +5,7 @@ title: Transactions
 
 Kafka transactions are supported through a [`TransactionalKafkaProducer`][transactionalkafkaproducer]. In order to use transactions, the following steps should be taken. For details on [consumers](consumers.md) and [producers](producers.md), see the respective sections.
 
-- Use `withTransactionalId(transactionalId)` on `ProducerSettings`.
+- Create a `TransactionalProducerSettings` specifying the transactional ID.
 
 - Use `withIsolationLevel(IsolationLevel.ReadCommitted)` on `ConsumerSettings`.
 
@@ -33,11 +33,12 @@ object Main extends IOApp {
         .withBootstrapServers("localhost")
         .withGroupId("group")
 
-    val producerSettings = TransactionalProducerSettings(
-      "transaction-id",
-      ProducerSettings[IO, String, String]
-        .withBootstrapServers("localhost")
-    )
+    val producerSettings =
+      TransactionalProducerSettings(
+        "transactional-id",
+        ProducerSettings[IO, String, String]
+          .withBootstrapServers("localhost")
+      )
 
     val stream =
       transactionalProducerStream[IO]

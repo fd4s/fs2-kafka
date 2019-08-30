@@ -47,12 +47,14 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
 }
 
 private[kafka] object TransactionalKafkaProducer {
-  def resource[F[_], K, V](settings: TransactionalProducerSettings[F, K, V])(
+  def resource[F[_], K, V](
+    settings: TransactionalProducerSettings[F, K, V]
+  )(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    Resource.liftF(settings.baseSettings.keySerializer).flatMap { keySerializer =>
-      Resource.liftF(settings.baseSettings.valueSerializer).flatMap { valueSerializer =>
+    Resource.liftF(settings.producerSettings.keySerializer).flatMap { keySerializer =>
+      Resource.liftF(settings.producerSettings.valueSerializer).flatMap { valueSerializer =>
         WithProducer(settings).map { withProducer =>
           new TransactionalKafkaProducer[F, K, V] {
             override def produce[P](

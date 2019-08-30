@@ -243,9 +243,9 @@ package object kafka {
 
   /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context,
-    * using the specified [[ProducerSettings]]. Note that there is another
-    * version where `F[_]` is specified explicitly and the key and value
-    * type can be inferred, which allows you to use the following syntax.
+    * using the specified [[TransactionalProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and the key and
+    * value type can be inferred, which allows you to use the following syntax.
     *
     * {{{
     * transactionalProducerResource[F].using(settings)
@@ -262,8 +262,8 @@ package object kafka {
   /**
     * Alternative version of `transactionalProducerResource` where the `F[_]`
     * is specified explicitly, and where the key and value type can be
-    * inferred from the [[ProducerSettings]]. This allows you to use
-    * the following syntax.
+    * inferred from the [[TransactionalProducerSettings]]. This allows
+    * you to use the following syntax.
     *
     * {{{
     * transactionalProducerResource[F].using(settings)
@@ -276,9 +276,9 @@ package object kafka {
 
   /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Stream` context,
-    * using the specified [[ProducerSettings]]. Note that there is another
-    * version where `F[_]` is specified explicitly and the key and value
-    * type can be inferred, which allows you to use the following syntax.
+    * using the specified [[TransactionalProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and the key and
+    * value type can be inferred, which allows you to use the following syntax.
     *
     * {{{
     * transactionalProducerStream[F].using(settings)
@@ -295,8 +295,8 @@ package object kafka {
   /**
     * Alternative version of `transactionalProducerStream` where the `F[_]`
     * is specified explicitly, and where the key and value type can be
-    * inferred from the [[ProducerSettings]]. This allows you to use
-    * the following syntax.
+    * inferred from the [[TransactionalProducerSettings]]. This allows
+    * you to use the following syntax.
     *
     * {{{
     * transactionalProducerStream[F].using(settings)

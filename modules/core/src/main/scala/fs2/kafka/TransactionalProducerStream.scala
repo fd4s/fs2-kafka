@@ -21,8 +21,8 @@ import fs2.Stream
 
 /**
   * [[TransactionalProducerStream]] provides support for inferring
-  * the key and value type from [[ProducerSettings]] when using
-  * `transactionalProducerStream` with the following syntax.
+  * the key and value type from [[TransactionalProducerSettings]]
+  * when using `transactionalProducerStream` with the following syntax.
   *
   * {{{
   * transactionalProducerStream[F].using(settings)

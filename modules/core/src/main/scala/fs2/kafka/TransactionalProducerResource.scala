@@ -20,8 +20,8 @@ import cats.effect.{ConcurrentEffect, ContextShift, Resource}
 
 /**
   * [[TransactionalProducerResource]] provides support for inferring
-  * the key and value type from [[ProducerSettings]] when using
-  * `transactionalProducerResource` with the following syntax.
+  * the key and value type from [[TransactionalProducerSettings]]
+  * when using `transactionalProducerResource` with the following syntax.
   *
   * {{{
   * transactionalProducerResource[F].using(settings)

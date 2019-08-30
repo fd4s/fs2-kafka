@@ -66,13 +66,13 @@ private[kafka] object WithProducer {
     context: ContextShift[F]
   ): Resource[F, WithProducer[F]] = {
     val blockerResource =
-      settings.baseSettings.blocker
+      settings.producerSettings.blocker
         .map(Resource.pure[F, Blocker])
         .getOrElse(Blockers.producer)
 
     blockerResource.flatMap { blocker =>
       Resource[F, WithProducer[F]] {
-        settings.createProducer.map { producer =>
+        settings.producerSettings.createProducer.flatMap { producer =>
           val withProducer =
             new WithProducer[F] {
               override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
@@ -81,12 +81,17 @@ private[kafka] object WithProducer {
                 }
             }
 
-          val close =
+          val initTransactions =
             withProducer { producer =>
-              F.delay(producer.close(settings.baseSettings.closeTimeout.asJava))
+              F.delay(producer.initTransactions())
             }
 
-          (withProducer, close)
+          val close =
+            withProducer { producer =>
+              F.delay(producer.close(settings.producerSettings.closeTimeout.asJava))
+            }
+
+          initTransactions.as((withProducer, close))
         }
       }
     }
