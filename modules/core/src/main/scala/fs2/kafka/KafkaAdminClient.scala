@@ -248,7 +248,9 @@ object KafkaAdminClient {
     withAdminClient: WithAdminClient[F],
     resources: G[ConfigResource]
   )(implicit G: Foldable[G]): F[Map[ConfigResource, List[ConfigEntry]]] =
-    withAdminClient(_.describeConfigs(resources.asJava).all.map(_.toMap.mapValues(_.entries().toList)))
+    withAdminClient(
+      _.describeConfigs(resources.asJava).all.map(_.toMap.mapValues(_.entries().toList))
+    )
 
   private[this] def describeConsumerGroupsWith[F[_], G[_]](
     withAdminClient: WithAdminClient[F],
