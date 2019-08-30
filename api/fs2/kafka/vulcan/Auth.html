@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-M2 - fs2.kafka.vulcan.Auth</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - M2 - fs2.kafka.vulcan.Auth" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 M2 fs2.kafka.vulcan.Auth" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.vulcan.Auth</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.vulcan.Auth" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.vulcan.Auth" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-M2</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -119,8 +119,16 @@
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../index.html" class="extype" name="fs2.kafka">kafka</a></dd></dl></div>
     </li><li class="current-entities indented3">
                         <a class="object" href="Auth$.html" title=""></a>
-                        <a class="class" href="" title="The available options for SchemaRegistryClientSettings#withAuth.  Available options include: - Auth#Basic to authenticate with username and password, - Auth#None to not provide any authentication details."></a>
-                        <a href="" title="The available options for SchemaRegistryClientSettings#withAuth.  Available options include: - Auth#Basic to authenticate with username and password, - Auth#None to not provide any authentication details.">Auth</a>
+                        <a class="class" href="" title="The available options for SchemaRegistryClientSettings#withAuth."></a>
+                        <a href="" title="The available options for SchemaRegistryClientSettings#withAuth.">Auth</a>
+                      </li><li class="current-entities indented3">
+                        <span class="separator"></span>
+                        <a class="class" href="AvroDeserializer.html" title=""></a>
+                        <a href="AvroDeserializer.html" title="">AvroDeserializer</a>
+                      </li><li class="current-entities indented3">
+                        <span class="separator"></span>
+                        <a class="class" href="AvroSerializer.html" title=""></a>
+                        <a href="AvroSerializer.html" title="">AvroSerializer</a>
                       </li><li class="current-entities indented3">
                         <a class="object" href="AvroSettings$.html" title=""></a>
                         <a class="class" href="AvroSettings.html" title="Describes how to create a KafkaAvroDeserializer and a KafkaAvroSerializer and which settings should be used."></a>
@@ -159,12 +167,11 @@
       </h4>
 
       
-          <div id="comment" class="fullcommenttop"><div class="comment cmt"><p>The available options for <a href="SchemaRegistryClientSettings.html#withAuth(auth:fs2.kafka.vulcan.Auth):fs2.kafka.vulcan.SchemaRegistryClientSettings[F]" class="extmbr" name="fs2.kafka.vulcan.SchemaRegistryClientSettings#withAuth">SchemaRegistryClientSettings#withAuth</a>.<br>
-<br>
-Available options include:<br>
-- <a href="Auth$.html#Basic(username:String,password:String):fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#Basic">Auth#Basic</a> to authenticate with username and password,<br>
-- <a href="Auth$.html#None:fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#None">Auth#None</a> to not provide any authentication details.
-</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-M2/modules/vulcan/src/main/scala/fs2/kafka/vulcan/Auth.scala" target="_blank">Auth.scala</a></dd></dl><div class="toggleContainer block">
+          <div id="comment" class="fullcommenttop"><div class="comment cmt"><p>The available options for <a href="SchemaRegistryClientSettings.html#withAuth(auth:fs2.kafka.vulcan.Auth):fs2.kafka.vulcan.SchemaRegistryClientSettings[F]" class="extmbr" name="fs2.kafka.vulcan.SchemaRegistryClientSettings#withAuth">SchemaRegistryClientSettings#withAuth</a>.</p><p>Available options include:<br>
+- <a href="Auth$.html#Basic(username:String,password:String):fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#Basic">Auth.Basic</a> to authenticate with username and password,<br>
+- <a href="Auth$.html#Bearer(token:String):fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#Bearer">Auth.Bearer</a> to authenticate with an authentication token,<br>
+- <a href="Auth$.html#None:fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#None">Auth.None</a> to not provide any authentication details.
+</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/vulcan/src/main/scala/fs2/kafka/vulcan/Auth.scala" target="_blank">Auth.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>

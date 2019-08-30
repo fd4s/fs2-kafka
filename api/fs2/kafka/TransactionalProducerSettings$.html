@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.CommittableOffset</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.CommittableOffset" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.CommittableOffset" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.TransactionalProducerSettings</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.TransactionalProducerSettings" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.TransactionalProducerSettings" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -147,8 +147,8 @@
                         <a href="CommittableConsumerRecord.html" title="CommittableConsumerRecord is a Kafka record along with an instance of CommittableOffset, which can be used commit the record offset to Kafka.">CommittableConsumerRecord</a>
                       </li><li class="current-entities indented2">
                         <a class="object" href="CommittableOffset$.html" title=""></a>
-                        <a class="class" href="" title="CommittableOffset represents an offsetAndMetadata for a topicPartition, along with the ability to commit that offset to Kafka with commit."></a>
-                        <a href="" title="CommittableOffset represents an offsetAndMetadata for a topicPartition, along with the ability to commit that offset to Kafka with commit.">CommittableOffset</a>
+                        <a class="class" href="CommittableOffset.html" title="CommittableOffset represents an offsetAndMetadata for a topicPartition, along with the ability to commit that offset to Kafka with commit."></a>
+                        <a href="CommittableOffset.html" title="CommittableOffset represents an offsetAndMetadata for a topicPartition, along with the ability to commit that offset to Kafka with commit.">CommittableOffset</a>
                       </li><li class="current-entities indented2">
                         <a class="object" href="CommittableOffsetBatch$.html" title=""></a>
                         <a class="class" href="CommittableOffsetBatch.html" title="CommittableOffsetBatch represents a batch of Kafka offsets which can be committed together using commit."></a>
@@ -278,7 +278,7 @@
                         <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax."></a>
                         <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
                       </li><li class="current-entities indented2">
-                        <a class="object" href="TransactionalProducerSettings$.html" title=""></a>
+                        <a class="object" href="" title=""></a>
                         <a class="class" href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer."></a>
                         <a href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer.">TransactionalProducerSettings</a>
                       </li><li class="current-entities indented2">
@@ -294,40 +294,32 @@
             </div>
           </div>
           <div id="content">
-            <body class="class type">
+            <body class="object value">
       <div id="definition">
-        <a href="CommittableOffset$.html" title="See companion object"><div class="big-circle class-companion-object">c</div></a>
+        <a href="TransactionalProducerSettings.html" title="See companion class"><div class="big-circle object-companion-class">o</div></a>
         <p id="owner"><a href="../index.html" class="extype" name="fs2">fs2</a>.<a href="index.html" class="extype" name="fs2.kafka">kafka</a></p>
-        <h1><a href="CommittableOffset$.html" title="See companion object">CommittableOffset</a><span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html" title="Permalink">
+        <h1><a href="TransactionalProducerSettings.html" title="See companion class">TransactionalProducerSettings</a><span class="permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span></h1>
         <h3><span class="morelinks"><div>
-            Companion <a href="CommittableOffset$.html" title="See companion object">object CommittableOffset</a>
+            Companion <a href="TransactionalProducerSettings.html" title="See companion class">class TransactionalProducerSettings</a>
           </div></span></h3>
       </div>
 
       <h4 id="signature" class="signature">
       <span class="modifier_kind">
-        <span class="modifier">sealed abstract </span>
-        <span class="kind">class</span>
+        <span class="modifier"></span>
+        <span class="kind">object</span>
       </span>
       <span class="symbol">
-        <span class="name">CommittableOffset</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+        <span class="name">TransactionalProducerSettings</span>
       </span>
       </h4>
 
       
-          <div id="comment" class="fullcommenttop"><div class="comment cmt"><p><a href="" class="extype" name="fs2.kafka.CommittableOffset">CommittableOffset</a> represents an <a href="#offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata" class="extmbr" name="fs2.kafka.CommittableOffset#offsetAndMetadata">offsetAndMetadata</a> for a
-<a href="#topicPartition:org.apache.kafka.common.TopicPartition" class="extmbr" name="fs2.kafka.CommittableOffset#topicPartition">topicPartition</a>, along with the ability to commit that offset
-to Kafka with <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.CommittableOffset#commit">commit</a>. Note that offsets are normally committed
-in batches for performance reasons. Pipes like <a href="index.html#commitBatchWithin[F[_]](n:Int,d:scala.concurrent.duration.FiniteDuration)(implicitF:cats.effect.Concurrent[F],implicittimer:cats.effect.Timer[F]):fs2.Pipe[F,fs2.kafka.CommittableOffset[F],Unit]" class="extmbr" name="fs2.kafka#commitBatchWithin">commitBatchWithin</a>
-use <a href="CommittableOffsetBatch.html" class="extype" name="fs2.kafka.CommittableOffsetBatch">CommittableOffsetBatch</a> to commit the offsets in batches.<br>
-<br>
-While normally not necessary, <a href="CommittableOffset$.html#apply[F[_]](topicPartition:org.apache.kafka.common.TopicPartition,offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata,consumerGroupId:Option[String],commit:Map[org.apache.kafka.common.TopicPartition,org.apache.kafka.clients.consumer.OffsetAndMetadata]=&gt;F[Unit])(implicitF:cats.ApplicativeError[F,Throwable]):fs2.kafka.CommittableOffset[F]" class="extmbr" name="fs2.kafka.CommittableOffset#apply">CommittableOffset#apply</a> can be
-used to create a new instance.
-</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/core/src/main/scala/fs2/kafka/CommittableOffset.scala" target="_blank">CommittableOffset.scala</a></dd></dl><div class="toggleContainer block">
+          <div id="comment" class="fullcommenttop"><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/core/src/main/scala/fs2/kafka/TransactionalProducerSettings.scala" target="_blank">TransactionalProducerSettings.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -357,7 +349,7 @@ used to create a new instance.
                   <span class="filtertype">Inherited<br />
                   </span>
                   <ol id="linearization">
-                    <li class="in" name="fs2.kafka.CommittableOffset"><span>CommittableOffset</span></li><li class="in" name="scala.AnyRef"><span>AnyRef</span></li><li class="in" name="scala.Any"><span>Any</span></li>
+                    <li class="in" name="fs2.kafka.TransactionalProducerSettings"><span>TransactionalProducerSettings</span></li><li class="in" name="scala.AnyRef"><span>AnyRef</span></li><li class="in" name="scala.Any"><span>Any</span></li>
                   </ol>
                 </div><div class="ancestors">
               <span class="filtertype"></span>
@@ -379,127 +371,15 @@ used to create a new instance.
 
         
 
-        <div class="values members">
-              <h3>Abstract Value Members</h3>
-              <ol><li name="fs2.kafka.CommittableOffset#batch" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="batch:fs2.kafka.CommittableOffsetBatch[F]"></a><a id="batch:CommittableOffsetBatch[F]"></a>
-      <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#batch:fs2.kafka.CommittableOffsetBatch[F]" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">abstract </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">batch</span><span class="result">: <a href="CommittableOffsetBatch.html" class="extype" name="fs2.kafka.CommittableOffsetBatch">CommittableOffsetBatch</a>[<span class="extype" name="fs2.kafka.CommittableOffset.F">F</span>]</span>
-      </span>
-      
-      <p class="shortcomment cmt">The <a href="" class="extype" name="fs2.kafka.CommittableOffset">CommittableOffset</a> as a <a href="CommittableOffsetBatch.html" class="extype" name="fs2.kafka.CommittableOffsetBatch">CommittableOffsetBatch</a>.</p>
-    </li><li name="fs2.kafka.CommittableOffset#commit" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
-      <a id="commit:F[Unit]"></a>
-      <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#commit:F[Unit]" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">abstract </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">commit</span><span class="result">: <span class="extype" name="fs2.kafka.CommittableOffset.F">F</span>[<span class="extype" name="scala.Unit">Unit</span>]</span>
-      </span>
-      
-      <p class="shortcomment cmt">Commits the <a href="#offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata" class="extmbr" name="fs2.kafka.CommittableOffset#offsetAndMetadata">offsetAndMetadata</a> for the <a href="#topicPartition:org.apache.kafka.common.TopicPartition" class="extmbr" name="fs2.kafka.CommittableOffset#topicPartition">topicPartition</a> to
-Kafka.</p><div class="fullcomment"><div class="comment cmt"><p>Commits the <a href="#offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata" class="extmbr" name="fs2.kafka.CommittableOffset#offsetAndMetadata">offsetAndMetadata</a> for the <a href="#topicPartition:org.apache.kafka.common.TopicPartition" class="extmbr" name="fs2.kafka.CommittableOffset#topicPartition">topicPartition</a> to
-Kafka. Note that offsets are normally committed in batches for
-performance reasons. Prefer pipes like <a href="index.html#commitBatchWithin[F[_]](n:Int,d:scala.concurrent.duration.FiniteDuration)(implicitF:cats.effect.Concurrent[F],implicittimer:cats.effect.Timer[F]):fs2.Pipe[F,fs2.kafka.CommittableOffset[F],Unit]" class="extmbr" name="fs2.kafka#commitBatchWithin">commitBatchWithin</a>
-or <a href="CommittableOffsetBatch.html" class="extype" name="fs2.kafka.CommittableOffsetBatch">CommittableOffsetBatch</a> for that reason.
-</p></div></div>
-    </li><li name="fs2.kafka.CommittableOffset#consumerGroupId" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="consumerGroupId:Option[String]"></a>
-      <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#consumerGroupId:Option[String]" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">abstract </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">consumerGroupId</span><span class="result">: <span class="extype" name="scala.Option">Option</span>[<span class="extype" name="scala.Predef.String">String</span>]</span>
-      </span>
-      
-      <p class="shortcomment cmt">The consumer group ID of the consumer that fetched the
-<a href="#offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata" class="extmbr" name="fs2.kafka.CommittableOffset#offsetAndMetadata">offsetAndMetadata</a> from the <a href="#topicPartition:org.apache.kafka.common.TopicPartition" class="extmbr" name="fs2.kafka.CommittableOffset#topicPartition">topicPartition</a> from
-Kafka.<br>
-<br>
-Required for committing offsets within a transaction.</p>
-    </li><li name="fs2.kafka.CommittableOffset#offsetAndMetadata" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata"></a><a id="offsetAndMetadata:OffsetAndMetadata"></a>
-      <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">abstract </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">offsetAndMetadata</span><span class="result">: <span class="extype" name="org.apache.kafka.clients.consumer.OffsetAndMetadata">OffsetAndMetadata</span></span>
-      </span>
-      
-      <p class="shortcomment cmt">The offset and metadata for the <a href="#topicPartition:org.apache.kafka.common.TopicPartition" class="extmbr" name="fs2.kafka.CommittableOffset#topicPartition">topicPartition</a>, which
-can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.CommittableOffset#commit">commit</a>.</p>
-    </li><li name="fs2.kafka.CommittableOffset#offsets" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
-      <a id="offsets:Map[org.apache.kafka.common.TopicPartition,org.apache.kafka.clients.consumer.OffsetAndMetadata]"></a><a id="offsets:Map[TopicPartition,OffsetAndMetadata]"></a>
-      <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#offsets:Map[org.apache.kafka.common.TopicPartition,org.apache.kafka.clients.consumer.OffsetAndMetadata]" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">abstract </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">offsets</span><span class="result">: <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="org.apache.kafka.common.TopicPartition">TopicPartition</span>, <span class="extype" name="org.apache.kafka.clients.consumer.OffsetAndMetadata">OffsetAndMetadata</span>]</span>
-      </span>
-      
-      <p class="shortcomment cmt">The <a href="#topicPartition:org.apache.kafka.common.TopicPartition" class="extmbr" name="fs2.kafka.CommittableOffset#topicPartition">topicPartition</a> and <a href="#offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata" class="extmbr" name="fs2.kafka.CommittableOffset#offsetAndMetadata">offsetAndMetadata</a> as a <code>Map</code>.</p><div class="fullcomment"><div class="comment cmt"><p>The <a href="#topicPartition:org.apache.kafka.common.TopicPartition" class="extmbr" name="fs2.kafka.CommittableOffset#topicPartition">topicPartition</a> and <a href="#offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata" class="extmbr" name="fs2.kafka.CommittableOffset#offsetAndMetadata">offsetAndMetadata</a> as a <code>Map</code>.
-This is provided for convenience and is always guaranteed to
-be equivalent to the following.</p><pre><span class="std">Map</span>(topicPartition -&gt; offsetAndMetadata)</pre></div></div>
-    </li><li name="fs2.kafka.CommittableOffset#topicPartition" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="topicPartition:org.apache.kafka.common.TopicPartition"></a><a id="topicPartition:TopicPartition"></a>
-      <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#topicPartition:org.apache.kafka.common.TopicPartition" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">abstract </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">topicPartition</span><span class="result">: <span class="extype" name="org.apache.kafka.common.TopicPartition">TopicPartition</span></span>
-      </span>
-      
-      <p class="shortcomment cmt">The topic and partition for which <a href="#offsetAndMetadata:org.apache.kafka.clients.consumer.OffsetAndMetadata" class="extmbr" name="fs2.kafka.CommittableOffset#offsetAndMetadata">offsetAndMetadata</a>
-can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.CommittableOffset#commit">commit</a>.</p>
-    </li></ol>
-            </div>
+        
 
         <div class="values members">
-              <h3>Concrete Value Members</h3>
+              <h3>Value Members</h3>
               <ol>
                 <li name="scala.AnyRef#!=" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="!=(x$1:Any):Boolean"></a><a id="!=(Any):Boolean"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#!=(x$1:Any):Boolean" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#!=(x$1:Any):Boolean" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -515,7 +395,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef###" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="##():Int"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html###():Int" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html###():Int" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -531,7 +411,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#==" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="==(x$1:Any):Boolean"></a><a id="==(Any):Boolean"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#==(x$1:Any):Boolean" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#==(x$1:Any):Boolean" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -544,10 +424,26 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
       </span>
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li name="fs2.kafka.TransactionalProducerSettings#apply" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="apply[F[_],K,V](transactionalId:String,producerSettings:fs2.kafka.ProducerSettings[F,K,V]):fs2.kafka.TransactionalProducerSettings[F,K,V]"></a><a id="apply[F[_],K,V](String,ProducerSettings[F,K,V]):TransactionalProducerSettings[F,K,V]"></a>
+      <span class="permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#apply[F[_],K,V](transactionalId:String,producerSettings:fs2.kafka.ProducerSettings[F,K,V]):fs2.kafka.TransactionalProducerSettings[F,K,V]" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="transactionalId">transactionalId: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="producerSettings">producerSettings: <a href="ProducerSettings.html" class="extype" name="fs2.kafka.ProducerSettings">ProducerSettings</a>[<span class="extype" name="fs2.kafka.TransactionalProducerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.TransactionalProducerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.TransactionalProducerSettings.apply.V">V</span>]</span>)</span><span class="result">: <a href="TransactionalProducerSettings.html" class="extype" name="fs2.kafka.TransactionalProducerSettings">TransactionalProducerSettings</a>[<span class="extype" name="fs2.kafka.TransactionalProducerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.TransactionalProducerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.TransactionalProducerSettings.apply.V">V</span>]</span>
+      </span>
+      
+      
     </li><li name="scala.Any#asInstanceOf" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="asInstanceOf[T0]:T0"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#asInstanceOf[T0]:T0" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#asInstanceOf[T0]:T0" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -563,7 +459,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#clone" visbl="prt" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="clone():Object"></a><a id="clone():AnyRef"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#clone():Object" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#clone():Object" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -587,7 +483,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#eq" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="eq(x$1:AnyRef):Boolean"></a><a id="eq(AnyRef):Boolean"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#eq(x$1:AnyRef):Boolean" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#eq(x$1:AnyRef):Boolean" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -603,7 +499,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#equals" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="equals(x$1:Any):Boolean"></a><a id="equals(Any):Boolean"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#equals(x$1:Any):Boolean" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#equals(x$1:Any):Boolean" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -619,7 +515,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#finalize" visbl="prt" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="finalize():Unit"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#finalize():Unit" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#finalize():Unit" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -641,7 +537,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#getClass" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="getClass():Class[_]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#getClass():Class[_]" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#getClass():Class[_]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -660,7 +556,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#hashCode" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="hashCode():Int"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#hashCode():Int" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#hashCode():Int" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -679,7 +575,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.Any#isInstanceOf" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="isInstanceOf[T0]:Boolean"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#isInstanceOf[T0]:Boolean" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#isInstanceOf[T0]:Boolean" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -695,7 +591,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#ne" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="ne(x$1:AnyRef):Boolean"></a><a id="ne(AnyRef):Boolean"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#ne(x$1:AnyRef):Boolean" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#ne(x$1:AnyRef):Boolean" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -711,7 +607,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#notify" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="notify():Unit"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#notify():Unit" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#notify():Unit" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -730,7 +626,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#notifyAll" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="notifyAll():Unit"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#notifyAll():Unit" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#notifyAll():Unit" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -749,7 +645,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#synchronized" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="synchronized[T0](x$1:=&gt;T0):T0"></a><a id="synchronized[T0](⇒T0):T0"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#synchronized[T0](x$1:=&gt;T0):T0" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#synchronized[T0](x$1:=&gt;T0):T0" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -765,7 +661,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#toString" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="toString():String"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#toString():String" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#toString():String" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -778,10 +674,26 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
       </span>
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li name="fs2.kafka.TransactionalProducerSettings#transactionalProducerSettingsShow" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="transactionalProducerSettingsShow[F[_],K,V]:cats.Show[fs2.kafka.TransactionalProducerSettings[F,K,V]]"></a><a id="transactionalProducerSettingsShow[F[_],K,V]:Show[TransactionalProducerSettings[F,K,V]]"></a>
+      <span class="permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#transactionalProducerSettingsShow[F[_],K,V]:cats.Show[fs2.kafka.TransactionalProducerSettings[F,K,V]]" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">transactionalProducerSettingsShow</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="result">: <span class="extype" name="cats.Show">Show</span>[<a href="TransactionalProducerSettings.html" class="extype" name="fs2.kafka.TransactionalProducerSettings">TransactionalProducerSettings</a>[<span class="extype" name="fs2.kafka.TransactionalProducerSettings.transactionalProducerSettingsShow.F">F</span>, <span class="extype" name="fs2.kafka.TransactionalProducerSettings.transactionalProducerSettingsShow.K">K</span>, <span class="extype" name="fs2.kafka.TransactionalProducerSettings.transactionalProducerSettingsShow.V">V</span>]]</span>
+      </span>
+      
+      
     </li><li name="scala.AnyRef#wait" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="wait():Unit"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#wait():Unit" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#wait():Unit" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -803,7 +715,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#wait" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="wait(x$1:Long,x$2:Int):Unit"></a><a id="wait(Long,Int):Unit"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#wait(x$1:Long,x$2:Int):Unit" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#wait(x$1:Long,x$2:Int):Unit" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -825,7 +737,7 @@ can be committed using <a href="#commit:F[Unit]" class="extmbr" name="fs2.kafka.
     </li><li name="scala.AnyRef#wait" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="wait(x$1:Long):Unit"></a><a id="wait(Long):Unit"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableOffset.html#wait(x$1:Long):Unit" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerSettings$.html#wait(x$1:Long):Unit" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>

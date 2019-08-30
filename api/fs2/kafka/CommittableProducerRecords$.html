@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-M2 - fs2.kafka.CommittableProducerRecords</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - M2 - fs2.kafka.CommittableProducerRecords" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 M2 fs2.kafka.CommittableProducerRecords" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.CommittableProducerRecords</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.CommittableProducerRecords" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.CommittableProducerRecords" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-M2</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -275,12 +275,16 @@
                         <a href="TransactionalProducerRecords.html" title="Represents zero or more CommittableProducerRecords, together with arbitrary passthrough value, all of which can be used together with a TransactionalKafkaProducer to produce records and commit offsets within a single transaction.  TransactionalProducerRecordss can be created using one of the following options.  - TransactionalProducerRecords#apply to produce zero or more records, commit the offsets, and then emit a ProducerResult with the results and specified passthrough value. - TransactionalProducerRecords#one to produce zero or more records, commit exactly one offset, then emit a ProducerResult with the results and specified passthrough value.">TransactionalProducerRecords</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax."></a>
-                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax."></a>
+                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                      </li><li class="current-entities indented2">
+                        <a class="object" href="TransactionalProducerSettings$.html" title=""></a>
+                        <a class="class" href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer."></a>
+                        <a href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer.">TransactionalProducerSettings</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax."></a>
-                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
+                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax."></a>
+                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
                         <a class="class" href="UnexpectedTopicException.html" title="UnexpectedTopicException is raised when serialization or deserialization occurred for an unexpected topic which isn't supported by the Serializer or Deserializer."></a>
@@ -315,7 +319,7 @@
       </h4>
 
       
-          <div id="comment" class="fullcommenttop"><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-M2/modules/core/src/main/scala/fs2/kafka/CommittableProducerRecords.scala" target="_blank">CommittableProducerRecords.scala</a></dd></dl><div class="toggleContainer block">
+          <div id="comment" class="fullcommenttop"><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/core/src/main/scala/fs2/kafka/CommittableProducerRecords.scala" target="_blank">CommittableProducerRecords.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -421,9 +425,9 @@
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
     </li><li name="fs2.kafka.CommittableProducerRecords#apply" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="apply[F[_],G[+_],K,V](records:G[fs2.kafka.ProducerRecord[K,V]],offset:fs2.kafka.CommittableOffset[F])(implicitG:cats.Foldable[G]):fs2.kafka.CommittableProducerRecords[F,G,K,V]"></a><a id="apply[F[_],G[+_],K,V](G[ProducerRecord[K,V]],CommittableOffset[F])(Foldable[G]):CommittableProducerRecords[F,G,K,V]"></a>
+      <a id="apply[F[_],G[+_],K,V](records:G[fs2.kafka.ProducerRecord[K,V]],offset:fs2.kafka.CommittableOffset[F])(implicitG:cats.Foldable[G]):fs2.kafka.CommittableProducerRecords[F,K,V]"></a><a id="apply[F[_],G[+_],K,V](G[ProducerRecord[K,V]],CommittableOffset[F])(Foldable[G]):CommittableProducerRecords[F,K,V]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableProducerRecords$.html#apply[F[_],G[+_],K,V](records:G[fs2.kafka.ProducerRecord[K,V]],offset:fs2.kafka.CommittableOffset[F])(implicitG:cats.Foldable[G]):fs2.kafka.CommittableProducerRecords[F,G,K,V]" title="Permalink">
+      <a href="../../fs2/kafka/CommittableProducerRecords$.html#apply[F[_],G[+_],K,V](records:G[fs2.kafka.ProducerRecord[K,V]],offset:fs2.kafka.CommittableOffset[F])(implicitG:cats.Foldable[G]):fs2.kafka.CommittableProducerRecords[F,K,V]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -432,7 +436,7 @@
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="G">G<span class="tparams">[<span name="_">+_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="records">records: <span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.G">G</span>[<a href="ProducerRecord.html" class="extype" name="fs2.kafka.ProducerRecord">ProducerRecord</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.V">V</span>]]</span>, <span name="offset">offset: <a href="CommittableOffset.html" class="extype" name="fs2.kafka.CommittableOffset">CommittableOffset</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.F">F</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="G">G: <span class="extype" name="cats.Foldable">Foldable</span>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.G">G</span>]</span>)</span><span class="result">: <a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.F">F</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.G">G</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.V">V</span>]</span>
+        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="G">G<span class="tparams">[<span name="_">+_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="records">records: <span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.G">G</span>[<a href="ProducerRecord.html" class="extype" name="fs2.kafka.ProducerRecord">ProducerRecord</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.V">V</span>]]</span>, <span name="offset">offset: <a href="CommittableOffset.html" class="extype" name="fs2.kafka.CommittableOffset">CommittableOffset</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.F">F</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="G">G: <span class="extype" name="cats.Foldable">Foldable</span>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.G">G</span>]</span>)</span><span class="result">: <a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.F">F</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.apply.V">V</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a> for producing zero or
@@ -479,9 +483,9 @@ a transaction.</p>
               
         </dd></dl></div>
     </li><li name="fs2.kafka.CommittableProducerRecords#committableProducerRecordsShow" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="committableProducerRecordsShow[F[_],G[+_],K,V](implicitK:cats.Show[K],implicitV:cats.Show[V]):cats.Show[fs2.kafka.CommittableProducerRecords[F,G,K,V]]"></a><a id="committableProducerRecordsShow[F[_],G[+_],K,V](Show[K],Show[V]):Show[CommittableProducerRecords[F,G,K,V]]"></a>
+      <a id="committableProducerRecordsShow[F[_],K,V](implicitK:cats.Show[K],implicitV:cats.Show[V]):cats.Show[fs2.kafka.CommittableProducerRecords[F,K,V]]"></a><a id="committableProducerRecordsShow[F[_],K,V](Show[K],Show[V]):Show[CommittableProducerRecords[F,K,V]]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableProducerRecords$.html#committableProducerRecordsShow[F[_],G[+_],K,V](implicitK:cats.Show[K],implicitV:cats.Show[V]):cats.Show[fs2.kafka.CommittableProducerRecords[F,G,K,V]]" title="Permalink">
+      <a href="../../fs2/kafka/CommittableProducerRecords$.html#committableProducerRecordsShow[F[_],K,V](implicitK:cats.Show[K],implicitV:cats.Show[V]):cats.Show[fs2.kafka.CommittableProducerRecords[F,K,V]]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -490,7 +494,7 @@ a transaction.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">committableProducerRecordsShow</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="G">G<span class="tparams">[<span name="_">+_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span class="implicit">implicit </span><span name="K">K: <span class="extype" name="cats.Show">Show</span>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.K">K</span>]</span>, <span name="V">V: <span class="extype" name="cats.Show">Show</span>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.V">V</span>]</span>)</span><span class="result">: <span class="extype" name="cats.Show">Show</span>[<a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.F">F</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.G">G</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.V">V</span>]]</span>
+        <span class="name">committableProducerRecordsShow</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span class="implicit">implicit </span><span name="K">K: <span class="extype" name="cats.Show">Show</span>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.K">K</span>]</span>, <span name="V">V: <span class="extype" name="cats.Show">Show</span>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.V">V</span>]</span>)</span><span class="result">: <span class="extype" name="cats.Show">Show</span>[<a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.F">F</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.committableProducerRecordsShow.V">V</span>]]</span>
       </span>
       
       
@@ -657,9 +661,9 @@ a transaction.</p>
               
         </dd></dl></div>
     </li><li name="fs2.kafka.CommittableProducerRecords#one" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="one[F[_],K,V](record:fs2.kafka.ProducerRecord[K,V],offset:fs2.kafka.CommittableOffset[F]):fs2.kafka.CommittableProducerRecords[F,fs2.kafka.Id,K,V]"></a><a id="one[F[_],K,V](ProducerRecord[K,V],CommittableOffset[F]):CommittableProducerRecords[F,Id,K,V]"></a>
+      <a id="one[F[_],K,V](record:fs2.kafka.ProducerRecord[K,V],offset:fs2.kafka.CommittableOffset[F]):fs2.kafka.CommittableProducerRecords[F,K,V]"></a><a id="one[F[_],K,V](ProducerRecord[K,V],CommittableOffset[F]):CommittableProducerRecords[F,K,V]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/CommittableProducerRecords$.html#one[F[_],K,V](record:fs2.kafka.ProducerRecord[K,V],offset:fs2.kafka.CommittableOffset[F]):fs2.kafka.CommittableProducerRecords[F,fs2.kafka.Id,K,V]" title="Permalink">
+      <a href="../../fs2/kafka/CommittableProducerRecords$.html#one[F[_],K,V](record:fs2.kafka.ProducerRecord[K,V],offset:fs2.kafka.CommittableOffset[F]):fs2.kafka.CommittableProducerRecords[F,K,V]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -668,7 +672,7 @@ a transaction.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">one</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="record">record: <a href="ProducerRecord.html" class="extype" name="fs2.kafka.ProducerRecord">ProducerRecord</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.one.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.one.V">V</span>]</span>, <span name="offset">offset: <a href="CommittableOffset.html" class="extype" name="fs2.kafka.CommittableOffset">CommittableOffset</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.one.F">F</span>]</span>)</span><span class="result">: <a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.one.F">F</span>, <a href="index.html#Id[+A]=A" class="extmbr" name="fs2.kafka.Id">Id</a>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.one.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.one.V">V</span>]</span>
+        <span class="name">one</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="record">record: <a href="ProducerRecord.html" class="extype" name="fs2.kafka.ProducerRecord">ProducerRecord</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.one.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.one.V">V</span>]</span>, <span name="offset">offset: <a href="CommittableOffset.html" class="extype" name="fs2.kafka.CommittableOffset">CommittableOffset</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.one.F">F</span>]</span>)</span><span class="result">: <a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a>[<span class="extype" name="fs2.kafka.CommittableProducerRecords.one.F">F</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.one.K">K</span>, <span class="extype" name="fs2.kafka.CommittableProducerRecords.one.V">V</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a> for producing exactly

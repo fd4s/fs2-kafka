@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-M2 - fs2.kafka.vulcan</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - M2 - fs2.kafka.vulcan" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 M2 fs2.kafka.vulcan" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.vulcan</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.vulcan" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.vulcan" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-M2</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -119,8 +119,16 @@
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../index.html" class="extype" name="fs2.kafka">kafka</a></dd></dl></div>
     </li><li class="current-entities indented3">
                         <a class="object" href="Auth$.html" title=""></a>
-                        <a class="class" href="Auth.html" title="The available options for SchemaRegistryClientSettings#withAuth.  Available options include: - Auth#Basic to authenticate with username and password, - Auth#None to not provide any authentication details."></a>
-                        <a href="Auth.html" title="The available options for SchemaRegistryClientSettings#withAuth.  Available options include: - Auth#Basic to authenticate with username and password, - Auth#None to not provide any authentication details.">Auth</a>
+                        <a class="class" href="Auth.html" title="The available options for SchemaRegistryClientSettings#withAuth."></a>
+                        <a href="Auth.html" title="The available options for SchemaRegistryClientSettings#withAuth.">Auth</a>
+                      </li><li class="current-entities indented3">
+                        <span class="separator"></span>
+                        <a class="class" href="AvroDeserializer.html" title=""></a>
+                        <a href="AvroDeserializer.html" title="">AvroDeserializer</a>
+                      </li><li class="current-entities indented3">
+                        <span class="separator"></span>
+                        <a class="class" href="AvroSerializer.html" title=""></a>
+                        <a href="AvroSerializer.html" title="">AvroSerializer</a>
                       </li><li class="current-entities indented3">
                         <a class="object" href="AvroSettings$.html" title=""></a>
                         <a class="class" href="AvroSettings.html" title="Describes how to create a KafkaAvroDeserializer and a KafkaAvroSerializer and which settings should be used."></a>
@@ -157,7 +165,7 @@
       </h4>
 
       
-          <div id="comment" class="fullcommenttop"><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-M2/modules/vulcan/src/main/scala/fs2/kafka/vulcan/package.scala" target="_blank">package.scala</a></dd></dl><div class="toggleContainer block">
+          <div id="comment" class="fullcommenttop"><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/vulcan/src/main/scala/fs2/kafka/vulcan/package.scala" target="_blank">package.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -209,7 +217,7 @@
 
         <div id="types" class="types members">
               <h3>Type Members</h3>
-              <ol><li name="fs2.kafka.vulcan.Auth" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
+              <ol><li name="fs2.kafka.vulcan.Auth" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
       <a id="AuthextendsAnyRef"></a><a id="Auth:Auth"></a>
       <span class="permalink">
       <a href="../../../fs2/kafka/vulcan/index.html#AuthextendsAnyRef" title="Permalink">
@@ -221,18 +229,50 @@
         <span class="kind">class</span>
       </span>
       <span class="symbol">
-        <a title="The available options for SchemaRegistryClientSettings#withAuth.  Available options include: - Auth#Basic to authenticate with username and password, - Auth#None to not provide any authentication details." href="Auth.html"><span class="name">Auth</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+        <a title="The available options for SchemaRegistryClientSettings#withAuth." href="Auth.html"><span class="name">Auth</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
       </span>
       
-      <p class="shortcomment cmt">The available options for <a href="SchemaRegistryClientSettings.html#withAuth(auth:fs2.kafka.vulcan.Auth):fs2.kafka.vulcan.SchemaRegistryClientSettings[F]" class="extmbr" name="fs2.kafka.vulcan.SchemaRegistryClientSettings#withAuth">SchemaRegistryClientSettings#withAuth</a>.<br>
-<br>
-Available options include:<br>
-- <a href="Auth$.html#Basic(username:String,password:String):fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#Basic">Auth#Basic</a> to authenticate with username and password,<br>
-- <a href="Auth$.html#None:fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#None">Auth#None</a> to not provide any authentication details.</p>
-    </li><li name="fs2.kafka.vulcan.AvroSettings" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
-      <a id="AvroSettings[F[_],A]extendsAnyRef"></a><a id="AvroSettings[F[_],A]:AvroSettings[F,A]"></a>
+      <p class="shortcomment cmt">The available options for <a href="SchemaRegistryClientSettings.html#withAuth(auth:fs2.kafka.vulcan.Auth):fs2.kafka.vulcan.SchemaRegistryClientSettings[F]" class="extmbr" name="fs2.kafka.vulcan.SchemaRegistryClientSettings#withAuth">SchemaRegistryClientSettings#withAuth</a>.</p><div class="fullcomment"><div class="comment cmt"><p>The available options for <a href="SchemaRegistryClientSettings.html#withAuth(auth:fs2.kafka.vulcan.Auth):fs2.kafka.vulcan.SchemaRegistryClientSettings[F]" class="extmbr" name="fs2.kafka.vulcan.SchemaRegistryClientSettings#withAuth">SchemaRegistryClientSettings#withAuth</a>.</p><p>Available options include:<br>
+- <a href="Auth$.html#Basic(username:String,password:String):fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#Basic">Auth.Basic</a> to authenticate with username and password,<br>
+- <a href="Auth$.html#Bearer(token:String):fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#Bearer">Auth.Bearer</a> to authenticate with an authentication token,<br>
+- <a href="Auth$.html#None:fs2.kafka.vulcan.Auth" class="extmbr" name="fs2.kafka.vulcan.Auth#None">Auth.None</a> to not provide any authentication details.
+</p></div></div>
+    </li><li name="fs2.kafka.vulcan.AvroDeserializer" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="AvroDeserializer[A]extendsAnyVal"></a><a id="AvroDeserializer[A]:AvroDeserializer[A]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/index.html#AvroSettings[F[_],A]extendsAnyRef" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/index.html#AvroDeserializer[A]extendsAnyVal" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a title="" href="AvroDeserializer.html"><span class="name">AvroDeserializer</span></a><span class="tparams">[<span name="A">A</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyVal">AnyVal</span></span>
+      </span>
+      
+      
+    </li><li name="fs2.kafka.vulcan.AvroSerializer" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="AvroSerializer[A]extendsAnyVal"></a><a id="AvroSerializer[A]:AvroSerializer[A]"></a>
+      <span class="permalink">
+      <a href="../../../fs2/kafka/vulcan/index.html#AvroSerializer[A]extendsAnyVal" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a title="" href="AvroSerializer.html"><span class="name">AvroSerializer</span></a><span class="tparams">[<span name="A">A</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyVal">AnyVal</span></span>
+      </span>
+      
+      
+    </li><li name="fs2.kafka.vulcan.AvroSettings" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
+      <a id="AvroSettings[F[_]]extendsAnyRef"></a><a id="AvroSettings[F[_]]:AvroSettings[F]"></a>
+      <span class="permalink">
+      <a href="../../../fs2/kafka/vulcan/index.html#AvroSettings[F[_]]extendsAnyRef" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -241,16 +281,14 @@ Available options include:<br>
         <span class="kind">class</span>
       </span>
       <span class="symbol">
-        <a title="Describes how to create a KafkaAvroDeserializer and a KafkaAvroSerializer and which settings should be used." href="AvroSettings.html"><span class="name">AvroSettings</span></a><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="A">A</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+        <a title="Describes how to create a KafkaAvroDeserializer and a KafkaAvroSerializer and which settings should be used." href="AvroSettings.html"><span class="name">AvroSettings</span></a><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
       </span>
       
       <p class="shortcomment cmt">Describes how to create a <code>KafkaAvroDeserializer</code> and a
 <code>KafkaAvroSerializer</code> and which settings should be used.</p><div class="fullcomment"><div class="comment cmt"><p>Describes how to create a <code>KafkaAvroDeserializer</code> and a
 <code>KafkaAvroSerializer</code> and which settings should be used.
 Settings are tailored for the Confluent Kafka Avro
-serializers and deserializers.<br>
-<br>
-Use <code>AvroSettings#apply</code> to create an instance.
+serializers and deserializers.</p><p>Use <code>AvroSettings.apply</code> to create an instance.
 </p></div></div>
     </li><li name="fs2.kafka.vulcan.CachedSchemaRegistryClient" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="CachedSchemaRegistryClient=io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient"></a><a id="CachedSchemaRegistryClient:CachedSchemaRegistryClient"></a>
@@ -334,9 +372,7 @@ Use <code>AvroSettings#apply</code> to create an instance.
       <p class="shortcomment cmt">Describes how to create a <code>SchemaRegistryClient</code> and which
 settings should be used.</p><div class="fullcomment"><div class="comment cmt"><p>Describes how to create a <code>SchemaRegistryClient</code> and which
 settings should be used. Settings are tailored for default
-implementation <code>CachedSchemaRegistryClient</code>.<br>
-<br>
-Use <code>SchemaRegistryClient#apply</code> to create an instance.
+implementation <code>CachedSchemaRegistryClient</code>.</p><p>Use <code>SchemaRegistryClient#apply</code> to create an instance.
 </p></div></div>
     </li></ol>
             </div>
@@ -347,25 +383,9 @@ Use <code>SchemaRegistryClient#apply</code> to create an instance.
               <h3>Value Members</h3>
               <ol>
                 <li name="fs2.kafka.vulcan#avroDeserializer" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="avroDeserializer[F[_],A](implicitF:cats.effect.Sync[F],implicitcodec:vulcan.Codec[A],implicitsettings:fs2.kafka.vulcan.AvroSettings[F,A]):F[fs2.kafka.Deserializer[F,A]]"></a><a id="avroDeserializer[F[_],A](Sync[F],Codec[A],AvroSettings[F,A]):F[Deserializer[F,A]]"></a>
+      <a id="avroDeserializer[A](implicitcodec:vulcan.Codec[A]):fs2.kafka.vulcan.AvroDeserializer[A]"></a><a id="avroDeserializer[A](Codec[A]):AvroDeserializer[A]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/index.html#avroDeserializer[F[_],A](implicitF:cats.effect.Sync[F],implicitcodec:vulcan.Codec[A],implicitsettings:fs2.kafka.vulcan.AvroSettings[F,A]):F[fs2.kafka.Deserializer[F,A]]" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">implicit </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">avroDeserializer</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="A">A</span>]</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.F">F</span>]</span>, <span name="codec">codec: <span class="extype" name="vulcan.Codec">Codec</span>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.A">A</span>]</span>, <span name="settings">settings: <a href="AvroSettings.html" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.avroDeserializer.A">A</span>]</span>)</span><span class="result">: <span class="extype" name="fs2.kafka.vulcan.avroDeserializer.F">F</span>[<a href="../Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.avroDeserializer.A">A</span>]]</span>
-      </span>
-      
-      
-    </li><li name="fs2.kafka.vulcan#avroDeserializer" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="avroDeserializer[F[_],A](settings:fs2.kafka.vulcan.AvroSettings[F,A])(implicitF:cats.effect.Sync[F],implicitcodec:vulcan.Codec[A]):F[fs2.kafka.Deserializer[F,A]]"></a><a id="avroDeserializer[F[_],A](AvroSettings[F,A])(Sync[F],Codec[A]):F[Deserializer[F,A]]"></a>
-      <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/index.html#avroDeserializer[F[_],A](settings:fs2.kafka.vulcan.AvroSettings[F,A])(implicitF:cats.effect.Sync[F],implicitcodec:vulcan.Codec[A]):F[fs2.kafka.Deserializer[F,A]]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/index.html#avroDeserializer[A](implicitcodec:vulcan.Codec[A]):fs2.kafka.vulcan.AvroDeserializer[A]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -374,30 +394,14 @@ Use <code>SchemaRegistryClient#apply</code> to create an instance.
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">avroDeserializer</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="A">A</span>]</span><span class="params">(<span name="settings">settings: <a href="AvroSettings.html" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.avroDeserializer.A">A</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.F">F</span>]</span>, <span name="codec">codec: <span class="extype" name="vulcan.Codec">Codec</span>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.A">A</span>]</span>)</span><span class="result">: <span class="extype" name="fs2.kafka.vulcan.avroDeserializer.F">F</span>[<a href="../Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.avroDeserializer.A">A</span>]]</span>
-      </span>
-      
-      <p class="shortcomment cmt">Creates an Avro <code>Deserializer</code> using specified <a href="AvroSettings.html" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>.</p>
-    </li><li name="fs2.kafka.vulcan#avroSerializer" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="avroSerializer[F[_],A](implicitF:cats.effect.Sync[F],implicitcodec:vulcan.Codec[A],implicitsettings:fs2.kafka.vulcan.AvroSettings[F,A]):F[fs2.kafka.Serializer[F,A]]"></a><a id="avroSerializer[F[_],A](Sync[F],Codec[A],AvroSettings[F,A]):F[Serializer[F,A]]"></a>
-      <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/index.html#avroSerializer[F[_],A](implicitF:cats.effect.Sync[F],implicitcodec:vulcan.Codec[A],implicitsettings:fs2.kafka.vulcan.AvroSettings[F,A]):F[fs2.kafka.Serializer[F,A]]" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">implicit </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">avroSerializer</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="A">A</span>]</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.F">F</span>]</span>, <span name="codec">codec: <span class="extype" name="vulcan.Codec">Codec</span>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.A">A</span>]</span>, <span name="settings">settings: <a href="AvroSettings.html" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.avroSerializer.A">A</span>]</span>)</span><span class="result">: <span class="extype" name="fs2.kafka.vulcan.avroSerializer.F">F</span>[<a href="../Serializer.html" class="extype" name="fs2.kafka.Serializer">Serializer</a>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.avroSerializer.A">A</span>]]</span>
+        <span class="name">avroDeserializer</span><span class="tparams">[<span name="A">A</span>]</span><span class="params">(<span class="implicit">implicit </span><span name="codec">codec: <span class="extype" name="vulcan.Codec">Codec</span>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.A">A</span>]</span>)</span><span class="result">: <a href="AvroDeserializer.html" class="extype" name="fs2.kafka.vulcan.AvroDeserializer">AvroDeserializer</a>[<span class="extype" name="fs2.kafka.vulcan.avroDeserializer.A">A</span>]</span>
       </span>
       
       
     </li><li name="fs2.kafka.vulcan#avroSerializer" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="avroSerializer[F[_],A](settings:fs2.kafka.vulcan.AvroSettings[F,A])(implicitF:cats.effect.Sync[F],implicitcodec:vulcan.Codec[A]):F[fs2.kafka.Serializer[F,A]]"></a><a id="avroSerializer[F[_],A](AvroSettings[F,A])(Sync[F],Codec[A]):F[Serializer[F,A]]"></a>
+      <a id="avroSerializer[A](implicitcodec:vulcan.Codec[A]):fs2.kafka.vulcan.AvroSerializer[A]"></a><a id="avroSerializer[A](Codec[A]):AvroSerializer[A]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/index.html#avroSerializer[F[_],A](settings:fs2.kafka.vulcan.AvroSettings[F,A])(implicitF:cats.effect.Sync[F],implicitcodec:vulcan.Codec[A]):F[fs2.kafka.Serializer[F,A]]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/index.html#avroSerializer[A](implicitcodec:vulcan.Codec[A]):fs2.kafka.vulcan.AvroSerializer[A]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -406,10 +410,10 @@ Use <code>SchemaRegistryClient#apply</code> to create an instance.
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">avroSerializer</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="A">A</span>]</span><span class="params">(<span name="settings">settings: <a href="AvroSettings.html" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.avroSerializer.A">A</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.F">F</span>]</span>, <span name="codec">codec: <span class="extype" name="vulcan.Codec">Codec</span>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.A">A</span>]</span>)</span><span class="result">: <span class="extype" name="fs2.kafka.vulcan.avroSerializer.F">F</span>[<a href="../Serializer.html" class="extype" name="fs2.kafka.Serializer">Serializer</a>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.avroSerializer.A">A</span>]]</span>
+        <span class="name">avroSerializer</span><span class="tparams">[<span name="A">A</span>]</span><span class="params">(<span class="implicit">implicit </span><span name="codec">codec: <span class="extype" name="vulcan.Codec">Codec</span>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.A">A</span>]</span>)</span><span class="result">: <a href="AvroSerializer.html" class="extype" name="fs2.kafka.vulcan.AvroSerializer">AvroSerializer</a>[<span class="extype" name="fs2.kafka.vulcan.avroSerializer.A">A</span>]</span>
       </span>
       
-      <p class="shortcomment cmt">Creates an Avro <code>Serializer</code> using specified <a href="AvroSettings.html" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>.</p>
+      
     </li><li name="fs2.kafka.vulcan.Auth" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="Auth"></a><a id="Auth:Auth"></a>
       <span class="permalink">

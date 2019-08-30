@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-M2 - fs2.kafka.ConsumerSettings</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - M2 - fs2.kafka.ConsumerSettings" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 M2 fs2.kafka.ConsumerSettings" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.ConsumerSettings</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.ConsumerSettings" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.ConsumerSettings" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-M2</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -275,12 +275,16 @@
                         <a href="TransactionalProducerRecords.html" title="Represents zero or more CommittableProducerRecords, together with arbitrary passthrough value, all of which can be used together with a TransactionalKafkaProducer to produce records and commit offsets within a single transaction.  TransactionalProducerRecordss can be created using one of the following options.  - TransactionalProducerRecords#apply to produce zero or more records, commit the offsets, and then emit a ProducerResult with the results and specified passthrough value. - TransactionalProducerRecords#one to produce zero or more records, commit exactly one offset, then emit a ProducerResult with the results and specified passthrough value.">TransactionalProducerRecords</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax."></a>
-                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax."></a>
+                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                      </li><li class="current-entities indented2">
+                        <a class="object" href="TransactionalProducerSettings$.html" title=""></a>
+                        <a class="class" href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer."></a>
+                        <a href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer.">TransactionalProducerSettings</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax."></a>
-                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
+                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax."></a>
+                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
                         <a class="class" href="UnexpectedTopicException.html" title="UnexpectedTopicException is raised when serialization or deserialization occurred for an unexpected topic which isn't supported by the Serializer or Deserializer."></a>
@@ -315,7 +319,7 @@
       </h4>
 
       
-          <div id="comment" class="fullcommenttop"><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-M2/modules/core/src/main/scala/fs2/kafka/ConsumerSettings.scala" target="_blank">ConsumerSettings.scala</a></dd></dl><div class="toggleContainer block">
+          <div id="comment" class="fullcommenttop"><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/core/src/main/scala/fs2/kafka/ConsumerSettings.scala" target="_blank">ConsumerSettings.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -421,9 +425,9 @@
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
     </li><li name="fs2.kafka.ConsumerSettings#apply" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="apply[F[_],K,V](implicitF:cats.effect.Sync[F],implicitkeyDeserializer:fs2.kafka.internal.OrElse[F[fs2.kafka.Deserializer[F,K]],fs2.kafka.Deserializer[F,K]],implicitvalueDeserializer:fs2.kafka.internal.OrElse[F[fs2.kafka.Deserializer[F,V]],fs2.kafka.Deserializer[F,V]]):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="apply[F[_],K,V](Sync[F],OrElse[F[Deserializer[F,K]],Deserializer[F,K]],OrElse[F[Deserializer[F,V]],Deserializer[F,V]]):ConsumerSettings[F,K,V]"></a>
+      <a id="apply[F[_],K,V](implicitF:cats.effect.Sync[F],implicitkeyDeserializer:fs2.kafka.Deserializer.Record[F,K],implicitvalueDeserializer:fs2.kafka.Deserializer.Record[F,V]):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="apply[F[_],K,V](Sync[F],Record[F,K],Record[F,V]):ConsumerSettings[F,K,V]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/ConsumerSettings$.html#apply[F[_],K,V](implicitF:cats.effect.Sync[F],implicitkeyDeserializer:fs2.kafka.internal.OrElse[F[fs2.kafka.Deserializer[F,K]],fs2.kafka.Deserializer[F,K]],implicitvalueDeserializer:fs2.kafka.internal.OrElse[F[fs2.kafka.Deserializer[F,V]],fs2.kafka.Deserializer[F,V]]):fs2.kafka.ConsumerSettings[F,K,V]" title="Permalink">
+      <a href="../../fs2/kafka/ConsumerSettings$.html#apply[F[_],K,V](implicitF:cats.effect.Sync[F],implicitkeyDeserializer:fs2.kafka.Deserializer.Record[F,K],implicitvalueDeserializer:fs2.kafka.Deserializer.Record[F,V]):fs2.kafka.ConsumerSettings[F,K,V]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -432,15 +436,14 @@
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>]</span>, <span name="keyDeserializer">keyDeserializer: <span class="extype" name="fs2.kafka.internal.OrElse">OrElse</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>[<a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]], <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]]</span>, <span name="valueDeserializer">valueDeserializer: <span class="extype" name="fs2.kafka.internal.OrElse">OrElse</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>[<a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]], <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]]</span>)</span><span class="result">: <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>
+        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>]</span>, <span name="keyDeserializer">keyDeserializer: <a href="Deserializer$$Record.html" class="extype" name="fs2.kafka.Deserializer.Record">Record</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]</span>, <span name="valueDeserializer">valueDeserializer: <a href="Deserializer$$Record.html" class="extype" name="fs2.kafka.Deserializer.Record">Record</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>)</span><span class="result">: <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>
       </span>
       
-      <p class="shortcomment cmt">Creates a new <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a> instance using
-implicit <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>s for the key and value.</p>
+      
     </li><li name="fs2.kafka.ConsumerSettings#apply" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="apply[F[_],K,V](keyDeserializer:F[fs2.kafka.Deserializer[F,K]],valueDeserializer:F[fs2.kafka.Deserializer[F,V]])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="apply[F[_],K,V](F[Deserializer[F,K]],F[Deserializer[F,V]])(Sync[F]):ConsumerSettings[F,K,V]"></a>
+      <a id="apply[F[_],K,V](keyDeserializer:fs2.kafka.Deserializer.Record[F,K],valueDeserializer:fs2.kafka.Deserializer.Record[F,V])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="apply[F[_],K,V](Record[F,K],Record[F,V])(Sync[F]):ConsumerSettings[F,K,V]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/ConsumerSettings$.html#apply[F[_],K,V](keyDeserializer:F[fs2.kafka.Deserializer[F,K]],valueDeserializer:F[fs2.kafka.Deserializer[F,V]])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]" title="Permalink">
+      <a href="../../fs2/kafka/ConsumerSettings$.html#apply[F[_],K,V](keyDeserializer:fs2.kafka.Deserializer.Record[F,K],valueDeserializer:fs2.kafka.Deserializer.Record[F,V])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -449,17 +452,14 @@ implicit <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="keyDeserializer">keyDeserializer: <span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>[<a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]]</span>, <span name="valueDeserializer">valueDeserializer: <span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>[<a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>]</span>)</span><span class="result">: <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>
+        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="keyDeserializer">keyDeserializer: <a href="Deserializer$$Record.html" class="extype" name="fs2.kafka.Deserializer.Record">Record</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]</span>, <span name="valueDeserializer">valueDeserializer: <a href="Deserializer$$Record.html" class="extype" name="fs2.kafka.Deserializer.Record">Record</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>]</span>)</span><span class="result">: <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>
       </span>
       
-      <p class="shortcomment cmt">Creates a new <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a> instance using the
-specified <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>s for the key and value, in
-the case where both the key and value deserializers
-are wrapped in a creation effect.</p>
+      
     </li><li name="fs2.kafka.ConsumerSettings#apply" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="apply[F[_],K,V](keyDeserializer:fs2.kafka.Deserializer[F,K],valueDeserializer:F[fs2.kafka.Deserializer[F,V]])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="apply[F[_],K,V](Deserializer[F,K],F[Deserializer[F,V]])(Sync[F]):ConsumerSettings[F,K,V]"></a>
+      <a id="apply[F[_],K,V](keyDeserializer:fs2.kafka.Deserializer[F,K],valueDeserializer:fs2.kafka.Deserializer.Record[F,V])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="apply[F[_],K,V](Deserializer[F,K],Record[F,V])(Sync[F]):ConsumerSettings[F,K,V]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/ConsumerSettings$.html#apply[F[_],K,V](keyDeserializer:fs2.kafka.Deserializer[F,K],valueDeserializer:F[fs2.kafka.Deserializer[F,V]])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]" title="Permalink">
+      <a href="../../fs2/kafka/ConsumerSettings$.html#apply[F[_],K,V](keyDeserializer:fs2.kafka.Deserializer[F,K],valueDeserializer:fs2.kafka.Deserializer.Record[F,V])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -468,17 +468,14 @@ are wrapped in a creation effect.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="keyDeserializer">keyDeserializer: <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]</span>, <span name="valueDeserializer">valueDeserializer: <span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>[<a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>]</span>)</span><span class="result">: <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>
+        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="keyDeserializer">keyDeserializer: <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]</span>, <span name="valueDeserializer">valueDeserializer: <a href="Deserializer$$Record.html" class="extype" name="fs2.kafka.Deserializer.Record">Record</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>]</span>)</span><span class="result">: <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>
       </span>
       
-      <p class="shortcomment cmt">Creates a new <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a> instance using the
-specified <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>s for the key and value, in
-the case where the value deserializer is wrapped in a
-creation effect.</p>
+      
     </li><li name="fs2.kafka.ConsumerSettings#apply" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
-      <a id="apply[F[_],K,V](keyDeserializer:F[fs2.kafka.Deserializer[F,K]],valueDeserializer:fs2.kafka.Deserializer[F,V])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="apply[F[_],K,V](F[Deserializer[F,K]],Deserializer[F,V])(Sync[F]):ConsumerSettings[F,K,V]"></a>
+      <a id="apply[F[_],K,V](keyDeserializer:fs2.kafka.Deserializer.Record[F,K],valueDeserializer:fs2.kafka.Deserializer[F,V])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="apply[F[_],K,V](Record[F,K],Deserializer[F,V])(Sync[F]):ConsumerSettings[F,K,V]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/ConsumerSettings$.html#apply[F[_],K,V](keyDeserializer:F[fs2.kafka.Deserializer[F,K]],valueDeserializer:fs2.kafka.Deserializer[F,V])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]" title="Permalink">
+      <a href="../../fs2/kafka/ConsumerSettings$.html#apply[F[_],K,V](keyDeserializer:fs2.kafka.Deserializer.Record[F,K],valueDeserializer:fs2.kafka.Deserializer[F,V])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -487,13 +484,10 @@ creation effect.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="keyDeserializer">keyDeserializer: <span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>[<a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]]</span>, <span name="valueDeserializer">valueDeserializer: <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>]</span>)</span><span class="result">: <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>
+        <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="keyDeserializer">keyDeserializer: <a href="Deserializer$$Record.html" class="extype" name="fs2.kafka.Deserializer.Record">Record</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]</span>, <span name="valueDeserializer">valueDeserializer: <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>]</span>)</span><span class="result">: <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>
       </span>
       
-      <p class="shortcomment cmt">Creates a new <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a> instance using the
-specified <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>s for the key and value, in
-the case where the key deserializer is wrapped in a
-creation effect.</p>
+      
     </li><li name="fs2.kafka.ConsumerSettings#apply" visbl="pub" class="indented0 " data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="apply[F[_],K,V](keyDeserializer:fs2.kafka.Deserializer[F,K],valueDeserializer:fs2.kafka.Deserializer[F,V])(implicitF:cats.effect.Sync[F]):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="apply[F[_],K,V](Deserializer[F,K],Deserializer[F,V])(Sync[F]):ConsumerSettings[F,K,V]"></a>
       <span class="permalink">
@@ -509,8 +503,7 @@ creation effect.</p>
         <span class="name">apply</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="keyDeserializer">keyDeserializer: <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>]</span>, <span name="valueDeserializer">valueDeserializer: <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="F">F: <span class="extype" name="cats.effect.Sync">Sync</span>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>]</span>)</span><span class="result">: <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.apply.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.apply.V">V</span>]</span>
       </span>
       
-      <p class="shortcomment cmt">Creates a new <a href="ConsumerSettings.html" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a> instance using the
-specified <a href="Deserializer.html" class="extype" name="fs2.kafka.Deserializer">Deserializer</a>s for the key and value.</p>
+      
     </li><li name="scala.Any#asInstanceOf" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
       <a id="asInstanceOf[T0]:T0"></a>
       <span class="permalink">

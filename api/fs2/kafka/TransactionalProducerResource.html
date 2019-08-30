@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-M2 - fs2.kafka.TransactionalProducerResource</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - M2 - fs2.kafka.TransactionalProducerResource" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 M2 fs2.kafka.TransactionalProducerResource" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.TransactionalProducerResource</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.TransactionalProducerResource" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.TransactionalProducerResource" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-M2</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -275,12 +275,16 @@
                         <a href="TransactionalProducerRecords.html" title="Represents zero or more CommittableProducerRecords, together with arbitrary passthrough value, all of which can be used together with a TransactionalKafkaProducer to produce records and commit offsets within a single transaction.  TransactionalProducerRecordss can be created using one of the following options.  - TransactionalProducerRecords#apply to produce zero or more records, commit the offsets, and then emit a ProducerResult with the results and specified passthrough value. - TransactionalProducerRecords#one to produce zero or more records, commit exactly one offset, then emit a ProducerResult with the results and specified passthrough value.">TransactionalProducerRecords</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax."></a>
-                        <a href="" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                        <a class="class" href="" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax."></a>
+                        <a href="" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                      </li><li class="current-entities indented2">
+                        <a class="object" href="TransactionalProducerSettings$.html" title=""></a>
+                        <a class="class" href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer."></a>
+                        <a href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer.">TransactionalProducerSettings</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax."></a>
-                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
+                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax."></a>
+                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
                         <a class="class" href="UnexpectedTopicException.html" title="UnexpectedTopicException is raised when serialization or deserialization occurred for an unexpected topic which isn't supported by the Serializer or Deserializer."></a>
@@ -314,8 +318,8 @@
 
       
           <div id="comment" class="fullcommenttop"><div class="comment cmt"><p><a href="" class="extype" name="fs2.kafka.TransactionalProducerResource">TransactionalProducerResource</a> provides support for inferring
-the key and value type from <a href="ProducerSettings.html" class="extype" name="fs2.kafka.ProducerSettings">ProducerSettings</a> when using
-<code>transactionalProducerResource</code> with the following syntax.</p><pre>transactionalProducerResource[F].using(settings)</pre></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-M2/modules/core/src/main/scala/fs2/kafka/TransactionalProducerResource.scala" target="_blank">TransactionalProducerResource.scala</a></dd></dl><div class="toggleContainer block">
+the key and value type from <a href="TransactionalProducerSettings.html" class="extype" name="fs2.kafka.TransactionalProducerSettings">TransactionalProducerSettings</a>
+when using <code>transactionalProducerResource</code> with the following syntax.</p><pre>transactionalProducerResource[F].using(settings)</pre></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/core/src/main/scala/fs2/kafka/TransactionalProducerResource.scala" target="_blank">TransactionalProducerResource.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -485,9 +489,9 @@ the key and value type from <a href="ProducerSettings.html" class="extype" name=
       
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="fs2.kafka.TransactionalProducerResource">TransactionalProducerResource</a> → Any</dd></dl></div>
     </li><li name="fs2.kafka.TransactionalProducerResource#using" visbl="pub" class="indented0 " data-isabs="false" fullComment="yes" group="Ungrouped">
-      <a id="using[K,V](settings:fs2.kafka.ProducerSettings[F,K,V])(implicitcontext:cats.effect.ContextShift[F]):cats.effect.Resource[F,fs2.kafka.TransactionalKafkaProducer[F,K,V]]"></a><a id="using[K,V](ProducerSettings[F,K,V])(ContextShift[F]):Resource[F,TransactionalKafkaProducer[F,K,V]]"></a>
+      <a id="using[K,V](settings:fs2.kafka.TransactionalProducerSettings[F,K,V])(implicitcontext:cats.effect.ContextShift[F]):cats.effect.Resource[F,fs2.kafka.TransactionalKafkaProducer[F,K,V]]"></a><a id="using[K,V](TransactionalProducerSettings[F,K,V])(ContextShift[F]):Resource[F,TransactionalKafkaProducer[F,K,V]]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/TransactionalProducerResource.html#using[K,V](settings:fs2.kafka.ProducerSettings[F,K,V])(implicitcontext:cats.effect.ContextShift[F]):cats.effect.Resource[F,fs2.kafka.TransactionalKafkaProducer[F,K,V]]" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerResource.html#using[K,V](settings:fs2.kafka.TransactionalProducerSettings[F,K,V])(implicitcontext:cats.effect.ContextShift[F]):cats.effect.Resource[F,fs2.kafka.TransactionalKafkaProducer[F,K,V]]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -496,7 +500,7 @@ the key and value type from <a href="ProducerSettings.html" class="extype" name=
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">using</span><span class="tparams">[<span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="settings">settings: <a href="ProducerSettings.html" class="extype" name="fs2.kafka.ProducerSettings">ProducerSettings</a>[<span class="extype" name="fs2.kafka.TransactionalProducerResource.F">F</span>, <span class="extype" name="fs2.kafka.TransactionalProducerResource.using.K">K</span>, <span class="extype" name="fs2.kafka.TransactionalProducerResource.using.V">V</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="context">context: <span class="extype" name="cats.effect.ContextShift">ContextShift</span>[<span class="extype" name="fs2.kafka.TransactionalProducerResource.F">F</span>]</span>)</span><span class="result">: <span class="extype" name="cats.effect.Resource">Resource</span>[<span class="extype" name="fs2.kafka.TransactionalProducerResource.F">F</span>, <a href="TransactionalKafkaProducer.html" class="extype" name="fs2.kafka.TransactionalKafkaProducer">TransactionalKafkaProducer</a>[<span class="extype" name="fs2.kafka.TransactionalProducerResource.F">F</span>, <span class="extype" name="fs2.kafka.TransactionalProducerResource.using.K">K</span>, <span class="extype" name="fs2.kafka.TransactionalProducerResource.using.V">V</span>]]</span>
+        <span class="name">using</span><span class="tparams">[<span name="K">K</span>, <span name="V">V</span>]</span><span class="params">(<span name="settings">settings: <a href="TransactionalProducerSettings.html" class="extype" name="fs2.kafka.TransactionalProducerSettings">TransactionalProducerSettings</a>[<span class="extype" name="fs2.kafka.TransactionalProducerResource.F">F</span>, <span class="extype" name="fs2.kafka.TransactionalProducerResource.using.K">K</span>, <span class="extype" name="fs2.kafka.TransactionalProducerResource.using.V">V</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="context">context: <span class="extype" name="cats.effect.ContextShift">ContextShift</span>[<span class="extype" name="fs2.kafka.TransactionalProducerResource.F">F</span>]</span>)</span><span class="result">: <span class="extype" name="cats.effect.Resource">Resource</span>[<span class="extype" name="fs2.kafka.TransactionalProducerResource.F">F</span>, <a href="TransactionalKafkaProducer.html" class="extype" name="fs2.kafka.TransactionalKafkaProducer">TransactionalKafkaProducer</a>[<span class="extype" name="fs2.kafka.TransactionalProducerResource.F">F</span>, <span class="extype" name="fs2.kafka.TransactionalProducerResource.using.K">K</span>, <span class="extype" name="fs2.kafka.TransactionalProducerResource.using.V">V</span>]]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <a href="TransactionalKafkaProducer.html" class="extype" name="fs2.kafka.TransactionalKafkaProducer">TransactionalKafkaProducer</a> in the <code>Resource</code> context.</p><div class="fullcomment"><div class="comment cmt"><p>Creates a new <a href="TransactionalKafkaProducer.html" class="extype" name="fs2.kafka.TransactionalKafkaProducer">TransactionalKafkaProducer</a> in the <code>Resource</code> context.

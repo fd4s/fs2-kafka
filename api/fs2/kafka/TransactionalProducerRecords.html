@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-M2 - fs2.kafka.TransactionalProducerRecords</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - M2 - fs2.kafka.TransactionalProducerRecords" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 M2 fs2.kafka.TransactionalProducerRecords" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.TransactionalProducerRecords</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.TransactionalProducerRecords" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.TransactionalProducerRecords" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-M2</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -275,12 +275,16 @@
                         <a href="" title="Represents zero or more CommittableProducerRecords, together with arbitrary passthrough value, all of which can be used together with a TransactionalKafkaProducer to produce records and commit offsets within a single transaction.  TransactionalProducerRecordss can be created using one of the following options.  - TransactionalProducerRecords#apply to produce zero or more records, commit the offsets, and then emit a ProducerResult with the results and specified passthrough value. - TransactionalProducerRecords#one to produce zero or more records, commit exactly one offset, then emit a ProducerResult with the results and specified passthrough value.">TransactionalProducerRecords</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax."></a>
-                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax."></a>
+                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                      </li><li class="current-entities indented2">
+                        <a class="object" href="TransactionalProducerSettings$.html" title=""></a>
+                        <a class="class" href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer."></a>
+                        <a href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer.">TransactionalProducerSettings</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax."></a>
-                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
+                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax."></a>
+                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
                         <a class="class" href="UnexpectedTopicException.html" title="UnexpectedTopicException is raised when serialization or deserialization occurred for an unexpected topic which isn't supported by the Serializer or Deserializer."></a>
@@ -310,7 +314,7 @@
         <span class="kind">class</span>
       </span>
       <span class="symbol">
-        <span class="name">TransactionalProducerRecords</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="G">G<span class="tparams">[<span name="_">+_</span>]</span></span>, <span name="K">+K</span>, <span name="V">+V</span>, <span name="P">+P</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+        <span class="name">TransactionalProducerRecords</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="K">+K</span>, <span name="V">+V</span>, <span name="P">+P</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
       </span>
       </h4>
 
@@ -329,7 +333,7 @@ and specified passthrough value.<br>
 - <code>TransactionalProducerRecords#one</code> to produce zero or more records,
 commit exactly one offset, then emit a <a href="ProducerResult.html" class="extype" name="fs2.kafka.ProducerResult">ProducerResult</a> with the
 results and specified passthrough value.
-</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-M2/modules/core/src/main/scala/fs2/kafka/TransactionalProducerRecords.scala" target="_blank">TransactionalProducerRecords.scala</a></dd></dl><div class="toggleContainer block">
+</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/core/src/main/scala/fs2/kafka/TransactionalProducerRecords.scala" target="_blank">TransactionalProducerRecords.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -398,11 +402,11 @@ results and specified passthrough value.
         <span class="name">passthrough</span><span class="result">: <span class="extype" name="fs2.kafka.TransactionalProducerRecords.P">P</span></span>
       </span>
       
-      <p class="shortcomment cmt">The passthrough to emit once all <a href="#records:fs2.Chunk[fs2.kafka.CommittableProducerRecords[F,G,K,V]]" class="extmbr" name="fs2.kafka.TransactionalProducerRecords#records">records</a> have been produced and committed.</p>
+      <p class="shortcomment cmt">The passthrough to emit once all <a href="#records:fs2.Chunk[fs2.kafka.CommittableProducerRecords[F,K,V]]" class="extmbr" name="fs2.kafka.TransactionalProducerRecords#records">records</a> have been produced and committed.</p>
     </li><li name="fs2.kafka.TransactionalProducerRecords#records" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
-      <a id="records:fs2.Chunk[fs2.kafka.CommittableProducerRecords[F,G,K,V]]"></a><a id="records:Chunk[CommittableProducerRecords[F,G,K,V]]"></a>
+      <a id="records:fs2.Chunk[fs2.kafka.CommittableProducerRecords[F,K,V]]"></a><a id="records:Chunk[CommittableProducerRecords[F,K,V]]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/TransactionalProducerRecords.html#records:fs2.Chunk[fs2.kafka.CommittableProducerRecords[F,G,K,V]]" title="Permalink">
+      <a href="../../fs2/kafka/TransactionalProducerRecords.html#records:fs2.Chunk[fs2.kafka.CommittableProducerRecords[F,K,V]]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -411,7 +415,7 @@ results and specified passthrough value.
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">records</span><span class="result">: <span class="extype" name="fs2.Chunk">Chunk</span>[<a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a>[<span class="extype" name="fs2.kafka.TransactionalProducerRecords.F">F</span>, <span class="extype" name="fs2.kafka.TransactionalProducerRecords.G">G</span>, <span class="extype" name="fs2.kafka.TransactionalProducerRecords.K">K</span>, <span class="extype" name="fs2.kafka.TransactionalProducerRecords.V">V</span>]]</span>
+        <span class="name">records</span><span class="result">: <span class="extype" name="fs2.Chunk">Chunk</span>[<a href="CommittableProducerRecords.html" class="extype" name="fs2.kafka.CommittableProducerRecords">CommittableProducerRecords</a>[<span class="extype" name="fs2.kafka.TransactionalProducerRecords.F">F</span>, <span class="extype" name="fs2.kafka.TransactionalProducerRecords.K">K</span>, <span class="extype" name="fs2.kafka.TransactionalProducerRecords.V">V</span>]]</span>
       </span>
       
       <p class="shortcomment cmt">The records to produce and commit.</p><div class="fullcomment"><div class="comment cmt"><p>The records to produce and commit. Can be empty for passthrough-only.</p></div></div>

@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-M2 - fs2.kafka.ConsumerSettings</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - M2 - fs2.kafka.ConsumerSettings" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 M2 fs2.kafka.ConsumerSettings" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.ConsumerSettings</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.ConsumerSettings" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.ConsumerSettings" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-M2</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -275,12 +275,16 @@
                         <a href="TransactionalProducerRecords.html" title="Represents zero or more CommittableProducerRecords, together with arbitrary passthrough value, all of which can be used together with a TransactionalKafkaProducer to produce records and commit offsets within a single transaction.  TransactionalProducerRecordss can be created using one of the following options.  - TransactionalProducerRecords#apply to produce zero or more records, commit the offsets, and then emit a ProducerResult with the results and specified passthrough value. - TransactionalProducerRecords#one to produce zero or more records, commit exactly one offset, then emit a ProducerResult with the results and specified passthrough value.">TransactionalProducerRecords</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax."></a>
-                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax."></a>
+                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                      </li><li class="current-entities indented2">
+                        <a class="object" href="TransactionalProducerSettings$.html" title=""></a>
+                        <a class="class" href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer."></a>
+                        <a href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer.">TransactionalProducerSettings</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax."></a>
-                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
+                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax."></a>
+                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
                         <a class="class" href="UnexpectedTopicException.html" title="UnexpectedTopicException is raised when serialization or deserialization occurred for an unexpected topic which isn't supported by the Serializer or Deserializer."></a>
@@ -334,7 +338,7 @@ values with functions like <a href="#withProperty(key:String,value:String):fs2.k
 functions return a new <a href="" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a> instance.<br>
 <br>
 Use <code>ConsumerSettings#apply</code> to create a new instance.
-</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-M2/modules/core/src/main/scala/fs2/kafka/ConsumerSettings.scala" target="_blank">ConsumerSettings.scala</a></dd></dl><div class="toggleContainer block">
+</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/core/src/main/scala/fs2/kafka/ConsumerSettings.scala" target="_blank">ConsumerSettings.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -545,7 +549,7 @@ it yields improved performance. The minimum value for this setting is <code>2</c
       
       <p class="shortcomment cmt">How often we should attempt to call <code>poll</code> on the Java <code>KafkaConsumer</code>.<br>
 <br>
-The default value is 50 milliseconds.</p>
+The default value is 100 milliseconds.</p>
     </li><li name="fs2.kafka.ConsumerSettings#pollTimeout" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
       <a id="pollTimeout:scala.concurrent.duration.FiniteDuration"></a><a id="pollTimeout:FiniteDuration"></a>
       <span class="permalink">
@@ -887,6 +891,25 @@ specify it with a <code>Boolean</code> instead of a <code>String</code>.</p><pre
 group id.</p><div class="fullcomment"><div class="comment cmt"><p>Returns a new <a href="" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a> instance with the specified
 group id. This is equivalent to setting the following property
 using the <a href="#withProperty(key:String,value:String):fs2.kafka.ConsumerSettings[F,K,V]" class="extmbr" name="fs2.kafka.ConsumerSettings#withProperty">withProperty</a> function.</p><pre>ConsumerConfig.GROUP_ID_CONFIG</pre></div></div>
+    </li><li name="fs2.kafka.ConsumerSettings#withGroupInstanceId" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
+      <a id="withGroupInstanceId(groupInstanceId:String):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="withGroupInstanceId(String):ConsumerSettings[F,K,V]"></a>
+      <span class="permalink">
+      <a href="../../fs2/kafka/ConsumerSettings.html#withGroupInstanceId(groupInstanceId:String):fs2.kafka.ConsumerSettings[F,K,V]" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier">abstract </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">withGroupInstanceId</span><span class="params">(<span name="groupInstanceId">groupInstanceId: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a>[<span class="extype" name="fs2.kafka.ConsumerSettings.F">F</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.K">K</span>, <span class="extype" name="fs2.kafka.ConsumerSettings.V">V</span>]</span>
+      </span>
+      
+      <p class="shortcomment cmt">Returns a new <a href="" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a> instance with the specified
+group instance id.</p><div class="fullcomment"><div class="comment cmt"><p>Returns a new <a href="" class="extype" name="fs2.kafka.ConsumerSettings">ConsumerSettings</a> instance with the specified
+group instance id. This is equivalent to setting the following
+property using the <a href="#withProperty(key:String,value:String):fs2.kafka.ConsumerSettings[F,K,V]" class="extmbr" name="fs2.kafka.ConsumerSettings#withProperty">withProperty</a> function.</p><pre>ConsumerConfig.GROUP_INSTANCE_ID_CONFIG</pre></div></div>
     </li><li name="fs2.kafka.ConsumerSettings#withHeartbeatInterval" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
       <a id="withHeartbeatInterval(heartbeatInterval:scala.concurrent.duration.FiniteDuration):fs2.kafka.ConsumerSettings[F,K,V]"></a><a id="withHeartbeatInterval(FiniteDuration):ConsumerSettings[F,K,V]"></a>
       <span class="permalink">

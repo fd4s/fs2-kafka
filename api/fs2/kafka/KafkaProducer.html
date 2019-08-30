@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-M2 - fs2.kafka.KafkaProducer</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - M2 - fs2.kafka.KafkaProducer" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 M2 fs2.kafka.KafkaProducer" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.KafkaProducer</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.KafkaProducer" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.KafkaProducer" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-M2</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -275,12 +275,16 @@
                         <a href="TransactionalProducerRecords.html" title="Represents zero or more CommittableProducerRecords, together with arbitrary passthrough value, all of which can be used together with a TransactionalKafkaProducer to produce records and commit offsets within a single transaction.  TransactionalProducerRecordss can be created using one of the following options.  - TransactionalProducerRecords#apply to produce zero or more records, commit the offsets, and then emit a ProducerResult with the results and specified passthrough value. - TransactionalProducerRecords#one to produce zero or more records, commit exactly one offset, then emit a ProducerResult with the results and specified passthrough value.">TransactionalProducerRecords</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax."></a>
-                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from ProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                        <a class="class" href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax."></a>
+                        <a href="TransactionalProducerResource.html" title="TransactionalProducerResource provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerResource with the following syntax.">TransactionalProducerResource</a>
+                      </li><li class="current-entities indented2">
+                        <a class="object" href="TransactionalProducerSettings$.html" title=""></a>
+                        <a class="class" href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer."></a>
+                        <a href="TransactionalProducerSettings.html" title="TransactionalProducerSettings contain settings necessary to create a TransactionalKafkaProducer.">TransactionalProducerSettings</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
-                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax."></a>
-                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from ProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
+                        <a class="class" href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax."></a>
+                        <a href="TransactionalProducerStream.html" title="TransactionalProducerStream provides support for inferring the key and value type from TransactionalProducerSettings when using transactionalProducerStream with the following syntax.">TransactionalProducerStream</a>
                       </li><li class="current-entities indented2">
                         <span class="separator"></span>
                         <a class="class" href="UnexpectedTopicException.html" title="UnexpectedTopicException is raised when serialization or deserialization occurred for an unexpected topic which isn't supported by the Serializer or Deserializer."></a>
@@ -314,12 +318,12 @@
 
       
           <div id="comment" class="fullcommenttop"><div class="comment cmt"><p><a href="" class="extype" name="fs2.kafka.KafkaProducer">KafkaProducer</a> represents a producer of Kafka records, with the
-ability to produce <code>ProducerRecord</code>s using <a href="#produce[G[+_],P](records:fs2.kafka.ProducerRecords[G,K,V,P]):F[F[fs2.kafka.ProducerResult[G,K,V,P]]]" class="extmbr" name="fs2.kafka.KafkaProducer#produce">produce</a>. Records are
+ability to produce <code>ProducerRecord</code>s using <a href="#produce[P](records:fs2.kafka.ProducerRecords[K,V,P]):F[F[fs2.kafka.ProducerResult[K,V,P]]]" class="extmbr" name="fs2.kafka.KafkaProducer#produce">produce</a>. Records are
 wrapped in <a href="ProducerRecords.html" class="extype" name="fs2.kafka.ProducerRecords">ProducerRecords</a> which allow an arbitrary value, that
 is a passthrough, to be included in the result. Most often this is
 used for keeping the <a href="CommittableOffset.html" class="extype" name="fs2.kafka.CommittableOffset">CommittableOffset</a>s, in order to commit
 offsets, but any value can be used as passthrough value.
-</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-M2/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala" target="_blank">KafkaProducer.scala</a></dd></dl><div class="toggleContainer block">
+</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/core/src/main/scala/fs2/kafka/KafkaProducer.scala" target="_blank">KafkaProducer.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -393,9 +397,9 @@ offsets, but any value can be used as passthrough value.
         <div class="values members">
               <h3>Abstract Value Members</h3>
               <ol><li name="fs2.kafka.KafkaProducer#produce" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
-      <a id="produce[G[+_],P](records:fs2.kafka.ProducerRecords[G,K,V,P]):F[F[fs2.kafka.ProducerResult[G,K,V,P]]]"></a><a id="produce[G[+_],P](ProducerRecords[G,K,V,P]):F[F[ProducerResult[G,K,V,P]]]"></a>
+      <a id="produce[P](records:fs2.kafka.ProducerRecords[K,V,P]):F[F[fs2.kafka.ProducerResult[K,V,P]]]"></a><a id="produce[P](ProducerRecords[K,V,P]):F[F[ProducerResult[K,V,P]]]"></a>
       <span class="permalink">
-      <a href="../../fs2/kafka/KafkaProducer.html#produce[G[+_],P](records:fs2.kafka.ProducerRecords[G,K,V,P]):F[F[fs2.kafka.ProducerResult[G,K,V,P]]]" title="Permalink">
+      <a href="../../fs2/kafka/KafkaProducer.html#produce[P](records:fs2.kafka.ProducerRecords[K,V,P]):F[F[fs2.kafka.ProducerResult[K,V,P]]]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -404,18 +408,26 @@ offsets, but any value can be used as passthrough value.
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">produce</span><span class="tparams">[<span name="G">G<span class="tparams">[<span name="_">+_</span>]</span></span>, <span name="P">P</span>]</span><span class="params">(<span name="records">records: <a href="ProducerRecords.html" class="extype" name="fs2.kafka.ProducerRecords">ProducerRecords</a>[<span class="extype" name="fs2.kafka.KafkaProducer.produce.G">G</span>, <span class="extype" name="fs2.kafka.KafkaProducer.K">K</span>, <span class="extype" name="fs2.kafka.KafkaProducer.V">V</span>, <span class="extype" name="fs2.kafka.KafkaProducer.produce.P">P</span>]</span>)</span><span class="result">: <span class="extype" name="fs2.kafka.KafkaProducer.F">F</span>[<span class="extype" name="fs2.kafka.KafkaProducer.F">F</span>[<a href="ProducerResult.html" class="extype" name="fs2.kafka.ProducerResult">ProducerResult</a>[<span class="extype" name="fs2.kafka.KafkaProducer.produce.G">G</span>, <span class="extype" name="fs2.kafka.KafkaProducer.K">K</span>, <span class="extype" name="fs2.kafka.KafkaProducer.V">V</span>, <span class="extype" name="fs2.kafka.KafkaProducer.produce.P">P</span>]]]</span>
+        <span class="name">produce</span><span class="tparams">[<span name="P">P</span>]</span><span class="params">(<span name="records">records: <a href="ProducerRecords.html" class="extype" name="fs2.kafka.ProducerRecords">ProducerRecords</a>[<span class="extype" name="fs2.kafka.KafkaProducer.K">K</span>, <span class="extype" name="fs2.kafka.KafkaProducer.V">V</span>, <span class="extype" name="fs2.kafka.KafkaProducer.produce.P">P</span>]</span>)</span><span class="result">: <span class="extype" name="fs2.kafka.KafkaProducer.F">F</span>[<span class="extype" name="fs2.kafka.KafkaProducer.F">F</span>[<a href="ProducerResult.html" class="extype" name="fs2.kafka.ProducerResult">ProducerResult</a>[<span class="extype" name="fs2.kafka.KafkaProducer.K">K</span>, <span class="extype" name="fs2.kafka.KafkaProducer.V">V</span>, <span class="extype" name="fs2.kafka.KafkaProducer.produce.P">P</span>]]]</span>
       </span>
       
-      <p class="shortcomment cmt">Produces the <code>ProducerRecord</code>s in the specified <a href="ProducerRecords.html" class="extype" name="fs2.kafka.ProducerRecords">ProducerRecords</a>
-in two steps: the first effect puts the records in the buffer of the
-producer, and the second effect waits for the records to have been
-sent.</p><div class="fullcomment"><div class="comment cmt"><p>Produces the <code>ProducerRecord</code>s in the specified <a href="ProducerRecords.html" class="extype" name="fs2.kafka.ProducerRecords">ProducerRecords</a>
-in two steps: the first effect puts the records in the buffer of the
-producer, and the second effect waits for the records to have been
-sent. Note that it is very slow to wait for individual records to
-complete sending, but if you're sure that's what you want, then
-simply <code>flatten</code> the result from this function.
+      <p class="shortcomment cmt">Produces the specified <a href="ProducerRecords.html" class="extype" name="fs2.kafka.ProducerRecords">ProducerRecords</a> in two steps: the
+first effect puts the records in the buffer of the producer,
+and the second effect waits for the records to send.</p><div class="fullcomment"><div class="comment cmt"><p>Produces the specified <a href="ProducerRecords.html" class="extype" name="fs2.kafka.ProducerRecords">ProducerRecords</a> in two steps: the
+first effect puts the records in the buffer of the producer,
+and the second effect waits for the records to send.</p><p>It's possible to <code>flatten</code> the result from this function to
+have an effect which both sends the records and waits for
+them to finish sending.</p><p>Waiting for individual records to send can substantially
+limit performance. In some cases, this is necessary, and
+so we might want to consider the following alternatives.</p><p>- Wait for the produced records in batches, improving
+  the rate at which records are produced, but loosing
+  the guarantee where <code>produce &gt;&gt; otherAction</code> means
+  <code>otherAction</code> executes after the record has been
+  sent.<br>
+- Run several <code>produce.flatten &gt;&gt; otherAction</code> concurrently,
+  improving the rate at which records are produced, and still
+  have <code>otherAction</code> execute after records have been sent,
+  but losing the order of produced records.
 </p></div></div>
     </li></ol>
             </div>

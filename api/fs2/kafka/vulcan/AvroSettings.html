@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-M2 - fs2.kafka.vulcan.AvroSettings</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - M2 - fs2.kafka.vulcan.AvroSettings" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 M2 fs2.kafka.vulcan.AvroSettings" />
+          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.vulcan.AvroSettings</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.vulcan.AvroSettings" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.vulcan.AvroSettings" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-M2</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -119,8 +119,16 @@
       <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../index.html" class="extype" name="fs2.kafka">kafka</a></dd></dl></div>
     </li><li class="current-entities indented3">
                         <a class="object" href="Auth$.html" title=""></a>
-                        <a class="class" href="Auth.html" title="The available options for SchemaRegistryClientSettings#withAuth.  Available options include: - Auth#Basic to authenticate with username and password, - Auth#None to not provide any authentication details."></a>
-                        <a href="Auth.html" title="The available options for SchemaRegistryClientSettings#withAuth.  Available options include: - Auth#Basic to authenticate with username and password, - Auth#None to not provide any authentication details.">Auth</a>
+                        <a class="class" href="Auth.html" title="The available options for SchemaRegistryClientSettings#withAuth."></a>
+                        <a href="Auth.html" title="The available options for SchemaRegistryClientSettings#withAuth.">Auth</a>
+                      </li><li class="current-entities indented3">
+                        <span class="separator"></span>
+                        <a class="class" href="AvroDeserializer.html" title=""></a>
+                        <a href="AvroDeserializer.html" title="">AvroDeserializer</a>
+                      </li><li class="current-entities indented3">
+                        <span class="separator"></span>
+                        <a class="class" href="AvroSerializer.html" title=""></a>
+                        <a href="AvroSerializer.html" title="">AvroSerializer</a>
                       </li><li class="current-entities indented3">
                         <a class="object" href="AvroSettings$.html" title=""></a>
                         <a class="class" href="" title="Describes how to create a KafkaAvroDeserializer and a KafkaAvroSerializer and which settings should be used."></a>
@@ -154,7 +162,7 @@
         <span class="kind">class</span>
       </span>
       <span class="symbol">
-        <span class="name">AvroSettings</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>, <span name="A">A</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+        <span class="name">AvroSettings</span><span class="tparams">[<span name="F">F<span class="tparams">[<span name="_">_</span>]</span></span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
       </span>
       </h4>
 
@@ -162,10 +170,8 @@
           <div id="comment" class="fullcommenttop"><div class="comment cmt"><p>Describes how to create a <code>KafkaAvroDeserializer</code> and a
 <code>KafkaAvroSerializer</code> and which settings should be used.
 Settings are tailored for the Confluent Kafka Avro
-serializers and deserializers.<br>
-<br>
-Use <code>AvroSettings#apply</code> to create an instance.
-</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-M2/modules/vulcan/src/main/scala/fs2/kafka/vulcan/AvroSettings.scala" target="_blank">AvroSettings.scala</a></dd></dl><div class="toggleContainer block">
+serializers and deserializers.</p><p>Use <code>AvroSettings.apply</code> to create an instance.
+</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/vulcan/src/main/scala/fs2/kafka/vulcan/AvroSettings.scala" target="_blank">AvroSettings.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -220,9 +226,9 @@ Use <code>AvroSettings#apply</code> to create an instance.
         <div class="values members">
               <h3>Abstract Value Members</h3>
               <ol><li name="fs2.kafka.vulcan.AvroSettings#createAvroDeserializer" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="createAvroDeserializer:F[fs2.kafka.vulcan.KafkaAvroDeserializer]"></a><a id="createAvroDeserializer:F[KafkaAvroDeserializer]"></a>
+      <a id="createAvroDeserializer(isKey:Boolean):F[fs2.kafka.vulcan.KafkaAvroDeserializer]"></a><a id="createAvroDeserializer(Boolean):F[KafkaAvroDeserializer]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#createAvroDeserializer:F[fs2.kafka.vulcan.KafkaAvroDeserializer]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#createAvroDeserializer(isKey:Boolean):F[fs2.kafka.vulcan.KafkaAvroDeserializer]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -231,15 +237,17 @@ Use <code>AvroSettings#apply</code> to create an instance.
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">createAvroDeserializer</span><span class="result">: <span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#KafkaAvroDeserializer=io.confluent.kafka.serializers.KafkaAvroDeserializer" class="extmbr" name="fs2.kafka.vulcan.KafkaAvroDeserializer">KafkaAvroDeserializer</a>]</span>
+        <span class="name">createAvroDeserializer</span><span class="params">(<span name="isKey">isKey: <span class="extype" name="scala.Boolean">Boolean</span></span>)</span><span class="result">: <span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#KafkaAvroDeserializer=io.confluent.kafka.serializers.KafkaAvroDeserializer" class="extmbr" name="fs2.kafka.vulcan.KafkaAvroDeserializer">KafkaAvroDeserializer</a>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <code>KafkaAvroDeserializer</code> using the settings
-contained within this <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance.</p>
+contained within this <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance, and the
+specified <code>isKey</code> flag, denoting whether a record key or
+value is being deserialized.</p>
     </li><li name="fs2.kafka.vulcan.AvroSettings#createAvroSerializer" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="createAvroSerializer:F[fs2.kafka.vulcan.KafkaAvroSerializer]"></a><a id="createAvroSerializer:F[KafkaAvroSerializer]"></a>
+      <a id="createAvroSerializer(isKey:Boolean):F[fs2.kafka.vulcan.KafkaAvroSerializer]"></a><a id="createAvroSerializer(Boolean):F[KafkaAvroSerializer]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#createAvroSerializer:F[fs2.kafka.vulcan.KafkaAvroSerializer]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#createAvroSerializer(isKey:Boolean):F[fs2.kafka.vulcan.KafkaAvroSerializer]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -248,30 +256,13 @@ contained within this <a href="" class="extype" name="fs2.kafka.vulcan.AvroSetti
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">createAvroSerializer</span><span class="result">: <span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#KafkaAvroSerializer=io.confluent.kafka.serializers.KafkaAvroSerializer" class="extmbr" name="fs2.kafka.vulcan.KafkaAvroSerializer">KafkaAvroSerializer</a>]</span>
+        <span class="name">createAvroSerializer</span><span class="params">(<span name="isKey">isKey: <span class="extype" name="scala.Boolean">Boolean</span></span>)</span><span class="result">: <span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#KafkaAvroSerializer=io.confluent.kafka.serializers.KafkaAvroSerializer" class="extmbr" name="fs2.kafka.vulcan.KafkaAvroSerializer">KafkaAvroSerializer</a>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <code>KafkaAvroSerializer</code> using the settings
-contained within this <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance.</p>
-    </li><li name="fs2.kafka.vulcan.AvroSettings#isKey" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="isKey:Boolean"></a>
-      <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#isKey:Boolean" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">abstract </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">isKey</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
-      </span>
-      
-      <p class="shortcomment cmt">Returns <code>true</code> if the settings are for a record key;
-false if the settings are for a record value.<br>
-<br>
-The default value is <code>false</code>.</p>
+contained within this <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance, and the
+specified <code>isKey</code> flag, denoting whether a record key or
+value is being serialized.</p>
     </li><li name="fs2.kafka.vulcan.AvroSettings#properties" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
       <a id="properties:Map[String,String]"></a>
       <span class="permalink">
@@ -309,10 +300,10 @@ add properties here as necessary.
       
       <p class="shortcomment cmt">The <code>SchemaRegistryClient</code> to use for the serializers
 and deserializers created from this <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>.</p>
-    </li><li name="fs2.kafka.vulcan.AvroSettings#withAutoRegisterSchemas" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="withAutoRegisterSchemas(autoRegisterSchemas:Boolean):fs2.kafka.vulcan.AvroSettings[F,A]"></a><a id="withAutoRegisterSchemas(Boolean):AvroSettings[F,A]"></a>
+    </li><li name="fs2.kafka.vulcan.AvroSettings#withAutoRegisterSchemas" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
+      <a id="withAutoRegisterSchemas(autoRegisterSchemas:Boolean):fs2.kafka.vulcan.AvroSettings[F]"></a><a id="withAutoRegisterSchemas(Boolean):AvroSettings[F]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withAutoRegisterSchemas(autoRegisterSchemas:Boolean):fs2.kafka.vulcan.AvroSettings[F,A]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withAutoRegisterSchemas(autoRegisterSchemas:Boolean):fs2.kafka.vulcan.AvroSettings[F]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -321,18 +312,19 @@ and deserializers created from this <a href="" class="extype" name="fs2.kafka.vu
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">withAutoRegisterSchemas</span><span class="params">(<span name="autoRegisterSchemas">autoRegisterSchemas: <span class="extype" name="scala.Boolean">Boolean</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.AvroSettings.A">A</span>]</span>
+        <span class="name">withAutoRegisterSchemas</span><span class="params">(<span name="autoRegisterSchemas">autoRegisterSchemas: <span class="extype" name="scala.Boolean">Boolean</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <code>AvroSettings</code> instance with the specified
 setting for whether serializers should register schemas
-automatically or not.<br>
-<br>
-The default value is <code>true</code>.</p>
+automatically or not.</p><div class="fullcomment"><div class="comment cmt"><p>Creates a new <code>AvroSettings</code> instance with the specified
+setting for whether serializers should register schemas
+automatically or not.</p><p>The default value is <code>true</code>.
+</p></div></div>
     </li><li name="fs2.kafka.vulcan.AvroSettings#withCreateAvroDeserializer" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
-      <a id="withCreateAvroDeserializer(createAvroDeserializerWith:(F[fs2.kafka.vulcan.SchemaRegistryClient],Boolean,Map[String,String])=&gt;F[fs2.kafka.vulcan.KafkaAvroDeserializer]):fs2.kafka.vulcan.AvroSettings[F,A]"></a><a id="withCreateAvroDeserializer((F[SchemaRegistryClient],Boolean,Map[String,String])⇒F[KafkaAvroDeserializer]):AvroSettings[F,A]"></a>
+      <a id="withCreateAvroDeserializer(createAvroDeserializerWith:(F[fs2.kafka.vulcan.SchemaRegistryClient],Boolean,Map[String,String])=&gt;F[fs2.kafka.vulcan.KafkaAvroDeserializer]):fs2.kafka.vulcan.AvroSettings[F]"></a><a id="withCreateAvroDeserializer((F[SchemaRegistryClient],Boolean,Map[String,String])⇒F[KafkaAvroDeserializer]):AvroSettings[F]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withCreateAvroDeserializer(createAvroDeserializerWith:(F[fs2.kafka.vulcan.SchemaRegistryClient],Boolean,Map[String,String])=&gt;F[fs2.kafka.vulcan.KafkaAvroDeserializer]):fs2.kafka.vulcan.AvroSettings[F,A]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withCreateAvroDeserializer(createAvroDeserializerWith:(F[fs2.kafka.vulcan.SchemaRegistryClient],Boolean,Map[String,String])=&gt;F[fs2.kafka.vulcan.KafkaAvroDeserializer]):fs2.kafka.vulcan.AvroSettings[F]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -341,20 +333,19 @@ The default value is <code>true</code>.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">withCreateAvroDeserializer</span><span class="params">(<span name="createAvroDeserializerWith">createAvroDeserializerWith: (<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#SchemaRegistryClient=io.confluent.kafka.schemaregistry.client.SchemaRegistryClient" class="extmbr" name="fs2.kafka.vulcan.SchemaRegistryClient">SchemaRegistryClient</a>], <span class="extype" name="scala.Boolean">Boolean</span>, <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="scala.Predef.String">String</span>, <span class="extype" name="scala.Predef.String">String</span>]) ⇒ <span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#KafkaAvroDeserializer=io.confluent.kafka.serializers.KafkaAvroDeserializer" class="extmbr" name="fs2.kafka.vulcan.KafkaAvroDeserializer">KafkaAvroDeserializer</a>]</span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.AvroSettings.A">A</span>]</span>
+        <span class="name">withCreateAvroDeserializer</span><span class="params">(<span name="createAvroDeserializerWith">createAvroDeserializerWith: (<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#SchemaRegistryClient=io.confluent.kafka.schemaregistry.client.SchemaRegistryClient" class="extmbr" name="fs2.kafka.vulcan.SchemaRegistryClient">SchemaRegistryClient</a>], <span class="extype" name="scala.Boolean">Boolean</span>, <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="scala.Predef.String">String</span>, <span class="extype" name="scala.Predef.String">String</span>]) ⇒ <span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#KafkaAvroDeserializer=io.confluent.kafka.serializers.KafkaAvroDeserializer" class="extmbr" name="fs2.kafka.vulcan.KafkaAvroDeserializer">KafkaAvroDeserializer</a>]</span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance with the specified
-function for creating new <code>KafkaAvroDeserializer</code>s from
-settings.</p><div class="fullcomment"><div class="comment cmt"><p>Creates a new <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance with the specified
-function for creating new <code>KafkaAvroDeserializer</code>s from
-settings. The arguments are <a href="#schemaRegistryClient:F[fs2.kafka.vulcan.SchemaRegistryClient]" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#schemaRegistryClient">schemaRegistryClient</a>,
-<a href="#isKey:Boolean" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#isKey">isKey</a>, and <a href="#properties:Map[String,String]" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#properties">properties</a>.
+function for creating <code>KafkaAvroDeserializer</code>s from settings.</p><div class="fullcomment"><div class="comment cmt"><p>Creates a new <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance with the specified
+function for creating <code>KafkaAvroDeserializer</code>s from settings.
+The arguments are <a href="#schemaRegistryClient:F[fs2.kafka.vulcan.SchemaRegistryClient]" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#schemaRegistryClient">schemaRegistryClient</a>, <code>isKey</code>, and
+<a href="#properties:Map[String,String]" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#properties">properties</a>.
 </p></div></div>
     </li><li name="fs2.kafka.vulcan.AvroSettings#withCreateAvroSerializer" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
-      <a id="withCreateAvroSerializer(createAvroSerializerWith:(F[fs2.kafka.vulcan.SchemaRegistryClient],Boolean,Map[String,String])=&gt;F[fs2.kafka.vulcan.KafkaAvroSerializer]):fs2.kafka.vulcan.AvroSettings[F,A]"></a><a id="withCreateAvroSerializer((F[SchemaRegistryClient],Boolean,Map[String,String])⇒F[KafkaAvroSerializer]):AvroSettings[F,A]"></a>
+      <a id="withCreateAvroSerializer(createAvroSerializerWith:(F[fs2.kafka.vulcan.SchemaRegistryClient],Boolean,Map[String,String])=&gt;F[fs2.kafka.vulcan.KafkaAvroSerializer]):fs2.kafka.vulcan.AvroSettings[F]"></a><a id="withCreateAvroSerializer((F[SchemaRegistryClient],Boolean,Map[String,String])⇒F[KafkaAvroSerializer]):AvroSettings[F]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withCreateAvroSerializer(createAvroSerializerWith:(F[fs2.kafka.vulcan.SchemaRegistryClient],Boolean,Map[String,String])=&gt;F[fs2.kafka.vulcan.KafkaAvroSerializer]):fs2.kafka.vulcan.AvroSettings[F,A]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withCreateAvroSerializer(createAvroSerializerWith:(F[fs2.kafka.vulcan.SchemaRegistryClient],Boolean,Map[String,String])=&gt;F[fs2.kafka.vulcan.KafkaAvroSerializer]):fs2.kafka.vulcan.AvroSettings[F]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -363,37 +354,19 @@ settings. The arguments are <a href="#schemaRegistryClient:F[fs2.kafka.vulcan.Sc
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">withCreateAvroSerializer</span><span class="params">(<span name="createAvroSerializerWith">createAvroSerializerWith: (<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#SchemaRegistryClient=io.confluent.kafka.schemaregistry.client.SchemaRegistryClient" class="extmbr" name="fs2.kafka.vulcan.SchemaRegistryClient">SchemaRegistryClient</a>], <span class="extype" name="scala.Boolean">Boolean</span>, <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="scala.Predef.String">String</span>, <span class="extype" name="scala.Predef.String">String</span>]) ⇒ <span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#KafkaAvroSerializer=io.confluent.kafka.serializers.KafkaAvroSerializer" class="extmbr" name="fs2.kafka.vulcan.KafkaAvroSerializer">KafkaAvroSerializer</a>]</span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.AvroSettings.A">A</span>]</span>
+        <span class="name">withCreateAvroSerializer</span><span class="params">(<span name="createAvroSerializerWith">createAvroSerializerWith: (<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#SchemaRegistryClient=io.confluent.kafka.schemaregistry.client.SchemaRegistryClient" class="extmbr" name="fs2.kafka.vulcan.SchemaRegistryClient">SchemaRegistryClient</a>], <span class="extype" name="scala.Boolean">Boolean</span>, <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="scala.Predef.String">String</span>, <span class="extype" name="scala.Predef.String">String</span>]) ⇒ <span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>[<a href="index.html#KafkaAvroSerializer=io.confluent.kafka.serializers.KafkaAvroSerializer" class="extmbr" name="fs2.kafka.vulcan.KafkaAvroSerializer">KafkaAvroSerializer</a>]</span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance with the specified
-function for creating new <code>KafkaAvroSerializer</code>s from
-settings.</p><div class="fullcomment"><div class="comment cmt"><p>Creates a new <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance with the specified
-function for creating new <code>KafkaAvroSerializer</code>s from
-settings. The arguments are <a href="#schemaRegistryClient:F[fs2.kafka.vulcan.SchemaRegistryClient]" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#schemaRegistryClient">schemaRegistryClient</a>,
-<a href="#isKey:Boolean" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#isKey">isKey</a>, and <a href="#properties:Map[String,String]" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#properties">properties</a>.
+function for creating <code>KafkaAvroSerializer</code>s from settings.</p><div class="fullcomment"><div class="comment cmt"><p>Creates a new <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance with the specified
+function for creating <code>KafkaAvroSerializer</code>s from settings.
+The arguments are <a href="#schemaRegistryClient:F[fs2.kafka.vulcan.SchemaRegistryClient]" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#schemaRegistryClient">schemaRegistryClient</a>, <code>isKey</code>, and
+<a href="#properties:Map[String,String]" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#properties">properties</a>.
 </p></div></div>
-    </li><li name="fs2.kafka.vulcan.AvroSettings#withIsKey" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="withIsKey(isKey:Boolean):fs2.kafka.vulcan.AvroSettings[F,A]"></a><a id="withIsKey(Boolean):AvroSettings[F,A]"></a>
-      <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withIsKey(isKey:Boolean):fs2.kafka.vulcan.AvroSettings[F,A]" title="Permalink">
-        <i class="material-icons"></i>
-      </a>
-    </span>
-      <span class="modifier_kind">
-        <span class="modifier">abstract </span>
-        <span class="kind">def</span>
-      </span>
-      <span class="symbol">
-        <span class="name">withIsKey</span><span class="params">(<span name="isKey">isKey: <span class="extype" name="scala.Boolean">Boolean</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.AvroSettings.A">A</span>]</span>
-      </span>
-      
-      <p class="shortcomment cmt">Creates a new <code>AvroSettings</code> instance with the
-specified setting for <a href="#isKey:Boolean" class="extmbr" name="fs2.kafka.vulcan.AvroSettings#isKey">isKey</a>.</p>
     </li><li name="fs2.kafka.vulcan.AvroSettings#withKeySubjectNameStrategy" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
-      <a id="withKeySubjectNameStrategy(keySubjectNameStrategy:String):fs2.kafka.vulcan.AvroSettings[F,A]"></a><a id="withKeySubjectNameStrategy(String):AvroSettings[F,A]"></a>
+      <a id="withKeySubjectNameStrategy(keySubjectNameStrategy:String):fs2.kafka.vulcan.AvroSettings[F]"></a><a id="withKeySubjectNameStrategy(String):AvroSettings[F]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withKeySubjectNameStrategy(keySubjectNameStrategy:String):fs2.kafka.vulcan.AvroSettings[F,A]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withKeySubjectNameStrategy(keySubjectNameStrategy:String):fs2.kafka.vulcan.AvroSettings[F]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -402,20 +375,18 @@ specified setting for <a href="#isKey:Boolean" class="extmbr" name="fs2.kafka.vu
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">withKeySubjectNameStrategy</span><span class="params">(<span name="keySubjectNameStrategy">keySubjectNameStrategy: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.AvroSettings.A">A</span>]</span>
+        <span class="name">withKeySubjectNameStrategy</span><span class="params">(<span name="keySubjectNameStrategy">keySubjectNameStrategy: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <code>AvroSettings</code> instance with the specified
 key subject name strategy.</p><div class="fullcomment"><div class="comment cmt"><p>Creates a new <code>AvroSettings</code> instance with the specified
 key subject name strategy. This is the class name of the
-strategy which should be used.<br>
-<br>
-The default value is <code>io.confluent.kafka.serializers.subject.TopicNameStrategy</code>.
+strategy which should be used.</p><p>The default value is <code>io.confluent.kafka.serializers.subject.TopicNameStrategy</code>.
 </p></div></div>
     </li><li name="fs2.kafka.vulcan.AvroSettings#withProperties" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="withProperties(properties:Map[String,String]):fs2.kafka.vulcan.AvroSettings[F,A]"></a><a id="withProperties(Map[String,String]):AvroSettings[F,A]"></a>
+      <a id="withProperties(properties:Map[String,String]):fs2.kafka.vulcan.AvroSettings[F]"></a><a id="withProperties(Map[String,String]):AvroSettings[F]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withProperties(properties:Map[String,String]):fs2.kafka.vulcan.AvroSettings[F,A]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withProperties(properties:Map[String,String]):fs2.kafka.vulcan.AvroSettings[F]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -424,15 +395,15 @@ The default value is <code>io.confluent.kafka.serializers.subject.TopicNameStrat
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">withProperties</span><span class="params">(<span name="properties">properties: <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="scala.Predef.String">String</span>, <span class="extype" name="scala.Predef.String">String</span>]</span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.AvroSettings.A">A</span>]</span>
+        <span class="name">withProperties</span><span class="params">(<span name="properties">properties: <span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="scala.Predef.String">String</span>, <span class="extype" name="scala.Predef.String">String</span>]</span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance including
 properties with the specified keys and values.</p>
     </li><li name="fs2.kafka.vulcan.AvroSettings#withProperties" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="withProperties(properties:(String,String)*):fs2.kafka.vulcan.AvroSettings[F,A]"></a><a id="withProperties((String,String)*):AvroSettings[F,A]"></a>
+      <a id="withProperties(properties:(String,String)*):fs2.kafka.vulcan.AvroSettings[F]"></a><a id="withProperties((String,String)*):AvroSettings[F]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withProperties(properties:(String,String)*):fs2.kafka.vulcan.AvroSettings[F,A]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withProperties(properties:(String,String)*):fs2.kafka.vulcan.AvroSettings[F]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -441,15 +412,15 @@ properties with the specified keys and values.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">withProperties</span><span class="params">(<span name="properties">properties: (<span class="extype" name="scala.Predef.String">String</span>, <span class="extype" name="scala.Predef.String">String</span>)*</span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.AvroSettings.A">A</span>]</span>
+        <span class="name">withProperties</span><span class="params">(<span name="properties">properties: (<span class="extype" name="scala.Predef.String">String</span>, <span class="extype" name="scala.Predef.String">String</span>)*</span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance including
 properties with the specified keys and values.</p>
     </li><li name="fs2.kafka.vulcan.AvroSettings#withProperty" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="withProperty(key:String,value:String):fs2.kafka.vulcan.AvroSettings[F,A]"></a><a id="withProperty(String,String):AvroSettings[F,A]"></a>
+      <a id="withProperty(key:String,value:String):fs2.kafka.vulcan.AvroSettings[F]"></a><a id="withProperty(String,String):AvroSettings[F]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withProperty(key:String,value:String):fs2.kafka.vulcan.AvroSettings[F,A]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withProperty(key:String,value:String):fs2.kafka.vulcan.AvroSettings[F]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -458,15 +429,15 @@ properties with the specified keys and values.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">withProperty</span><span class="params">(<span name="key">key: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="value">value: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.AvroSettings.A">A</span>]</span>
+        <span class="name">withProperty</span><span class="params">(<span name="key">key: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="value">value: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a> instance including a
 property with the specified key and value.</p>
     </li><li name="fs2.kafka.vulcan.AvroSettings#withValueSubjectNameStrategy" visbl="pub" class="indented0 " data-isabs="true" fullComment="yes" group="Ungrouped">
-      <a id="withValueSubjectNameStrategy(valueSubjectNameStrategy:String):fs2.kafka.vulcan.AvroSettings[F,A]"></a><a id="withValueSubjectNameStrategy(String):AvroSettings[F,A]"></a>
+      <a id="withValueSubjectNameStrategy(valueSubjectNameStrategy:String):fs2.kafka.vulcan.AvroSettings[F]"></a><a id="withValueSubjectNameStrategy(String):AvroSettings[F]"></a>
       <span class="permalink">
-      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withValueSubjectNameStrategy(valueSubjectNameStrategy:String):fs2.kafka.vulcan.AvroSettings[F,A]" title="Permalink">
+      <a href="../../../fs2/kafka/vulcan/AvroSettings.html#withValueSubjectNameStrategy(valueSubjectNameStrategy:String):fs2.kafka.vulcan.AvroSettings[F]" title="Permalink">
         <i class="material-icons"></i>
       </a>
     </span>
@@ -475,15 +446,13 @@ property with the specified key and value.</p>
         <span class="kind">def</span>
       </span>
       <span class="symbol">
-        <span class="name">withValueSubjectNameStrategy</span><span class="params">(<span name="valueSubjectNameStrategy">valueSubjectNameStrategy: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>, <span class="extype" name="fs2.kafka.vulcan.AvroSettings.A">A</span>]</span>
+        <span class="name">withValueSubjectNameStrategy</span><span class="params">(<span name="valueSubjectNameStrategy">valueSubjectNameStrategy: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <a href="" class="extype" name="fs2.kafka.vulcan.AvroSettings">AvroSettings</a>[<span class="extype" name="fs2.kafka.vulcan.AvroSettings.F">F</span>]</span>
       </span>
       
       <p class="shortcomment cmt">Creates a new <code>AvroSettings</code> instance with the specified
 value subject name strategy.</p><div class="fullcomment"><div class="comment cmt"><p>Creates a new <code>AvroSettings</code> instance with the specified
 value subject name strategy. This is the class name of
-the strategy which should be used.<br>
-<br>
-The default value is <code>io.confluent.kafka.serializers.subject.TopicNameStrategy</code>.
+the strategy which should be used.</p><p>The default value is <code>io.confluent.kafka.serializers.subject.TopicNameStrategy</code>.
 </p></div></div>
     </li></ol>
             </div>
