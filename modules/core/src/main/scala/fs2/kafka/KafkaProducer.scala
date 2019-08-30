@@ -33,25 +33,28 @@ import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
   */
 abstract class KafkaProducer[F[_], K, V] {
 
-   /**
-    * Produces the `ProducerRecord`s in the specified [[ProducerRecords]]
-    * in two steps: the first effect puts the records in the buffer of the
-    * producer, and the second effect waits for the records to have been
-    * sent.
-    *  Note that it is very slow to wait for individual records to
-    * complete sending, but if you're sure that's what you want, then
-    * simply `flatten` the result from this function.
+  /**
+    * Produces the specified [[ProducerRecords]] in two steps: the
+    * first effect puts the records in the buffer of the producer,
+    * and the second effect waits for the records to send.
     *
-    * Alternatively, you can either:
+    * It's possible to `flatten` the result from this function to
+    * have an effect which both sends the records and waits for
+    * them to finish sending.
     *
-    * - Wait for the produced messages in batches, gaining speed but
-    *   loosing that guarantee that `produce >> otherAction` means
-    *   that `otherAction` executes after the message has been sent.
+    * Waiting for individual records to send can substantially
+    * limit performance. In some cases, this is necessary, and
+    * so we might want to consider the following alternatives.
     *
-    * - Run several `produce.flatten >> otherAction` concurrently, you
-    *   gain speed and still have `otherAction` execute after the
-    *   messages have been sent, but you lose order of the resulting
-    *   produced messages.
+    * - Wait for the produced records in batches, improving
+    *   the rate at which records are produced, but loosing
+    *   the guarantee where `produce >> otherAction` means
+    *   `otherAction` executes after the record has been
+    *   sent.<br>
+    * - Run several `produce.flatten >> otherAction` concurrently,
+    *   improving the rate at which records are produced, and still
+    *   have `otherAction` execute after records have been sent,
+    *   but losing the order of produced records.
     */
   def produce[P](
     records: ProducerRecords[K, V, P]
