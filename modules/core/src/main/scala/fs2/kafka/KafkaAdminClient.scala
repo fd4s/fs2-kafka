@@ -37,6 +37,18 @@ import org.apache.kafka.common.{Node, TopicPartition}
 sealed abstract class KafkaAdminClient[F[_]] {
 
   /**
+    * Updates the configuration for the specified resources.
+    */
+  def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
+    implicit G: Foldable[G]
+  ): F[Unit]
+
+  /**
+    * Increase the number of partitions for different topics
+    */
+  def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit]
+
+  /**
     * Creates the specified topic.
     */
   def createTopic(topic: NewTopic): F[Unit]
@@ -45,6 +57,18 @@ sealed abstract class KafkaAdminClient[F[_]] {
     * Creates the specified topics.
     */
   def createTopics[G[_]](topics: G[NewTopic])(
+    implicit G: Foldable[G]
+  ): F[Unit]
+
+  /**
+    * Deletes the specified topic.
+    */
+  def deleteTopic(topic: String): F[Unit]
+
+  /**
+    * Deletes the specified topics.
+    */
+  def deleteTopics[G[_]](topics: G[String])(
     implicit G: Foldable[G]
   ): F[Unit]
 
@@ -70,6 +94,13 @@ sealed abstract class KafkaAdminClient[F[_]] {
   def describeCluster: DescribeCluster[F]
 
   /**
+    * Describes the configurations for the specified resources.
+    */
+  def describeConfigs[G[_]](resources: G[ConfigResource])(
+    implicit G: Foldable[G]
+  ): F[Map[ConfigResource, List[ConfigEntry]]]
+
+  /**
     * Describes the consumer groups with the specified group ids, returning a
     * `Map` with group ids as keys, and `ConsumerGroupDescription`s as values.
     */
@@ -84,28 +115,6 @@ sealed abstract class KafkaAdminClient[F[_]] {
   def describeTopics[G[_]](topics: G[String])(
     implicit G: Foldable[G]
   ): F[Map[String, TopicDescription]]
-
-  /**
-    * Updates the configuration for the specified resources.
-    */
-  def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
-    implicit G: Foldable[G]
-  ): F[Unit]
-
-  /**
-    * Lists consumer groups. Returns group ids using:
-    *
-    * {{{
-    * listConsumerGroups.groupIds
-    * }}}
-    *
-    * or `ConsumerGroupListing`s using the following.
-    *
-    * {{{
-    * listConsumerGroups.listings
-    * }}}
-    */
-  def listConsumerGroups: ListConsumerGroups[F]
 
   /**
     * Lists consumer group offsets. Returns offsets per topic-partition using:
@@ -124,6 +133,21 @@ sealed abstract class KafkaAdminClient[F[_]] {
     * }}}
     */
   def listConsumerGroupOffsets(groupId: String): ListConsumerGroupOffsets[F]
+
+  /**
+    * Lists consumer groups. Returns group ids using:
+    *
+    * {{{
+    * listConsumerGroups.groupIds
+    * }}}
+    *
+    * or `ConsumerGroupListing`s using the following.
+    *
+    * {{{
+    * listConsumerGroups.listings
+    * }}}
+    */
+  def listConsumerGroups: ListConsumerGroups[F]
 
   /**
     * Lists topics. Returns topic names using:
@@ -151,33 +175,22 @@ sealed abstract class KafkaAdminClient[F[_]] {
     * }}}
     */
   def listTopics: ListTopics[F]
-
-  /**
-    * Increase the number of partitions for different topics
-    */
-  def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit]
-
-  /**
-    * Deletes the specified topic.
-    */
-  def deleteTopic(topic: String): F[Unit]
-
-  /**
-    * Deletes the specified topics.
-    */
-  def deleteTopics[G[_]](topics: G[String])(
-    implicit G: Foldable[G]
-  ): F[Unit]
-
-  /**
-    * Describes the configurations for the specified resources.
-    */
-  def describeConfigs[G[_]](resources: G[ConfigResource])(
-    implicit G: Foldable[G]
-  ): F[Map[ConfigResource, List[ConfigEntry]]]
 }
 
 object KafkaAdminClient {
+
+  private[this] def alterConfigsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    configs: Map[ConfigResource, G[AlterConfigOp]]
+  )(implicit G: Foldable[G]): F[Unit] =
+    withAdminClient(_.incrementalAlterConfigs(configs.asJavaMap).all.void)
+
+  private[this] def createPartitionsWith[F[_]](
+    withAdminClient: WithAdminClient[F],
+    newPartitions: Map[String, NewPartitions]
+  ): F[Unit] =
+    withAdminClient(_.createPartitions(newPartitions.asJava).all.void)
+
   private[this] def createTopicWith[F[_]](
     withAdminClient: WithAdminClient[F],
     topic: NewTopic
@@ -190,23 +203,17 @@ object KafkaAdminClient {
   )(implicit G: Foldable[G]): F[Unit] =
     withAdminClient(_.createTopics(topics.asJava).all.void)
 
-  private[this] def describeConsumerGroupsWith[F[_], G[_]](
+  private[this] def deleteTopicWith[F[_]](
     withAdminClient: WithAdminClient[F],
-    groupIds: G[String]
-  )(implicit G: Foldable[G]): F[Map[String, ConsumerGroupDescription]] =
-    withAdminClient(_.describeConsumerGroups(groupIds.asJava).all.map(_.toMap))
+    topic: String
+  ): F[Unit] =
+    withAdminClient(_.deleteTopics(java.util.Collections.singleton(topic)).all.void)
 
-  private[this] def describeTopicsWith[F[_], G[_]](
+  private[this] def deleteTopicsWith[F[_], G[_]](
     withAdminClient: WithAdminClient[F],
     topics: G[String]
-  )(implicit G: Foldable[G]): F[Map[String, TopicDescription]] =
-    withAdminClient(_.describeTopics(topics.asJava).all.map(_.toMap))
-
-  private[this] def alterConfigsWith[F[_], G[_]](
-    withAdminClient: WithAdminClient[F],
-    configs: Map[ConfigResource, G[AlterConfigOp]]
   )(implicit G: Foldable[G]): F[Unit] =
-    withAdminClient(_.incrementalAlterConfigs(configs.asJavaMap).all.void)
+    withAdminClient(_.deleteTopics(topics.asJava).all.void)
 
   sealed abstract class DescribeCluster[F[_]] {
 
@@ -237,71 +244,82 @@ object KafkaAdminClient {
         "DescribeCluster$" + System.identityHashCode(this)
     }
 
-  sealed abstract class ListTopics[F[_]] {
+  private[this] def describeConfigsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    resources: G[ConfigResource]
+  )(implicit G: Foldable[G]): F[Map[ConfigResource, List[ConfigEntry]]] =
+    withAdminClient(_.describeConfigs(resources.asJava).all.map(_.toMap.mapValues(_.entries().toList)))
 
-    /** Lists topic names. */
-    def names: F[Set[String]]
+  private[this] def describeConsumerGroupsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    groupIds: G[String]
+  )(implicit G: Foldable[G]): F[Map[String, ConsumerGroupDescription]] =
+    withAdminClient(_.describeConsumerGroups(groupIds.asJava).all.map(_.toMap))
 
-    /** Lists topics as `TopicListing`s. */
-    def listings: F[List[TopicListing]]
+  private[this] def describeTopicsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    topics: G[String]
+  )(implicit G: Foldable[G]): F[Map[String, TopicDescription]] =
+    withAdminClient(_.describeTopics(topics.asJava).all.map(_.toMap))
 
-    /** Lists topics as a `Map` from topic names to `TopicListing`s. */
-    def namesToListings: F[Map[String, TopicListing]]
+  sealed abstract class ListConsumerGroupOffsetsForPartitions[F[_]] {
 
-    /** Include internal topics in the listing. */
-    def includeInternal: ListTopicsIncludeInternal[F]
+    /** Lists consumer group offsets on specified partitions for the consumer group. */
+    def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]]
   }
 
-  sealed abstract class ListTopicsIncludeInternal[F[_]] {
+  private[this] def listConsumerGroupOffsetsForPartitionsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    groupId: String,
+    partitions: G[TopicPartition]
+  )(implicit G: Foldable[G]): ListConsumerGroupOffsetsForPartitions[F] =
+    new ListConsumerGroupOffsetsForPartitions[F] {
+      private[this] def options: ListConsumerGroupOffsetsOptions =
+        new ListConsumerGroupOffsetsOptions().topicPartitions(partitions.asJava)
 
-    /** Lists topic names. Includes internal topics. */
-    def names: F[Set[String]]
-
-    /** Lists topics as `TopicListing`s. Includes internal topics. */
-    def listings: F[List[TopicListing]]
-
-    /** Lists topics as a `Map` from topic names to `TopicListing`s. Includes internal topics. */
-    def namesToListings: F[Map[String, TopicListing]]
-  }
-
-  private[this] def listTopicsWith[F[_]](
-    withAdminClient: WithAdminClient[F]
-  ): ListTopics[F] =
-    new ListTopics[F] {
-      override def names: F[Set[String]] =
-        withAdminClient(_.listTopics.names.map(_.toSet))
-
-      override def listings: F[List[TopicListing]] =
-        withAdminClient(_.listTopics.listings.map(_.toList))
-
-      override def namesToListings: F[Map[String, TopicListing]] =
-        withAdminClient(_.listTopics.namesToListings.map(_.toMap))
-
-      override def includeInternal: ListTopicsIncludeInternal[F] =
-        listTopicsIncludeInternalWith(withAdminClient)
+      override def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]] =
+        withAdminClient { adminClient =>
+          adminClient
+            .listConsumerGroupOffsets(groupId, options)
+            .partitionsToOffsetAndMetadata
+            .map(_.toMap)
+        }
 
       override def toString: String =
-        "ListTopics$" + System.identityHashCode(this)
+        s"ListConsumerGroupOffsetsForPartitions(groupId = $groupId, partitions = $partitions)"
     }
 
-  private[this] def listTopicsIncludeInternalWith[F[_]](
-    withAdminClient: WithAdminClient[F]
-  ): ListTopicsIncludeInternal[F] =
-    new ListTopicsIncludeInternal[F] {
-      private[this] def options: ListTopicsOptions =
-        new ListTopicsOptions().listInternal(true)
+  sealed abstract class ListConsumerGroupOffsets[F[_]] {
 
-      override def names: F[Set[String]] =
-        withAdminClient(_.listTopics(options).names.map(_.toSet))
+    /** Lists consumer group offsets for the consumer group. */
+    def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]]
 
-      override def listings: F[List[TopicListing]] =
-        withAdminClient(_.listTopics(options).listings.map(_.toList))
+    /** Only includes consumer group offsets for specified topic-partitions. */
+    def forPartitions[G[_]](
+      partitions: G[TopicPartition]
+    )(implicit G: Foldable[G]): ListConsumerGroupOffsetsForPartitions[F]
+  }
 
-      override def namesToListings: F[Map[String, TopicListing]] =
-        withAdminClient(_.listTopics(options).namesToListings.map(_.toMap))
+  private[this] def listConsumerGroupOffsetsWith[F[_]](
+    withAdminClient: WithAdminClient[F],
+    groupId: String
+  ): ListConsumerGroupOffsets[F] =
+    new ListConsumerGroupOffsets[F] {
+      override def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]] =
+        withAdminClient { adminClient =>
+          adminClient
+            .listConsumerGroupOffsets(groupId)
+            .partitionsToOffsetAndMetadata
+            .map(_.toMap)
+        }
+
+      override def forPartitions[G[_]](
+        partitions: G[TopicPartition]
+      )(implicit G: Foldable[G]): ListConsumerGroupOffsetsForPartitions[F] =
+        listConsumerGroupOffsetsForPartitionsWith(withAdminClient, groupId, partitions)
 
       override def toString: String =
-        "ListTopicsIncludeInternal$" + System.identityHashCode(this)
+        s"ListConsumerGroupOffsets(groupId = $groupId)"
     }
 
   sealed abstract class ListConsumerGroups[F[_]] {
@@ -327,89 +345,72 @@ object KafkaAdminClient {
         "ListConsumerGroups$" + System.identityHashCode(this)
     }
 
-  sealed abstract class ListConsumerGroupOffsets[F[_]] {
+  sealed abstract class ListTopicsIncludeInternal[F[_]] {
 
-    /** Lists consumer group offsets for the consumer group. */
-    def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]]
+    /** Lists topic names. Includes internal topics. */
+    def names: F[Set[String]]
 
-    /** Only includes consumer group offsets for specified topic-partitions. */
-    def forPartitions[G[_]](
-      partitions: G[TopicPartition]
-    )(implicit G: Foldable[G]): ListConsumerGroupOffsetsForPartitions[F]
+    /** Lists topics as `TopicListing`s. Includes internal topics. */
+    def listings: F[List[TopicListing]]
+
+    /** Lists topics as a `Map` from topic names to `TopicListing`s. Includes internal topics. */
+    def namesToListings: F[Map[String, TopicListing]]
   }
 
-  sealed abstract class ListConsumerGroupOffsetsForPartitions[F[_]] {
+  private[this] def listTopicsIncludeInternalWith[F[_]](
+    withAdminClient: WithAdminClient[F]
+  ): ListTopicsIncludeInternal[F] =
+    new ListTopicsIncludeInternal[F] {
+      private[this] def options: ListTopicsOptions =
+        new ListTopicsOptions().listInternal(true)
 
-    /** Lists consumer group offsets on specified partitions for the consumer group. */
-    def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]]
+      override def names: F[Set[String]] =
+        withAdminClient(_.listTopics(options).names.map(_.toSet))
+
+      override def listings: F[List[TopicListing]] =
+        withAdminClient(_.listTopics(options).listings.map(_.toList))
+
+      override def namesToListings: F[Map[String, TopicListing]] =
+        withAdminClient(_.listTopics(options).namesToListings.map(_.toMap))
+
+      override def toString: String =
+        "ListTopicsIncludeInternal$" + System.identityHashCode(this)
+    }
+
+  sealed abstract class ListTopics[F[_]] {
+
+    /** Lists topic names. */
+    def names: F[Set[String]]
+
+    /** Lists topics as `TopicListing`s. */
+    def listings: F[List[TopicListing]]
+
+    /** Lists topics as a `Map` from topic names to `TopicListing`s. */
+    def namesToListings: F[Map[String, TopicListing]]
+
+    /** Include internal topics in the listing. */
+    def includeInternal: ListTopicsIncludeInternal[F]
   }
 
-  private[this] def listConsumerGroupOffsetsWith[F[_]](
-    withAdminClient: WithAdminClient[F],
-    groupId: String
-  ): ListConsumerGroupOffsets[F] =
-    new ListConsumerGroupOffsets[F] {
-      override def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]] =
-        withAdminClient { adminClient =>
-          adminClient
-            .listConsumerGroupOffsets(groupId)
-            .partitionsToOffsetAndMetadata
-            .map(_.toMap)
-        }
+  private[this] def listTopicsWith[F[_]](
+    withAdminClient: WithAdminClient[F]
+  ): ListTopics[F] =
+    new ListTopics[F] {
+      override def names: F[Set[String]] =
+        withAdminClient(_.listTopics.names.map(_.toSet))
 
-      override def forPartitions[G[_]](
-        partitions: G[TopicPartition]
-      )(implicit G: Foldable[G]): ListConsumerGroupOffsetsForPartitions[F] =
-        listConsumerGroupOffsetsForPartitionsWith(withAdminClient, groupId, partitions)
+      override def listings: F[List[TopicListing]] =
+        withAdminClient(_.listTopics.listings.map(_.toList))
+
+      override def namesToListings: F[Map[String, TopicListing]] =
+        withAdminClient(_.listTopics.namesToListings.map(_.toMap))
+
+      override def includeInternal: ListTopicsIncludeInternal[F] =
+        listTopicsIncludeInternalWith(withAdminClient)
 
       override def toString: String =
-        s"ListConsumerGroupOffsets(groupId = $groupId)"
+        "ListTopics$" + System.identityHashCode(this)
     }
-
-  private[this] def listConsumerGroupOffsetsForPartitionsWith[F[_], G[_]](
-    withAdminClient: WithAdminClient[F],
-    groupId: String,
-    partitions: G[TopicPartition]
-  )(implicit G: Foldable[G]): ListConsumerGroupOffsetsForPartitions[F] =
-    new ListConsumerGroupOffsetsForPartitions[F] {
-      private[this] def options: ListConsumerGroupOffsetsOptions =
-        new ListConsumerGroupOffsetsOptions().topicPartitions(partitions.asJava)
-
-      override def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]] =
-        withAdminClient { adminClient =>
-          adminClient
-            .listConsumerGroupOffsets(groupId, options)
-            .partitionsToOffsetAndMetadata
-            .map(_.toMap)
-        }
-
-      override def toString: String =
-        s"ListConsumerGroupOffsetsForPartitions(groupId = $groupId, partitions = $partitions)"
-    }
-
-  private[this] def createPartitionsWith[F[_]](
-    withAdminClient: WithAdminClient[F],
-    newPartitions: Map[String, NewPartitions]
-  ): F[Unit] =
-    withAdminClient(_.createPartitions(newPartitions.asJava).all.void)
-
-  private[this] def deleteTopicWith[F[_]](
-    withAdminClient: WithAdminClient[F],
-    topic: String
-  ): F[Unit] =
-    withAdminClient(_.deleteTopics(java.util.Collections.singleton(topic)).all.void)
-
-  private[this] def deleteTopicsWith[F[_], G[_]](
-    withAdminClient: WithAdminClient[F],
-    topics: G[String]
-  )(implicit G: Foldable[G]): F[Unit] =
-    withAdminClient(_.deleteTopics(topics.asJava).all.void)
-
-  private[this] def describeConfigsWith[F[_], G[_]](
-    withAdminClient: WithAdminClient[F],
-    resources: G[ConfigResource]
-  )(implicit G: Foldable[G]): F[Map[ConfigResource, List[ConfigEntry]]] =
-    withAdminClient(_.describeConfigs(resources.asJava).all.map(_.toMap.mapValues(_.entries().toList)))
 
   private[kafka] def resource[F[_]](
     settings: AdminClientSettings[F]
@@ -419,6 +420,15 @@ object KafkaAdminClient {
   ): Resource[F, KafkaAdminClient[F]] =
     WithAdminClient(settings).map { client =>
       new KafkaAdminClient[F] {
+
+        override def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
+          implicit G: Foldable[G]
+        ): F[Unit] =
+          alterConfigsWith(client, configs)
+
+        override def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit] =
+          createPartitionsWith(client, newPartitions)
+
         override def createTopic(topic: NewTopic): F[Unit] =
           createTopicWith(client, topic)
 
@@ -427,8 +437,19 @@ object KafkaAdminClient {
         ): F[Unit] =
           createTopicsWith(client, topics)
 
+        override def deleteTopic(topic: String): F[Unit] =
+          deleteTopicWith(client, topic)
+
+        override def deleteTopics[G[_]](topics: G[String])(implicit G: Foldable[G]): F[Unit] =
+          deleteTopicsWith(client, topics)
+
         override def describeCluster: DescribeCluster[F] =
           describeClusterWith(client)
+
+        override def describeConfigs[G[_]](resources: G[ConfigResource])(
+          implicit G: Foldable[G]
+        ): F[Map[ConfigResource, List[ConfigEntry]]] =
+          describeConfigsWith(client, resources)
 
         override def describeConsumerGroups[G[_]](groupIds: G[String])(
           implicit G: Foldable[G]
@@ -440,33 +461,14 @@ object KafkaAdminClient {
         ): F[Map[String, TopicDescription]] =
           describeTopicsWith(client, topics)
 
-        override def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
-          implicit G: Foldable[G]
-        ): F[Unit] =
-          alterConfigsWith(client, configs)
+        override def listConsumerGroupOffsets(groupId: String): ListConsumerGroupOffsets[F] =
+          listConsumerGroupOffsetsWith(client, groupId)
 
         override def listConsumerGroups: ListConsumerGroups[F] =
           listConsumerGroupsWith(client)
 
-        override def listConsumerGroupOffsets(groupId: String): ListConsumerGroupOffsets[F] =
-          listConsumerGroupOffsetsWith(client, groupId)
-
         override def listTopics: ListTopics[F] =
           listTopicsWith(client)
-
-        override def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit] =
-          createPartitionsWith(client, newPartitions)
-
-        override def deleteTopic(topic: String): F[Unit] =
-          deleteTopicWith(client, topic)
-
-        override def deleteTopics[G[_]](topics: G[String])(implicit G: Foldable[G]): F[Unit] =
-          deleteTopicsWith(client, topics)
-
-        override def describeConfigs[G[_]](resources: G[ConfigResource])(
-          implicit G: Foldable[G]
-        ): F[Map[ConfigResource, List[ConfigEntry]]] =
-          describeConfigsWith(client, resources)
 
         override def toString: String =
           "KafkaAdminClient$" + System.identityHashCode(this)
