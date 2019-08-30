@@ -215,25 +215,40 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       .updateAndGet(_.withRebalancing(true))
       .flatMap { state =>
         val fetches = state.fetches.keySetStrict
+        val records = state.records.keySetStrict
+
         val revokedFetches = revoked intersect fetches
+        val withRecords = records intersect revokedFetches
+        val withoutRecords = revokedFetches diff records
 
         val logRevoked =
           log(RevokedPartitions(revoked, state))
 
+        val completeWithRecords =
+          if (withRecords.nonEmpty) {
+            state.fetches.filterKeysStrictList(withRecords).traverse {
+              case (partition, partitionFetches) =>
+                val records = Chunk.vector(state.records(partition).toVector)
+                partitionFetches.values.toList.traverse(_.completeRevoked(records))
+            } >> ref
+              .updateAndGet(_.withoutFetchesAndRecords(withRecords))
+              .log(RevokedFetchesWithRecords(state.records.filterKeysStrict(withRecords), _))
+          } else F.unit
+
         val completeWithoutRecords =
-          if (revokedFetches.nonEmpty) {
+          if (withoutRecords.nonEmpty) {
             state.fetches
-              .filterKeysStrictValuesList(revokedFetches)
+              .filterKeysStrictValuesList(withoutRecords)
               .traverse(_.values.toList.traverse(_.completeRevoked(Chunk.empty))) >>
               ref
-                .updateAndGet(_.withoutFetches(revokedFetches))
-                .log(RevokedFetchesWithoutRecords(revokedFetches, _))
+                .updateAndGet(_.withoutFetches(withoutRecords))
+                .log(RevokedFetchesWithoutRecords(withoutRecords, _))
           } else F.unit
 
         val onRevoked =
           state.onRebalances.foldLeft(F.unit)(_ >> _.onRevoked(revoked))
 
-        logRevoked >> completeWithoutRecords >> onRevoked
+        logRevoked >> completeWithRecords >> completeWithoutRecords >> onRevoked
       }
 
   private[this] def assignment(
@@ -323,68 +338,64 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         F.suspend {
           val assigned = consumer.assignment.toSet
           val requested = state.fetches.keySetStrict
+          val available = state.records.keySetStrict
 
-          if (requested.nonEmpty) {
-            val resume = requested intersect assigned
-            val pause = assigned diff resume
+          val resume = (requested intersect assigned) diff available
+          val pause = assigned diff resume
 
-            if (pause.nonEmpty)
-              consumer.pause(pause.asJava)
+          if (pause.nonEmpty)
+            consumer.pause(pause.asJava)
 
-            if (resume.nonEmpty)
-              consumer.resume(resume.asJava)
+          if (resume.nonEmpty)
+            consumer.resume(resume.asJava)
 
-            records(consumer.poll(pollTimeout))
-          } else {
-            if (assigned.nonEmpty)
-              consumer.pause(assigned.asJava)
-
-            val batch =
-              consumer.poll(Duration.ZERO)
-
-            if (batch.isEmpty)
-              F.pure(Map.empty)
-            else
-              F.raiseError(
-                new IllegalStateException(
-                  s"Received [${batch.count}] unexpected records"
-                )
-              )
-          }
+          records(consumer.poll(pollTimeout))
         }
       }
 
     def handleBatch(newRecords: ConsumerRecords): F[Unit] =
-      if (newRecords.nonEmpty) {
-        ref.get.flatMap { state =>
-          val canBeCompleted = newRecords.keySetStrict
-
-          val checkUnexpected = {
-            val unexpected = canBeCompleted diff state.fetches.keySetStrict
-            if (unexpected.isEmpty) F.unit
-            else
-              F.raiseError(
-                new IllegalStateException(
-                  s"Received unexpected records for partitions [${unexpected.mkString(", ")}]"
-                )
-              )
-          }
-
-          val completeFetches =
-            state.fetches.filterKeysStrictList(canBeCompleted).traverse {
-              case (partition, fetches) =>
-                val records = Chunk.vector(newRecords(partition).toVector)
-                fetches.values.toList.traverse(_.completeRecords(records))
-            }
-
-          val removeFetches =
+      ref.get.flatMap { state =>
+        if (state.fetches.isEmpty) {
+          if (newRecords.isEmpty) F.unit
+          else {
             ref
-              .updateAndGet(_.withoutFetches(canBeCompleted))
-              .log(CompletedFetchesWithRecords(newRecords, _))
+              .updateAndGet(_.withRecords(newRecords))
+              .log(StoredRecords(newRecords, _))
+          }
+        } else {
+          val allRecords = state.records combine newRecords
 
-          checkUnexpected >> completeFetches >> removeFetches
+          if (allRecords.nonEmpty) {
+            val requested = state.fetches.keySetStrict
+
+            val canBeCompleted = allRecords.keySetStrict intersect requested
+            val canBeStored = newRecords.keySetStrict diff canBeCompleted
+
+            val complete =
+              if (canBeCompleted.nonEmpty) {
+                state.fetches.filterKeysStrictList(canBeCompleted).traverse {
+                  case (partition, fetches) =>
+                    val records = Chunk.vector(allRecords(partition).toVector)
+                    fetches.values.toList.traverse(_.completeRecords(records))
+                } >> ref
+                  .updateAndGet(_.withoutFetchesAndRecords(canBeCompleted))
+                  .log(
+                    CompletedFetchesWithRecords(allRecords.filterKeysStrict(canBeCompleted), _)
+                  )
+              } else F.unit
+
+            val store =
+              if (canBeStored.nonEmpty) {
+                val storeRecords = newRecords.filterKeysStrict(canBeStored)
+                ref
+                  .updateAndGet(_.withRecords(storeRecords))
+                  .log(StoredRecords(storeRecords, _))
+              } else F.unit
+
+            complete >> store
+          } else F.unit
         }
-      } else F.unit
+      }
 
     def handlePendingCommits(initialRebalancing: Boolean): F[Unit] =
       ref.get.flatMap { state =>
@@ -440,6 +451,7 @@ private[kafka] object KafkaConsumerActor {
 
   final case class State[F[_], K, V](
     fetches: Map[TopicPartition, Map[StreamId, FetchRequest[F, K, V]]],
+    records: Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]],
     pendingCommits: Chain[Request.Commit[F, K, V]],
     onRebalances: Chain[OnRebalance[F, K, V]],
     rebalancing: Boolean,
@@ -477,6 +489,17 @@ private[kafka] object KafkaConsumerActor {
     def withoutFetches(partitions: Set[TopicPartition]): State[F, K, V] =
       copy(fetches = fetches.filterKeysStrict(!partitions.contains(_)))
 
+    def withRecords(
+      records: Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]]
+    ): State[F, K, V] =
+      copy(records = this.records combine records)
+
+    def withoutFetchesAndRecords(partitions: Set[TopicPartition]): State[F, K, V] =
+      copy(
+        fetches = fetches.filterKeysStrict(!partitions.contains(_)),
+        records = records.filterKeysStrict(!partitions.contains(_))
+      )
+
     def withPendingCommit(pendingCommit: Request.Commit[F, K, V]): State[F, K, V] =
       copy(pendingCommits = pendingCommits append pendingCommit)
 
@@ -503,7 +526,7 @@ private[kafka] object KafkaConsumerActor {
               append(fs.mkString("[", ", ", "]"))
           }("", ", ", "")
 
-      s"State(fetches = Map($fetchesString), pendingCommits = $pendingCommits, onRebalances = $onRebalances, rebalancing = $rebalancing, subscribed = $subscribed, streaming = $streaming)"
+      s"State(fetches = Map($fetchesString), records = Map(${recordsString(records)}), pendingCommits = $pendingCommits, onRebalances = $onRebalances, rebalancing = $rebalancing, subscribed = $subscribed, streaming = $streaming)"
     }
   }
 
@@ -511,6 +534,7 @@ private[kafka] object KafkaConsumerActor {
     def empty[F[_], K, V]: State[F, K, V] =
       State(
         fetches = Map.empty,
+        records = Map.empty,
         pendingCommits = Chain.empty,
         onRebalances = Chain.empty,
         rebalancing = false,
