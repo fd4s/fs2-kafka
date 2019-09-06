@@ -130,7 +130,7 @@ def consumerGroupOperations[F[_]: Concurrent: ContextShift: Parallel]: F[Unit] =
 [kafkaadminclient]: @API_BASE_URL@/KafkaAdminClient.html
 [adminclientsettings]: @API_BASE_URL@/AdminClientSettings.html
 [adminclientstream]: @API_BASE_URL@/index.html#adminClientStream[F[_]](settings:fs2.kafka.AdminClientSettings[F])(implicitF:cats.effect.Concurrent[F],implicitcontext:cats.effect.ContextShift[F]):fs2.Stream[F,fs2.kafka.KafkaAdminClient[F]]
-[adminclientsource]: @API_BASE_URL@/index.html#adminClientResource[F[_]](settings:fs2.kafka.AdminClientSettings[F])(implicitF:cats.effect.Concurrent[F],implicitcontext:cats.effect.ContextShift[F]):cats.effect.Resource[F,fs2.kafka.KafkaAdminClient[F]]
+[adminclientresource]: @API_BASE_URL@/index.html#adminClientResource[F[_]](settings:fs2.kafka.AdminClientSettings[F])(implicitF:cats.effect.Concurrent[F],implicitcontext:cats.effect.ContextShift[F]):cats.effect.Resource[F,fs2.kafka.KafkaAdminClient[F]]
 [listtopics]: @API_BASE_URL@/KafkaAdminClient$$ListTopics.html
 [describecluster]: @API_BASE_URL@/KafkaAdminClient$$DescribeCluster.html
 [listconsumergroups]: @API_BASE_URL@/KafkaAdminClient$$ListConsumerGroups.html

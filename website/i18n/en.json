@@ -5,6 +5,9 @@
     "previous": "Previous",
     "tagline": "Functional Kafka Streams for Scala",
     "docs": {
+      "admin": {
+        "title": "Admin"
+      },
       "consumers": {
         "title": "Consumers"
       },
