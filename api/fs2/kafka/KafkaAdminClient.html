@@ -3,9 +3,9 @@
         <head>
           <meta http-equiv="X-UA-Compatible" content="IE=edge" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-          <title>FS2 Kafka v0.20.0-RC1 - fs2.kafka.KafkaAdminClient</title>
-          <meta name="description" content="FS2 Kafka v0.20.0 - RC1 - fs2.kafka.KafkaAdminClient" />
-          <meta name="keywords" content="FS2 Kafka v0.20.0 RC1 fs2.kafka.KafkaAdminClient" />
+          <title>FS2 Kafka v0.20.0 - fs2.kafka.KafkaAdminClient</title>
+          <meta name="description" content="FS2 Kafka v0.20.0 - fs2.kafka.KafkaAdminClient" />
+          <meta name="keywords" content="FS2 Kafka v0.20.0 fs2.kafka.KafkaAdminClient" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../lib/index.css" media="screen" type="text/css" rel="stylesheet" />
@@ -28,7 +28,7 @@
         </head>
         <body>
       <div id="search">
-        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0-RC1</span></span>
+        <span id="doc-title">FS2 Kafka<span id="doc-version">v0.20.0</span></span>
         <span class="close-results"><span class="left">&lt;</span> Back</span>
         <div id="textfilter">
           <span class="input">
@@ -324,7 +324,7 @@ describe queries about topics, consumer groups, offsets, and other entities
 related to Kafka.<br>
 <br>
 Use <a href="index.html#adminClientResource[F[_]](settings:fs2.kafka.AdminClientSettings[F])(implicitF:cats.effect.Concurrent[F],implicitcontext:cats.effect.ContextShift[F]):cats.effect.Resource[F,fs2.kafka.KafkaAdminClient[F]]" class="extmbr" name="fs2.kafka#adminClientResource">adminClientResource</a> or <a href="index.html#adminClientStream[F[_]](settings:fs2.kafka.AdminClientSettings[F])(implicitF:cats.effect.Concurrent[F],implicitcontext:cats.effect.ContextShift[F]):fs2.Stream[F,fs2.kafka.KafkaAdminClient[F]]" class="extmbr" name="fs2.kafka#adminClientStream">adminClientStream</a> to create an instance.
-</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0-RC1/modules/core/src/main/scala/fs2/kafka/KafkaAdminClient.scala" target="_blank">KafkaAdminClient.scala</a></dd></dl><div class="toggleContainer block">
+</p></div><dl class="attributes block"> <dt>Source</dt><dd><a href="https://github.com/ovotech/fs2-kafka/tree/v0.20.0/modules/core/src/main/scala/fs2/kafka/KafkaAdminClient.scala" target="_blank">KafkaAdminClient.scala</a></dd></dl><div class="toggleContainer block">
           <span class="toggle">
             Linear Supertypes
           </span>
@@ -491,6 +491,22 @@ Use <a href="index.html#adminClientResource[F[_]](settings:fs2.kafka.AdminClient
       </span>
       
       <p class="shortcomment cmt">Describes the cluster.</p><div class="fullcomment"><div class="comment cmt"><p>Describes the cluster. Returns nodes using:</p><pre>describeCluster.nodes</pre><p>or the controller node using:</p><pre>describeCluster.controller</pre><p>or the cluster ID using the following.</p><pre>describeCluster.clusterId</pre></div></div>
+    </li><li name="fs2.kafka.KafkaAdminClient#describeConfigs" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="describeConfigs[G[_]](resources:G[org.apache.kafka.common.config.ConfigResource])(implicitG:cats.Foldable[G]):F[Map[org.apache.kafka.common.config.ConfigResource,List[org.apache.kafka.clients.admin.ConfigEntry]]]"></a><a id="describeConfigs[G[_]](G[ConfigResource])(Foldable[G]):F[Map[ConfigResource,List[ConfigEntry]]]"></a>
+      <span class="permalink">
+      <a href="../../fs2/kafka/KafkaAdminClient.html#describeConfigs[G[_]](resources:G[org.apache.kafka.common.config.ConfigResource])(implicitG:cats.Foldable[G]):F[Map[org.apache.kafka.common.config.ConfigResource,List[org.apache.kafka.clients.admin.ConfigEntry]]]" title="Permalink">
+        <i class="material-icons"></i>
+      </a>
+    </span>
+      <span class="modifier_kind">
+        <span class="modifier">abstract </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">describeConfigs</span><span class="tparams">[<span name="G">G<span class="tparams">[<span name="_">_</span>]</span></span>]</span><span class="params">(<span name="resources">resources: <span class="extype" name="fs2.kafka.KafkaAdminClient.describeConfigs.G">G</span>[<span class="extype" name="org.apache.kafka.common.config.ConfigResource">ConfigResource</span>]</span>)</span><span class="params">(<span class="implicit">implicit </span><span name="G">G: <span class="extype" name="cats.Foldable">Foldable</span>[<span class="extype" name="fs2.kafka.KafkaAdminClient.describeConfigs.G">G</span>]</span>)</span><span class="result">: <span class="extype" name="fs2.kafka.KafkaAdminClient.F">F</span>[<span class="extype" name="scala.Predef.Map">Map</span>[<span class="extype" name="org.apache.kafka.common.config.ConfigResource">ConfigResource</span>, <span class="extype" name="scala.List">List</span>[<span class="extype" name="org.apache.kafka.clients.admin.ConfigEntry">ConfigEntry</span>]]]</span>
+      </span>
+      
+      <p class="shortcomment cmt">Describes the configurations for the specified resources.</p>
     </li><li name="fs2.kafka.KafkaAdminClient#describeConsumerGroups" visbl="pub" class="indented0 " data-isabs="true" fullComment="no" group="Ungrouped">
       <a id="describeConsumerGroups[G[_]](groupIds:G[String])(implicitG:cats.Foldable[G]):F[Map[String,org.apache.kafka.clients.admin.ConsumerGroupDescription]]"></a><a id="describeConsumerGroups[G[_]](G[String])(Foldable[G]):F[Map[String,ConsumerGroupDescription]]"></a>
       <span class="permalink">
