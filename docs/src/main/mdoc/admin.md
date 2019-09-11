@@ -3,9 +3,8 @@ id: admin
 title: Admin
 ---
 
-fs2-kafka also supports part of the Kafka admin API through
-[the KafkaAdminClient][kafkaadminclient]. Under the hood, fs2-kafka makes use of Kafka's
-[AdminClient][admin-client] and supports the same set of [settings](#settings).
+There is partial support for the Kafka admin API through [KafkaAdminClient][kafkaadminclient]. Internally, this relies on the Java Kafka
+[AdminClient][admin-client] and supports the same settings.
 
 The following imports are assumed throughout this page.
 
@@ -18,18 +17,26 @@ import fs2.kafka._
 
 ## Settings
 
-For the admin client settings, fs2-kafka provides a utility called
-[AdminClientSettings][adminclientsettings] to avoid having to deal with string key value properties.
+[`AdminClientSettings`][adminclientsettings] is provided to avoid having to deal with `String` key-value settings.
 
 ```scala mdoc:silent
 def adminClientSettings[F[_]: Sync](bootstrapServers: String): AdminClientSettings[F] =
   AdminClientSettings[F].withBootstrapServers(bootstrapServers)
 ```
 
-## Admin client creation
+### Default Settings
 
-Once our settings are good to go, we can create our admin client, if inside a `Stream` context,
-we can use [adminClientStream][adminclientstream]:
+There are several settings specific to the library.
+
+- `withBlocker` sets the `Blocker` on which blocking Java Kafka `AdminClient` functions are executed. Unless specified, a default fixed single-thread pool is created as part of admin client initialization, with the thread name using the `fs2-kafka-admin-client` prefix.
+
+- `withCloseTimeout` controls the timeout when waiting for admin client shutdown. Default is 20 seconds.
+
+- `withCreateAdminClient` changes how the underlying Java Kafka admin client is created. The default creates a Java `AdminClient` instance using set properties, but this function allows overriding the behaviour for e.g. testing purposes.
+
+## Client Creation
+
+Once settings are defined, we can use create an admin client in a `Stream`.
 
 ```scala mdoc:silent
 def kafkaAdminClientStream[F[_]: Concurrent: ContextShift](
@@ -38,101 +45,94 @@ def kafkaAdminClientStream[F[_]: Concurrent: ContextShift](
   adminClientStream(adminClientSettings[F](bootstrapServers))
 ```
 
-If outside of a `Stream` context, we can leverage [adminClientResource][adminclientresource]:
+Alternatively, we can create an admin client in a `Resource` context.
 
 ```scala mdoc:silent
-def kafkaAdminClientRes[F[_]: Concurrent: ContextShift](
+def kafkaAdminClientResource[F[_]: Concurrent: ContextShift](
   bootstrapServers: String
 ): Resource[F, KafkaAdminClient[F]] =
   adminClientResource(adminClientSettings[F](bootstrapServers))
 ```
 
-Now that we have our admin client, let's see what we can do with it.
+## Topics
 
-## Topic-related functionalities
-
-`KafkaAdminClient` supports a set of topic-related functionalities such as:
+There are functions available for describing, creating, and deleting topics.
 
 ```scala mdoc:silent
 import org.apache.kafka.clients.admin.{NewPartitions, NewTopic}
 
 def topicOperations[F[_]: Concurrent: ContextShift]: F[Unit] =
-  kafkaAdminClientRes[F]("localhost:9092").use { c =>
+  kafkaAdminClientResource[F]("localhost:9092").use { client =>
     for {
-      topicNames <- c.listTopics.names
-      _ <- c.describeTopics(topicNames.toList)
-      _ <- c.createTopic(new NewTopic("new-topic", 1, 1)) // numPartitions and replicationFactor
-      _ <- c.createTopics(new NewTopic("newer-topic", 1, 1) :: Nil)
-      _ <- c.createPartitions(Map("new-topic" -> NewPartitions.increaseTo(4)))
-      _ <- c.deleteTopic("new-topic")
-      _ <- c.deleteTopics("newer-topic" :: Nil)
+      topicNames <- client.listTopics.names
+      _ <- client.describeTopics(topicNames.toList)
+      _ <- client.createTopic(new NewTopic("new-topic", 1, 1)) // numPartitions and replicationFactor
+      _ <- client.createTopics(new NewTopic("newer-topic", 1, 1) :: Nil)
+      _ <- client.createPartitions(Map("new-topic" -> NewPartitions.increaseTo(4)))
+      _ <- client.deleteTopic("new-topic")
+      _ <- client.deleteTopics("newer-topic" :: Nil)
     } yield ()
   }
 ```
 
-Note that the `listTopics` operation returns [ListTopics[F]][listtopics].
+## Configurations
 
-## Configuration-related features
-
-Through `KafkaAdminClient` we can also edit the configurations of different resources like topics
-or brokers:
+We can edit the configuration of different resources, like topics and nodes.
 
 ```scala mdoc:silent
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry}
 
 def configOperations[F[_]: Concurrent: ContextShift]: F[Unit] =
-  kafkaAdminClientRes[F]("localhost:9092").use { c =>
+  kafkaAdminClientResource[F]("localhost:9092").use { client =>
+    val topic = new ConfigResource(ConfigResource.Type.TOPIC, "topic")
+
     for {
-      cr <- Sync[F].pure(new ConfigResource(ConfigResource.Type.TOPIC, "topic"))
-      _ <- c.describeConfigs(cr :: Nil)
-      _ <- c.alterConfigs(Map(cr -> List(
-        new AlterConfigOp(new ConfigEntry("cleanup.policy", "delete"), AlterConfigOp.OpType.SET))))
-    } yield ()
-  }
-```
-
-## Cluster information
-
-We can also retrieve information from our cluster of brokers:
-
-```scala mdoc:silent
-import org.apache.kafka.common.Node
-
-def clusterInfo[F[_]: Concurrent: ContextShift]: F[Set[Node]] =
-  kafkaAdminClientRes[F]("localhost:9092").use(_.describeCluster.nodes)
-```
-
-`describeCluster` returns [DescribeCluster[F]][describecluster].
-
-## Consumer group operations
-
-There is also a set of operations we can perform relative to consumer groups:
-
-```scala mdoc:silent
-import cats.Parallel
-
-def consumerGroupOperations[F[_]: Concurrent: ContextShift: Parallel]: F[Unit] =
-  kafkaAdminClientRes[F]("localhost:9092").use { c =>
-    for {
-      consumerGroupIds <- c.listConsumerGroups.groupIds
-      _ <- c.describeConsumerGroups(consumerGroupIds)
-      _ <- consumerGroupIds.parTraverse { groupId =>
-        c.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata
+      _ <- client.describeConfigs(topic :: Nil)
+      _ <- client.alterConfigs {
+        Map(topic -> List(
+          new AlterConfigOp(
+            new ConfigEntry("cleanup.policy", "delete"),
+            AlterConfigOp.OpType.SET
+          )
+        ))
       }
     } yield ()
   }
 ```
 
-`listConsumerGroups` returns [ListConsumerGroups[F]][listconsumergroups] while
-`listConsumerGroupOffsets` returns [ListConsumerGroupOffsets[F]][listconsumergroupoffsets].
+## Cluster Metadata
+
+It's possible to retrieve metadata about the cluster nodes.
+
+```scala mdoc:silent
+import org.apache.kafka.common.Node
+
+def clusterNodes[F[_]: Concurrent: ContextShift]: F[Set[Node]] =
+  kafkaAdminClientResource[F]("localhost:9092").use(_.describeCluster.nodes)
+```
+
+## Consumer Groups
+
+There are functions available for working with consumer groups.
+
+```scala mdoc:silent
+import cats.Parallel
+
+def consumerGroupOperations[F[_]: Concurrent: ContextShift: Parallel]: F[Unit] =
+  kafkaAdminClientResource[F]("localhost:9092").use { client =>
+    for {
+      consumerGroupIds <- client.listConsumerGroups.groupIds
+      _ <- client.describeConsumerGroups(consumerGroupIds)
+      _ <- consumerGroupIds.parTraverse { groupId =>
+        client
+          .listConsumerGroupOffsets(groupId)
+          .partitionsToOffsetAndMetadata
+      }
+    } yield ()
+  }
+```
 
 [kafkaadminclient]: @API_BASE_URL@/KafkaAdminClient.html
 [adminclientsettings]: @API_BASE_URL@/AdminClientSettings.html
-[adminclientstream]: @API_BASE_URL@/index.html#adminClientStream[F[_]](settings:fs2.kafka.AdminClientSettings[F])(implicitF:cats.effect.Concurrent[F],implicitcontext:cats.effect.ContextShift[F]):fs2.Stream[F,fs2.kafka.KafkaAdminClient[F]]
-[adminclientresource]: @API_BASE_URL@/index.html#adminClientResource[F[_]](settings:fs2.kafka.AdminClientSettings[F])(implicitF:cats.effect.Concurrent[F],implicitcontext:cats.effect.ContextShift[F]):cats.effect.Resource[F,fs2.kafka.KafkaAdminClient[F]]
-[listtopics]: @API_BASE_URL@/KafkaAdminClient$$ListTopics.html
-[describecluster]: @API_BASE_URL@/KafkaAdminClient$$DescribeCluster.html
-[listconsumergroups]: @API_BASE_URL@/KafkaAdminClient$$ListConsumerGroups.html
-[listconsumergroupoffsets]: @API_BASE_URL@/KafkaAdminClient$$ListConsumerGroupOffsets.html
 [admin-client]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/admin/AdminClient.html
