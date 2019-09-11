@@ -2,7 +2,7 @@ import ReleaseTransformations._
 
 val catsEffectVersion = "2.0.0"
 
-val catsVersion = "2.0.0-RC2"
+val catsVersion = "2.0.0"
 
 val confluentVersion = "5.3.1"
 
