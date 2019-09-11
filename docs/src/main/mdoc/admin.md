@@ -1,0 +1,138 @@
+---
+id: admin
+title: Admin
+---
+
+There is partial support for the Kafka admin API through [KafkaAdminClient][kafkaadminclient]. Internally, this relies on the Java Kafka
+[AdminClient][admin-client] and supports the same settings.
+
+The following imports are assumed throughout this page.
+
+```scala mdoc:silent
+import cats.effect._
+import cats.implicits._
+import fs2.Stream
+import fs2.kafka._
+```
+
+## Settings
+
+[`AdminClientSettings`][adminclientsettings] is provided to avoid having to deal with `String` key-value settings.
+
+```scala mdoc:silent
+def adminClientSettings[F[_]: Sync](bootstrapServers: String): AdminClientSettings[F] =
+  AdminClientSettings[F].withBootstrapServers(bootstrapServers)
+```
+
+### Default Settings
+
+There are several settings specific to the library.
+
+- `withBlocker` sets the `Blocker` on which blocking Java Kafka `AdminClient` functions are executed. Unless specified, a default fixed single-thread pool is created as part of admin client initialization, with the thread name using the `fs2-kafka-admin-client` prefix.
+
+- `withCloseTimeout` controls the timeout when waiting for admin client shutdown. Default is 20 seconds.
+
+- `withCreateAdminClient` changes how the underlying Java Kafka admin client is created. The default creates a Java `AdminClient` instance using set properties, but this function allows overriding the behaviour for e.g. testing purposes.
+
+## Client Creation
+
+Once settings are defined, we can use create an admin client in a `Stream`.
+
+```scala mdoc:silent
+def kafkaAdminClientStream[F[_]: Concurrent: ContextShift](
+  bootstrapServers: String
+): Stream[F, KafkaAdminClient[F]] =
+  adminClientStream(adminClientSettings[F](bootstrapServers))
+```
+
+Alternatively, we can create an admin client in a `Resource` context.
+
+```scala mdoc:silent
+def kafkaAdminClientResource[F[_]: Concurrent: ContextShift](
+  bootstrapServers: String
+): Resource[F, KafkaAdminClient[F]] =
+  adminClientResource(adminClientSettings[F](bootstrapServers))
+```
+
+## Topics
+
+There are functions available for describing, creating, and deleting topics.
+
+```scala mdoc:silent
+import org.apache.kafka.clients.admin.{NewPartitions, NewTopic}
+
+def topicOperations[F[_]: Concurrent: ContextShift]: F[Unit] =
+  kafkaAdminClientResource[F]("localhost:9092").use { client =>
+    for {
+      topicNames <- client.listTopics.names
+      _ <- client.describeTopics(topicNames.toList)
+      _ <- client.createTopic(new NewTopic("new-topic", 1, 1)) // numPartitions and replicationFactor
+      _ <- client.createTopics(new NewTopic("newer-topic", 1, 1) :: Nil)
+      _ <- client.createPartitions(Map("new-topic" -> NewPartitions.increaseTo(4)))
+      _ <- client.deleteTopic("new-topic")
+      _ <- client.deleteTopics("newer-topic" :: Nil)
+    } yield ()
+  }
+```
+
+## Configurations
+
+We can edit the configuration of different resources, like topics and nodes.
+
+```scala mdoc:silent
+import org.apache.kafka.common.config.ConfigResource
+import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry}
+
+def configOperations[F[_]: Concurrent: ContextShift]: F[Unit] =
+  kafkaAdminClientResource[F]("localhost:9092").use { client =>
+    val topic = new ConfigResource(ConfigResource.Type.TOPIC, "topic")
+
+    for {
+      _ <- client.describeConfigs(topic :: Nil)
+      _ <- client.alterConfigs {
+        Map(topic -> List(
+          new AlterConfigOp(
+            new ConfigEntry("cleanup.policy", "delete"),
+            AlterConfigOp.OpType.SET
+          )
+        ))
+      }
+    } yield ()
+  }
+```
+
+## Cluster Metadata
+
+It's possible to retrieve metadata about the cluster nodes.
+
+```scala mdoc:silent
+import org.apache.kafka.common.Node
+
+def clusterNodes[F[_]: Concurrent: ContextShift]: F[Set[Node]] =
+  kafkaAdminClientResource[F]("localhost:9092").use(_.describeCluster.nodes)
+```
+
+## Consumer Groups
+
+There are functions available for working with consumer groups.
+
+```scala mdoc:silent
+import cats.Parallel
+
+def consumerGroupOperations[F[_]: Concurrent: ContextShift: Parallel]: F[Unit] =
+  kafkaAdminClientResource[F]("localhost:9092").use { client =>
+    for {
+      consumerGroupIds <- client.listConsumerGroups.groupIds
+      _ <- client.describeConsumerGroups(consumerGroupIds)
+      _ <- consumerGroupIds.parTraverse { groupId =>
+        client
+          .listConsumerGroupOffsets(groupId)
+          .partitionsToOffsetAndMetadata
+      }
+    } yield ()
+  }
+```
+
+[kafkaadminclient]: @API_BASE_URL@/KafkaAdminClient.html
+[adminclientsettings]: @API_BASE_URL@/AdminClientSettings.html
+[admin-client]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/admin/AdminClient.html

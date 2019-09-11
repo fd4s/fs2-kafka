@@ -3,11 +3,9 @@ package fs2.kafka
 import cats.effect.IO
 import cats.implicits._
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
-import org.apache.kafka.clients.admin.AlterConfigOp.OpType
-import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewTopic}
+import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewPartitions, NewTopic}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.config.ConfigResource
-import org.apache.kafka.clients.admin.NewPartitions
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
   describe("KafkaAdminClient") {
@@ -92,7 +90,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
               cr <- IO.pure(new ConfigResource(ConfigResource.Type.TOPIC, topic))
               ce = new ConfigEntry("cleanup.policy", "delete")
               alteredConfigs <- adminClient.alterConfigs {
-                Map(cr -> List(new AlterConfigOp(ce, OpType.SET)))
+                Map(cr -> List(new AlterConfigOp(ce, AlterConfigOp.OpType.SET)))
               }.attempt
               _ <- IO(assert(alteredConfigs.isRight))
               describedConfigs <- adminClient.describeConfigs(List(cr)).attempt
