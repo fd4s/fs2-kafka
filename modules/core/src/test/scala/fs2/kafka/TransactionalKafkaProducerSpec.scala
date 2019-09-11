@@ -26,7 +26,11 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues wit
       val produced =
         (for {
           producer <- transactionalProducerStream(
-            TransactionalProducerSettings("id", producerSettings[IO](config))
+            TransactionalProducerSettings(
+              "id",
+              producerSettings[IO](config)
+                .withRetries(Int.MaxValue)
+            )
           )
           _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
           records <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
@@ -79,7 +83,11 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues wit
       val produced =
         (for {
           producer <- transactionalProducerStream(
-            TransactionalProducerSettings("id", producerSettings[IO](config))
+            TransactionalProducerSettings(
+              "id",
+              producerSettings[IO](config)
+                .withRetries(Int.MaxValue)
+            )
           )
           recordsToProduce = toProduce.map {
             case (key, value) => ProducerRecord(topic, key, value)
@@ -140,25 +148,27 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues wit
           producer <- transactionalProducerStream(
             TransactionalProducerSettings(
               "id",
-              producerSettings[IO](config).withCreateProducer { properties =>
-                IO.delay {
-                  new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
-                    (properties: Map[String, AnyRef]).asJava,
-                    new ByteArraySerializer,
-                    new ByteArraySerializer
-                  ) {
-                    override def sendOffsetsToTransaction(
-                      offsets: util.Map[TopicPartition, OffsetAndMetadata],
-                      consumerGroupId: String
-                    ): Unit =
-                      if (offsets.containsKey(new TopicPartition(topic, 2))) {
-                        throw error
-                      } else {
-                        super.sendOffsetsToTransaction(offsets, consumerGroupId)
-                      }
+              producerSettings[IO](config)
+                .withRetries(Int.MaxValue)
+                .withCreateProducer { properties =>
+                  IO.delay {
+                    new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
+                      (properties: Map[String, AnyRef]).asJava,
+                      new ByteArraySerializer,
+                      new ByteArraySerializer
+                    ) {
+                      override def sendOffsetsToTransaction(
+                        offsets: util.Map[TopicPartition, OffsetAndMetadata],
+                        consumerGroupId: String
+                      ): Unit =
+                        if (offsets.containsKey(new TopicPartition(topic, 2))) {
+                          throw error
+                        } else {
+                          super.sendOffsetsToTransaction(offsets, consumerGroupId)
+                        }
+                    }
                   }
                 }
-              }
             )
           )
           recordsToProduce = toProduce.map {
@@ -211,20 +221,22 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues wit
           producer <- transactionalProducerStream(
             TransactionalProducerSettings(
               "id",
-              producerSettings[IO](config).withCreateProducer { properties =>
-                IO.delay {
-                  new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
-                    (properties: Map[String, AnyRef]).asJava,
-                    new ByteArraySerializer,
-                    new ByteArraySerializer
-                  ) {
-                    override def commitTransaction(): Unit = {
-                      Thread.sleep(2 * transactionTimeoutInterval.toMillis)
-                      super.commitTransaction()
+              producerSettings[IO](config)
+                .withRetries(Int.MaxValue)
+                .withCreateProducer { properties =>
+                  IO.delay {
+                    new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
+                      (properties: Map[String, AnyRef]).asJava,
+                      new ByteArraySerializer,
+                      new ByteArraySerializer
+                    ) {
+                      override def commitTransaction(): Unit = {
+                        Thread.sleep(2 * transactionTimeoutInterval.toMillis)
+                        super.commitTransaction()
+                      }
                     }
                   }
                 }
-              }
             ).withTransactionTimeout(transactionTimeoutInterval - 250.millis)
           )
           recordsToProduce = toProduce.map {
