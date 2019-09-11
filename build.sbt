@@ -16,7 +16,7 @@ val scala212 = "2.12.8"
 
 val scala213 = "2.13.0"
 
-lazy val root = project
+lazy val `fs2-kafka` = project
   .in(file("."))
   .settings(
     mimaSettings,
@@ -136,7 +136,7 @@ lazy val buildInfoSettings = Seq(
     BuildInfoKey.map(crossScalaVersions in vulcan) {
       case (k, v) => "vulcan" ++ k.capitalize -> v
     },
-    organization in root,
+    organization in LocalRootProject,
     crossScalaVersions in core,
     BuildInfoKey("fs2Version" -> fs2Version),
     BuildInfoKey("kafkaVersion" -> kafkaVersion),
@@ -159,7 +159,7 @@ lazy val publishSettings =
   metadataSettings ++ Seq(
     publishMavenStyle := true,
     publishArtifact in Test := false,
-    publishTo := sonatypePublishTo.value,
+    publishTo := sonatypePublishToBundle.value,
     pomIncludeRepository := (_ => false),
     homepage := Some(url("https://ovotech.github.io/fs2-kafka")),
     licenses := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
@@ -202,7 +202,7 @@ lazy val publishSettings =
       commitReleaseVersion,
       tagRelease,
       releaseStepCommandAndRemaining("+publish"),
-      releaseStepCommand("sonatypeRelease"),
+      releaseStepCommand("sonatypeBundleRelease"),
       setNextVersion,
       commitNextVersion,
       pushChanges,
@@ -297,12 +297,12 @@ releaseNotesFile in ThisBuild := {
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 updateSiteVariables in ThisBuild := {
-  val file = (baseDirectory in root).value / "website" / "siteConfig.js"
+  val file = (baseDirectory in LocalRootProject).value / "website" / "siteConfig.js"
   val lines = IO.read(file).trim.split('\n').toVector
 
   val variables =
     Map[String, String](
-      "organization" -> (organization in root).value,
+      "organization" -> (organization in LocalRootProject).value,
       "coreModuleName" -> (moduleName in core).value,
       "latestVersion" -> (latestVersion in ThisBuild).value,
       "scalaPublishVersions" -> {
@@ -322,7 +322,7 @@ updateSiteVariables in ThisBuild := {
   val newFileContents = newLines.mkString("", "\n", "\n")
   IO.write(file, newFileContents)
 
-  sbtrelease.Vcs.detect((baseDirectory in root).value).foreach { vcs =>
+  sbtrelease.Vcs.detect((baseDirectory in LocalRootProject).value).foreach { vcs =>
     vcs.add(file.getAbsolutePath).!
     vcs
       .commit(
@@ -359,7 +359,7 @@ addDateToReleaseNotes in ThisBuild := {
   val newContents = IO.read(file).trim + s"\n\nReleased on $dateString.\n"
   IO.write(file, newContents)
 
-  sbtrelease.Vcs.detect((baseDirectory in root).value).foreach { vcs =>
+  sbtrelease.Vcs.detect((baseDirectory in LocalRootProject).value).foreach { vcs =>
     vcs.add(file.getAbsolutePath).!
     vcs
       .commit(
