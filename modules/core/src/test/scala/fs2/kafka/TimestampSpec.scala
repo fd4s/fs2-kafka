@@ -94,8 +94,7 @@ final class TimestampSpec extends BaseSpec {
     import org.scalacheck.Arbitrary.arbitrary
     import org.apache.kafka.clients.consumer.ConsumerRecord.NO_TIMESTAMP
 
-    implicit val abnormalTimestamp: Arbitrary[Long] =
-      Arbitrary(arbitrary[Long].filterNot(_ == NO_TIMESTAMP))
+    implicit val abnormalTimestamp = Arbitrary(arbitrary[Long].filterNot(_ == NO_TIMESTAMP))
 
     it("should have an unknownTime when timestamp is other than NO_TIMESTAMP") {
       forAll { value: Long =>
