@@ -299,7 +299,7 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
     it("should have a Show instance and matching toString") {
       assert {
-        settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 100 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default)" &&
+        settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default)" &&
         settings.show == settings.toString
       }
     }
