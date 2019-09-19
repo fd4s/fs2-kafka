@@ -316,7 +316,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   /**
     * How often we should attempt to call `poll` on the Java `KafkaConsumer`.<br>
     * <br>
-    * The default value is 100 milliseconds.
+    * The default value is 50 milliseconds.
     */
   def pollInterval: FiniteDuration
 
@@ -563,7 +563,7 @@ object ConsumerSettings {
       ),
       closeTimeout = 20.seconds,
       commitTimeout = 15.seconds,
-      pollInterval = 100.millis,
+      pollInterval = 50.millis,
       pollTimeout = 50.millis,
       commitRecovery = CommitRecovery.Default,
       recordMetadata = _ => OffsetFetchResponse.NO_METADATA,

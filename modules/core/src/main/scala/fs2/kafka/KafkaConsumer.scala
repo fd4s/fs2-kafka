@@ -267,70 +267,76 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 private[kafka] object KafkaConsumer {
   private[this] def startConsumerActor[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
-    actor: KafkaConsumerActor[F, K, V],
-    settings: ConsumerSettings[F, K, V]
+    polls: Queue[F, Request[F, K, V]],
+    actor: KafkaConsumerActor[F, K, V]
   )(
     implicit F: Concurrent[F],
-    context: ContextShift[F],
-    timer: Timer[F]
-  ): Resource[F, Fiber[F, Unit]] = {
-    val duration = (length: Long) => FiniteDuration(length, settings.pollInterval.unit)
-    val monotonicTime = timer.clock.monotonic(settings.pollInterval.unit)
-    val pollInterval = settings.pollInterval.length
-    val pollRequest = Request.poll[F, K, V]
-
+    context: ContextShift[F]
+  ): Resource[F, Fiber[F, Unit]] =
     Resource.make {
-      Deferred[F, Either[Throwable, Unit]].flatMap { doneDeferred =>
-        Ref[F].of(0L).flatMap { lastPollTimeRef =>
-          F.guaranteeCase {
-              lastPollTimeRef.get
-                .flatMap { lastPollTime =>
-                  monotonicTime
-                    .flatMap { currentTime =>
-                      val timeToNextPoll =
-                        lastPollTime + pollInterval - currentTime
-
-                      val nextRequest =
-                        if (timeToNextPoll <= 0L)
-                          lastPollTimeRef.set(currentTime).as(pollRequest)
-                        else {
-                          val nextPoll = timer.sleep(duration(timeToNextPoll))
-                          F.race(nextPoll, requests.dequeue1).flatMap {
-                            case Left(()) =>
-                              monotonicTime
-                                .flatMap(lastPollTimeRef.set)
-                                .as(pollRequest)
-                            case Right(request) =>
-                              F.pure(request)
-                          }
-                        }
-
-                      nextRequest.flatMap(actor.handle(_) >> context.shift)
-                    }
-                }
-                .foreverM[Unit]
-            } {
-              case ExitCase.Error(e) => doneDeferred.complete(Left(e))
-              case _                 => doneDeferred.complete(Right(()))
-            }
-            .start
-            .map(fiber => Fiber[F, Unit](doneDeferred.get.rethrow, fiber.cancel.start.void))
-        }
+      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
+        F.guaranteeCase {
+            requests.tryDequeue1
+              .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
+              .flatMap(actor.handle(_) >> context.shift)
+              .foreverM[Unit]
+          } {
+            case ExitCase.Error(e) => deferred.complete(Left(e))
+            case _                 => deferred.complete(Right(()))
+          }
+          .start
+          .map(fiber => Fiber[F, Unit](deferred.get.rethrow, fiber.cancel.start.void))
       }
     }(_.cancel)
-  }
+
+  private[this] def startPollScheduler[F[_], K, V](
+    polls: Queue[F, Request[F, K, V]],
+    pollInterval: FiniteDuration
+  )(
+    implicit F: Concurrent[F],
+    timer: Timer[F]
+  ): Resource[F, Fiber[F, Unit]] =
+    Resource.make {
+      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
+        F.guaranteeCase {
+            polls
+              .enqueue1(Request.poll)
+              .flatMap(_ => timer.sleep(pollInterval))
+              .foreverM[Unit]
+          } {
+            case ExitCase.Error(e) => deferred.complete(Left(e))
+            case _                 => deferred.complete(Right(()))
+          }
+          .start
+          .map(fiber => Fiber[F, Unit](deferred.get.rethrow, fiber.cancel.start.void))
+      }
+    }(_.cancel)
 
   private[this] def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     settings: ConsumerSettings[F, K, V],
     actor: Fiber[F, Unit],
+    polls: Fiber[F, Unit],
     streamIdRef: Ref[F, Int],
     id: Int,
     withConsumer: WithConsumer[F]
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-      override val fiber: Fiber[F, Unit] =
-        actor
+      override val fiber: Fiber[F, Unit] = {
+        val actorFiber =
+          Fiber[F, Unit](F.guaranteeCase(actor.join) {
+            case ExitCase.Completed => polls.cancel
+            case _                  => F.unit
+          }, actor.cancel)
+
+        val pollsFiber =
+          Fiber[F, Unit](F.guaranteeCase(polls.join) {
+            case ExitCase.Completed => actor.cancel
+            case _                  => F.unit
+          }, polls.cancel)
+
+        actorFiber combine pollsFiber
+      }
 
       override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
@@ -667,6 +673,7 @@ private[kafka] object KafkaConsumer {
       implicit0(jitter: Jitter[F]) <- Resource.liftF(Jitter.default[F])
       implicit0(logging: Logging[F]) <- Resource.liftF(Logging.default[F](id))
       requests <- Resource.liftF(Queue.unbounded[F, Request[F, K, V]])
+      polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, Int](0))
       withConsumer <- WithConsumer(settings)
@@ -678,6 +685,7 @@ private[kafka] object KafkaConsumer {
         requests = requests,
         withConsumer = withConsumer
       )
-      actor <- startConsumerActor(requests, actor, settings)
-    } yield createKafkaConsumer(requests, settings, actor, streamId, id, withConsumer)
+      actor <- startConsumerActor(requests, polls, actor)
+      polls <- startPollScheduler(polls, settings.pollInterval)
+    } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id, withConsumer)
 }
