@@ -193,13 +193,16 @@ object ConsumerRecord {
           key = key,
           value = value,
           headers = headers,
-          timestamp = record.timestampType match {
-            case CREATE_TIME if record.timestamp != NO_TIMESTAMP =>
-              Timestamp.createTime(record.timestamp)
-            case LOG_APPEND_TIME if record.timestamp != NO_TIMESTAMP =>
-              Timestamp.logAppendTime(record.timestamp)
-            case _ =>
+          timestamp = {
+            if (record.timestamp != NO_TIMESTAMP) {
+              record.timestampType match {
+                case CREATE_TIME     => Timestamp.createTime(record.timestamp)
+                case LOG_APPEND_TIME => Timestamp.logAppendTime(record.timestamp)
+                case _               => Timestamp.unknownTime(record.timestamp)
+              }
+            } else {
               Timestamp.none
+            }
           },
           serializedKeySize =
             if (record.serializedKeySize != NULL_SIZE)

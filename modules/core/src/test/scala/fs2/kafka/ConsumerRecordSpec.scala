@@ -38,7 +38,7 @@ final class ConsumerRecordSpec extends BaseSpec {
       check(NO_TIMESTAMP, CREATE_TIME)(_.timestamp.isEmpty shouldBe true)
       check(NO_TIMESTAMP, LOG_APPEND_TIME)(_.timestamp.isEmpty shouldBe true)
 
-      check(0, NO_TIMESTAMP_TYPE)(_.timestamp.isEmpty shouldBe true)
+      check(0, NO_TIMESTAMP_TYPE)(_.timestamp.unknownTime shouldBe Some(0))
       check(0, CREATE_TIME)(_.timestamp.createTime shouldBe Some(0))
       check(0, LOG_APPEND_TIME)(_.timestamp.logAppendTime shouldBe Some(0))
     }

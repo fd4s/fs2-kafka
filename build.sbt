@@ -225,7 +225,8 @@ lazy val mimaSettings = Seq(
     import com.typesafe.tools.mima.core._
     // format: off
     Seq(
-      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*")
+      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Timestamp.unknownTime")
     )
     // format: on
   }
