@@ -20,8 +20,8 @@ import cats.Show
 
 /**
   * [[Timestamp]] is an optional timestamp value representing
-  * either the creation time of the record, the time when the
-  * record was appended to the log, or no timestamp at all.
+  * a [[createTime]], [[logAppendTime]], [[unknownTime]], or
+  * no timestamp at all.
   */
 sealed abstract class Timestamp {
 
@@ -37,6 +37,12 @@ sealed abstract class Timestamp {
     * to the log.
     */
   def logAppendTime: Option[Long]
+
+  /**
+    * Returns the timestamp value, if there is a
+    * timestamp, but the type is unknown.
+    */
+  def unknownTime: Option[Long]
 
   /**
     * Returns `true` if there is no timestamp value; otherwise `false`.
@@ -61,6 +67,7 @@ object Timestamp {
     new Timestamp {
       override val createTime: Option[Long] = Some(value)
       override val logAppendTime: Option[Long] = None
+      override val unknownTime: Option[Long] = None
       override val isEmpty: Boolean = false
       override def toString: String = s"Timestamp(createTime = $value)"
     }
@@ -74,8 +81,22 @@ object Timestamp {
     new Timestamp {
       override val createTime: Option[Long] = None
       override val logAppendTime: Option[Long] = Some(value)
+      override val unknownTime: Option[Long] = None
       override val isEmpty: Boolean = false
       override def toString: String = s"Timestamp(logAppendTime = $value)"
+    }
+
+  /**
+    * Creates a new [[Timestamp]] instance from the specified
+    * timestamp value, when the timestamp type is unknown.
+    */
+  def unknownTime(value: Long): Timestamp =
+    new Timestamp {
+      override val createTime: Option[Long] = None
+      override val logAppendTime: Option[Long] = None
+      override val unknownTime: Option[Long] = Some(value)
+      override val isEmpty: Boolean = false
+      override def toString: String = s"Timestamp(unknownTime = $value)"
     }
 
   /**
@@ -85,6 +106,7 @@ object Timestamp {
     new Timestamp {
       override val createTime: Option[Long] = None
       override val logAppendTime: Option[Long] = None
+      override val unknownTime: Option[Long] = None
       override val isEmpty: Boolean = true
       override def toString: String = "Timestamp()"
     }

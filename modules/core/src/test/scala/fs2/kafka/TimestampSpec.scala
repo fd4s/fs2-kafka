@@ -19,6 +19,12 @@ final class TimestampSpec extends BaseSpec {
       }
     }
 
+    it("should not have an unknownTime") {
+      forAll { value: Long =>
+        Timestamp.createTime(value).unknownTime shouldBe None
+      }
+    }
+
     it("should include the createTime in toString") {
       forAll { value: Long =>
         val timestamp = Timestamp.createTime(value)
@@ -44,10 +50,47 @@ final class TimestampSpec extends BaseSpec {
       }
     }
 
+    it("should not have an unknownTime") {
+      forAll { value: Long =>
+        Timestamp.logAppendTime(value).unknownTime shouldBe None
+      }
+    }
+
     it("should include the logAppendTime in toString") {
       forAll { value: Long =>
         val timestamp = Timestamp.logAppendTime(value)
         timestamp.toString should include(s"logAppendTime = $value")
+        timestamp.toString shouldBe timestamp.show
+      }
+    }
+  }
+
+  describe("Timeout#unknownTime") {
+    it("should not have a logAppendTime") {
+      forAll { value: Long =>
+        Timestamp.unknownTime(value).logAppendTime shouldBe None
+      }
+    }
+
+    it("should not have a createTime") {
+      forAll { value: Long =>
+        Timestamp.unknownTime(value).createTime shouldBe None
+      }
+    }
+
+    it("should have an unknownTime") {
+      forAll { value: Long =>
+        val timestamp = Timestamp.unknownTime(value)
+        timestamp.unknownTime shouldBe Some(value)
+        timestamp.nonEmpty shouldBe true
+        timestamp.isEmpty shouldBe false
+      }
+    }
+
+    it("should include the unknownTime in toString") {
+      forAll { value: Long =>
+        val timestamp = Timestamp.unknownTime(value)
+        timestamp.toString should include(s"unknownTime = $value")
         timestamp.toString shouldBe timestamp.show
       }
     }
@@ -60,6 +103,10 @@ final class TimestampSpec extends BaseSpec {
 
     it("should not have logAppendTime") {
       Timestamp.none.logAppendTime shouldBe None
+    }
+
+    it("should not have unknownTime") {
+      Timestamp.none.unknownTime shouldBe None
     }
 
     it("should be empty") {
