@@ -6,7 +6,7 @@ val catsVersion = "2.0.0"
 
 val confluentVersion = "5.3.1"
 
-val fs2Version = "2.0.0"
+val fs2Version = "2.0.1"
 
 val kafkaVersion = "2.3.0"
 
@@ -226,6 +226,7 @@ lazy val mimaSettings = Seq(
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"), // https://github.com/lightbend/mima/issues/361
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Timestamp.unknownTime")
     )
     // format: on
