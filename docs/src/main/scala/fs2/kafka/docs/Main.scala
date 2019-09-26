@@ -1,8 +1,8 @@
 package fs2.kafka.docs
 
 import fs2.kafka.build.info._
-
 import java.nio.file.{FileSystems, Path}
+import scala.collection.Seq
 
 object Main {
   def sourceDirectoryPath(rest: String*): Path =
