@@ -12,7 +12,7 @@ val kafkaVersion = "2.3.0"
 
 val vulcanVersion = "0.2.1"
 
-val scala212 = "2.12.8"
+val scala212 = "2.12.10"
 
 val scala213 = "2.13.0"
 
@@ -20,8 +20,8 @@ lazy val `fs2-kafka` = project
   .in(file("."))
   .settings(
     mimaSettings,
+    scalaSettings,
     noPublishSettings,
-    scalaVersion := scala212,
     console := (console in (core, Compile)).value,
     console in Test := (console in (core, Test)).value
   )
@@ -101,7 +101,7 @@ lazy val dependencySettings = Seq(
 lazy val mdocSettings = Seq(
   mdoc := run.in(Compile).evaluated,
   scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-  crossScalaVersions := Seq(scala212),
+  crossScalaVersions := Seq(scalaVersion.value),
   unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(core, vulcan),
   target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
   cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
@@ -240,7 +240,7 @@ lazy val noPublishSettings =
   )
 
 lazy val scalaSettings = Seq(
-  scalaVersion := scala212,
+  scalaVersion := scala213,
   crossScalaVersions := Seq(scala212, scala213),
   scalacOptions ++= Seq(
     "-deprecation",
