@@ -1,6 +1,7 @@
 package fs2.kafka
 
-import org.scalatest._
+import org.scalatest.{Matchers => _, _}
+import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck._
 import org.scalatest.funspec.AnyFunSpec
 
