@@ -6,9 +6,11 @@ val catsVersion = "2.0.0"
 
 val confluentVersion = "5.3.1"
 
+val embeddedKafkaVersion = "2.3.0"
+
 val fs2Version = "2.0.1"
 
-val kafkaVersion = "2.3.0"
+val kafkaVersion = "2.3.1"
 
 val vulcanVersion = "0.2.2"
 
@@ -89,7 +91,7 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= {
     if (!scalaVersion.value.startsWith("2.13"))
       Seq(
-        "io.github.embeddedkafka" %% "embedded-kafka" % "2.3.0",
+        "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
         "org.apache.kafka" %% "kafka" % kafkaVersion
       ).map(_ % Test)
     else Seq.empty
