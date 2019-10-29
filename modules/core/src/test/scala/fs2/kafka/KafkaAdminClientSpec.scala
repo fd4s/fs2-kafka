@@ -5,7 +5,14 @@ import cats.implicits._
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewPartitions, NewTopic}
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.acl._
 import org.apache.kafka.common.config.ConfigResource
+import org.apache.kafka.common.resource.{
+  PatternType,
+  ResourcePattern,
+  ResourcePatternFilter,
+  ResourceType
+}
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
   describe("KafkaAdminClient") {
@@ -178,6 +185,60 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
           }
           .unsafeRunSync()
       }
+    }
+
+    it("should support ACLs-related functionality") {
+      withKafka(
+        Map(
+          "authorizer.class.name" -> "kafka.security.auth.SimpleAclAuthorizer",
+          "allow.everyone.if.no.acl.found" -> "true"
+        ),
+        (config, topic) => {
+          commonSetup(topic, config)
+
+          adminClientResource[IO](adminClientSettings(config)).use {
+            adminClient =>
+              for {
+                describedAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
+                _ <- IO(assert(describedAcls.isEmpty))
+
+                aclEntry = new AccessControlEntry(
+                  "User:ANONYMOUS",
+                  "*",
+                  AclOperation.DESCRIBE,
+                  AclPermissionType.ALLOW
+                )
+                pattern = new ResourcePattern(ResourceType.TOPIC, topic, PatternType.LITERAL)
+                acl = new AclBinding(pattern, aclEntry)
+                _ <- adminClient.createAcls(List(acl))
+                foundAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
+                _ <- IO(assert(foundAcls.length == 1))
+                _ <- IO(assert(foundAcls.head.pattern() === pattern))
+
+                // delete another Entry
+                _ <- adminClient.deleteAcls(
+                  List(
+                    new AclBindingFilter(
+                      ResourcePatternFilter.ANY,
+                      new AccessControlEntryFilter(
+                        "User:ANONYMOUS",
+                        "*",
+                        AclOperation.WRITE,
+                        AclPermissionType.ALLOW
+                      )
+                    )
+                  )
+                )
+                foundAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
+                _ <- IO(assert(foundAcls.length == 1))
+
+                _ <- adminClient.deleteAcls(List(AclBindingFilter.ANY))
+                foundAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
+                _ <- IO(assert(foundAcls.isEmpty))
+              } yield ()
+          }.unsafeRunSync
+        }
+      )
     }
 
     it("should support misc defined functionality") {

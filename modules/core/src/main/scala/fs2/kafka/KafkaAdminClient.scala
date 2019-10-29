@@ -16,14 +16,15 @@
 
 package fs2.kafka
 
-import cats.effect._
 import cats.Foldable
+import cats.effect._
+import fs2.kafka.KafkaAdminClient._
+import fs2.kafka.internal.WithAdminClient
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
-import fs2.kafka.internal.WithAdminClient
-import fs2.kafka.KafkaAdminClient._
 import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.common.acl.{AclBinding, AclBindingFilter}
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.{Node, TopicPartition}
 
@@ -61,6 +62,13 @@ sealed abstract class KafkaAdminClient[F[_]] {
   ): F[Unit]
 
   /**
+    * Creates the specified ACLs
+    */
+  def createAcls[G[_]](acls: G[AclBinding])(
+    implicit G: Foldable[G]
+  ): F[Unit]
+
+  /**
     * Deletes the specified topic.
     */
   def deleteTopic(topic: String): F[Unit]
@@ -69,6 +77,13 @@ sealed abstract class KafkaAdminClient[F[_]] {
     * Deletes the specified topics.
     */
   def deleteTopics[G[_]](topics: G[String])(
+    implicit G: Foldable[G]
+  ): F[Unit]
+
+  /**
+    * Deletes ACLs based on specified filters
+    */
+  def deleteAcls[G[_]](filters: G[AclBindingFilter])(
     implicit G: Foldable[G]
   ): F[Unit]
 
@@ -115,6 +130,12 @@ sealed abstract class KafkaAdminClient[F[_]] {
   def describeTopics[G[_]](topics: G[String])(
     implicit G: Foldable[G]
   ): F[Map[String, TopicDescription]]
+
+  /**
+    * Describes the ACLs based on the specified filters, returning a
+    * `List` of `AclBinding` entries matched
+    */
+  def describeAcls(filter: AclBindingFilter): F[List[AclBinding]]
 
   /**
     * Lists consumer group offsets. Returns offsets per topic-partition using:
@@ -203,6 +224,12 @@ object KafkaAdminClient {
   )(implicit G: Foldable[G]): F[Unit] =
     withAdminClient(_.createTopics(topics.asJava).all.void)
 
+  private[this] def createAclsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    acls: G[AclBinding]
+  )(implicit G: Foldable[G]): F[Unit] =
+    withAdminClient(_.createAcls(acls.asJava).all.void)
+
   private[this] def deleteTopicWith[F[_]](
     withAdminClient: WithAdminClient[F],
     topic: String
@@ -214,6 +241,12 @@ object KafkaAdminClient {
     topics: G[String]
   )(implicit G: Foldable[G]): F[Unit] =
     withAdminClient(_.deleteTopics(topics.asJava).all.void)
+
+  private[this] def deleteAclsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    filters: G[AclBindingFilter]
+  )(implicit G: Foldable[G]): F[Unit] =
+    withAdminClient(_.deleteAcls(filters.asJava).all.void)
 
   sealed abstract class DescribeCluster[F[_]] {
 
@@ -265,6 +298,12 @@ object KafkaAdminClient {
     topics: G[String]
   )(implicit G: Foldable[G]): F[Map[String, TopicDescription]] =
     withAdminClient(_.describeTopics(topics.asJava).all.map(_.toMap))
+
+  private[this] def describeAclsWith[F[_]](
+    withAdminClient: WithAdminClient[F],
+    filter: AclBindingFilter
+  ): F[List[AclBinding]] =
+    withAdminClient(_.describeAcls(filter).values().map(_.toList))
 
   sealed abstract class ListConsumerGroupOffsetsForPartitions[F[_]] {
 
@@ -441,11 +480,21 @@ object KafkaAdminClient {
         ): F[Unit] =
           createTopicsWith(client, topics)
 
+        override def createAcls[G[_]](acls: G[AclBinding])(
+          implicit G: Foldable[G]
+        ): F[Unit] =
+          createAclsWith(client, acls)
+
         override def deleteTopic(topic: String): F[Unit] =
           deleteTopicWith(client, topic)
 
         override def deleteTopics[G[_]](topics: G[String])(implicit G: Foldable[G]): F[Unit] =
           deleteTopicsWith(client, topics)
+
+        override def deleteAcls[G[_]](filters: G[AclBindingFilter])(
+          implicit G: Foldable[G]
+        ): F[Unit] =
+          deleteAclsWith(client, filters)
 
         override def describeCluster: DescribeCluster[F] =
           describeClusterWith(client)
@@ -473,6 +522,9 @@ object KafkaAdminClient {
 
         override def listTopics: ListTopics[F] =
           listTopicsWith(client)
+
+        override def describeAcls(filter: AclBindingFilter): F[List[AclBinding]] =
+          describeAclsWith(client, filter)
 
         override def toString: String =
           "KafkaAdminClient$" + System.identityHashCode(this)
