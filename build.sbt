@@ -227,7 +227,10 @@ lazy val mimaSettings = Seq(
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
       ProblemFilters.exclude[IncompatibleSignatureProblem]("*"), // https://github.com/lightbend/mima/issues/361
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Timestamp.unknownTime")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Timestamp.unknownTime"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.createAcls"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteAcls"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.describeAcls")
     )
     // format: on
   }

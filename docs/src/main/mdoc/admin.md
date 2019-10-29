@@ -133,6 +133,38 @@ def consumerGroupOperations[F[_]: Concurrent: ContextShift: Parallel]: F[Unit] =
   }
 ```
 
+## ACLs
+
+There are ACL management functions to describe, create and delete ACL entries.
+
+```scala mdoc:silent
+import org.apache.kafka.common.acl._
+import org.apache.kafka.common.resource.{
+  PatternType,
+  ResourcePattern, 
+  ResourceType
+}
+
+def aclOperations[F[_]: Concurrent: ContextShift]: F[Unit] =
+  kafkaAdminClientResource[F]("localhost:9092").use { client =>
+    for {
+      describedAcls <- client.describeAcls(AclBindingFilter.ANY)
+
+      aclEntry = new AccessControlEntry(
+        "User:ANONYMOUS",
+        "*",
+        AclOperation.DESCRIBE,
+        AclPermissionType.ALLOW
+      )
+      pattern = new ResourcePattern(ResourceType.TOPIC, "topic1", PatternType.LITERAL)
+      acl = new AclBinding(pattern, aclEntry)
+      _ <- client.createAcls(List(acl))
+
+      _ <- client.deleteAcls(List(AclBindingFilter.ANY))   
+    } yield ()
+  }
+``` 
+
 [kafkaadminclient]: @API_BASE_URL@/KafkaAdminClient.html
 [adminclientsettings]: @API_BASE_URL@/AdminClientSettings.html
 [admin-client]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/admin/AdminClient.html
