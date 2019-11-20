@@ -11,7 +11,7 @@ The `@VULCAN_MODULE_NAME@` module provides [Avro](https://avro.apache.org) seria
 
 We start by defining the type we want to serialize or deserialize, and create a `Codec`.
 
-```scala mdoc
+```scala mdoc:reset-object
 import cats.implicits._
 import vulcan.Codec
 

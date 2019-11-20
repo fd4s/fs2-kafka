@@ -16,7 +16,7 @@ val vulcanVersion = "0.2.2"
 
 val scala212 = "2.12.10"
 
-val scala213 = "2.13.0"
+val scala213 = "2.13.1"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -97,7 +97,7 @@ lazy val dependencySettings = Seq(
     else Seq.empty
   },
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.10.3" cross CrossVersion.binary)
+  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full)
 )
 
 lazy val mdocSettings = Seq(
