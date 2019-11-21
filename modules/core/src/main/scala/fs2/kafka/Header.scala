@@ -67,6 +67,9 @@ object Header {
       value = serializer.serialize(value)
     )
 
+  def unapply(h: Header): Some[(String, Array[Byte])] =
+    Some((h.key, h.value))
+
   implicit val headerShow: Show[Header] =
     Show.fromToString
 }

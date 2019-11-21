@@ -167,6 +167,9 @@ object ConsumerRecord {
       leaderEpoch = None
     )
 
+  def unapply[K, V](cr: ConsumerRecord[K, V]): Some[(String, Int, Long, K, V, Headers)] =
+    Some((cr.topic, cr.partition, cr.offset, cr.key, cr.value, cr.headers))
+
   private[this] def deserializeFromBytes[F[_], K, V](
     record: KafkaByteConsumerRecord,
     headers: Headers,

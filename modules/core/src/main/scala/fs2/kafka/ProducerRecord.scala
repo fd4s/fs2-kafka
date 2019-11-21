@@ -119,6 +119,11 @@ object ProducerRecord {
       headers = Headers.empty
     )
 
+  def unapply[K, V](
+    pr: ProducerRecord[K, V]
+  ): Some[(String, Option[Int], Option[Long], K, V, Headers)] =
+    Some((pr.topic, pr.partition, pr.timestamp, pr.key, pr.value, pr.headers))
+
   implicit def producerRecordShow[K, V](
     implicit
     K: Show[K],

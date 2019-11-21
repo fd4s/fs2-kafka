@@ -80,6 +80,11 @@ object ProducerResult {
   ): ProducerResult[K, V, P] =
     new ProducerResultImpl(records, passthrough)
 
+  def unapply[K, V, P](
+    result: ProducerResult[K, V, P]
+  ): Some[(Chunk[(ProducerRecord[K, V], RecordMetadata)], P)] =
+    Some((result.records, result.passthrough))
+
   implicit def producerResultShow[K, V, P](
     implicit
     K: Show[K],

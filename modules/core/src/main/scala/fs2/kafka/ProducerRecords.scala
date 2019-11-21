@@ -100,6 +100,9 @@ object ProducerRecords {
     new ProducerRecordsImpl(chunk, passthrough)
   }
 
+  def unapply[K, V, P](prs: ProducerRecords[K, V, P]): Some[(Chunk[ProducerRecord[K, V]], P)] =
+    Some((prs.records, prs.passthrough))
+
   /**
     * Creates a new [[ProducerRecords]] for producing exactly one
     * `ProducerRecord`, then emitting a [[ProducerResult]] with
