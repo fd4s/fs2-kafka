@@ -77,6 +77,11 @@ object TransactionalProducerRecords {
   ): TransactionalProducerRecords[F, K, V, P] =
     new TransactionalProducerRecordsImpl(records, passthrough)
 
+  def unapply[F[_], K, V, P](
+    tpr: TransactionalProducerRecords[F, K, V, P]
+  ): Some[(Chunk[CommittableProducerRecords[F, K, V]], P)] =
+    Some((tpr.records, tpr.passthrough))
+
   /**
     * Creates a new [[TransactionalProducerRecords]] for producing exactly
     * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]

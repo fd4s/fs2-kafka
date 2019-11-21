@@ -93,6 +93,17 @@ object TransactionalProducerSettings {
         .withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId)
     )
 
+  def unapply[F[_], K, V](
+    tps: TransactionalProducerSettings[F, K, V]
+  ): Some[(String, ProducerSettings[F, K, V])] =
+    Some(
+      (
+        tps.transactionalId,
+        tps.producerSettings
+          .withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, tps.transactionalId)
+      )
+    )
+
   implicit def transactionalProducerSettingsShow[F[_], K, V]
     : Show[TransactionalProducerSettings[F, K, V]] =
     Show.fromToString
