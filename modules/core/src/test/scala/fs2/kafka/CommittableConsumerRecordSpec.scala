@@ -8,7 +8,7 @@ import org.apache.kafka.common.TopicPartition
 final class CommittableConsumerRecordSpec extends BaseSpec {
   describe("CommittableConsumerRecord") {
     it("should have a Show instance and matching toString") {
-      val record =
+      val record: CommittableConsumerRecord[IO, String, String] =
         CommittableConsumerRecord(
           ConsumerRecord("topic", 0, 0L, "key", "value"),
           CommittableOffset[IO](
@@ -21,7 +21,11 @@ final class CommittableConsumerRecordSpec extends BaseSpec {
 
       assert {
         record.toString == "CommittableConsumerRecord(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))" &&
-        record.show == "CommittableConsumerRecord(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))"
+        record.show == "CommittableConsumerRecord(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))" &&
+        (record.record match {
+          case ConsumerRecord("topic", 0, 0L, "key", "value", _) => true
+          case _                                                 => false
+        })
       }
     }
   }
