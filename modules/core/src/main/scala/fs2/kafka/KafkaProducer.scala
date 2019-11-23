@@ -16,12 +16,16 @@
 
 package fs2.kafka
 
+import java.time.Instant
+
 import cats.Apply
 import cats.effect._
-import cats.effect.concurrent.Deferred
+import cats.effect.concurrent.{Deferred, Ref}
 import cats.implicits._
+import fs2.Chunk
 import fs2.kafka.internal._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
+import org.apache.kafka.common.TopicPartition
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -88,6 +92,54 @@ private[kafka] object KafkaProducer {
         }
       }
     }
+
+  def unit[F[_], K, V](
+    implicit F: Sync[F],
+    context: ConcurrentEffect[F]
+  ): F[KafkaProducer[F, K, V]] =
+    F.pure(new KafkaProducer[F, K, V] {
+
+      import scala.collection.mutable.Map
+      import scala.collection.mutable.ListBuffer
+
+      val kafkaBrokerRef: Ref[F, Map[String, ListBuffer[RecordMetadata]]] =
+        Ref.unsafe[F, Map[String, ListBuffer[RecordMetadata]]](
+          Map.empty[String, ListBuffer[RecordMetadata]]
+        )
+
+      override def produce[P](records: ProducerRecords[K, V, P]): F[F[ProducerResult[K, V, P]]] = {
+        val prRec: F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = records.records.traverse {
+          pr =>
+            {
+              kafkaBrokerRef.get.map {
+                broker =>
+                  {
+                    val queue: ListBuffer[RecordMetadata] =
+                      broker.getOrElse(pr.topic, ListBuffer.empty[RecordMetadata])
+                    val timestamp = Instant.now().toEpochMilli
+                    val topic = new TopicPartition(pr.topic, pr.partition.getOrElse(1))
+                    queue.lastOption.fold {
+                      val newElem = new RecordMetadata(topic, 1L, 0L, timestamp, 1L, 1, 1)
+                      val newQueue = queue += newElem
+                      broker += (pr.topic -> newQueue)
+                      (pr, newElem)
+                    } { le =>
+                      val newElem = new RecordMetadata(topic, le.offset(), 1L, timestamp, 1L, 1, 1)
+                      val newQueue = queue += newElem
+                      broker += (pr.topic -> newQueue)
+                      (pr, newElem)
+                    }
+                  }
+              }
+            }
+        }
+        val passthrough: P = records.passthrough
+
+        F.pure(prRec.map { chunk =>
+          ProducerResult(chunk, passthrough)
+        })
+      }
+    })
 
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
