@@ -281,14 +281,14 @@ object Serializer {
 
   object Record {
     def apply[F[_], A](
-      implicit serializer: Serializer.Record[F, A]
-    ): Serializer.Record[F, A] =
+      implicit serializer: RecordSerializer[F, A]
+    ): RecordSerializer[F, A] =
       serializer
 
     def const[F[_], A](
       serializer: => F[Serializer[F, A]]
-    ): Serializer.Record[F, A] =
-      Serializer.Record.instance(
+    ): RecordSerializer[F, A] =
+      RecordSerializer.instance(
         forKey = serializer,
         forValue = serializer
       )
@@ -296,11 +296,11 @@ object Serializer {
     def instance[F[_], A](
       forKey: => F[Serializer[F, A]],
       forValue: => F[Serializer[F, A]]
-    ): Serializer.Record[F, A] = {
+    ): RecordSerializer[F, A] = {
       def _forKey = forKey
       def _forValue = forValue
 
-      new Serializer.Record[F, A] {
+      new RecordSerializer[F, A] {
         override def forKey: F[Serializer[F, A]] =
           _forKey
 
@@ -314,13 +314,13 @@ object Serializer {
 
     def lift[F[_], A](serializer: => Serializer[F, A])(
       implicit F: Applicative[F]
-    ): Serializer.Record[F, A] =
-      Serializer.Record.const(F.pure(serializer))
+    ): RecordSerializer[F, A] =
+      RecordSerializer.const(F.pure(serializer))
 
     implicit def lift[F[_], A](
       implicit F: Applicative[F],
       serializer: Serializer[F, A]
-    ): Serializer.Record[F, A] =
-      Serializer.Record.lift(serializer)
+    ): RecordSerializer[F, A] =
+      RecordSerializer.lift(serializer)
   }
 }

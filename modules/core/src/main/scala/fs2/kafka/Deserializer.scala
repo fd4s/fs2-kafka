@@ -343,14 +343,14 @@ object Deserializer {
 
   object Record {
     def apply[F[_], A](
-      implicit deserializer: Deserializer.Record[F, A]
-    ): Deserializer.Record[F, A] =
+      implicit deserializer: RecordDeserializer[F, A]
+    ): RecordDeserializer[F, A] =
       deserializer
 
     def const[F[_], A](
       deserializer: => F[Deserializer[F, A]]
-    ): Deserializer.Record[F, A] =
-      Deserializer.Record.instance(
+    ): RecordDeserializer[F, A] =
+      RecordDeserializer.instance(
         forKey = deserializer,
         forValue = deserializer
       )
@@ -358,11 +358,11 @@ object Deserializer {
     def instance[F[_], A](
       forKey: => F[Deserializer[F, A]],
       forValue: => F[Deserializer[F, A]]
-    ): Deserializer.Record[F, A] = {
+    ): RecordDeserializer[F, A] = {
       def _forKey = forKey
       def _forValue = forValue
 
-      new Deserializer.Record[F, A] {
+      new RecordDeserializer[F, A] {
         override def forKey: F[Deserializer[F, A]] =
           _forKey
 
@@ -376,13 +376,13 @@ object Deserializer {
 
     def lift[F[_], A](deserializer: => Deserializer[F, A])(
       implicit F: Applicative[F]
-    ): Deserializer.Record[F, A] =
-      Deserializer.Record.const(F.pure(deserializer))
+    ): RecordDeserializer[F, A] =
+      RecordDeserializer.const(F.pure(deserializer))
 
     implicit def lift[F[_], A](
       implicit F: Applicative[F],
       deserializer: Deserializer[F, A]
-    ): Deserializer.Record[F, A] =
-      Deserializer.Record.lift(deserializer)
+    ): RecordDeserializer[F, A] =
+      RecordDeserializer.lift(deserializer)
   }
 }
