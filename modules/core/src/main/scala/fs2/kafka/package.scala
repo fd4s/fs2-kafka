@@ -58,6 +58,14 @@ package object kafka {
   type KafkaByteProducerRecord =
     org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
+  /** Type and value aliases for `fs2.vulcan.Deserializer.Record`. */
+  type RecordDeserializer[F[_], A] = Deserializer.Record[F, A]
+  val RecordDeserializer: Deserializer.Record.type = Deserializer.Record
+
+  /** Type and value aliases for `fs2.vulcan.Serializer.record`. */
+  type RecordSerializer[F[_], A] = Serializer.Record[F, A]
+  val RecordSerializer: Serializer.Record.type = Serializer.Record
+
   /**
     * Commits offsets in batches of every `n` offsets or time window
     * of length `d`, whichever happens first. If there are no offsets
