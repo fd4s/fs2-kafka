@@ -110,7 +110,7 @@ lazy val mdocSettings = Seq(
   docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(unidoc in Compile).value,
   // format: off
   scalacOptions in (ScalaUnidoc, unidoc) ++= Seq(
-    "-doc-source-url", s"https://github.com/ovotech/fs2-kafka/tree/v${(latestVersion in ThisBuild).value}€{FILE_PATH}.scala",
+    "-doc-source-url", s"https://github.com/fd4s/fs2-kafka/tree/v${(latestVersion in ThisBuild).value}€{FILE_PATH}.scala",
     "-sourcepath", baseDirectory.in(LocalRootProject).value.getAbsolutePath,
     "-doc-title", "FS2 Kafka",
     "-doc-version", s"v${(latestVersion in ThisBuild).value}"
@@ -163,7 +163,7 @@ lazy val publishSettings =
     publishArtifact in Test := false,
     publishTo := sonatypePublishToBundle.value,
     pomIncludeRepository := (_ => false),
-    homepage := Some(url("https://ovotech.github.io/fs2-kafka")),
+    homepage := Some(url("https://fd4s.github.io/fs2-kafka")),
     licenses := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
     startYear := Some(2018),
     headerLicense := Some(
@@ -183,8 +183,8 @@ lazy val publishSettings =
     ),
     scmInfo := Some(
       ScmInfo(
-        url("https://github.com/ovotech/fs2-kafka"),
-        "scm:git@github.com:ovotech/fs2-kafka.git"
+        url("https://github.com/fd4s/fs2-kafka"),
+        "scm:git@github.com:fd4s/fs2-kafka.git"
       )
     ),
     releaseCrossBuild := false, // See https://github.com/sbt/sbt-release/issues/214
