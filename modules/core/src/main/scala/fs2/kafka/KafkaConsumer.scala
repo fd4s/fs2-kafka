@@ -30,7 +30,7 @@ import fs2.kafka.internal.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
 import java.util
-import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
@@ -206,6 +206,62 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
   def subscribe(regex: Regex): F[Unit]
 
   /**
+   * unsubscribe from all topics and partitions assigned by subscribe or assign
+   */
+  def unsubscribe: F[Unit]
+
+  /**
+   * @see org.apache.kafka.clients.consumer.KafkaConsumer#assign
+   *
+   * Manually assign a list of one topic partitions to this consumer. This interface does not allow for incremental assignment
+   * and will replace the previous assignment (if there is one).
+   *
+   * Manual topic assignment through this method does not use the consumer's group management
+   * functionality. As such, there will be no rebalance operation triggered when group membership or cluster and topic
+   * metadata change. Note that it is not possible to use both manual partition assignment with assign and group assigment with subscribe.
+   * <p>
+   * If auto-commit is enabled, an async commit (based on the old assignment) will be triggered before the new
+   * assignment replaces the old one.
+   *
+   * To unassign all partitions - use  [[KafkaConsumer.unsubscribe]]
+   *
+   */
+  def assign(partitions: NonEmptySet[TopicPartition]): F[Unit]
+
+  /**
+   * @see org.apache.kafka.clients.consumer.KafkaConsumer#assign
+   *
+   * Manually assign a list of partitions for one topic to this consumer. This interface does not allow for incremental assignment
+   * and will replace the previous assignment (if there is one).
+   *
+   * Manual topic assignment through this method does not use the consumer's group management
+   * functionality. As such, there will be no rebalance operation triggered when group membership or cluster and topic
+   * metadata change. Note that it is not possible to use both manual partition assignment with assign and group assigment with subscribe.
+   * <p>
+   * If auto-commit is enabled, an async commit (based on the old assignment) will be triggered before the new
+   * assignment replaces the old one.
+   *
+   * To unassign all partitions - use [[KafkaConsumer.unsubscribe]]
+   */
+  def assign(topic: String, partitions: NonEmptySet[Int]): F[Unit]
+
+  /**
+   * Same as other assign, but assigned to all partitions of topic
+   *
+   */
+  def assign(topic: String): F[Unit]
+
+  /**
+   * Get metadata of partitions from topic
+   */
+  def partitionsFor(topic: String): F[List[PartitionInfo]]
+
+  /**
+   * Get metadata of partitions from topic with timeout
+   */
+  def partitionsFor(topic: String, timeout: FiniteDuration): F[List[PartitionInfo]]
+
+  /**
     * Returns the first offset for the specified partitions.<br>
     * <br>
     * Timeout is determined by `default.api.timeout.ms`, which
@@ -262,6 +318,12 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
     * provided by [[KafkaConsumer]], there is no need to use this.
     */
   def fiber: Fiber[F, Unit]
+
+  /**
+   * Get consumer metrics
+   * @see org.apache.kafka.clients.consumer.KafkaConsumer#metrics
+   */
+  def metrics: F[Map[MetricName, Metric]]
 }
 
 private[kafka] object KafkaConsumer {
@@ -572,6 +634,26 @@ private[kafka] object KafkaConsumer {
           }
         }
 
+      override def partitionsFor(
+        topic: String
+      ): F[List[PartitionInfo]] =
+        withConsumer { consumer =>
+          F.delay {
+            consumer.partitionsFor(topic).asScala.toList
+          }
+        }
+
+      override def partitionsFor(
+        topic: String,
+        timeout: FiniteDuration
+      ): F[List[PartitionInfo]] =
+        withConsumer { consumer =>
+          F.delay {
+            val jtimeout = java.time.Duration.ofNanos(timeout.toNanos)
+            consumer.partitionsFor(topic, jtimeout).asScala.toList
+          }
+        }
+
       override def position(partition: TopicPartition): F[Long] =
         withConsumer { consumer =>
           F.delay {
@@ -604,6 +686,32 @@ private[kafka] object KafkaConsumer {
             deferred = deferred
           )
         }
+
+      override def unsubscribe: F[Unit] =
+        request { deferred =>
+          Request.Unsubscribe(
+            deferred = deferred
+          )
+        }
+
+      override def assign(partitions: NonEmptySet[TopicPartition]): F[Unit] =
+        request { deferred =>
+          Request.AssignTopicPartitions(
+            topicPartitions = partitions,
+            deferred = deferred
+          )
+        }
+
+      override def assign(topic: String, partitions: NonEmptySet[Int]): F[Unit] =
+        assign(partitions.map(new TopicPartition(topic, _)))
+
+      override def assign(topic: String): F[Unit] = {
+        for {
+          partitions <- partitionsFor(topic).map(infos => infos.map(info => info.partition()))
+          _ <- NonEmptySet.fromSet(SortedSet(partitions: _*))
+            .map( assign(topic, _)).getOrElse(F.unit)
+        } yield ()
+      }
 
       override def beginningOffsets(
         partitions: Set[TopicPartition]
@@ -652,6 +760,13 @@ private[kafka] object KafkaConsumer {
               .endOffsets(partitions.asJava, timeout.asJava)
               .asInstanceOf[util.Map[TopicPartition, Long]]
               .toMap
+          }
+        }
+
+      override def metrics: F[Map[MetricName, Metric]] =
+        withConsumer { consumer =>
+          F.delay {
+            consumer.metrics().asScala.toMap
           }
         }
 
