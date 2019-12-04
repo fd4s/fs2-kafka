@@ -16,7 +16,7 @@
 
 package fs2.kafka.internal
 
-import cats.data.{Chain, NonEmptyList, NonEmptyVector}
+import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
 import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2.kafka.CommittableConsumerRecord
@@ -44,6 +44,15 @@ private[kafka] object LogEntry {
       s"Consumer subscribed to topics [${topics.toList.mkString(", ")}]. Current state [$state]."
   }
 
+  final case class AssignPartitions[F[_], K, V](
+    topicPartitions: NonEmptySet[TopicPartition],
+    state: State[F, K, V]
+  ) extends LogEntry {
+    override def level: LogLevel = Debug
+    override def message: String =
+      s"Consumer assigned partitions [${topicPartitions.toList.mkString(", ")}]. Current state [$state]."
+  }
+
   final case class SubscribedPattern[F[_], K, V](
     pattern: Pattern,
     state: State[F, K, V]
@@ -51,6 +60,14 @@ private[kafka] object LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Consumer subscribed to pattern [$pattern]. Current state [$state]."
+  }
+
+  final case class Unsubscribed[F[_], K, V](
+    state: State[F, K, V]
+  ) extends LogEntry {
+    override def level: LogLevel = Debug
+    override def message: String =
+      s"Consumer unsubscribed from all partitions. Current state [$state]."
   }
 
   final case class StoredFetch[F[_], K, V, A](
