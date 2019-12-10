@@ -55,3 +55,8 @@ final class AvroDeserializer[A] private[vulcan] (
   override def toString: String =
     "AvroDeserializer$" + System.identityHashCode(this)
 }
+
+object AvroDeserializer {
+  def apply[A](implicit codec: Codec[A]): AvroDeserializer[A] =
+    new AvroDeserializer(codec)
+}
