@@ -21,6 +21,7 @@ import cats.effect.{CancelToken, Concurrent, Sync}
 import cats.effect.concurrent.Ref
 import cats.implicits._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
+import fs2.kafka.internal.converters.collection
 import fs2.kafka.internal.converters.collection._
 import java.time.Duration
 import java.time.temporal.ChronoUnit
@@ -32,7 +33,6 @@ import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
 
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.javaapi.CollectionConverters
 
 private[kafka] object syntax {
   implicit final class LoggingSyntax[F[_], A](
@@ -241,8 +241,8 @@ private[kafka] object syntax {
   ) extends AnyVal {
     def asScala: Headers = {
       Headers.fromIterable(
-        CollectionConverters
-          .asScala(headers)
+        collection
+          .iterableAsScalaIterable(headers)
           .map(header => Header(header.key, header.value))
       )
     }

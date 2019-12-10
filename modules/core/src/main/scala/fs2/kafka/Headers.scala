@@ -139,7 +139,7 @@ object Headers {
 
         override def headers(key: String): java.lang.Iterable[KafkaHeader] = {
           map.get(key) match {
-            case Some(value) => Iterable.single(value: KafkaHeader).asJava
+            case Some(value) => Iterable.apply(value: KafkaHeader).asJava
             case None => Iterable.empty[KafkaHeader].asJava
           }
         }
@@ -181,7 +181,11 @@ object Headers {
     */
   def fromChain(headers: Chain[Header]): Headers =
     if (headers.isEmpty) empty
-    else new HeadersImpl(Map.from(headers.map(h => (h.key, h)).iterator))
+    else {
+      val builder = Map.newBuilder[String, Header]
+      builder ++= headers.map(h => (h.key, h)).iterator
+      new HeadersImpl(builder.result())
+    }
 
   /**
     * Creates a new [[Headers]] instance from the specified
@@ -197,9 +201,13 @@ object Headers {
   def fromIterable(headers: Iterable[Header]): Headers =
     if (headers.isEmpty) empty
     else {
-      val map = Map.newBuilder[String, Header]
-      headers.foreach(h => map.addOne((h.key, h)))
-      new HeadersImpl(map.result())
+      val builder = Map.newBuilder[String, Header]
+      val iter = headers.iterator
+      while (iter.hasNext) {
+        val header = iter.next()
+        builder.+=((header.key, header))
+      }
+      new HeadersImpl(builder.result())
     }
 
   /** The empty [[Headers]] instance without any [[Header]]s. */
