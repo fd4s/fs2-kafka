@@ -16,7 +16,7 @@
 
 package fs2.kafka
 
-import cats.data.{Chain, NonEmptyChain}
+import cats.data.Chain
 import cats.Show
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
@@ -72,6 +72,9 @@ sealed abstract class Headers {
   /** The included [[Header]]s as a `Chain`. */
   def toChain: Chain[Header]
 
+  /** The included [[Header]]s as a `Map`, where the keys is are [[Header.key]] */
+  def toMap: Map[String, Header]
+
   /** `true` if at least one [[Header]] is included; otherwise `false`. */
   final def nonEmpty: Boolean = !isEmpty
 
@@ -84,35 +87,40 @@ sealed abstract class Headers {
 
 object Headers {
   private[this] final class HeadersImpl(
-    val headers: NonEmptyChain[Header]
+    val headers: Map[String, Header]
   ) extends Headers {
     override def withKey(key: String): Option[Header] =
-      headers.find(_.key == key)
+      headers.get(key)
 
     override def append(header: Header): Headers =
-      new HeadersImpl(headers.append(header))
+      new HeadersImpl(headers.updated(header.key, header))
 
     override def append[V](key: String, value: V)(
       implicit serializer: HeaderSerializer[V]
     ): Headers = append(Header(key, value))
 
     override def exists(key: String): Boolean =
-      headers.exists(_.key == key)
+      headers.get(key).isDefined
 
     override def concat(that: Headers): Headers = {
       if (that.isEmpty) this
-      else new HeadersImpl(headers.appendChain(that.toChain))
+      else new HeadersImpl(headers ++ that.toMap)
     }
 
     override def toChain: Chain[Header] =
-      headers.toChain
+      Chain.fromSeq(headers.values.toSeq)
+
+    override val toMap: Map[String, Header] =
+      headers
 
     override val isEmpty: Boolean =
       false
 
     override def asJava: KafkaHeaders = {
+      val map: Map[String, Header] = toMap
+
       val array: Array[KafkaHeader] =
-        toChain.iterator.toArray
+        map.values.toArray
 
       new KafkaHeaders {
         override def add(header: KafkaHeader): KafkaHeaders =
@@ -129,11 +137,12 @@ object Headers {
           if (index != -1) array(index) else null
         }
 
-        override def headers(key: String): java.lang.Iterable[KafkaHeader] =
-          new java.lang.Iterable[KafkaHeader] {
-            override def iterator(): java.util.Iterator[KafkaHeader] =
-              array.iterator.filter(_.key == key).asJava
+        override def headers(key: String): java.lang.Iterable[KafkaHeader] = {
+          map.get(key) match {
+            case Some(value) => Iterable.single(value: KafkaHeader).asJava
+            case None => Iterable.empty[KafkaHeader].asJava
           }
+        }
 
         override val toArray: Array[KafkaHeader] =
           array
@@ -143,16 +152,20 @@ object Headers {
       }
     }
 
-    override def toString: String =
-      headers.mkStringAppend { (append, header) =>
-        append(header.key)
-        append(" -> ")
-        append(java.util.Arrays.toString(header.value))
-      }(
-        start = "Headers(",
-        sep = ", ",
-        end = ")"
-      )
+    override def toString: String = {
+      val builder = new java.lang.StringBuilder
+      builder.append("Headers(")
+      val iter = headers.values.iterator
+      while (iter.hasNext) {
+        val header = iter.next()
+        builder.append(header.key)
+        builder.append(" -> ")
+        builder.append(java.util.Arrays.toString(header.value))
+        if (iter.hasNext) builder.append(", ")
+      }
+      builder.append(")")
+      builder.toString
+    }
   }
 
   /**
@@ -160,8 +173,7 @@ object Headers {
     * [[Header]]s.
     */
   def apply(headers: Header*): Headers =
-    if (headers.isEmpty) empty
-    else new HeadersImpl(NonEmptyChain.fromChainUnsafe(Chain(headers: _*)))
+    fromIterable(headers)
 
   /**
     * Creates a new [[Headers]] instance from the specified
@@ -169,21 +181,26 @@ object Headers {
     */
   def fromChain(headers: Chain[Header]): Headers =
     if (headers.isEmpty) empty
-    else new HeadersImpl(NonEmptyChain.fromChainUnsafe(headers))
+    else new HeadersImpl(Map.from(headers.map(h => (h.key, h)).iterator))
 
   /**
     * Creates a new [[Headers]] instance from the specified
     * `Seq` of [[Header]]s.
     */
   def fromSeq(headers: Seq[Header]): Headers =
-    fromChain(Chain.fromSeq(headers))
+    fromIterable(headers)
 
   /**
     * Creates a new [[Headers]] instance from the specified
     * `Iterable` of [[Header]]s.
     */
   def fromIterable(headers: Iterable[Header]): Headers =
-    fromSeq(headers.toSeq)
+    if (headers.isEmpty) empty
+    else {
+      val map = Map.newBuilder[String, Header]
+      headers.foreach(h => map.addOne((h.key, h)))
+      new HeadersImpl(map.result())
+    }
 
   /** The empty [[Headers]] instance without any [[Header]]s. */
   val empty: Headers =
@@ -192,7 +209,7 @@ object Headers {
         None
 
       override def append(header: Header): Headers =
-        new HeadersImpl(NonEmptyChain.one(header))
+        new HeadersImpl(Map(header.key -> header))
 
       override def append[V](key: String, value: V)(
         implicit serializer: HeaderSerializer[V]
@@ -206,6 +223,9 @@ object Headers {
 
       override val toChain: Chain[Header] =
         Chain.empty
+
+      override val toMap: Map[String, Header] =
+        Map.empty
 
       override val isEmpty: Boolean =
         true
