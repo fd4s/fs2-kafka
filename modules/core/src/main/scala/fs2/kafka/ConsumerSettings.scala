@@ -589,7 +589,7 @@ object ConsumerSettings {
     )
 
   def apply[F[_], K, V](
-    keyDeserializer: Deserializer.Record[F, K],
+    keyDeserializer: RecordDeserializer[F, K],
     valueDeserializer: Deserializer[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
     create(
@@ -599,7 +599,7 @@ object ConsumerSettings {
 
   def apply[F[_], K, V](
     keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer.Record[F, V]
+    valueDeserializer: RecordDeserializer[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = F.pure(keyDeserializer),
@@ -607,8 +607,8 @@ object ConsumerSettings {
     )
 
   def apply[F[_], K, V](
-    keyDeserializer: Deserializer.Record[F, K],
-    valueDeserializer: Deserializer.Record[F, V]
+    keyDeserializer: RecordDeserializer[F, K],
+    valueDeserializer: RecordDeserializer[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = keyDeserializer.forKey,
@@ -617,8 +617,8 @@ object ConsumerSettings {
 
   def apply[F[_], K, V](
     implicit F: Sync[F],
-    keyDeserializer: Deserializer.Record[F, K],
-    valueDeserializer: Deserializer.Record[F, V]
+    keyDeserializer: RecordDeserializer[F, K],
+    valueDeserializer: RecordDeserializer[F, V]
   ): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = keyDeserializer.forKey,

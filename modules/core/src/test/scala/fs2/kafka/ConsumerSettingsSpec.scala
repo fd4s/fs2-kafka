@@ -275,7 +275,7 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
     it("should be able to create with and without deserializer creation effects") {
       val deserializer = Deserializer[IO, String]
-      val recordDeserializer = Deserializer.Record.lift(deserializer)
+      val recordDeserializer = RecordDeserializer.lift(deserializer)
 
       ConsumerSettings(deserializer, deserializer)
       ConsumerSettings(recordDeserializer, deserializer)
@@ -288,8 +288,8 @@ final class ConsumerSettingsSpec extends BaseSpec {
         Deserializer[IO, String]
           .map(identity)
 
-      implicit val deserializer: Deserializer.Record[IO, String] =
-        Deserializer.Record.lift(deserializerInstance)
+      implicit val deserializer: RecordDeserializer[IO, String] =
+        RecordDeserializer.lift(deserializerInstance)
 
       ConsumerSettings[IO, Int, Int]
       ConsumerSettings[IO, String, Int].keyDeserializer.unsafeRunSync shouldBe deserializerInstance

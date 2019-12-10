@@ -364,7 +364,7 @@ object ProducerSettings {
     )
 
   def apply[F[_], K, V](
-    keySerializer: Serializer.Record[F, K],
+    keySerializer: RecordSerializer[F, K],
     valueSerializer: Serializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     create(
@@ -374,7 +374,7 @@ object ProducerSettings {
 
   def apply[F[_], K, V](
     keySerializer: Serializer[F, K],
-    valueSerializer: Serializer.Record[F, V]
+    valueSerializer: RecordSerializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     create(
       keySerializer = F.pure(keySerializer),
@@ -382,8 +382,8 @@ object ProducerSettings {
     )
 
   def apply[F[_], K, V](
-    keySerializer: Serializer.Record[F, K],
-    valueSerializer: Serializer.Record[F, V]
+    keySerializer: RecordSerializer[F, K],
+    valueSerializer: RecordSerializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     create(
       keySerializer = keySerializer.forKey,
@@ -392,8 +392,8 @@ object ProducerSettings {
 
   def apply[F[_], K, V](
     implicit F: Sync[F],
-    keySerializer: Serializer.Record[F, K],
-    valueSerializer: Serializer.Record[F, V]
+    keySerializer: RecordSerializer[F, K],
+    valueSerializer: RecordSerializer[F, V]
   ): ProducerSettings[F, K, V] =
     create(
       keySerializer = keySerializer.forKey,

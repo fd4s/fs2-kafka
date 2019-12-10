@@ -19,14 +19,14 @@ package fs2.kafka.vulcan
 import _root_.vulcan.Codec
 import cats.effect.Sync
 import cats.implicits._
-import fs2.kafka.Deserializer
+import fs2.kafka.{Deserializer, RecordDeserializer}
 
 final class AvroDeserializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
   def using[F[_]](
     settings: AvroSettings[F]
-  )(implicit F: Sync[F]): Deserializer.Record[F, A] =
+  )(implicit F: Sync[F]): RecordDeserializer[F, A] =
     codec.schema match {
       case Right(schema) =>
         val createDeserializer: Boolean => F[Deserializer[F, A]] =
@@ -41,13 +41,13 @@ final class AvroDeserializer[A] private[vulcan] (
             }
           }
 
-        Deserializer.Record.instance(
+        RecordDeserializer.instance(
           forKey = createDeserializer(true),
           forValue = createDeserializer(false)
         )
 
       case Left(error) =>
-        Deserializer.Record.const {
+        RecordDeserializer.const {
           F.raiseError(error.throwable)
         }
     }
