@@ -20,8 +20,7 @@ import cats.{FlatMap, Foldable, Show}
 import cats.effect.{CancelToken, Concurrent, Sync}
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import fs2.kafka.{Header, Headers, KafkaHeaders}
-import fs2.kafka.internal.converters.collection
+import fs2.kafka.{Header, Headers, KafkaHeader, KafkaHeaders}
 import fs2.kafka.internal.converters.collection._
 import java.time.Duration
 import java.time.temporal.ChronoUnit
@@ -241,8 +240,8 @@ private[kafka] object syntax {
   ) extends AnyVal {
     def asScala: Headers = {
       Headers.fromIterable(
-        collection
-          .iterableAsScalaIterable(headers)
+        (headers: java.lang.Iterable[KafkaHeader])
+          .asScala
           .map(header => Header(header.key, header.value))
       )
     }
