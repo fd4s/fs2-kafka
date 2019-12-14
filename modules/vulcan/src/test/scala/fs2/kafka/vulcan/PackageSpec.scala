@@ -1,5 +1,6 @@
 package fs2.kafka.vulcan
 
+import cats.implicits._
 import cats.effect.IO
 import fs2.kafka._
 import org.scalatest.funspec.AnyFunSpec
@@ -29,6 +30,16 @@ final class PackageSpec extends AnyFunSpec {
         deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
       } yield assert(deserialized == test)).unsafeRunSync
     }
+
+    it("should be able to do roundtrip serialization using compatible schemas") {
+      (for {
+        serializer <- avroSerializer[Test2].using(avroSettings).forValue
+        test2 = Test2("test", 42)
+        serialized <- serializer.serialize("topic", Headers.empty, test2)
+        deserializer <- avroDeserializer[Test].using(avroSettings).forValue
+        deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
+      } yield assert(deserialized == Test("test"))).unsafeRunSync
+    }
   }
 
   case class Test(name: String)
@@ -40,6 +51,20 @@ final class PackageSpec extends AnyFunSpec {
         namespace = Some("fs2.kafka.vulcan")
       ) { field =>
         field("name", _.name).map(Test(_))
+      }
+  }
+
+  case class Test2(name: String, number: Int)
+  object Test2 {
+    implicit val codec: Codec[Test2] =
+      Codec.record(
+        name = "Test",
+        namespace = Some("fs2.kafka.vulcan")
+      ) { field =>
+        (
+          field("name", _.name),
+          field("number", _.number)
+        ).mapN(apply)
       }
   }
 
