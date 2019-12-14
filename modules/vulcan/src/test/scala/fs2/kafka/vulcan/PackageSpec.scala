@@ -1,8 +1,11 @@
 package fs2.kafka.vulcan
 
+import java.time.Instant
+
 import cats.implicits._
 import cats.effect.IO
 import fs2.kafka._
+
 import org.scalatest.funspec.AnyFunSpec
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import _root_.vulcan.Codec
@@ -35,10 +38,20 @@ final class PackageSpec extends AnyFunSpec {
       (for {
         serializer <- avroSerializer[Test2].using(avroSettings).forValue
         test2 = Test2("test", 42)
-        serialized <- serializer.serialize("topic", Headers.empty, test2)
+        serialized <- serializer.serialize("topic2", Headers.empty, test2)
         deserializer <- avroDeserializer[Test].using(avroSettings).forValue
-        deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
+        deserialized <- deserializer.deserialize("topic2", Headers.empty, serialized)
       } yield assert(deserialized == Test("test"))).unsafeRunSync
+    }
+
+    it("should error when reader and writer schemas have mismatching logical types") {
+      (for {
+        serializer <- avroSerializer[Long].using(avroSettings).forValue
+        rawLong = 42L
+        serialized <- serializer.serialize("topic3", Headers.empty, rawLong)
+        deserializer <- avroDeserializer[Instant].using(avroSettings).forValue
+        deserialized <- deserializer.deserialize("topic3", Headers.empty, serialized).attempt
+      } yield assert(deserialized.isLeft)).unsafeRunSync
     }
   }
 
