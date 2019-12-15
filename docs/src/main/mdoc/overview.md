@@ -33,6 +33,10 @@ resolvers += "confluent" at "https://packages.confluent.io/maven/"
 libraryDependencies += "@ORGANIZATION@" %% "@VULCAN_MODULE_NAME@" % "@LATEST_VERSION@"
 ```
 
+### Signatures
+
+Stable release artifacts are signed with the [`E97C 64AB 4987 7F74`](https://keys.openpgp.org/search?q=D9A5006CBC771CEAEB0CA118E97C64AB49877F74) key.
+
 ### Compatibility
 
 Backwards binary-compatibility for the library is guaranteed between patch versions.<br>
@@ -40,13 +44,23 @@ For example, `@LATEST_MINOR_VERSION@.x` is backwards binary-compatible with `@LA
 
 Please note binary-compatibility is not guaranteed between milestone releases.
 
+### Snapshot Releases
+
+To use the latest snapshot release, add the following lines to your `build.sbt` file.
+
+```scala
+resolvers += Resolver.sonatypeRepo("snapshots")
+
+libraryDependencies += "@ORGANIZATION@" %% "@CORE_MODULE_NAME@" % "@LATEST_SNAPSHOT_VERSION@"
+```
+
 ## Dependencies
 
 Refer to the table below for dependencies and version support across modules.
 
-| Module                 | Dependencies                                                                                                                                                         | Scala                               |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| `@CORE_MODULE_NAME@`   | [FS2 @FS2_VERSION@](https://github.com/functional-streams-for-scala/fs2), [Apache Kafka Client @KAFKA_VERSION@](https://github.com/apache/kafka)                     | Scala @CORE_CROSS_SCALA_VERSIONS@   |
+| Module                 | Dependencies                                                                                                                                                      | Scala                               |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `@CORE_MODULE_NAME@`   | [FS2 @FS2_VERSION@](https://github.com/functional-streams-for-scala/fs2), [Apache Kafka Client @KAFKA_VERSION@](https://github.com/apache/kafka)                  | Scala @CORE_CROSS_SCALA_VERSIONS@   |
 | `@VULCAN_MODULE_NAME@` | [Vulcan @VULCAN_VERSION@](https://github.com/fd4s/vulcan), [Confluent Kafka Avro Serializer @CONFLUENT_VERSION@](https://github.com/confluentinc/schema-registry) | Scala @VULCAN_CROSS_SCALA_VERSIONS@ |
 
 ## Inspiration

@@ -33,6 +33,7 @@ object Main {
           "VULCAN_MODULE_NAME" -> vulcanModuleName,
           "VULCAN_CROSS_SCALA_VERSIONS" -> minorVersionsString(vulcanCrossScalaVersions),
           "LATEST_VERSION" -> latestVersion,
+          "LATEST_SNAPSHOT_VERSION" -> latestSnapshotVersion,
           "LATEST_MINOR_VERSION" -> minorVersion(latestVersion),
           "DOCS_SCALA_MINOR_VERSION" -> scalaMinorVersion,
           "FS2_VERSION" -> fs2Version,
