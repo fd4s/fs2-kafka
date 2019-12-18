@@ -6,7 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.data.{Chain, NonEmptyList, NonEmptyVector}
+import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
 import cats.effect.{ConcurrentEffect, IO, Timer}
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.implicits._
@@ -24,8 +24,8 @@ import java.util.regex.Pattern
 import org.apache.kafka.clients.consumer.{
   ConsumerConfig,
   ConsumerRebalanceListener,
-  OffsetCommitCallback,
-  OffsetAndMetadata
+  OffsetAndMetadata,
+  OffsetCommitCallback
 }
 import org.apache.kafka.common.TopicPartition
 import scala.collection.immutable.SortedSet
@@ -121,6 +121,51 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           ref
             .updateAndGet(_.asSubscribed)
             .log(SubscribedPattern(pattern, _))
+      }
+      .flatMap(deferred.complete)
+  }
+
+  private[this] def unsubscribe(
+    deferred: Deferred[F, Either[Throwable, Unit]]
+  ): F[Unit] = {
+    val unsubscribe =
+      withConsumer { consumer =>
+        F.delay {
+          consumer.unsubscribe()
+        }.attempt
+      }
+
+    unsubscribe
+      .flatTap {
+        case Left(_) => F.unit
+        case Right(_) =>
+          ref
+            .updateAndGet(_.asUnsubscribed)
+            .log(Unsubscribed(_))
+      }
+      .flatMap(deferred.complete)
+  }
+
+  private[this] def assign(
+    partitions: NonEmptySet[TopicPartition],
+    deferred: Deferred[F, Either[Throwable, Unit]]
+  ): F[Unit] = {
+    val assign =
+      withConsumer { consumer =>
+        F.delay {
+          consumer.assign(
+            partitions.toList.asJava
+          )
+        }.attempt
+      }
+
+    assign
+      .flatTap {
+        case Left(_) => F.unit
+        case Right(_) =>
+          ref
+            .updateAndGet(_.asSubscribed)
+            .log(ManuallyAssignedPartitions(partitions, _))
       }
       .flatMap(deferred.complete)
   }
@@ -417,7 +462,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Request.Assignment(deferred, onRebalance)    => assignment(deferred, onRebalance)
       case Request.Poll()                               => poll
       case Request.SubscribeTopics(topics, deferred)    => subscribe(topics, deferred)
+      case Request.Assign(partitions, deferred)         => assign(partitions, deferred)
       case Request.SubscribePattern(pattern, deferred)  => subscribe(pattern, deferred)
+      case Request.Unsubscribe(deferred)                => unsubscribe(deferred)
       case Request.Fetch(partition, streamId, deferred) => fetch(partition, streamId, deferred)
       case request @ Request.Commit(_, _)               => commit(request)
     }
@@ -502,6 +549,9 @@ private[kafka] object KafkaConsumerActor {
     def asSubscribed: State[F, K, V] =
       if (subscribed) this else copy(subscribed = true)
 
+    def asUnsubscribed: State[F, K, V] =
+      if (!subscribed) this else copy(subscribed = false)
+
     def asStreaming: State[F, K, V] =
       if (streaming) this else copy(streaming = true)
 
@@ -575,8 +625,17 @@ private[kafka] object KafkaConsumerActor {
       deferred: Deferred[F, Either[Throwable, Unit]]
     ) extends Request[F, K, V]
 
+    final case class Assign[F[_], K, V](
+      topicPartitions: NonEmptySet[TopicPartition],
+      deferred: Deferred[F, Either[Throwable, Unit]]
+    ) extends Request[F, K, V]
+
     final case class SubscribePattern[F[_], K, V](
       pattern: Pattern,
+      deferred: Deferred[F, Either[Throwable, Unit]]
+    ) extends Request[F, K, V]
+
+    final case class Unsubscribe[F[_], K, V](
       deferred: Deferred[F, Either[Throwable, Unit]]
     ) extends Request[F, K, V]
 
