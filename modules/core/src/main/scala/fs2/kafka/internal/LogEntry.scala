@@ -44,13 +44,13 @@ private[kafka] object LogEntry {
       s"Consumer subscribed to topics [${topics.toList.mkString(", ")}]. Current state [$state]."
   }
 
-  final case class AssignPartitions[F[_], K, V](
-    topicPartitions: NonEmptySet[TopicPartition],
+  final case class ManuallyAssignedPartitions[F[_], K, V](
+    partitions: NonEmptySet[TopicPartition],
     state: State[F, K, V]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
-      s"Consumer assigned partitions [${topicPartitions.toList.mkString(", ")}]. Current state [$state]."
+      s"Consumer manually assigned partitions [${partitions.toList.mkString(", ")}]. Current state [$state]."
   }
 
   final case class SubscribedPattern[F[_], K, V](

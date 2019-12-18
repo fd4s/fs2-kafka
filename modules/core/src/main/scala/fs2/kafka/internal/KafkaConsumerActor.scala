@@ -157,14 +157,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   }
 
   private[this] def assign(
-    topicPartitions: NonEmptySet[TopicPartition],
+    partitions: NonEmptySet[TopicPartition],
     deferred: Deferred[F, Either[Throwable, Unit]]
   ): F[Unit] = {
     val assign =
       withConsumer { consumer =>
         F.delay {
           consumer.assign(
-            topicPartitions.toList.asJava
+            partitions.toList.asJava
           )
         }.attempt
       }
@@ -175,7 +175,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         case Right(_) =>
           ref
             .updateAndGet(_.asSubscribed)
-            .log(AssignPartitions(topicPartitions, _))
+            .log(ManuallyAssignedPartitions(partitions, _))
       }
       .flatMap(deferred.complete)
   }
@@ -316,9 +316,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       val asStreaming =
         ref.update(_.asStreaming)
 
-      assigned.flatMap(
-        deferred.complete
-      ) >> withOnRebalance >> asStreaming
+      assigned.flatMap(deferred.complete) >> withOnRebalance >> asStreaming
     }
 
   private[this] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
@@ -471,11 +469,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   def handle(request: Request[F, K, V]): F[Unit] =
     request match {
-      case Request.Assignment(deferred, onRebalance) => assignment(deferred, onRebalance)
-      case Request.Poll()                            => poll
-      case Request.SubscribeTopics(topics, deferred) => subscribe(topics, deferred)
-      case Request.AssignTopicPartitions(topicPartitions, deferred) =>
-        assign(topicPartitions, deferred)
+      case Request.Assignment(deferred, onRebalance)    => assignment(deferred, onRebalance)
+      case Request.Poll()                               => poll
+      case Request.SubscribeTopics(topics, deferred)    => subscribe(topics, deferred)
+      case Request.Assign(partitions, deferred)         => assign(partitions, deferred)
       case Request.SubscribePattern(pattern, deferred)  => subscribe(pattern, deferred)
       case Request.Unsubscribe(deferred)                => unsubscribe(deferred)
       case Request.Fetch(partition, streamId, deferred) => fetch(partition, streamId, deferred)
@@ -638,7 +635,7 @@ private[kafka] object KafkaConsumerActor {
       deferred: Deferred[F, Either[Throwable, Unit]]
     ) extends Request[F, K, V]
 
-    final case class AssignTopicPartitions[F[_], K, V](
+    final case class Assign[F[_], K, V](
       topicPartitions: NonEmptySet[TopicPartition],
       deferred: Deferred[F, Either[Throwable, Unit]]
     ) extends Request[F, K, V]

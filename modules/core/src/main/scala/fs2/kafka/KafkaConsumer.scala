@@ -206,58 +206,66 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
   def subscribe(regex: Regex): F[Unit]
 
   /**
-    * unsubscribe from all topics and partitions assigned by subscribe or assign
+    * Unsubscribes the consumer from all topics and partitions assigned
+    * by `subscribe` or `assign`.
     */
   def unsubscribe: F[Unit]
 
   /**
+    * Manually assigns the specified list of topic partitions to the consumer.
+    * This function does not allow for incremental assignment and will replace
+    * the previous assignment (if there is one).
+    *
+    * Manual topic assignment through this method does not use the consumer's
+    * group management functionality. As such, there will be no rebalance
+    * operation triggered when group membership or cluster and topic metadata
+    * change. Note that it is not possible to use both manual partition
+    * assignment with `assign` and group assigment with `subscribe`.
+    *
+    * If auto-commit is enabled, an async commit (based on the old assignment)
+    * will be triggered before the new assignment replaces the old one.
+    *
+    * To unassign all partitions, use [[KafkaConsumer#unsubscribe]].
+    *
     * @see org.apache.kafka.clients.consumer.KafkaConsumer#assign
-    *
-    * Manually assign a list of one topic partitions to this consumer. This interface does not allow for incremental assignment
-    * and will replace the previous assignment (if there is one).
-    *
-    * Manual topic assignment through this method does not use the consumer's group management
-    * functionality. As such, there will be no rebalance operation triggered when group membership or cluster and topic
-    * metadata change. Note that it is not possible to use both manual partition assignment with assign and group assigment with subscribe.
-    * <p>
-    * If auto-commit is enabled, an async commit (based on the old assignment) will be triggered before the new
-    * assignment replaces the old one.
-    *
-    * To unassign all partitions - use  [[KafkaConsumer.unsubscribe]]
-    *
     */
   def assign(partitions: NonEmptySet[TopicPartition]): F[Unit]
 
   /**
-    * @see org.apache.kafka.clients.consumer.KafkaConsumer#assign
-    *
-    * Manually assign a list of partitions for one topic to this consumer. This interface does not allow for incremental assignment
+    * Manually assigns the specified list of partitions for the specified topic
+    * to the consumer. This function does not allow for incremental assignment
     * and will replace the previous assignment (if there is one).
     *
-    * Manual topic assignment through this method does not use the consumer's group management
-    * functionality. As such, there will be no rebalance operation triggered when group membership or cluster and topic
-    * metadata change. Note that it is not possible to use both manual partition assignment with assign and group assigment with subscribe.
-    * <p>
-    * If auto-commit is enabled, an async commit (based on the old assignment) will be triggered before the new
-    * assignment replaces the old one.
+    * Manual topic assignment through this method does not use the consumer's
+    * group management functionality. As such, there will be no rebalance
+    * operation triggered when group membership or cluster and topic metadata
+    * change. Note that it is not possible to use both manual partition
+    * assignment with `assign` and group assignment with `subscribe`.
     *
-    * To unassign all partitions - use [[KafkaConsumer.unsubscribe]]
+    * If auto-commit is enabled, an async commit (based on the old assignment)
+    * will be triggered before the new assignment replaces the old one.
+    *
+    * To unassign all partitions, use [[KafkaConsumer#unsubscribe]].
+    *
+    * @see org.apache.kafka.clients.consumer.KafkaConsumer#assign
     */
   def assign(topic: String, partitions: NonEmptySet[Int]): F[Unit]
 
   /**
-    * Same as other assign, but assigned to all partitions of topic
-    *
+    * Manually assigns all partitions for the specified topic to the consumer.
     */
   def assign(topic: String): F[Unit]
 
   /**
-    * Get metadata of partitions from topic
+    * Returns the partitions for the specified topic.
+    *
+    * Timeout is determined by `default.api.timeout.ms`, which
+    * is set using [[ConsumerSettings#withDefaultApiTimeout]].
     */
   def partitionsFor(topic: String): F[List[PartitionInfo]]
 
   /**
-    * Get metadata of partitions from topic with timeout
+    * Returns the partitions for the specified topic.
     */
   def partitionsFor(topic: String, timeout: FiniteDuration): F[List[PartitionInfo]]
 
@@ -320,7 +328,8 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
   def fiber: Fiber[F, Unit]
 
   /**
-    * Get consumer metrics
+    * Returns consumer metrics.
+    *
     * @see org.apache.kafka.clients.consumer.KafkaConsumer#metrics
     */
   def metrics: F[Map[MetricName, Metric]]
@@ -649,8 +658,7 @@ private[kafka] object KafkaConsumer {
       ): F[List[PartitionInfo]] =
         withConsumer { consumer =>
           F.delay {
-            val jtimeout = java.time.Duration.ofNanos(timeout.toNanos)
-            consumer.partitionsFor(topic, jtimeout).asScala.toList
+            consumer.partitionsFor(topic, timeout.asJava).asScala.toList
           }
         }
 
@@ -707,11 +715,13 @@ private[kafka] object KafkaConsumer {
 
       override def assign(topic: String): F[Unit] = {
         for {
-          partitions <- partitionsFor(topic).map(infos => infos.map(info => info.partition()))
-          _ <- NonEmptySet
-            .fromSet(SortedSet(partitions: _*))
-            .map(assign(topic, _))
-            .getOrElse(F.unit)
+          partitions <- partitionsFor(topic)
+            .map { partitionInfo =>
+              NonEmptySet.fromSet {
+                SortedSet(partitionInfo.map(_.partition): _*)
+              }
+            }
+          _ <- partitions.fold(F.unit)(assign(topic, _))
         } yield ()
       }
 
