@@ -704,7 +704,7 @@ private[kafka] object KafkaConsumer {
 
       override def assign(partitions: NonEmptySet[TopicPartition]): F[Unit] =
         request { deferred =>
-          Request.AssignTopicPartitions(
+          Request.Assign(
             topicPartitions = partitions,
             deferred = deferred
           )
