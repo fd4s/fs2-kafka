@@ -1,17 +1,7 @@
 /*
  * Copyright 2018-2019 OVO Energy Limited
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka
@@ -589,7 +579,7 @@ object ConsumerSettings {
     )
 
   def apply[F[_], K, V](
-    keyDeserializer: Deserializer.Record[F, K],
+    keyDeserializer: RecordDeserializer[F, K],
     valueDeserializer: Deserializer[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
     create(
@@ -599,7 +589,7 @@ object ConsumerSettings {
 
   def apply[F[_], K, V](
     keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer.Record[F, V]
+    valueDeserializer: RecordDeserializer[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = F.pure(keyDeserializer),
@@ -607,8 +597,8 @@ object ConsumerSettings {
     )
 
   def apply[F[_], K, V](
-    keyDeserializer: Deserializer.Record[F, K],
-    valueDeserializer: Deserializer.Record[F, V]
+    keyDeserializer: RecordDeserializer[F, K],
+    valueDeserializer: RecordDeserializer[F, V]
   )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = keyDeserializer.forKey,
@@ -617,8 +607,8 @@ object ConsumerSettings {
 
   def apply[F[_], K, V](
     implicit F: Sync[F],
-    keyDeserializer: Deserializer.Record[F, K],
-    valueDeserializer: Deserializer.Record[F, V]
+    keyDeserializer: RecordDeserializer[F, K],
+    valueDeserializer: RecordDeserializer[F, V]
   ): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = keyDeserializer.forKey,

@@ -1,17 +1,7 @@
 /*
  * Copyright 2018-2019 OVO Energy Limited
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka
@@ -343,14 +333,14 @@ object Deserializer {
 
   object Record {
     def apply[F[_], A](
-      implicit deserializer: Deserializer.Record[F, A]
-    ): Deserializer.Record[F, A] =
+      implicit deserializer: RecordDeserializer[F, A]
+    ): RecordDeserializer[F, A] =
       deserializer
 
     def const[F[_], A](
       deserializer: => F[Deserializer[F, A]]
-    ): Deserializer.Record[F, A] =
-      Deserializer.Record.instance(
+    ): RecordDeserializer[F, A] =
+      RecordDeserializer.instance(
         forKey = deserializer,
         forValue = deserializer
       )
@@ -358,11 +348,11 @@ object Deserializer {
     def instance[F[_], A](
       forKey: => F[Deserializer[F, A]],
       forValue: => F[Deserializer[F, A]]
-    ): Deserializer.Record[F, A] = {
+    ): RecordDeserializer[F, A] = {
       def _forKey = forKey
       def _forValue = forValue
 
-      new Deserializer.Record[F, A] {
+      new RecordDeserializer[F, A] {
         override def forKey: F[Deserializer[F, A]] =
           _forKey
 
@@ -376,13 +366,13 @@ object Deserializer {
 
     def lift[F[_], A](deserializer: => Deserializer[F, A])(
       implicit F: Applicative[F]
-    ): Deserializer.Record[F, A] =
-      Deserializer.Record.const(F.pure(deserializer))
+    ): RecordDeserializer[F, A] =
+      RecordDeserializer.const(F.pure(deserializer))
 
     implicit def lift[F[_], A](
       implicit F: Applicative[F],
       deserializer: Deserializer[F, A]
-    ): Deserializer.Record[F, A] =
-      Deserializer.Record.lift(deserializer)
+    ): RecordDeserializer[F, A] =
+      RecordDeserializer.lift(deserializer)
   }
 }

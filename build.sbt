@@ -1,5 +1,3 @@
-import ReleaseTransformations._
-
 val catsEffectVersion = "2.0.0"
 
 val catsVersion = "2.0.0"
@@ -35,7 +33,6 @@ lazy val core = project
     moduleName := "fs2-kafka",
     name := moduleName.value,
     dependencySettings,
-    coverageSettings,
     publishSettings,
     mimaSettings,
     scalaSettings,
@@ -53,7 +50,6 @@ lazy val vulcan = project
         "io.confluent" % "kafka-avro-serializer" % confluentVersion
       )
     ),
-    coverageSettings,
     publishSettings,
     mimaSettings,
     scalaSettings,
@@ -107,10 +103,18 @@ lazy val mdocSettings = Seq(
   unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(core, vulcan),
   target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
   cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
-  docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(unidoc in Compile).value,
+  docusaurusCreateSite := docusaurusCreateSite
+    .dependsOn(unidoc in Compile)
+    .dependsOn(updateSiteVariables in ThisBuild)
+    .value,
+  docusaurusPublishGhpages :=
+    docusaurusPublishGhpages
+      .dependsOn(unidoc in Compile)
+      .dependsOn(updateSiteVariables in ThisBuild)
+      .value,
   // format: off
   scalacOptions in (ScalaUnidoc, unidoc) ++= Seq(
-    "-doc-source-url", s"https://github.com/ovotech/fs2-kafka/tree/v${(latestVersion in ThisBuild).value}€{FILE_PATH}.scala",
+    "-doc-source-url", s"https://github.com/fd4s/fs2-kafka/tree/v${(latestVersion in ThisBuild).value}€{FILE_PATH}.scala",
     "-sourcepath", baseDirectory.in(LocalRootProject).value.getAbsolutePath,
     "-doc-title", "FS2 Kafka",
     "-doc-version", s"v${(latestVersion in ThisBuild).value}"
@@ -126,6 +130,9 @@ lazy val buildInfoSettings = Seq(
     scalacOptions,
     sourceDirectory,
     latestVersion in ThisBuild,
+    BuildInfoKey.map(version in ThisBuild) {
+      case (_, v) => "latestSnapshotVersion" -> v
+    },
     BuildInfoKey.map(moduleName in core) {
       case (k, v) => "core" ++ k.capitalize -> v
     },
@@ -153,23 +160,18 @@ lazy val metadataSettings = Seq(
   organizationHomepage := Some(url("https://ovoenergy.com"))
 )
 
-lazy val coverageSettings = Seq(
-  coverageExcludedPackages := List().mkString(";")
-)
-
 lazy val publishSettings =
   metadataSettings ++ Seq(
-    publishMavenStyle := true,
     publishArtifact in Test := false,
-    publishTo := sonatypePublishToBundle.value,
     pomIncludeRepository := (_ => false),
-    homepage := Some(url("https://ovotech.github.io/fs2-kafka")),
+    homepage := Some(url("https://fd4s.github.io/fs2-kafka")),
     licenses := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
     startYear := Some(2018),
     headerLicense := Some(
       de.heikoseeberger.sbtheader.License.ALv2(
         s"${startYear.value.get}-${java.time.Year.now}",
-        organizationName.value
+        organizationName.value,
+        HeaderLicenseStyle.SpdxSyntax
       )
     ),
     excludeFilter.in(headerSources) := HiddenFileFilter,
@@ -180,55 +182,21 @@ lazy val publishSettings =
         email = "github@vlovgr.se",
         url = url("https://vlovgr.se")
       )
-    ),
-    scmInfo := Some(
-      ScmInfo(
-        url("https://github.com/ovotech/fs2-kafka"),
-        "scm:git@github.com:ovotech/fs2-kafka.git"
-      )
-    ),
-    releaseCrossBuild := false, // See https://github.com/sbt/sbt-release/issues/214
-    releaseUseGlobalVersion := true,
-    releaseTagName := s"v${(version in ThisBuild).value}",
-    releaseTagComment := s"Release version ${(version in ThisBuild).value}",
-    releaseCommitMessage := s"Set version to ${(version in ThisBuild).value}",
-    releaseProcess := Seq[ReleaseStep](
-      checkSnapshotDependencies,
-      inquireVersions,
-      runClean,
-      releaseStepCommandAndRemaining("+compile"),
-      setReleaseVersion,
-      setLatestVersion,
-      releaseStepTask(updateSiteVariables in ThisBuild),
-      releaseStepTask(addDateToReleaseNotes in ThisBuild),
-      commitReleaseVersion,
-      tagRelease,
-      releaseStepCommandAndRemaining("+publish"),
-      releaseStepCommand("sonatypeBundleRelease"),
-      setNextVersion,
-      commitNextVersion,
-      pushChanges,
-      releaseStepCommand("docs/docusaurusPublishGhpages")
     )
   )
 
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
-    val released = !unreleasedModuleNames.value.contains(moduleName.value)
-    val publishing = publishArtifact.value
-
-    if (publishing && released)
-      binaryCompatibleVersions.value
-        .map(version => organization.value %% moduleName.value % version)
-    else
-      Set()
+    if (publishArtifact.value) {
+      Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
+    } else Set()
   },
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"), // https://github.com/lightbend/mima/issues/361
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Timestamp.unknownTime"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.createAcls"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteAcls"),
@@ -300,16 +268,22 @@ def minorVersion(version: String): String = {
   s"$major.$minor"
 }
 
-val releaseNotesFile = taskKey[File]("Release notes for current version")
-releaseNotesFile in ThisBuild := {
-  val currentVersion = (version in ThisBuild).value
-  file("notes") / s"$currentVersion.markdown"
+val latestVersion = settingKey[String]("Latest stable released version")
+latestVersion in ThisBuild := {
+  val snapshot = (isSnapshot in ThisBuild).value
+  val stable = (isVersionStable in ThisBuild).value
+
+  if (!snapshot && stable) {
+    (version in ThisBuild).value
+  } else {
+    (previousStableVersion in ThisBuild).value.get
+  }
 }
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 updateSiteVariables in ThisBuild := {
-  val file = (baseDirectory in LocalRootProject).value / "website" / "siteConfig.js"
-  val lines = IO.read(file).trim.split('\n').toVector
+  val file =
+    (baseDirectory in LocalRootProject).value / "website" / "variables.js"
 
   val variables =
     Map[String, String](
@@ -323,63 +297,16 @@ updateSiteVariables in ThisBuild := {
       }
     )
 
-  val newLine =
+  val fileHeader =
+    "// Generated by sbt. Do not edit directly."
+
+  val fileContents =
     variables.toList
-      .map { case (k, v) => s"$k: '$v'" }
-      .mkString("const buildInfo = { ", ", ", " };")
+      .sortBy { case (key, _) => key }
+      .map { case (key, value) => s"  $key: '$value'" }
+      .mkString(s"$fileHeader\nmodule.exports = {\n", ",\n", "\n};\n")
 
-  val lineIndex = lines.indexWhere(_.trim.startsWith("const buildInfo"))
-  val newLines = lines.updated(lineIndex, newLine)
-  val newFileContents = newLines.mkString("", "\n", "\n")
-  IO.write(file, newFileContents)
-
-  sbtrelease.Vcs.detect((baseDirectory in LocalRootProject).value).foreach { vcs =>
-    vcs.add(file.getAbsolutePath).!
-    vcs
-      .commit(
-        s"Update site variables for v${(version in ThisBuild).value}",
-        sign = true,
-        signOff = false
-      )
-      .!
-  }
-}
-
-val ensureReleaseNotesExists = taskKey[Unit]("Ensure release notes exists")
-ensureReleaseNotesExists in ThisBuild := {
-  val currentVersion = (version in ThisBuild).value
-  val notes = releaseNotesFile.value
-  if (!notes.isFile) {
-    throw new IllegalStateException(
-      s"no release notes found for version [$currentVersion] at [$notes]."
-    )
-  }
-}
-
-val addDateToReleaseNotes = taskKey[Unit]("Add current date to release notes")
-addDateToReleaseNotes in ThisBuild := {
-  ensureReleaseNotesExists.value
-
-  val dateString = {
-    val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val now = java.time.ZonedDateTime.now()
-    now.format(formatter)
-  }
-
-  val file = releaseNotesFile.value
-  val newContents = IO.read(file).trim + s"\n\nReleased on $dateString.\n"
-  IO.write(file, newContents)
-
-  sbtrelease.Vcs.detect((baseDirectory in LocalRootProject).value).foreach { vcs =>
-    vcs.add(file.getAbsolutePath).!
-    vcs
-      .commit(
-        s"Add release date for v${(version in ThisBuild).value}",
-        sign = true,
-        signOff = false
-      )
-      .!
-  }
+  IO.write(file, fileContents)
 }
 
 def addCommandsAlias(name: String, values: List[String]) =
@@ -393,9 +320,9 @@ addCommandsAlias(
     "+test",
     "+coverageReport",
     "+mimaReportBinaryIssues",
-    "scalafmtCheck",
+    "+scalafmtCheck",
     "scalafmtSbtCheck",
-    "headerCheck",
+    "+headerCheck",
     "+doc",
     "docs/run"
   )

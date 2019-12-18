@@ -1,17 +1,7 @@
 /*
  * Copyright 2018-2019 OVO Energy Limited
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka
@@ -364,7 +354,7 @@ object ProducerSettings {
     )
 
   def apply[F[_], K, V](
-    keySerializer: Serializer.Record[F, K],
+    keySerializer: RecordSerializer[F, K],
     valueSerializer: Serializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     create(
@@ -374,7 +364,7 @@ object ProducerSettings {
 
   def apply[F[_], K, V](
     keySerializer: Serializer[F, K],
-    valueSerializer: Serializer.Record[F, V]
+    valueSerializer: RecordSerializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     create(
       keySerializer = F.pure(keySerializer),
@@ -382,8 +372,8 @@ object ProducerSettings {
     )
 
   def apply[F[_], K, V](
-    keySerializer: Serializer.Record[F, K],
-    valueSerializer: Serializer.Record[F, V]
+    keySerializer: RecordSerializer[F, K],
+    valueSerializer: RecordSerializer[F, V]
   )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
     create(
       keySerializer = keySerializer.forKey,
@@ -392,8 +382,8 @@ object ProducerSettings {
 
   def apply[F[_], K, V](
     implicit F: Sync[F],
-    keySerializer: Serializer.Record[F, K],
-    valueSerializer: Serializer.Record[F, V]
+    keySerializer: RecordSerializer[F, K],
+    valueSerializer: RecordSerializer[F, V]
   ): ProducerSettings[F, K, V] =
     create(
       keySerializer = keySerializer.forKey,
