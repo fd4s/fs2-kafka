@@ -1,7 +1,0 @@
-### Changes
-
-- Change to handle commits during rebalancing. Thanks [@CremboC](https://github.com/CremboC)! ([#117][#117])
-
-[#117]: https://github.com/ovotech/fs2-kafka/pull/117
-
-Released on 2019-04-03.
