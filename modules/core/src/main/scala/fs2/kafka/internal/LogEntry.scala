@@ -1,22 +1,12 @@
 /*
- * Copyright 2018-2019 OVO Energy Limited
+ * Copyright 2018-2020 OVO Energy Limited
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka.internal
 
-import cats.data.{Chain, NonEmptyList, NonEmptyVector}
+import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
 import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2.kafka.CommittableConsumerRecord
@@ -44,6 +34,15 @@ private[kafka] object LogEntry {
       s"Consumer subscribed to topics [${topics.toList.mkString(", ")}]. Current state [$state]."
   }
 
+  final case class ManuallyAssignedPartitions[F[_], K, V](
+    partitions: NonEmptySet[TopicPartition],
+    state: State[F, K, V]
+  ) extends LogEntry {
+    override def level: LogLevel = Debug
+    override def message: String =
+      s"Consumer manually assigned partitions [${partitions.toList.mkString(", ")}]. Current state [$state]."
+  }
+
   final case class SubscribedPattern[F[_], K, V](
     pattern: Pattern,
     state: State[F, K, V]
@@ -51,6 +50,14 @@ private[kafka] object LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Consumer subscribed to pattern [$pattern]. Current state [$state]."
+  }
+
+  final case class Unsubscribed[F[_], K, V](
+    state: State[F, K, V]
+  ) extends LogEntry {
+    override def level: LogLevel = Debug
+    override def message: String =
+      s"Consumer unsubscribed from all partitions. Current state [$state]."
   }
 
   final case class StoredFetch[F[_], K, V, A](

@@ -241,7 +241,7 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
   }
 
   test("Serializer.Record#toString") {
-    assert(Serializer.Record[IO, Int].toString startsWith "Serializer.Record$")
+    assert(RecordSerializer[IO, Int].toString startsWith "Serializer.Record$")
   }
 
   def roundtrip[A: Arbitrary: Eq](

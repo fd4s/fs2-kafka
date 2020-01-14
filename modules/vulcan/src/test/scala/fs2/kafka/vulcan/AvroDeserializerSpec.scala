@@ -9,7 +9,7 @@ final class AvroDeserializerSpec extends AnyFunSpec {
   describe("AvroDeserializer") {
     it("can create a deserializer") {
       val deserializer =
-        avroDeserializer[Int].using(avroSettings)
+        AvroDeserializer[Int].using(avroSettings)
 
       assert(deserializer.forKey.attempt.unsafeRunSync().isRight)
       assert(deserializer.forValue.attempt.unsafeRunSync().isRight)
