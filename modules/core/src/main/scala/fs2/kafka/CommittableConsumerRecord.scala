@@ -59,6 +59,11 @@ object CommittableConsumerRecord {
   ): CommittableConsumerRecord[F, K, V] =
     new CommittableConsumerRecordImpl(record, offset)
 
+  def unapply[F[_], K, V](
+    committable: CommittableConsumerRecord[F, K, V]
+  ): Some[(ConsumerRecord[K, V], CommittableOffset[F])] =
+    Some((committable.record, committable.offset))
+
   implicit def committableConsumerRecordShow[F[_], K, V](
     implicit
     K: Show[K],
