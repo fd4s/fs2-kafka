@@ -62,4 +62,7 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators {
         }
       }.isSuccess
     }
+
+  implicit val headerDeserializerUnitArbitrary: Arbitrary[HeaderDeserializer[Unit]] =
+    Arbitrary(Gen.const(HeaderDeserializer.unit))
 }
