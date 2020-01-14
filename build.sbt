@@ -79,13 +79,10 @@ lazy val dependencySettings = Seq(
     "org.apache.kafka" % "kafka-clients" % kafkaVersion
   ),
   libraryDependencies ++= Seq(
+    "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
     "org.typelevel" %% "discipline-scalatest" % "1.0.0-RC2",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
-  ).map(_ % Test),
-  libraryDependencies ++= Seq(
-    "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
-    "org.apache.kafka" %% "kafka" % kafkaVersion
   ).map(_ % Test),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full)
@@ -150,9 +147,7 @@ lazy val buildInfoSettings = Seq(
 )
 
 lazy val metadataSettings = Seq(
-  organization := "com.ovoenergy",
-  organizationName := "OVO Energy Limited",
-  organizationHomepage := Some(url("https://ovoenergy.com"))
+  organization := "com.github.fd4s"
 )
 
 lazy val publishSettings =
@@ -165,7 +160,7 @@ lazy val publishSettings =
     headerLicense := Some(
       de.heikoseeberger.sbtheader.License.ALv2(
         s"${startYear.value.get}-${java.time.Year.now}",
-        organizationName.value,
+        "OVO Energy Limited",
         HeaderLicenseStyle.SpdxSyntax
       )
     ),
