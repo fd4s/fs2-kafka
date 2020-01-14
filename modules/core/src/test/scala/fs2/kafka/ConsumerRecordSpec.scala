@@ -195,16 +195,5 @@ final class ConsumerRecordSpec extends BaseSpec {
       record.toString shouldBe expected
       record.show shouldBe expected
     }
-
-    it("should match a ConsumerRecord") {
-      val record =
-        ConsumerRecord("topic", 0, 1, "key", "value")
-      assert {
-        record match {
-          case ConsumerRecord("topic", 0, 1, "key", "value", _) => true
-          case _                                                => false
-        }
-      }
-    }
   }
 }

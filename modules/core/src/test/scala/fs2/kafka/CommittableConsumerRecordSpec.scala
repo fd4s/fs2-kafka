@@ -21,11 +21,7 @@ final class CommittableConsumerRecordSpec extends BaseSpec {
 
       assert {
         record.toString == "CommittableConsumerRecord(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))" &&
-        record.show == "CommittableConsumerRecord(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))" &&
-        (record.record match {
-          case ConsumerRecord("topic", 0, 0L, "key", "value", _) => true
-          case _                                                 => false
-        })
+        record.show == "CommittableConsumerRecord(ConsumerRecord(topic = topic, partition = 0, offset = 0, key = key, value = value), CommittableOffset(topic-0 -> 0, the-group))"
       }
     }
   }
