@@ -66,8 +66,8 @@ def topicOperations[F[_]: Concurrent: ContextShift]: F[Unit] =
     for {
       topicNames <- client.listTopics.names
       _ <- client.describeTopics(topicNames.toList)
-      _ <- client.createTopic(new NewTopic("new-topic", 1, 1)) // numPartitions and replicationFactor
-      _ <- client.createTopics(new NewTopic("newer-topic", 1, 1) :: Nil)
+      _ <- client.createTopic(new NewTopic("new-topic", 1, 1.toShort))
+      _ <- client.createTopics(new NewTopic("newer-topic", 1, 1.toShort) :: Nil)
       _ <- client.createPartitions(Map("new-topic" -> NewPartitions.increaseTo(4)))
       _ <- client.deleteTopic("new-topic")
       _ <- client.deleteTopics("newer-topic" :: Nil)
@@ -141,7 +141,7 @@ There are ACL management functions to describe, create and delete ACL entries.
 import org.apache.kafka.common.acl._
 import org.apache.kafka.common.resource.{
   PatternType,
-  ResourcePattern, 
+  ResourcePattern,
   ResourceType
 }
 
@@ -160,10 +160,10 @@ def aclOperations[F[_]: Concurrent: ContextShift]: F[Unit] =
       acl = new AclBinding(pattern, aclEntry)
       _ <- client.createAcls(List(acl))
 
-      _ <- client.deleteAcls(List(AclBindingFilter.ANY))   
+      _ <- client.deleteAcls(List(AclBindingFilter.ANY))
     } yield ()
   }
-``` 
+```
 
 [kafkaadminclient]: @API_BASE_URL@/KafkaAdminClient.html
 [adminclientsettings]: @API_BASE_URL@/AdminClientSettings.html

@@ -1,6 +1,0 @@
-### Changes
-- Fix `StackOverflowError` by explicitly creating new `Map`s. ([#16][#16])
-
-Released on 2018-11-14.
-
-[#16]: https://github.com/ovotech/fs2-kafka/pull/16

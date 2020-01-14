@@ -8,7 +8,7 @@ import org.apache.kafka.common.TopicPartition
 final class CommittableConsumerRecordSpec extends BaseSpec {
   describe("CommittableConsumerRecord") {
     it("should have a Show instance and matching toString") {
-      val record =
+      val record: CommittableConsumerRecord[IO, String, String] =
         CommittableConsumerRecord(
           ConsumerRecord("topic", 0, 0L, "key", "value"),
           CommittableOffset[IO](

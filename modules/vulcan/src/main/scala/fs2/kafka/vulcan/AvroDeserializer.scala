@@ -1,17 +1,7 @@
 /*
- * Copyright 2018-2019 OVO Energy Limited
+ * Copyright 2018-2020 OVO Energy Limited
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka.vulcan
@@ -21,14 +11,14 @@ import java.nio.ByteBuffer
 import _root_.vulcan.Codec
 import cats.effect.Sync
 import cats.implicits._
-import fs2.kafka.Deserializer
+import fs2.kafka.{Deserializer, RecordDeserializer}
 
 final class AvroDeserializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
   def using[F[_]](
     settings: AvroSettings[F]
-  )(implicit F: Sync[F]): Deserializer.Record[F, A] =
+  )(implicit F: Sync[F]): RecordDeserializer[F, A] =
     codec.schema match {
       case Right(schema) =>
         val createDeserializer: Boolean => F[Deserializer[F, A]] = isKey =>
@@ -48,17 +38,22 @@ final class AvroDeserializer[A] private[vulcan] (
             }
           }
 
-        Deserializer.Record.instance(
+        RecordDeserializer.instance(
           forKey = createDeserializer(true),
           forValue = createDeserializer(false)
         )
 
       case Left(error) =>
-        Deserializer.Record.const {
+        RecordDeserializer.const {
           F.raiseError(error.throwable)
         }
     }
 
   override def toString: String =
     "AvroDeserializer$" + System.identityHashCode(this)
+}
+
+object AvroDeserializer {
+  def apply[A](implicit codec: Codec[A]): AvroDeserializer[A] =
+    new AvroDeserializer(codec)
 }

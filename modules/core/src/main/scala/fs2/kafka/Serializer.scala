@@ -1,17 +1,7 @@
 /*
- * Copyright 2018-2019 OVO Energy Limited
+ * Copyright 2018-2020 OVO Energy Limited
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka
@@ -281,14 +271,14 @@ object Serializer {
 
   object Record {
     def apply[F[_], A](
-      implicit serializer: Serializer.Record[F, A]
-    ): Serializer.Record[F, A] =
+      implicit serializer: RecordSerializer[F, A]
+    ): RecordSerializer[F, A] =
       serializer
 
     def const[F[_], A](
       serializer: => F[Serializer[F, A]]
-    ): Serializer.Record[F, A] =
-      Serializer.Record.instance(
+    ): RecordSerializer[F, A] =
+      RecordSerializer.instance(
         forKey = serializer,
         forValue = serializer
       )
@@ -296,11 +286,11 @@ object Serializer {
     def instance[F[_], A](
       forKey: => F[Serializer[F, A]],
       forValue: => F[Serializer[F, A]]
-    ): Serializer.Record[F, A] = {
+    ): RecordSerializer[F, A] = {
       def _forKey = forKey
       def _forValue = forValue
 
-      new Serializer.Record[F, A] {
+      new RecordSerializer[F, A] {
         override def forKey: F[Serializer[F, A]] =
           _forKey
 
@@ -314,13 +304,13 @@ object Serializer {
 
     def lift[F[_], A](serializer: => Serializer[F, A])(
       implicit F: Applicative[F]
-    ): Serializer.Record[F, A] =
-      Serializer.Record.const(F.pure(serializer))
+    ): RecordSerializer[F, A] =
+      RecordSerializer.const(F.pure(serializer))
 
     implicit def lift[F[_], A](
       implicit F: Applicative[F],
       serializer: Serializer[F, A]
-    ): Serializer.Record[F, A] =
-      Serializer.Record.lift(serializer)
+    ): RecordSerializer[F, A] =
+      RecordSerializer.lift(serializer)
   }
 }
