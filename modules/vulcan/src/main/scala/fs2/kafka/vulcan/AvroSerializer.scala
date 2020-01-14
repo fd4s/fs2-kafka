@@ -20,15 +20,16 @@ final class AvroSerializer[A] private[vulcan] (
     codec.schema match {
       case Right(schema) =>
         val createSerializer: Boolean => F[Serializer[F, A]] =
-          settings.createAvroSerializer(_).map { serializer =>
-            Serializer.instance { (topic, _, a) =>
-              F.suspend {
-                codec.encode(a, schema) match {
-                  case Right(value) => F.pure(serializer.serialize(topic, value))
-                  case Left(error)  => F.raiseError(error.throwable)
+          settings.createAvroSerializer(_).map {
+            case (serializer, _) =>
+              Serializer.instance { (topic, _, a) =>
+                F.suspend {
+                  codec.encode(a, schema) match {
+                    case Right(value) => F.pure(serializer.serialize(topic, value))
+                    case Left(error)  => F.raiseError(error.throwable)
+                  }
                 }
               }
-            }
           }
 
         RecordSerializer.instance(

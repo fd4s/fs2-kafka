@@ -6,6 +6,8 @@
 
 package fs2.kafka.vulcan
 
+import java.nio.ByteBuffer
+
 import _root_.vulcan.Codec
 import cats.effect.Sync
 import cats.implicits._
@@ -20,15 +22,19 @@ final class AvroDeserializer[A] private[vulcan] (
     codec.schema match {
       case Right(schema) =>
         val createDeserializer: Boolean => F[Deserializer[F, A]] =
-          settings.createAvroDeserializer(_).map { deserializer =>
-            Deserializer.instance { (topic, _, bytes) =>
-              F.suspend {
-                codec.decode(deserializer.deserialize(topic, bytes, schema), schema) match {
-                  case Right(a)    => F.pure(a)
-                  case Left(error) => F.raiseError(error.throwable)
+          settings.createAvroDeserializer(_).map {
+            case (deserializer, schemaRegistryClient) =>
+              Deserializer.instance { (topic, _, bytes) =>
+                F.suspend {
+                  val writerSchemaId = ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
+                  val writerSchema = schemaRegistryClient.getById(writerSchemaId)
+
+                  codec.decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
+                    case Right(a)    => F.pure(a)
+                    case Left(error) => F.raiseError(error.throwable)
+                  }
                 }
               }
-            }
           }
 
         RecordDeserializer.instance(
