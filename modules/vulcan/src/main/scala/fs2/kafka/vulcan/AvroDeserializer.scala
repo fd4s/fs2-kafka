@@ -21,9 +21,9 @@ final class AvroDeserializer[A] private[vulcan] (
   )(implicit F: Sync[F]): RecordDeserializer[F, A] =
     codec.schema match {
       case Right(schema) =>
-        val createDeserializer: Boolean => F[Deserializer[F, A]] = isKey =>
-          settings.schemaRegistryClient.flatMap { schemaRegistryClient =>
-            settings.createAvroDeserializer(isKey).map { deserializer =>
+        val createDeserializer: Boolean => F[Deserializer[F, A]] =
+          settings.createAvroDeserializer(_).map {
+            case (deserializer, schemaRegistryClient) =>
               Deserializer.instance { (topic, _, bytes) =>
                 F.suspend {
                   val writerSchemaId = ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
@@ -35,7 +35,6 @@ final class AvroDeserializer[A] private[vulcan] (
                   }
                 }
               }
-            }
           }
 
         RecordDeserializer.instance(
