@@ -1,15 +1,16 @@
 package fs2.kafka
 
-import cats.effect.IO
-import cats.effect.concurrent.Ref
-import cats.implicits._
 import cats.data.NonEmptySet
-import fs2.Stream
+import cats.effect.concurrent.Ref
+import cats.effect.IO
+import cats.implicits._
 import fs2.concurrent.Queue
+import fs2.kafka.internal.converters.collection._
+import fs2.Stream
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.TimeoutException
+import org.apache.kafka.common.TopicPartition
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
@@ -58,9 +59,12 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
 
-        val res = fs2.Stream(
-          consumed, consumed
-        ).parJoinUnbounded
+        val res = fs2
+          .Stream(
+            consumed,
+            consumed
+          )
+          .parJoinUnbounded
           .compile
           .toVector
           .unsafeRunSync()
@@ -76,7 +80,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
 
-        val partitions = NonEmptySet.fromSetUnsafe(SortedSet(0,1,2))
+        val partitions = NonEmptySet.fromSetUnsafe(SortedSet(0, 1, 2))
 
         val consumed =
           consumerStream[IO]
@@ -89,9 +93,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .interruptAfter(10.seconds)
 
         val res =
-          consumed
-            .compile
-            .toVector
+          consumed.compile.toVector
             .unsafeRunSync()
 
         res should contain theSameElementsAs produced
@@ -114,9 +116,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .interruptAfter(10.seconds)
 
         val res =
-          consumed
-            .compile
-            .toVector
+          consumed.compile.toVector
             .unsafeRunSync()
 
         res should contain theSameElementsAs produced
@@ -138,21 +138,23 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
 
-        val res = fs2.Stream(
-          consumed, consumed
-        ).parJoinUnbounded
+        val res = fs2
+          .Stream(
+            consumed,
+            consumed
+          )
+          .parJoinUnbounded
           .compile
           .toVector
           .unsafeRunSync()
 
-        res should contain theSameElementsAs produced++produced
+        res should contain theSameElementsAs produced ++ produced
       }
     }
 
     it("should correctly get partitions from topic via partitionsFor") {
       withKafka { (config, topic) =>
-
-        val partitions = List(0,1,2)
+        val partitions = List(0, 1, 2)
 
         createCustomTopic(topic, partitions = partitions.size)
 
@@ -161,12 +163,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .using(consumerSettings[IO](config))
             .evalMap(_.partitionsFor(topic))
 
-
         val res =
-          info
-          .compile
-          .lastOrError
-          .unsafeRunSync()
+          info.compile.lastOrError
+            .unsafeRunSync()
 
         res.map(_.partition()) should contain theSameElementsAs partitions
         res.map(_.topic()).toSet should contain theSameElementsAs Set(topic)
@@ -175,8 +174,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
     it("should fail when to get partitions from topic via partitionsFor with a small timeout") {
       withKafka { (config, topic) =>
-
-        val partitions = List(0,1,2)
+        val partitions = List(0, 1, 2)
 
         createCustomTopic(topic, partitions = partitions.size)
 
@@ -185,25 +183,20 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .using(consumerSettings[IO](config))
             .evalTap(_.partitionsFor(topic, 1.nanos))
 
-
         val res =
-          info
-            .compile
-            .lastOrError
-            .attempt
+          info.compile.lastOrError.attempt
             .unsafeRunSync()
 
         res.left.toOption match {
           case Some(e) => e shouldBe a[TimeoutException]
-          case _ => fail("No exception was rised!")
+          case _       => fail("No exception was rised!")
         }
       }
     }
 
     it("should get metrics") {
       withKafka { (config, topic) =>
-
-        val partitions = List(0,1,2)
+        val partitions = List(0, 1, 2)
 
         createCustomTopic(topic, partitions = partitions.size)
 
@@ -211,7 +204,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           consumerStream[IO]
             .using(consumerSettings[IO](config))
             .evalMap(_.metrics)
-
 
         val res =
           info
@@ -245,31 +237,30 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- Stream(
             consumer1.stream.evalTap(_ => cntRef.update(_ + 1)),
             consumer2.stream.concurrently(
-              consumer2.assignmentStream.evalTap(assignedTopicPartitions => partitions.set(assignedTopicPartitions) )
+              consumer2.assignmentStream.evalTap(
+                assignedTopicPartitions => partitions.set(assignedTopicPartitions)
+              )
             )
           ).parJoinUnbounded
 
           cntValue <- Stream.eval(cntRef.get)
           unsubscribedValue <- Stream.eval(unsubscribed.get)
           _ <- Stream.eval(
-            if(cntValue >= 3 && !unsubscribedValue) //wait for some processed elements from first consumer
-                unsubscribed.set(true) >> consumer1.unsubscribe // unsubscribe
+            if (cntValue >= 3 && !unsubscribedValue) //wait for some processed elements from first consumer
+              unsubscribed.set(true) >> consumer1.unsubscribe // unsubscribe
             else IO.unit
           )
-          _ <- Stream.eval(IO {publishToKafka(topic, produced)}) // publish some elements to topic
+          _ <- Stream.eval(IO { publishToKafka(topic, produced) }) // publish some elements to topic
 
           partitionsValue <- Stream.eval(partitions.get)
         } yield (partitionsValue)).interruptAfter(10.seconds)
 
-        val res = topicStream
-          .compile
-          .toVector
+        val res = topicStream.compile.toVector
           .unsafeRunSync()
 
         res.last.size shouldBe 3 // in last message should be all partitions
       }
     }
-
 
     it("should handle rebalance") {
       withKafka { (config, topic) =>
@@ -367,9 +358,16 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         assert {
           committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
           withKafkaConsumer(consumerProperties(config)) { consumer =>
+            committed.values.toList.foldMap(_.offset)
+
             committed.foldLeft(true) {
               case (result, (topicPartition, offsetAndMetadata)) =>
-                result && offsetAndMetadata == consumer.committed(topicPartition)
+                result &&
+                  consumer
+                    .committed(Set(topicPartition).asJava)
+                    .asScala
+                    .get(topicPartition)
+                    .contains(offsetAndMetadata)
             }
           }
         }
@@ -476,7 +474,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           consumerStream[IO]
             .using(consumerSettings(config))
             .evalTap(_.subscribeTo(topic))
-            .evalMap(_.assign(topic,NonEmptySet.fromSetUnsafe(SortedSet(0))))
+            .evalMap(_.assign(topic, NonEmptySet.fromSetUnsafe(SortedSet(0))))
             .compile
             .lastOrError
             .attempt
@@ -493,7 +491,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val subscribeWithAssignWithName =
           consumerStream[IO]
             .using(consumerSettings(config))
-            .evalTap(_.assign(topic,NonEmptySet.fromSetUnsafe(SortedSet(0))))
+            .evalTap(_.assign(topic, NonEmptySet.fromSetUnsafe(SortedSet(0))))
             .evalMap(_.subscribeTo(topic))
             .compile
             .lastOrError

@@ -140,7 +140,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
               }
               describedTopics <- adminClient.describeTopics(topicNames.toList)
               _ <- IO(assert(describedTopics.size == 1))
-              newTopic = new NewTopic("new-test-topic", 1, 1)
+              newTopic = new NewTopic("new-test-topic", 1, 1.toShort)
               preCreateNames <- adminClient.listTopics.names
               _ <- IO(assert(!preCreateNames.contains(newTopic.name)))
               _ <- adminClient.createTopic(newTopic)

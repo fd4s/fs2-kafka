@@ -2,15 +2,15 @@ val catsEffectVersion = "2.0.0"
 
 val catsVersion = "2.0.0"
 
-val confluentVersion = "5.3.2"
+val confluentVersion = "5.4.0"
 
-val embeddedKafkaVersion = "2.3.1"
+val embeddedKafkaVersion = "2.4.0"
 
 val fs2Version = "2.1.0"
 
-val kafkaVersion = "2.3.1"
+val kafkaVersion = "2.4.0"
 
-val vulcanVersion = "0.2.2"
+val vulcanVersion = "0.3.1"
 
 val scala212 = "2.12.10"
 
@@ -83,14 +83,10 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
-  libraryDependencies ++= {
-    if (!scalaVersion.value.startsWith("2.13"))
-      Seq(
-        "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
-        "org.apache.kafka" %% "kafka" % kafkaVersion
-      ).map(_ % Test)
-    else Seq.empty
-  },
+  libraryDependencies ++= Seq(
+    "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
+    "org.apache.kafka" %% "kafka" % kafkaVersion
+  ).map(_ % Test),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full)
 )
@@ -187,7 +183,8 @@ lazy val publishSettings =
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
     if (publishArtifact.value) {
-      Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
+      // Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
+      Set()
     } else Set()
   },
   mimaBinaryIssueFilters ++= {
@@ -195,15 +192,7 @@ lazy val mimaSettings = Seq(
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Timestamp.unknownTime"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.createAcls"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteAcls"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.describeAcls"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.unsubscribe"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.assign"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.partitionsFor"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.metrics")
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*")
     )
     // format: on
   }
@@ -246,19 +235,7 @@ lazy val scalaSettings = Seq(
 lazy val testSettings = Seq(
   logBuffered in Test := false,
   parallelExecution in Test := false,
-  testOptions in Test += Tests.Argument("-oDF"),
-  excludeFilter.in(Test, unmanagedSources) := {
-    if (scalaVersion.value.startsWith("2.13"))
-      HiddenFileFilter ||
-      "BaseKafkaSpec.scala" ||
-      "HeaderDeserializerSpec.scala" ||
-      "KafkaAdminClientSpec.scala" ||
-      "KafkaConsumerSpec.scala" ||
-      "KafkaProducerSpec.scala" ||
-      "TransactionalKafkaProducerSpec.scala"
-    else
-      (excludeFilter.in(Test, unmanagedSources)).value
-  }
+  testOptions in Test += Tests.Argument("-oDF")
 )
 
 def minorVersion(version: String): String = {
