@@ -55,7 +55,7 @@
               }
             });
         </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Admin</h1></header><article><div><span><p>There is partial support for the Kafka admin API through <a href="/fs2-kafka/api/fs2/kafka/KafkaAdminClient.html">KafkaAdminClient</a>. Internally, this relies on the Java Kafka
-<a href="https://kafka.apache.org/23/javadoc/?org/apache/kafka/clients/admin/AdminClient.html">AdminClient</a> and supports the same settings.</p>
+<a href="https://kafka.apache.org/24/javadoc/?org/apache/kafka/clients/admin/AdminClient.html">AdminClient</a> and supports the same settings.</p>
 <p>The following imports are assumed throughout this page.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect._
 <span class="hljs-keyword">import</span> cats.implicits._
@@ -96,8 +96,8 @@
     <span class="hljs-keyword">for</span> {
       topicNames &lt;- client.listTopics.names
       _ &lt;- client.describeTopics(topicNames.toList)
-      _ &lt;- client.createTopic(<span class="hljs-keyword">new</span> <span class="hljs-type">NewTopic</span>(<span class="hljs-string">"new-topic"</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1</span>)) <span class="hljs-comment">// numPartitions and replicationFactor</span>
-      _ &lt;- client.createTopics(<span class="hljs-keyword">new</span> <span class="hljs-type">NewTopic</span>(<span class="hljs-string">"newer-topic"</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1</span>) :: <span class="hljs-type">Nil</span>)
+      _ &lt;- client.createTopic(<span class="hljs-keyword">new</span> <span class="hljs-type">NewTopic</span>(<span class="hljs-string">"new-topic"</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1.</span>toShort))
+      _ &lt;- client.createTopics(<span class="hljs-keyword">new</span> <span class="hljs-type">NewTopic</span>(<span class="hljs-string">"newer-topic"</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1.</span>toShort) :: <span class="hljs-type">Nil</span>)
       _ &lt;- client.createPartitions(<span class="hljs-type">Map</span>(<span class="hljs-string">"new-topic"</span> -&gt; <span class="hljs-type">NewPartitions</span>.increaseTo(<span class="hljs-number">4</span>)))
       _ &lt;- client.deleteTopic(<span class="hljs-string">"new-topic"</span>)
       _ &lt;- client.deleteTopics(<span class="hljs-string">"newer-topic"</span> :: <span class="hljs-type">Nil</span>)
@@ -155,7 +155,7 @@
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> org.apache.kafka.common.acl._
 <span class="hljs-keyword">import</span> org.apache.kafka.common.resource.{
   <span class="hljs-type">PatternType</span>,
-  <span class="hljs-type">ResourcePattern</span>, 
+  <span class="hljs-type">ResourcePattern</span>,
   <span class="hljs-type">ResourceType</span>
 }
 
@@ -174,7 +174,7 @@
       acl = <span class="hljs-keyword">new</span> <span class="hljs-type">AclBinding</span>(pattern, aclEntry)
       _ &lt;- client.createAcls(<span class="hljs-type">List</span>(acl))
 
-      _ &lt;- client.deleteAcls(<span class="hljs-type">List</span>(<span class="hljs-type">AclBindingFilter</span>.<span class="hljs-type">ANY</span>))   
+      _ &lt;- client.deleteAcls(<span class="hljs-type">List</span>(<span class="hljs-type">AclBindingFilter</span>.<span class="hljs-type">ANY</span>))
     } <span class="hljs-keyword">yield</span> ()
   }
 </code></pre>
