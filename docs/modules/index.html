@@ -66,7 +66,7 @@
 <span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> personCodec: <span class="hljs-type">Codec</span>[<span class="hljs-type">Person</span>] =
   <span class="hljs-type">Codec</span>.record(
     name = <span class="hljs-string">"Person"</span>,
-    namespace = <span class="hljs-type">Some</span>(<span class="hljs-string">"com.example"</span>)
+    namespace = <span class="hljs-string">"com.example"</span>
   ) { field =&gt;
     (
       field(<span class="hljs-string">"name"</span>, _.name),
