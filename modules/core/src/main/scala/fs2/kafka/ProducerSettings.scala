@@ -215,7 +215,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   /**
     * The maximum number of [[ProducerRecords]] to produce in the same batch.<br>
     * <br>
-    * The default value is 100.
+    * The default value is 10000.
     */
   def parallelism: Int
 
@@ -332,7 +332,7 @@ object ProducerSettings {
         ProducerConfig.RETRIES_CONFIG -> "0"
       ),
       closeTimeout = 60.seconds,
-      parallelism = 100,
+      parallelism = 10000,
       createProducerWith = properties =>
         F.delay {
           val byteArraySerializer = new ByteArraySerializer
