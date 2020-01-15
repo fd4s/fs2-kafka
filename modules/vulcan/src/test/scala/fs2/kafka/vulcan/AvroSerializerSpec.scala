@@ -19,15 +19,15 @@ final class AvroSerializerSpec extends AnyFunSpec {
       val codec: Codec[Int] =
         Codec.instance(
           Left(AvroError("error")),
-          (_, _) => Left(AvroError("encode")),
+          _ => Left(AvroError("encode")),
           (_, _) => Left(AvroError("decode"))
         )
 
       val serializer =
         avroSerializer(codec).using(avroSettings)
 
-      assert(serializer.forKey.attempt.unsafeRunSync().isLeft)
-      assert(serializer.forValue.attempt.unsafeRunSync().isLeft)
+      assert(serializer.forKey.attempt.unsafeRunSync().isRight)
+      assert(serializer.forValue.attempt.unsafeRunSync().isRight)
     }
 
     it("toString") {

@@ -10,7 +10,7 @@ val fs2Version = "2.1.0"
 
 val kafkaVersion = "2.4.0"
 
-val vulcanVersion = "0.3.1"
+val vulcanVersion = "1.0.0-RC1"
 
 val scala212 = "2.12.10"
 
@@ -46,7 +46,7 @@ lazy val vulcan = project
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
-        "com.ovoenergy" %% "vulcan" % vulcanVersion,
+        "com.github.fd4s" %% "vulcan" % vulcanVersion,
         "io.confluent" % "kafka-avro-serializer" % confluentVersion
       )
     ),

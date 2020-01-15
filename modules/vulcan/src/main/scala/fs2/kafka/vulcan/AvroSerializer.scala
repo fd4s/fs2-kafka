@@ -16,32 +16,25 @@ final class AvroSerializer[A] private[vulcan] (
 ) extends AnyVal {
   def using[F[_]](
     settings: AvroSettings[F]
-  )(implicit F: Sync[F]): RecordSerializer[F, A] =
-    codec.schema match {
-      case Right(schema) =>
-        val createSerializer: Boolean => F[Serializer[F, A]] =
-          settings.createAvroSerializer(_).map {
-            case (serializer, _) =>
-              Serializer.instance { (topic, _, a) =>
-                F.suspend {
-                  codec.encode(a, schema) match {
-                    case Right(value) => F.pure(serializer.serialize(topic, value))
-                    case Left(error)  => F.raiseError(error.throwable)
-                  }
-                }
+  )(implicit F: Sync[F]): RecordSerializer[F, A] = {
+    val createSerializer: Boolean => F[Serializer[F, A]] =
+      settings.createAvroSerializer(_).map {
+        case (serializer, _) =>
+          Serializer.instance { (topic, _, a) =>
+            F.suspend {
+              codec.encode(a) match {
+                case Right(value) => F.pure(serializer.serialize(topic, value))
+                case Left(error)  => F.raiseError(error.throwable)
               }
+            }
           }
+      }
 
-        RecordSerializer.instance(
-          forKey = createSerializer(true),
-          forValue = createSerializer(false)
-        )
-
-      case Left(error) =>
-        RecordSerializer.const {
-          F.raiseError(error.throwable)
-        }
-    }
+    RecordSerializer.instance(
+      forKey = createSerializer(true),
+      forValue = createSerializer(false)
+    )
+  }
 
   override def toString: String =
     "AvroSerializer$" + System.identityHashCode(this)
