@@ -19,7 +19,7 @@ final class AvroDeserializerSpec extends AnyFunSpec {
       val codec: Codec[Int] =
         Codec.instance(
           Left(AvroError("error")),
-          (_, _) => Left(AvroError("encode")),
+          _ => Left(AvroError("encode")),
           (_, _) => Left(AvroError("decode"))
         )
 

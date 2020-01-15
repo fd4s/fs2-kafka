@@ -61,7 +61,7 @@ final class PackageSpec extends AnyFunSpec {
     implicit val codec: Codec[Test] =
       Codec.record(
         name = "Test",
-        namespace = Some("fs2.kafka.vulcan")
+        namespace = "fs2.kafka.vulcan"
       ) { field =>
         field("name", _.name).map(Test(_))
       }
@@ -72,7 +72,7 @@ final class PackageSpec extends AnyFunSpec {
     implicit val codec: Codec[Test2] =
       Codec.record(
         name = "Test",
-        namespace = Some("fs2.kafka.vulcan")
+        namespace = "fs2.kafka.vulcan"
       ) { field =>
         (
           field("name", _.name),

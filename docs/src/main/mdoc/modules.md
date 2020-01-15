@@ -20,7 +20,7 @@ final case class Person(name: String, age: Option[Int])
 implicit val personCodec: Codec[Person] =
   Codec.record(
     name = "Person",
-    namespace = Some("com.example")
+    namespace = "com.example"
   ) { field =>
     (
       field("name", _.name),
