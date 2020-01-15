@@ -253,6 +253,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         val records = state.records.keySetStrict
 
         val revokedFetches = revoked intersect fetches
+        val revokedNonFetches = revoked diff fetches
+
         val withRecords = records intersect revokedFetches
         val withoutRecords = revokedFetches diff records
 
@@ -280,10 +282,26 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
                 .log(RevokedFetchesWithoutRecords(withoutRecords, _))
           } else F.unit
 
+        val removeRevokedRecords =
+          if (revokedNonFetches.nonEmpty) {
+            val revokedRecords =
+              state.records.filterKeysStrict(revokedNonFetches)
+
+            if (revokedRecords.nonEmpty) {
+              ref
+                .updateAndGet(_.withoutRecords(revokedRecords.keySet))
+                .log(RemovedRevokedRecords(revokedRecords, _))
+            } else F.unit
+          } else F.unit
+
         val onRevoked =
           state.onRebalances.foldLeft(F.unit)(_ >> _.onRevoked(revoked))
 
-        logRevoked >> completeWithRecords >> completeWithoutRecords >> onRevoked
+        logRevoked >>
+          completeWithRecords >>
+          completeWithoutRecords >>
+          removeRevokedRecords >>
+          onRevoked
       }
 
   private[this] def assignment(
@@ -536,6 +554,9 @@ private[kafka] object KafkaConsumerActor {
         fetches = fetches.filterKeysStrict(!partitions.contains(_)),
         records = records.filterKeysStrict(!partitions.contains(_))
       )
+
+    def withoutRecords(partitions: Set[TopicPartition]): State[F, K, V] =
+      copy(records = records.filterKeysStrict(!partitions.contains(_)))
 
     def withPendingCommit(pendingCommit: Request.Commit[F, K, V]): State[F, K, V] =
       copy(pendingCommits = pendingCommits append pendingCommit)
