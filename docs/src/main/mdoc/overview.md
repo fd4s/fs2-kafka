@@ -5,7 +5,7 @@ title: Overview
 
 Functional backpressured streams for consuming and producing Kafka records. Exposes a small interface, while taking care of common functionality: batch consuming and producing records, batched offset commits, offset commit recovery, and topic administration, while also simplifying client configuration.
 
-Documentation is kept up-to-date with new releases, currently documenting v@LATEST_VERSION@ on Scala @DOCS_SCALA_MINOR_VERSION@.
+Documentation is kept up-to-date, currently documenting v@LATEST_VERSION@ on Scala @DOCS_SCALA_MINOR_VERSION@.
 
 ## Getting Started
 
@@ -39,8 +39,8 @@ Stable release artifacts are signed with the [`E97C 64AB 4987 7F74`](https://key
 
 ### Compatibility
 
-Backwards binary-compatibility for the library is guaranteed between patch versions.<br>
-For example, `@LATEST_MINOR_VERSION@.x` is backwards binary-compatible with `@LATEST_MINOR_VERSION@.y` for any `x > y`.
+Backwards binary-compatibility for the library is guaranteed between minor and patch versions.<br>
+Version `@LATEST_MAJOR_VERSION@.a.b` is backwards binary-compatible with `@LATEST_MAJOR_VERSION@.c.d` for any `a > c` or `a = c` and `b > d`.
 
 Please note binary-compatibility is not guaranteed between milestone releases.
 
