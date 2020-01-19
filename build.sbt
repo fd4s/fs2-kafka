@@ -80,7 +80,7 @@ lazy val dependencySettings = Seq(
   ),
   libraryDependencies ++= Seq(
     "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "1.0.0-RC2",
+    "org.typelevel" %% "discipline-scalatest" % "1.0.0-RC4",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
