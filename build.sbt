@@ -32,7 +32,12 @@ lazy val core = project
   .settings(
     moduleName := "fs2-kafka",
     name := moduleName.value,
-    dependencySettings,
+    dependencySettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "co.fs2" %% "fs2-core" % fs2Version,
+        "org.apache.kafka" % "kafka-clients" % kafkaVersion
+      )
+    ),
     publishSettings,
     mimaSettings,
     scalaSettings,
@@ -74,18 +79,25 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    "co.fs2" %% "fs2-core" % fs2Version,
-    "org.typelevel" %% "cats-effect" % catsEffectVersion,
-    "org.apache.kafka" % "kafka-clients" % kafkaVersion
-  ),
-  libraryDependencies ++= Seq(
     "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
     "org.typelevel" %% "discipline-scalatest" % "1.0.0-RC4",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full)
+  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full),
+  pomPostProcess := { (node: xml.Node) =>
+    new xml.transform.RuleTransformer(new xml.transform.RewriteRule {
+      def scopedDependency(e: xml.Elem): Boolean =
+        e.label == "dependency" && e.child.exists(_.label == "scope")
+
+      override def transform(node: xml.Node): xml.NodeSeq =
+        node match {
+          case e: xml.Elem if scopedDependency(e) => Nil
+          case _                                  => Seq(node)
+        }
+    }).transform(node).head
+  }
 )
 
 lazy val mdocSettings = Seq(
