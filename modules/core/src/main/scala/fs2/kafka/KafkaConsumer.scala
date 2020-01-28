@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.{Foldable, Reducible}
+import cats.{Applicative, ApplicativeError, Foldable, Reducible}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref}
@@ -20,7 +20,10 @@ import fs2.kafka.internal.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
 import java.util
+
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
+
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
@@ -805,4 +808,83 @@ private[kafka] object KafkaConsumer {
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
     } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id, withConsumer)
+
+  private final case class CurrentTopic(value: String) extends AnyVal
+
+  private[this] def fromRecords[F[_], K, V](
+    records: F[ConsumerRecord[K, V]],
+    state: Ref[F, CurrentTopic],
+    numPartitions: Int
+  )(
+    implicit F: Foldable[F],
+    applicativeError: ApplicativeError[F, Throwable],
+    concurrent: Concurrent[F]
+  ): KafkaConsumer[F, K, V] = {
+    new KafkaConsumer[F, K, V] {
+
+      def stream: Stream[F, CommittableConsumerRecord[F, K, V]] = partitionedStream.flatten
+
+      def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
+        Stream
+          .eval(state.get.map { currentTopic =>
+            def getTopicPartition(k: K): TopicPartition =
+              new TopicPartition(currentTopic.value, k.hashCode % numPartitions)
+            def getCommittableOffset(k: K, offset: Long) =
+              CommittableOffset(getTopicPartition(k),
+                                new OffsetAndMetadata(offset),
+                                None,
+                                _ => applicativeError.pure(()))
+            Stream
+              .emits[F, ConsumerRecord[K, V]](records.toList)
+              .zipWithIndex
+              .map {
+                case (record: ConsumerRecord[K, V], index: Long) =>
+                  CommittableConsumerRecord(record, getCommittableOffset(record.key, index))
+              }
+              .broadcast
+              .take(numPartitions)
+              .zipWithIndex
+              .map {
+                case (subStream, index) =>
+                  subStream.filter(_.record.partition == index)
+              }
+          })
+          .flatten
+
+      def assignment: F[SortedSet[TopicPartition]] = state.get.map { currentTopic =>
+        List
+          .from(0 until numPartitions)
+          .map(partition => new TopicPartition(currentTopic.value, partition))
+          .to(SortedSet)
+      }
+
+      def assignmentStream: Stream[F, SortedSet[TopicPartition]] = ???
+      def seek(partition: TopicPartition, offset: Long): F[Unit] = ???
+      def seekToBeginning: F[Unit] = ???
+      def seekToBeginning[G[_]](partitions: G[TopicPartition])(implicit G: Foldable[G]): F[Unit] =
+        ???
+      def seekToEnd: F[Unit] = ???
+      def seekToEnd[G[_]](partitions: G[TopicPartition])(implicit G: Foldable[G]): F[Unit] = ???
+      def position(partition: TopicPartition): F[Long] = ???
+      def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] = ???
+      def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] = ???
+      def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] = ???
+      def subscribe(regex: Regex): F[Unit] = ???
+      def unsubscribe: F[Unit] = ???
+      def assign(partitions: cats.data.NonEmptySet[TopicPartition]): F[Unit] = ???
+      def assign(topic: String, partitions: cats.data.NonEmptySet[Int]): F[Unit] = ???
+      def assign(topic: String): F[Unit] = ???
+      def partitionsFor(topic: String): F[List[PartitionInfo]] = ???
+      def partitionsFor(topic: String, timeout: FiniteDuration): F[List[PartitionInfo]] = ???
+      def beginningOffsets(partitions: Set[TopicPartition]): F[Map[TopicPartition, Long]] = ???
+      def beginningOffsets(partitions: Set[TopicPartition],
+                           timeout: FiniteDuration): F[Map[TopicPartition, Long]] = ???
+      def endOffsets(partitions: Set[TopicPartition]): F[Map[TopicPartition, Long]] = ???
+      def endOffsets(partitions: Set[TopicPartition],
+                     timeout: FiniteDuration): F[Map[TopicPartition, Long]] = ???
+      def fiber: Fiber[F, Unit] = ???
+      def metrics: F[Map[MetricName, Metric]] = ???
+    }
+  }
+
 }
