@@ -106,7 +106,7 @@ In order to create a [`KafkaProducer`][kafkaproducer], we first need to create [
 ```scala mdoc:silent
 val producerSettings =
   ProducerSettings[IO, String, String]
-    .withBootstrapServers("localhost")
+    .withBootstrapServers("localhost:9092")
 ```
 
 We can also specify the serializers explicitly when necessary.
@@ -115,7 +115,7 @@ We can also specify the serializers explicitly when necessary.
 ProducerSettings(
   keySerializer = Serializer[IO, String],
   valueSerializer = Serializer[IO, String]
-).withBootstrapServers("localhost")
+).withBootstrapServers("localhost:9092")
 ```
 
 [`ProducerSettings`][producersettings] provides functions for configuring both the Java Kafka producer and options specific to the library. If functions for configuring certain properties of the Java Kafka producer is missing, we can instead use `withProperty` or `withProperties` together with constants from [`ProducerConfig`][producerconfig]. Available properties for the Java Kafka producer are described in the [documentation](http://kafka.apache.org/documentation/#producerconfigs).
@@ -163,7 +163,7 @@ If we're only producing records in one part of our stream, using `produce` is co
 val consumerSettings =
   ConsumerSettings[IO, String, String]
     .withAutoOffsetReset(AutoOffsetReset.Earliest)
-    .withBootstrapServers("localhost")
+    .withBootstrapServers("localhost:9092")
     .withGroupId("group")
 
 object ProduceExample extends IOApp {
