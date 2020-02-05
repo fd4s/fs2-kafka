@@ -125,7 +125,7 @@
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">val</span> consumerSettings =
   <span class="hljs-type">ConsumerSettings</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]
     .withAutoOffsetReset(<span class="hljs-type">AutoOffsetReset</span>.<span class="hljs-type">Earliest</span>)
-    .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+    .withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
     .withGroupId(<span class="hljs-string">"group"</span>)
 </code></pre>
 <p>We can also specify the deserializers explicitly when necessary.</p>
@@ -133,7 +133,7 @@
   keyDeserializer = <span class="hljs-type">Deserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>],
   valueDeserializer = <span class="hljs-type">Deserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>]
 ).withAutoOffsetReset(<span class="hljs-type">AutoOffsetReset</span>.<span class="hljs-type">Earliest</span>)
- .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+ .withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
  .withGroupId(<span class="hljs-string">"group"</span>)
 </code></pre>
 <p><a href="/fs2-kafka/api/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a> provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use <code>withProperty</code> or <code>withProperties</code> together with constants from <a href="https://kafka.apache.org/24/javadoc/?org/apache/kafka/clients/consumer/ConsumerConfig.html"><code>ConsumerConfig</code></a>. Available properties for the Java Kafka consumer are described in the <a href="http://kafka.apache.org/documentation/#consumerconfigs">documentation</a>.</p>

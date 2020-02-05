@@ -76,14 +76,14 @@
       <span class="hljs-type">ConsumerSettings</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]
         .withIsolationLevel(<span class="hljs-type">IsolationLevel</span>.<span class="hljs-type">ReadCommitted</span>)
         .withAutoOffsetReset(<span class="hljs-type">AutoOffsetReset</span>.<span class="hljs-type">Earliest</span>)
-        .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+        .withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
         .withGroupId(<span class="hljs-string">"group"</span>)
 
     <span class="hljs-keyword">val</span> producerSettings =
       <span class="hljs-type">TransactionalProducerSettings</span>(
         <span class="hljs-string">"transactional-id"</span>,
         <span class="hljs-type">ProducerSettings</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]
-          .withBootstrapServers(<span class="hljs-string">"localhost"</span>)
+          .withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
       )
 
     <span class="hljs-keyword">val</span> stream =
