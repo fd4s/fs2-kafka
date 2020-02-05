@@ -23,12 +23,12 @@ object Main extends IOApp {
     val consumerSettings =
       ConsumerSettings[IO, String, String]
         .withAutoOffsetReset(AutoOffsetReset.Earliest)
-        .withBootstrapServers("localhost")
+        .withBootstrapServers("localhost:9092")
         .withGroupId("group")
 
     val producerSettings =
       ProducerSettings[IO, String, String]
-        .withBootstrapServers("localhost")
+        .withBootstrapServers("localhost:9092")
 
     val stream =
       consumerStream[IO]

@@ -107,7 +107,7 @@ In order to create a [`KafkaConsumer`][kafkaconsumer], we first need to create [
 val consumerSettings =
   ConsumerSettings[IO, String, String]
     .withAutoOffsetReset(AutoOffsetReset.Earliest)
-    .withBootstrapServers("localhost")
+    .withBootstrapServers("localhost:9092")
     .withGroupId("group")
 ```
 
@@ -118,7 +118,7 @@ ConsumerSettings(
   keyDeserializer = Deserializer[IO, String],
   valueDeserializer = Deserializer[IO, String]
 ).withAutoOffsetReset(AutoOffsetReset.Earliest)
- .withBootstrapServers("localhost")
+ .withBootstrapServers("localhost:9092")
  .withGroupId("group")
 ```
 

@@ -30,14 +30,14 @@ object Main extends IOApp {
       ConsumerSettings[IO, String, String]
         .withIsolationLevel(IsolationLevel.ReadCommitted)
         .withAutoOffsetReset(AutoOffsetReset.Earliest)
-        .withBootstrapServers("localhost")
+        .withBootstrapServers("localhost:9092")
         .withGroupId("group")
 
     val producerSettings =
       TransactionalProducerSettings(
         "transactional-id",
         ProducerSettings[IO, String, String]
-          .withBootstrapServers("localhost")
+          .withBootstrapServers("localhost:9092")
       )
 
     val stream =

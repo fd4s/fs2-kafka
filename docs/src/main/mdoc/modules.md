@@ -63,12 +63,12 @@ import fs2.kafka.{AutoOffsetReset, ConsumerSettings, ProducerSettings}
 val consumerSettings =
   ConsumerSettings[IO, String, Person]
     .withAutoOffsetReset(AutoOffsetReset.Earliest)
-    .withBootstrapServers("localhost")
+    .withBootstrapServers("localhost:9092")
     .withGroupId("group")
 
 val producerSettings =
   ProducerSettings[IO, String, Person]
-    .withBootstrapServers("localhost")
+    .withBootstrapServers("localhost:9092")
 ```
 
 If we prefer, we can instead specificy the `Serializer`s and `Deserializer`s explicitly.
@@ -80,13 +80,13 @@ ConsumerSettings(
   keyDeserializer = Deserializer[IO, String],
   valueDeserializer = personDeserializer
 ).withAutoOffsetReset(AutoOffsetReset.Earliest)
- .withBootstrapServers("localhost")
+ .withBootstrapServers("localhost:9092")
  .withGroupId("group")
 
 ProducerSettings(
   keySerializer = Serializer[IO, String],
   valueSerializer = personSerializer
-).withBootstrapServers("localhost")
+).withBootstrapServers("localhost:9092")
 ```
 
 ### Sharing Client
@@ -118,14 +118,14 @@ avroSettingsSharedClient.map { avroSettings =>
       keyDeserializer = Deserializer[IO, String],
       valueDeserializer = personDeserializer
     ).withAutoOffsetReset(AutoOffsetReset.Earliest)
-    .withBootstrapServers("localhost")
+    .withBootstrapServers("localhost:9092")
     .withGroupId("group")
 
  val producerSettings =
   ProducerSettings(
     keySerializer = Serializer[IO, String],
     valueSerializer = personSerializer
-  ).withBootstrapServers("localhost")
+  ).withBootstrapServers("localhost:9092")
 
   (consumerSettings, producerSettings)
 }
