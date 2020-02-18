@@ -4,7 +4,7 @@ import cats.data.NonEmptySet
 import cats.effect.concurrent.Ref
 import cats.effect.IO
 import cats.implicits._
-import fs2.concurrent.Queue
+import fs2.concurrent.{Queue, SignallingRef}
 import fs2.kafka.internal.converters.collection._
 import fs2.Stream
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
@@ -306,6 +306,110 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             }
           }))
         } yield ()).compile.drain.unsafeRunSync
+      }
+    }
+
+    it("should close all streams on rebalance when using partitionedStream") {
+
+      withKafka { (config, topic) =>
+
+        val numPartitions = 3
+        createCustomTopic(topic, partitions = numPartitions)
+
+        val timeoutRunTest = Duration(15, SECONDS)
+
+        def stream(streamsClosed: Ref[IO, Int]) = {
+          for {
+            consumer <- consumerStream[IO]
+              .using(consumerSettings[IO](config).withGroupId("test"))
+              .evalTap(_.subscribeTo(topic))
+            _ <- consumer.partitionedStream
+              .map { stream =>
+                stream.onFinalize(streamsClosed.update(_ + 1))
+              }
+              .parJoinUnbounded
+          } yield ()
+        }
+
+        val s = for {
+          stopSignal <- Stream.eval(SignallingRef[IO, Boolean](false))
+          streamsClosedRef <- Stream.eval(Ref.of[IO, Int](0))
+          stream1 = stream(streamsClosedRef)
+          stream2 = stream(streamsClosedRef)
+
+          publishStream = Stream
+            .unfold[IO, Int, Int](0)(cur => Some((cur, cur + 1)))
+            .evalTap(i => IO(publishToKafka(topic, Seq((s"key-$i", s"value-$i")))))
+            .repeat
+            .interruptWhen(stopSignal)
+
+          _ <- publishStream.concurrently(
+            // run second stream to init rebalance after init rebalance, default setting is 3 secs
+            Stream(stream1, Stream.sleep(Duration(5, SECONDS)) >> stream2).parJoinUnbounded
+          )
+          streamsClosed <- Stream.eval(streamsClosedRef.get)
+          _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions))
+        } yield (streamsClosed)
+
+        val closedStreams =
+          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync
+
+        assert(closedStreams == numPartitions) // should close all first streams from first consumer
+      }
+    }
+
+    it("should close all streams on rebalance when using partitionedStream several times") {
+
+      withKafka { (config, topic) =>
+
+        val numPartitions = 3
+        createCustomTopic(topic, partitions = numPartitions)
+
+        val timeoutRunTest = Duration(15, SECONDS)
+
+        def stream(streamsClosed: Ref[IO, Int]) = {
+          for {
+            consumer <- consumerStream[IO]
+              .using(consumerSettings[IO](config).withGroupId("test"))
+              .evalTap(_.subscribeTo(topic))
+            _ <- consumer.partitionedStream
+              .map { stream =>
+                stream.onFinalize(streamsClosed.update(_ + 1))
+              }
+              .parJoinUnbounded.concurrently(
+              consumer.partitionedStream
+                .map {stream =>
+                  stream.onFinalize(streamsClosed.update(_ + 1))
+                }
+                .parJoinUnbounded
+            )
+          } yield ()
+        }
+
+        val s = for {
+          stopSignal <- Stream.eval(SignallingRef[IO, Boolean](false))
+          streamsClosedRef <- Stream.eval(Ref.of[IO, Int](0))
+          stream1 = stream(streamsClosedRef)
+          stream2 = stream(streamsClosedRef)
+
+          publishStream = Stream
+            .unfold[IO, Int, Int](0)(cur => Some((cur, cur + 1)))
+            .evalTap(i => IO(publishToKafka(topic, Seq((s"key-$i", s"value-$i")))))
+            .repeat
+            .interruptWhen(stopSignal)
+
+          _ <- publishStream.concurrently(
+            // run second stream to init rebalance after init rebalance, default setting is 3 secs
+            Stream(stream1, Stream.sleep(Duration(5, SECONDS)) >> stream2).parJoinUnbounded
+          )
+          streamsClosed <- Stream.eval(streamsClosedRef.get)
+          _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions*2))
+        } yield (streamsClosed)
+
+        val closedStreams =
+          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync
+
+        assert(closedStreams == numPartitions*2) // should close all first streams from first consumer
       }
     }
 
