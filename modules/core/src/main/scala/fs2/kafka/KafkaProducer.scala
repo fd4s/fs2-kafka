@@ -11,7 +11,9 @@ import cats.effect._
 import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2.kafka.internal._
+import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
+import org.apache.kafka.common.{Metric, MetricName}
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -49,6 +51,13 @@ abstract class KafkaProducer[F[_], K, V] {
   def produce[P](
     records: ProducerRecords[K, V, P]
   ): F[F[ProducerResult[K, V, P]]]
+
+  /**
+    * Returns producer metrics.
+    *
+    * @see org.apache.kafka.clients.producer.KafkaProducer#metrics
+    */
+  def metrics: F[Map[MetricName, Metric]]
 }
 
 private[kafka] object KafkaProducer {
@@ -69,6 +78,12 @@ private[kafka] object KafkaProducer {
                 records.records
                   .traverse(produceRecord(keySerializer, valueSerializer, producer))
                   .map(_.sequence.map(ProducerResult(_, records.passthrough)))
+              }
+            }
+
+            override def metrics: F[Map[MetricName, Metric]] = withProducer { producer =>
+              F.delay {
+                producer.metrics().asScala.toMap
               }
             }
 
