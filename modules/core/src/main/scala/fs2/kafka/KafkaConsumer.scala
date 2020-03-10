@@ -88,7 +88,21 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
     *       before using this `Stream`. If you forgot to subscribe, there
     *       will be a [[NotSubscribedException]] raised in the `Stream`.
     */
-  def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
+  def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
+    explicitPartitionedStream.map(_._2)
+
+  /**
+    * Much like partitionedStream except the TopicPartition is explicitly
+    * returned together with each partitioned stream of records.
+    * This is useful for Transactional Producers as the Partition Id can
+    * be used for the transactional.id.
+    *
+    * @note you have to first use `subscribe` to subscribe the consumer
+    *       *       before using this `Stream`. If you forgot to subscribe, there
+    *       *       will be a [[NotSubscribedException]] raised in the `Stream`.
+    */
+  def explicitPartitionedStream
+    : Stream[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])]
 
   /**
     * Returns the set of partitions currently assigned to this consumer.
@@ -399,7 +413,8 @@ private[kafka] object KafkaConsumer {
         actorFiber combine pollsFiber
       }
 
-      override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] = {
+      override def explicitPartitionedStream
+        : Stream[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
@@ -409,7 +424,7 @@ private[kafka] object KafkaConsumer {
         def enqueueStream(
           streamId: Int,
           partition: TopicPartition,
-          partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
+          partitions: Queue[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])]
         ): F[Unit] = {
           for {
             chunks <- chunkQueue
@@ -417,7 +432,7 @@ private[kafka] object KafkaConsumer {
             shutdown = F.race(fiber.join.attempt, dequeueDone.get).void
             stopReqs <- Deferred.tryable[F, Unit]
             _ <- partitions.enqueue1 {
-              Stream.eval {
+              (partition, Stream.eval {
                 def fetchPartition(deferred: Deferred[F, PartitionRequest]): F[Unit] = {
                   val request = Request.Fetch(partition, streamId, deferred)
                   val fetch = requests.enqueue1(request) >> deferred.get
@@ -465,7 +480,7 @@ private[kafka] object KafkaConsumer {
                       .covary[F]
                       .onFinalize(dequeueDone.complete(()))
                   }
-              }.flatten
+              }.flatten)
             }
           } yield ()
         }
@@ -473,12 +488,12 @@ private[kafka] object KafkaConsumer {
         def enqueueStreams(
           streamId: Int,
           assigned: NonEmptySet[TopicPartition],
-          partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
+          partitions: Queue[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])]
         ): F[Unit] = assigned.foldLeft(F.unit)(_ >> enqueueStream(streamId, _, partitions))
 
         def onRebalance(
           streamId: Int,
-          partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
+          partitions: Queue[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])]
         ): OnRebalance[F, K, V] = OnRebalance(
           onAssigned = assigned =>
             NonEmptySet.fromSet(assigned).fold(F.unit)(enqueueStreams(streamId, _, partitions)),
@@ -487,7 +502,7 @@ private[kafka] object KafkaConsumer {
 
         def requestAssignment(
           streamId: Int,
-          partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
+          partitions: Queue[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])]
         ): F[SortedSet[TopicPartition]] = {
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request =
@@ -502,7 +517,7 @@ private[kafka] object KafkaConsumer {
 
         def initialEnqueue(
           streamId: Int,
-          partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
+          partitions: Queue[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])]
         ): F[Unit] =
           requestAssignment(streamId, partitions).flatMap { assigned =>
             if (assigned.nonEmpty) {
@@ -511,8 +526,9 @@ private[kafka] object KafkaConsumer {
             } else F.unit
           }
 
-        val partitionQueue: F[Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]] =
-          Queue.unbounded[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
+        val partitionQueue
+          : F[Queue[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])]] =
+          Queue.unbounded[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])]
 
         for {
           partitions <- Stream.eval(partitionQueue)
