@@ -8,6 +8,8 @@ package fs2.kafka
 
 import cats.Show
 import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.TopicPartition
+
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -15,10 +17,14 @@ import scala.concurrent.duration.FiniteDuration
   * [[TransactionalKafkaProducer]]. This includes a transactional ID and any
   * other [[ProducerSettings]].
   *
+  * A TopicPartition can be supplied to create a transactional ID which
+  * will remain consistent through application restarts and when kafka
+  * undergoes a rebalance.
+  *
   * [[TransactionalProducerSettings]] instances are immutable and modification
   * functions return a new [[TransactionalProducerSettings]] instance.
   *
-  * Use [[TransactionalProducerSettings.apply]] to create a new instance.
+  * Use [[TransactionalProducerSettings]].apply to create a new instance.
   */
 sealed abstract class TransactionalProducerSettings[F[_], K, V] {
 
@@ -72,6 +78,15 @@ object TransactionalProducerSettings {
     override def toString: String =
       s"TransactionalProducerSettings(transactionalId = $transactionalId, producerSettings = $producerSettings)"
   }
+
+  def apply[F[_], K, V](
+    applicationId: String,
+    topicPartition: TopicPartition,
+    producerSettings: ProducerSettings[F, K, V]
+  ): TransactionalProducerSettings[F, K, V] = apply(
+    transactionalId = s"${applicationId}_${topicPartition.topic()}_${topicPartition.partition()}",
+    producerSettings = producerSettings
+  )
 
   def apply[F[_], K, V](
     transactionalId: String,
