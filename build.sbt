@@ -8,7 +8,7 @@ val embeddedKafkaVersion = "2.4.1"
 
 val fs2Version = "2.2.2"
 
-val kafkaVersion = "2.4.0"
+val kafkaVersion = "2.4.1"
 
 val vulcanVersion = "1.0.1"
 
