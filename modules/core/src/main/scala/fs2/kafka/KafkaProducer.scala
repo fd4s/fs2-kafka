@@ -51,26 +51,34 @@ abstract class KafkaProducer[F[_], K, V] {
   def produce[P](
     records: ProducerRecords[K, V, P]
   ): F[F[ProducerResult[K, V, P]]]
-
-  /**
-    * Returns producer metrics.
-    *
-    * @see org.apache.kafka.clients.producer.KafkaProducer#metrics
-    */
-  def metrics: F[Map[MetricName, Metric]]
 }
 
 private[kafka] object KafkaProducer {
+
+  /**
+    * [[KafkaProducer.Metrics]] extends [[KafkaProducer]] to provide
+    * access to the underlying producer metrics.
+    */
+  abstract class Metrics[F[_], K, V] extends KafkaProducer[F, K, V] {
+
+    /**
+      * Returns producer metrics.
+      *
+      * @see org.apache.kafka.clients.producer.KafkaProducer#metrics
+      */
+    def metrics: F[Map[MetricName, Metric]]
+  }
+
   def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
-  ): Resource[F, KafkaProducer[F, K, V]] =
+  ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
       Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
         WithProducer(settings).map { withProducer =>
-          new KafkaProducer[F, K, V] {
+          new KafkaProducer.Metrics[F, K, V] {
             override def produce[P](
               records: ProducerRecords[K, V, P]
             ): F[F[ProducerResult[K, V, P]]] = {

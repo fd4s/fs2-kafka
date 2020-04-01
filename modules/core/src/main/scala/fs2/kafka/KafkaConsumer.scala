@@ -326,6 +326,14 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
 }
 
 private[kafka] object KafkaConsumer {
+
+  /**
+    * [[KafkaConsumer.Metrics]] extends [[KafkaConsumer]] to maintain
+    * consistency with [[KafkaProducer.Metrics]] and will eventually
+    * hold the [[KafkaConsumer.metrics]] method
+    */
+  abstract class Metrics[F[_], K, V] extends KafkaConsumer[F, K, V]
+
   private[this] def startConsumerActor[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     polls: Queue[F, Request[F, K, V]],
@@ -381,8 +389,8 @@ private[kafka] object KafkaConsumer {
     streamIdRef: Ref[F, Int],
     id: Int,
     withConsumer: WithConsumer[F]
-  )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
-    new KafkaConsumer[F, K, V] {
+  )(implicit F: Concurrent[F]): KafkaConsumer.Metrics[F, K, V] =
+    new KafkaConsumer.Metrics[F, K, V] {
       override val fiber: Fiber[F, Unit] = {
         val actorFiber =
           Fiber[F, Unit](F.guaranteeCase(actor.join) {
@@ -782,7 +790,7 @@ private[kafka] object KafkaConsumer {
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
     timer: Timer[F]
-  ): Resource[F, KafkaConsumer[F, K, V]] =
+  ): Resource[F, KafkaConsumer.Metrics[F, K, V]] =
     for {
       keyDeserializer <- Resource.liftF(settings.keyDeserializer)
       valueDeserializer <- Resource.liftF(settings.valueDeserializer)

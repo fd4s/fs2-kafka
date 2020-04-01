@@ -30,7 +30,7 @@ final class ConsumerStream[F[_]] private[kafka] (
   def using[K, V](settings: ConsumerSettings[F, K, V])(
     implicit context: ContextShift[F],
     timer: Timer[F]
-  ): Stream[F, KafkaConsumer[F, K, V]] =
+  ): Stream[F, KafkaConsumer.Metrics[F, K, V]] =
     consumerStream(settings)(F, context, timer)
 
   override def toString: String =
