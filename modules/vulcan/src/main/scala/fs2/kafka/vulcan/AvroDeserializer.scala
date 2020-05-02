@@ -55,4 +55,35 @@ final class AvroDeserializer[A] private[vulcan] (
 object AvroDeserializer {
   def apply[A](implicit codec: Codec[A]): AvroDeserializer[A] =
     new AvroDeserializer(codec)
+
+  /**
+    * Creates a single RecordDeserializer that can handle multiple topics each with its own codec
+    *
+    * @param settings avro configuration such as for the schema registry
+    * @param pair the first topic, codec pair
+    * @param pairs subsequent topic, codec pairs
+    * @tparam F the type in which effects will be suspended
+    * @tparam A the type which this deserializer will produce
+    * @return a RecordDeserializer incorporating the supplied codecs
+    */
+  def topics[F[_]: Sync, A](
+    settings: AvroSettings[F]
+  )(pair: (String, Codec[_ <: A]), pairs: (String, Codec[_ <: A])*): RecordDeserializer[F, A] = {
+    val all = pair :: pairs.toList
+    val desers = all.traverse {
+      case (topic, codec) =>
+        avroDeserializer(codec).using(settings).forValue.map(c => (topic, c.widen[A]))
+    }
+
+    val deserializer = desers.map { des =>
+      val fn = des.foldLeft(PartialFunction.empty[String, Deserializer[F, A]])((acc, p) => {
+        acc.orElse({
+          case p._1 => p._2
+        })
+      })
+      Deserializer.topic(fn)
+    }
+
+    RecordDeserializer.const(deserializer)
+  }
 }
