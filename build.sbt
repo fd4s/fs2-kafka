@@ -2,15 +2,15 @@ val catsEffectVersion = "2.1.2"
 
 val catsVersion = "2.1.2"
 
-val confluentVersion = "5.4.1"
+val confluentVersion = "5.4.2"
 
-val embeddedKafkaVersion = "2.4.1"
+val embeddedKafkaVersion = "2.4.1.1"
 
 val fs2Version = "2.3.0"
 
 val kafkaVersion = "2.4.1"
 
-val vulcanVersion = "1.0.1"
+val vulcanVersion = "1.1.0"
 
 val scala212 = "2.12.10"
 
