@@ -80,7 +80,7 @@ lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
     "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "1.0.1",
+    "org.typelevel" %% "discipline-scalatest" % "2.0.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
