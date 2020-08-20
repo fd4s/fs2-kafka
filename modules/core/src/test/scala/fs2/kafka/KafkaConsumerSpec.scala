@@ -312,7 +312,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     it("should close all streams on rebalance when using partitionedStream") {
 
       withKafka { (config, topic) =>
-
         val numPartitions = 3
         createCustomTopic(topic, partitions = numPartitions)
 
@@ -323,11 +322,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             consumer <- consumerStream[IO]
               .using(consumerSettings[IO](config).withGroupId("test"))
               .evalTap(_.subscribeTo(topic))
-            _ <- consumer.partitionedStream
-              .map { stream =>
-                stream.onFinalize(streamsClosed.update(_ + 1))
-              }
-              .parJoinUnbounded
+            _ <- consumer.partitionedStream.map { stream =>
+              stream.onFinalize(streamsClosed.update(_ + 1))
+            }.parJoinUnbounded
           } yield ()
         }
 
@@ -352,7 +349,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         } yield (streamsClosed)
 
         val closedStreams =
-          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync
+          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync()
 
         assert(closedStreams == numPartitions) // should close all first streams from first consumer
       }
@@ -361,7 +358,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     it("should close all streams on rebalance when using partitionedStream several times") {
 
       withKafka { (config, topic) =>
-
         val numPartitions = 3
         createCustomTopic(topic, partitions = numPartitions)
 
@@ -376,13 +372,12 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               .map { stream =>
                 stream.onFinalize(streamsClosed.update(_ + 1))
               }
-              .parJoinUnbounded.concurrently(
-              consumer.partitionedStream
-                .map {stream =>
+              .parJoinUnbounded
+              .concurrently(
+                consumer.partitionedStream.map { stream =>
                   stream.onFinalize(streamsClosed.update(_ + 1))
-                }
-                .parJoinUnbounded
-            )
+                }.parJoinUnbounded
+              )
           } yield ()
         }
 
@@ -403,13 +398,13 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             Stream(stream1, Stream.sleep(Duration(5, SECONDS)) >> stream2).parJoinUnbounded
           )
           streamsClosed <- Stream.eval(streamsClosedRef.get)
-          _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions*2))
+          _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions * 2))
         } yield (streamsClosed)
 
         val closedStreams =
-          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync
+          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync()
 
-        assert(closedStreams == numPartitions*2) // should close all first streams from first consumer
+        assert(closedStreams == numPartitions * 2) // should close all first streams from first consumer
       }
     }
 
