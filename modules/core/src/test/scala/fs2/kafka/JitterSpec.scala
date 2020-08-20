@@ -5,11 +5,11 @@ import cats.effect.IO
 final class JitterSpec extends BaseSpec {
   describe("Jitter#default") {
     it("should always apply jitter on values") {
-      val jitter: Jitter[IO] = Jitter.default[IO].unsafeRunSync
+      val jitter: Jitter[IO] = Jitter.default[IO].unsafeRunSync()
 
       forAll { n: Double =>
         whenever(!n.isNaN) {
-          val jittered = jitter.withJitter(n).unsafeRunSync
+          val jittered = jitter.withJitter(n).unsafeRunSync()
 
           if (n == 0 || n.isInfinite) assert(jittered == n)
           else if (n > 0) assert(0 <= jittered && jittered < n)

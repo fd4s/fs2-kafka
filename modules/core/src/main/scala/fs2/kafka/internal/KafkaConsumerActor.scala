@@ -69,10 +69,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
       override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
-        F.toIO(revoked(partitions.toSortedSet)).unsafeRunSync
+        F.toIO(revoked(partitions.toSortedSet)).unsafeRunSync()
 
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
-        F.toIO(assigned(partitions.toSortedSet)).unsafeRunSync
+        F.toIO(assigned(partitions.toSortedSet)).unsafeRunSync()
     }
 
   private[this] def subscribe(
@@ -215,7 +215,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               ): Unit = {
                 val result = Option(exception).toLeft(())
                 val complete = request.deferred.complete(result)
-                F.runAsync(complete)(_ => IO.unit).unsafeRunSync
+                F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
               }
             }
           )
