@@ -120,7 +120,7 @@ final class ProducerSettingsSpec extends BaseSpec {
           .withCreateProducer(_ => IO.raiseError(new RuntimeException))
           .createProducer
           .attempt
-          .unsafeRunSync
+          .unsafeRunSync()
           .isLeft
       }
     }
@@ -165,8 +165,8 @@ final class ProducerSettingsSpec extends BaseSpec {
         RecordSerializer.lift(serializerInstance)
 
       ProducerSettings[IO, Int, Int]
-      ProducerSettings[IO, String, Int].keySerializer.unsafeRunSync shouldBe serializerInstance
-      ProducerSettings[IO, Int, String].valueSerializer.unsafeRunSync shouldBe serializerInstance
+      ProducerSettings[IO, String, Int].keySerializer.unsafeRunSync() shouldBe serializerInstance
+      ProducerSettings[IO, Int, String].valueSerializer.unsafeRunSync() shouldBe serializerInstance
       ProducerSettings[IO, String, String]
     }
   }

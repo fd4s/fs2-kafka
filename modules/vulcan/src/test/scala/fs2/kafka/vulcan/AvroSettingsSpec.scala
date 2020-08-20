@@ -80,7 +80,7 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
           }
           .createAvroDeserializer(isKey = false)
           .attempt
-          .unsafeRunSync
+          .unsafeRunSync()
           .isLeft
       }
     }
@@ -93,7 +93,7 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
           }
           .createAvroSerializer(isKey = false)
           .attempt
-          .unsafeRunSync
+          .unsafeRunSync()
           .isLeft
       }
     }

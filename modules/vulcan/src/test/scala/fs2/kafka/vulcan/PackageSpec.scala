@@ -31,7 +31,7 @@ final class PackageSpec extends AnyFunSpec {
         serialized <- serializer.serialize("topic", Headers.empty, test)
         deserializer <- avroDeserializer[Test].using(avroSettings).forValue
         deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
-      } yield assert(deserialized == test)).unsafeRunSync
+      } yield assert(deserialized == test)).unsafeRunSync()
     }
 
     it("should be able to do roundtrip serialization using compatible schemas") {
@@ -41,7 +41,7 @@ final class PackageSpec extends AnyFunSpec {
         serialized <- serializer.serialize("topic2", Headers.empty, test2)
         deserializer <- avroDeserializer[Test].using(avroSettings).forValue
         deserialized <- deserializer.deserialize("topic2", Headers.empty, serialized)
-      } yield assert(deserialized == Test("test"))).unsafeRunSync
+      } yield assert(deserialized == Test("test"))).unsafeRunSync()
     }
 
     it("should error when reader and writer schemas have mismatching logical types") {
@@ -51,7 +51,7 @@ final class PackageSpec extends AnyFunSpec {
         serialized <- serializer.serialize("topic3", Headers.empty, rawLong)
         deserializer <- avroDeserializer[Instant].using(avroSettings).forValue
         deserialized <- deserializer.deserialize("topic3", Headers.empty, serialized).attempt
-      } yield assert(deserialized.isLeft)).unsafeRunSync
+      } yield assert(deserialized.isLeft)).unsafeRunSync()
     }
   }
 

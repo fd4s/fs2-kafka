@@ -22,7 +22,7 @@ final class KafkaSpec extends BaseAsyncSpec {
             .covary[IO]
             .through(commitBatchWithin(offsets.size, 10.seconds))
           result <- Stream.eval(ref.get)
-        } yield result).compile.lastOrError.unsafeRunSync
+        } yield result).compile.lastOrError.unsafeRunSync()
 
       assert(committed.contains(exampleOffsetsCommitted))
     }

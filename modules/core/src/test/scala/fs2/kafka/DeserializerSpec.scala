@@ -14,13 +14,13 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
 
   test("Deserializer#attempt") {
     forAll { (topic: String, headers: Headers, i: Int) =>
-      val bytes = Serializer[IO, Int].serialize(topic, headers, i).unsafeRunSync
+      val bytes = Serializer[IO, Int].serialize(topic, headers, i).unsafeRunSync()
 
       val deserialized = Deserializer[IO, Int].deserialize(topic, headers, bytes)
-      assert(deserialized.attempt.unsafeRunSync.isRight)
+      assert(deserialized.attempt.unsafeRunSync().isRight)
 
       val deserializedTwice = Deserializer[IO, Int].deserialize(topic, headers, bytes ++ bytes)
-      assert(deserializedTwice.attempt.unsafeRunSync.isLeft)
+      assert(deserializedTwice.attempt.unsafeRunSync().isLeft)
     }
   }
 
@@ -30,7 +30,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
 
     forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>
       val deserialized = deserializer.deserialize(topic, headers, bytes)
-      assert(deserialized.attempt.unsafeRunSync.isLeft)
+      assert(deserialized.attempt.unsafeRunSync().isLeft)
     }
   }
 
@@ -40,7 +40,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
 
     forAll { (topic: String, headers: Headers, bytes: Array[Byte]) =>
       val deserialized = deserializer.deserialize(topic, headers, bytes)
-      assert(deserialized.attempt.unsafeRunSync.isLeft)
+      assert(deserialized.attempt.unsafeRunSync().isLeft)
     }
   }
 
@@ -55,9 +55,9 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
 
     forAll { (topic: String, i: Int) =>
       val headers = Headers(Header("format", "int"))
-      val serialized = Serializer[IO, Int].serialize(topic, Headers.empty, i).unsafeRunSync
+      val serialized = Serializer[IO, Int].serialize(topic, Headers.empty, i).unsafeRunSync()
       val deserialized = deserializer.deserialize(topic, headers, serialized)
-      deserialized.attempt.unsafeRunSync shouldBe Right(i)
+      deserialized.attempt.unsafeRunSync() shouldBe Right(i)
     }
 
     forAll { (topic: String, i: Int) =>
@@ -65,10 +65,10 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
         Serializer[IO, String]
           .contramap[Int](_.toString)
           .serialize(topic, Headers.empty, i)
-          .unsafeRunSync
+          .unsafeRunSync()
       val deserialized =
         Deserializer[IO, String].map(_.toInt).attempt.deserialize(topic, Headers.empty, serialized)
-      deserialized.unsafeRunSync shouldBe Right(i)
+      deserialized.unsafeRunSync() shouldBe Right(i)
     }
   }
 
@@ -77,7 +77,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
       val deserialized =
         Deserializer[IO]
           .deserialize(topic, headers, bytes)
-          .unsafeRunSync
+          .unsafeRunSync()
 
       deserialized shouldBe bytes
     }
@@ -89,7 +89,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
         Deserializer
           .identity[IO]
           .deserialize(topic, headers, bytes)
-          .unsafeRunSync
+          .unsafeRunSync()
 
       deserialized shouldBe bytes
     }
@@ -109,7 +109,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
 
       val io = deserializer.deserialize(topic, headers, bytes)
       assert(!deserialized)
-      io.unsafeRunSync
+      io.unsafeRunSync()
       assert(deserialized)
     }
   }
@@ -122,9 +122,9 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
       }
 
     forAll { i: Int =>
-      val serialized = Serializer[IO, Int].serialize("topic", Headers.empty, i).unsafeRunSync
+      val serialized = Serializer[IO, Int].serialize("topic", Headers.empty, i).unsafeRunSync()
       val deserialized = deserializer.deserialize("topic", Headers.empty, serialized)
-      deserialized.attempt.unsafeRunSync shouldBe Right(i)
+      deserialized.attempt.unsafeRunSync() shouldBe Right(i)
     }
 
     forAll { (topic: String, i: Int) =>
@@ -133,13 +133,13 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
           Serializer[IO, String]
             .contramap[Int](_.toString)
             .serialize(topic, Headers.empty, i)
-            .unsafeRunSync
+            .unsafeRunSync()
         val deserialized =
           Deserializer[IO, String]
             .map(_.toInt)
             .deserialize(topic, Headers.empty, serialized)
 
-        deserialized.attempt.unsafeRunSync shouldBe Right(i)
+        deserialized.attempt.unsafeRunSync() shouldBe Right(i)
       }
     }
   }
@@ -155,7 +155,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
         deserializer
           .deserialize("unknown", headers, bytes)
           .attempt
-          .unsafeRunSync
+          .unsafeRunSync()
           .isLeft
       }
     }
@@ -165,17 +165,19 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
     val deserializer =
       Deserializer[IO, Option[String]]
 
-    deserializer.deserialize("topic", Headers.empty, null).unsafeRunSync shouldBe None
+    deserializer.deserialize("topic", Headers.empty, null).unsafeRunSync() shouldBe None
 
     forAll { s: String =>
-      val serialized = Serializer[IO, String].serialize("topic", Headers.empty, s).unsafeRunSync
-      deserializer.deserialize("topic", Headers.empty, serialized).unsafeRunSync shouldBe Some(s)
+      val serialized = Serializer[IO, String].serialize("topic", Headers.empty, s).unsafeRunSync()
+      deserializer.deserialize("topic", Headers.empty, serialized).unsafeRunSync() shouldBe Some(s)
     }
   }
 
   test("Deserializer#unit") {
     forAll { bytes: Array[Byte] =>
-      Deserializer[IO, Unit].deserialize("topic", Headers.empty, bytes).unsafeRunSync shouldBe (())
+      Deserializer[IO, Unit]
+        .deserialize("topic", Headers.empty, bytes)
+        .unsafeRunSync() shouldBe (())
     }
   }
 

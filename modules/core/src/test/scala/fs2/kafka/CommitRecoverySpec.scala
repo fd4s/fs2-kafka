@@ -23,7 +23,7 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
             val attempted = commit.handleErrorWith(recovery).attempt
             attempted.flatMap(ref.get.tupleLeft)
           }
-          .unsafeRunSync
+          .unsafeRunSync()
 
       assert {
         result.left.toOption.map(_.toString).contains {
@@ -48,7 +48,7 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
       val commit: IO[Unit] = IO.raiseError(new RuntimeException("commit"))
       val retry: IO[Unit] = IO.raiseError(new RuntimeException("retry"))
       val recovery = CommitRecovery.Default.recoverCommitWith(Map(), retry)
-      val result = commit.handleErrorWith(recovery).attempt.unsafeRunSync
+      val result = commit.handleErrorWith(recovery).attempt.unsafeRunSync()
       assert { result.left.toOption.map(_.getMessage).contains("commit") }
     }
 
@@ -62,7 +62,7 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
       val commit: IO[Unit] = IO.raiseError(new RuntimeException("commit"))
       val retry: IO[Unit] = IO.raiseError(new RuntimeException("retry"))
       val recovery = CommitRecovery.None.recoverCommitWith(Map(), retry)
-      val result = commit.handleErrorWith(recovery).attempt.unsafeRunSync
+      val result = commit.handleErrorWith(recovery).attempt.unsafeRunSync()
       assert { result.left.toOption.map(_.getMessage).contains("commit") }
     }
 
@@ -72,7 +72,7 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
   }
 
   implicit val jitter: Jitter[IO] =
-    Jitter.default[IO].unsafeRunSync
+    Jitter.default[IO].unsafeRunSync()
 
   private def storeSleepsTimer(ref: Ref[IO, Chain[FiniteDuration]]): Timer[IO] =
     new Timer[IO] {
