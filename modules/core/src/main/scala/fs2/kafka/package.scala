@@ -124,7 +124,7 @@ package object kafka {
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
     timer: Timer[F]
-  ): Resource[F, KafkaConsumer.Metrics[F, K, V]] =
+  ): Resource[F, KafkaConsumer[F, K, V]] =
     KafkaConsumer.consumerResource(settings)
 
   /**
@@ -155,7 +155,7 @@ package object kafka {
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F],
     timer: Timer[F]
-  ): Stream[F, KafkaConsumer.Metrics[F, K, V]] =
+  ): Stream[F, KafkaConsumer[F, K, V]] =
     Stream.resource(consumerResource(settings))
 
   /**

@@ -29,7 +29,7 @@ final class ConsumerResource[F[_]] private[kafka] (
   def using[K, V](settings: ConsumerSettings[F, K, V])(
     implicit context: ContextShift[F],
     timer: Timer[F]
-  ): Resource[F, KafkaConsumer.Metrics[F, K, V]] =
+  ): Resource[F, KafkaConsumer[F, K, V]] =
     consumerResource(settings)(F, context, timer)
 
   override def toString: String =

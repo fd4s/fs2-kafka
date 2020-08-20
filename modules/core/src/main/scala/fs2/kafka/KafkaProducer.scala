@@ -53,7 +53,7 @@ abstract class KafkaProducer[F[_], K, V] {
   ): F[F[ProducerResult[K, V, P]]]
 }
 
-private[kafka] object KafkaProducer {
+object KafkaProducer {
 
   /**
     * [[KafkaProducer.Metrics]] extends [[KafkaProducer]] to provide
@@ -69,7 +69,7 @@ private[kafka] object KafkaProducer {
     def metrics: F[Map[MetricName, Metric]]
   }
 
-  def resource[F[_], K, V](
+  private[kafka] def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
@@ -89,11 +89,10 @@ private[kafka] object KafkaProducer {
               }
             }
 
-            override def metrics: F[Map[MetricName, Metric]] = withProducer { producer =>
-              F.delay {
-                producer.metrics().asScala.toMap
+            override def metrics: F[Map[MetricName, Metric]] =
+              withProducer { producer =>
+                F.delay(producer.metrics().asScala.toMap)
               }
-            }
 
             override def toString: String =
               "KafkaProducer$" + System.identityHashCode(this)
