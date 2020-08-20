@@ -108,7 +108,7 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
           }
           .createSchemaRegistryClient
           .attempt
-          .unsafeRunSync
+          .unsafeRunSync()
           .isLeft
       }
     }

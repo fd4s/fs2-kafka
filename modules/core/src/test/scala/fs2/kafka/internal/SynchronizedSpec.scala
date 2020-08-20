@@ -30,7 +30,7 @@ final class SynchronizedSpec extends BaseAsyncSpec {
         uses <- (1 to 1000).toList.map(use).combineAll
         _ <- uses.join
         succeeded <- success.get
-      } yield succeeded).unsafeRunSync
+      } yield succeeded).unsafeRunSync()
 
     assert(success)
   }
@@ -51,7 +51,7 @@ final class SynchronizedSpec extends BaseAsyncSpec {
             }
         used <- (1 to 1000).toList.map(use).combineAll
         _ <- used.join
-      } yield true).unsafeRunSync
+      } yield true).unsafeRunSync()
 
     assert(success)
   }

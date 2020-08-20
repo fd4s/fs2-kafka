@@ -30,7 +30,7 @@ final class ConsumerRecordSpec extends BaseSpec {
         f(
           ConsumerRecord
             .fromJava(record, Deserializer[IO, String], Deserializer[IO, String])
-            .unsafeRunSync
+            .unsafeRunSync()
         )
       }
 
@@ -64,7 +64,7 @@ final class ConsumerRecordSpec extends BaseSpec {
         f(
           ConsumerRecord
             .fromJava(record, Deserializer[IO, String], Deserializer[IO, String])
-            .unsafeRunSync
+            .unsafeRunSync()
         )
       }
 
@@ -93,7 +93,7 @@ final class ConsumerRecordSpec extends BaseSpec {
         f(
           ConsumerRecord
             .fromJava(record, Deserializer[IO, String], Deserializer[IO, String])
-            .unsafeRunSync
+            .unsafeRunSync()
         )
       }
 
@@ -126,7 +126,7 @@ final class ConsumerRecordSpec extends BaseSpec {
         f(
           ConsumerRecord
             .fromJava(record, Deserializer[IO, String], Deserializer[IO, String])
-            .unsafeRunSync
+            .unsafeRunSync()
         )
       }
 

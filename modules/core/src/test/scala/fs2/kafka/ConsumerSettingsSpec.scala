@@ -10,9 +10,11 @@ final class ConsumerSettingsSpec extends BaseSpec {
     it("should be able to set blocker") {
       assert {
         settings.blocker.isEmpty &&
-        settingWithBlocker.use { settings =>
-          IO(settings.blocker.nonEmpty)
-        }.unsafeRunSync
+        settingWithBlocker
+          .use { settings =>
+            IO(settings.blocker.nonEmpty)
+          }
+          .unsafeRunSync()
       }
     }
 
@@ -237,7 +239,7 @@ final class ConsumerSettingsSpec extends BaseSpec {
           .withCreateConsumer(_ => IO.raiseError(new RuntimeException))
           .createConsumer
           .attempt
-          .unsafeRunSync
+          .unsafeRunSync()
           .isLeft
       }
     }
@@ -292,8 +294,10 @@ final class ConsumerSettingsSpec extends BaseSpec {
         RecordDeserializer.lift(deserializerInstance)
 
       ConsumerSettings[IO, Int, Int]
-      ConsumerSettings[IO, String, Int].keyDeserializer.unsafeRunSync shouldBe deserializerInstance
-      ConsumerSettings[IO, Int, String].valueDeserializer.unsafeRunSync shouldBe deserializerInstance
+      ConsumerSettings[IO, String, Int].keyDeserializer
+        .unsafeRunSync() shouldBe deserializerInstance
+      ConsumerSettings[IO, Int, String].valueDeserializer
+        .unsafeRunSync() shouldBe deserializerInstance
       ConsumerSettings[IO, String, String]
     }
 

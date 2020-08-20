@@ -4,7 +4,7 @@ import cats.data.NonEmptySet
 import cats.effect.concurrent.Ref
 import cats.effect.IO
 import cats.implicits._
-import fs2.concurrent.Queue
+import fs2.concurrent.{Queue, SignallingRef}
 import fs2.kafka.internal.converters.collection._
 import fs2.Stream
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
@@ -32,13 +32,13 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .using(consumerSettings(config))
             .evalTap(_.subscribeTo(topic))
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
-            .evalMap(IO.sleep(3.seconds).as) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
             .compile
             .toVector
-            .unsafeRunSync
+            .unsafeRunSync()
 
         consumed should contain theSameElementsAs produced
       }
@@ -54,7 +54,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           consumerStream[IO]
             .using(consumerSettings[IO](config).withGroupId("test"))
             .evalTap(_.subscribeTo(topic))
-            .evalMap(IO.sleep(3.seconds).as) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
@@ -87,7 +87,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .using(consumerSettings[IO](config).withGroupId("test2"))
             .evalTap(_.assign(topic, partitions))
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
-            .evalMap(IO.sleep(3.seconds).as) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
@@ -110,7 +110,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           consumerStream[IO]
             .using(consumerSettings[IO](config).withGroupId("test"))
             .evalTap(_.assign(topic))
-            .evalMap(IO.sleep(3.seconds).as) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
@@ -133,7 +133,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           consumerStream[IO]
             .using(consumerSettings[IO](config).withGroupId("test2"))
             .evalTap(_.assign(topic))
-            .evalMap(IO.sleep(3.seconds).as) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
@@ -305,7 +305,106 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               }.toMap
             }
           }))
-        } yield ()).compile.drain.unsafeRunSync
+        } yield ()).compile.drain.unsafeRunSync()
+      }
+    }
+
+    it("should close all streams on rebalance when using partitionedStream") {
+
+      withKafka { (config, topic) =>
+        val numPartitions = 3
+        createCustomTopic(topic, partitions = numPartitions)
+
+        val timeoutRunTest = Duration(15, SECONDS)
+
+        def stream(streamsClosed: Ref[IO, Int]) = {
+          for {
+            consumer <- consumerStream[IO]
+              .using(consumerSettings[IO](config).withGroupId("test"))
+              .evalTap(_.subscribeTo(topic))
+            _ <- consumer.partitionedStream.map { stream =>
+              stream.onFinalize(streamsClosed.update(_ + 1))
+            }.parJoinUnbounded
+          } yield ()
+        }
+
+        val s = for {
+          stopSignal <- Stream.eval(SignallingRef[IO, Boolean](false))
+          streamsClosedRef <- Stream.eval(Ref.of[IO, Int](0))
+          stream1 = stream(streamsClosedRef)
+          stream2 = stream(streamsClosedRef)
+
+          publishStream = Stream
+            .unfold[IO, Int, Int](0)(cur => Some((cur, cur + 1)))
+            .evalTap(i => IO(publishToKafka(topic, Seq((s"key-$i", s"value-$i")))))
+            .repeat
+            .interruptWhen(stopSignal)
+
+          _ <- publishStream.concurrently(
+            // run second stream to init rebalance after init rebalance, default setting is 3 secs
+            Stream(stream1, Stream.sleep(Duration(5, SECONDS)) >> stream2).parJoinUnbounded
+          )
+          streamsClosed <- Stream.eval(streamsClosedRef.get)
+          _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions))
+        } yield (streamsClosed)
+
+        val closedStreams =
+          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync()
+
+        assert(closedStreams == numPartitions) // should close all first streams from first consumer
+      }
+    }
+
+    it("should close all streams on rebalance when using partitionedStream several times") {
+
+      withKafka { (config, topic) =>
+        val numPartitions = 3
+        createCustomTopic(topic, partitions = numPartitions)
+
+        val timeoutRunTest = Duration(15, SECONDS)
+
+        def stream(streamsClosed: Ref[IO, Int]) = {
+          for {
+            consumer <- consumerStream[IO]
+              .using(consumerSettings[IO](config).withGroupId("test"))
+              .evalTap(_.subscribeTo(topic))
+            _ <- consumer.partitionedStream
+              .map { stream =>
+                stream.onFinalize(streamsClosed.update(_ + 1))
+              }
+              .parJoinUnbounded
+              .concurrently(
+                consumer.partitionedStream.map { stream =>
+                  stream.onFinalize(streamsClosed.update(_ + 1))
+                }.parJoinUnbounded
+              )
+          } yield ()
+        }
+
+        val s = for {
+          stopSignal <- Stream.eval(SignallingRef[IO, Boolean](false))
+          streamsClosedRef <- Stream.eval(Ref.of[IO, Int](0))
+          stream1 = stream(streamsClosedRef)
+          stream2 = stream(streamsClosedRef)
+
+          publishStream = Stream
+            .unfold[IO, Int, Int](0)(cur => Some((cur, cur + 1)))
+            .evalTap(i => IO(publishToKafka(topic, Seq((s"key-$i", s"value-$i")))))
+            .repeat
+            .interruptWhen(stopSignal)
+
+          _ <- publishStream.concurrently(
+            // run second stream to init rebalance after init rebalance, default setting is 3 secs
+            Stream(stream1, Stream.sleep(Duration(5, SECONDS)) >> stream2).parJoinUnbounded
+          )
+          streamsClosed <- Stream.eval(streamsClosedRef.get)
+          _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions * 2))
+        } yield (streamsClosed)
+
+        val closedStreams =
+          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync()
+
+        assert(closedStreams == numPartitions * 2) // should close all first streams from first consumer
       }
     }
 
@@ -353,7 +452,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             }
             .compile
             .lastOrError
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
@@ -385,7 +484,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .evalTap(_.fiber.join)
             .compile
             .toVector
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert(consumed.isEmpty)
       }
@@ -402,7 +501,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert(consumed.left.toOption.map(_.toString).contains(NotSubscribedException().toString))
       }
@@ -417,15 +516,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
-        assert {
-          subscribeName.left.toOption
-            .map(_.toString)
-            .contains {
-              "java.lang.IllegalArgumentException: Topic collection to subscribe to cannot contain null or empty topic"
-            }
-        }
+        assert(subscribeName.isLeft)
 
         val subscribeRegex =
           consumerStream[IO]
@@ -435,15 +528,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
-        assert {
-          subscribeRegex.left.toOption
-            .map(_.toString)
-            .contains {
-              "java.lang.IllegalStateException: Subscription to topics, partitions and pattern are mutually exclusive"
-            }
-        }
+        assert(subscribeRegex.isLeft)
       }
     }
 
@@ -456,7 +543,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           assignEmptyName.left.toOption
@@ -478,7 +565,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           assignWithSubscribeName.left.toOption
@@ -496,7 +583,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           subscribeWithAssignWithName.left.toOption
@@ -524,7 +611,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         consumed.left.toOption match {
           case Some(_: NoOffsetForPartitionException) => succeed
@@ -590,7 +677,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           }
           .compile
           .drain
-          .unsafeRunSync
+          .unsafeRunSync()
       }
     }
 
@@ -690,7 +777,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             consumer2Updates(1).size < 3 &&
             (consumer1Updates(3) ++ consumer2Updates(1)) == consumer1Updates(1)
           }))
-        } yield ()).compile.drain.unsafeRunSync
+        } yield ()).compile.drain.unsafeRunSync()
       }
     }
 
@@ -713,7 +800,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- Stream.eval(IO(assert {
             updates.length == 1 && updates.head.size == 3
           }))
-        } yield ()).compile.drain.unsafeRunSync
+        } yield ()).compile.drain.unsafeRunSync()
       }
     }
   }
