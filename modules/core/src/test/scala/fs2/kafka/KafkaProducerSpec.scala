@@ -98,4 +98,24 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       assert(result.passthrough == passthrough)
     }
   }
+
+  it("should get metrics") {
+    withKafka { (config, topic) =>
+      createCustomTopic(topic, partitions = 3)
+
+      val info =
+        producerStream[IO]
+          .using(producerSettings(config))
+          .evalMap(_.metrics)
+
+      val res =
+        info
+          .take(1)
+          .compile
+          .lastOrError
+          .unsafeRunSync()
+
+      assert(res.nonEmpty)
+    }
+  }
 }

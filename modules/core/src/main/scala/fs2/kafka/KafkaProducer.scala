@@ -11,7 +11,9 @@ import cats.effect._
 import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2.kafka.internal._
+import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
+import org.apache.kafka.common.{Metric, MetricName}
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -51,17 +53,32 @@ abstract class KafkaProducer[F[_], K, V] {
   ): F[F[ProducerResult[K, V, P]]]
 }
 
-private[kafka] object KafkaProducer {
-  def resource[F[_], K, V](
+object KafkaProducer {
+
+  /**
+    * [[KafkaProducer.Metrics]] extends [[KafkaProducer]] to provide
+    * access to the underlying producer metrics.
+    */
+  abstract class Metrics[F[_], K, V] extends KafkaProducer[F, K, V] {
+
+    /**
+      * Returns producer metrics.
+      *
+      * @see org.apache.kafka.clients.producer.KafkaProducer#metrics
+      */
+    def metrics: F[Map[MetricName, Metric]]
+  }
+
+  private[kafka] def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
-  ): Resource[F, KafkaProducer[F, K, V]] =
+  ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
       Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
         WithProducer(settings).map { withProducer =>
-          new KafkaProducer[F, K, V] {
+          new KafkaProducer.Metrics[F, K, V] {
             override def produce[P](
               records: ProducerRecords[K, V, P]
             ): F[F[ProducerResult[K, V, P]]] = {
@@ -71,6 +88,11 @@ private[kafka] object KafkaProducer {
                   .map(_.sequence.map(ProducerResult(_, records.passthrough)))
               }
             }
+
+            override def metrics: F[Map[MetricName, Metric]] =
+              withProducer { producer =>
+                F.delay(producer.metrics().asScala.toMap)
+              }
 
             override def toString: String =
               "KafkaProducer$" + System.identityHashCode(this)
