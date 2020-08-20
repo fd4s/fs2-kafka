@@ -172,8 +172,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private[this] def fetch(
     partition: TopicPartition,
-    streamId: Int,
-    partitionStreamId: Int,
+    streamId: StreamId,
+    partitionStreamId: PartitionStreamId,
     deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
   ): F[Unit] = {
     val assigned =
@@ -191,14 +191,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         .flatMap {
           case (newState, oldFetches) =>
             log(StoredFetch(partition, deferred, newState)) >>
-              oldFetches.fold(F.unit) { fetches =>
-                fetches
-                  .traverse(
-                    fetch =>
-                      fetch.completeRevoked(Chunk.empty) >>
-                        log(RevokedPreviousFetch(partition, streamId))
-                  )
-                  .void
+              oldFetches.traverse_ { fetch =>
+                fetch.completeRevoked(Chunk.empty) >>
+                  log(RevokedPreviousFetch(partition, streamId))
               }
         }
 
@@ -252,64 +247,63 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
 
   private[this] def revoked(revoked: SortedSet[TopicPartition]): F[Unit] =
-    ref.update(_.withoutFetchesByPartition(revoked)) >>
-      ref
-        .updateAndGet(_.withRebalancing(true))
-        .flatMap { state =>
-          val fetches = state.fetches.keySetStrict
-          val records = state.records.keySetStrict
+    ref
+      .updateAndGet(_.withRebalancing(true))
+      .flatMap { state =>
+        val fetches = state.fetches.keySetStrict
+        val records = state.records.keySetStrict
 
-          val revokedFetches = revoked intersect fetches
-          val revokedNonFetches = revoked diff fetches
+        val revokedFetches = revoked intersect fetches
+        val revokedNonFetches = revoked diff fetches
 
-          val withRecords = records intersect revokedFetches
-          val withoutRecords = revokedFetches diff records
+        val withRecords = records intersect revokedFetches
+        val withoutRecords = revokedFetches diff records
 
-          val logRevoked =
-            log(RevokedPartitions(revoked, state))
+        val logRevoked =
+          log(RevokedPartitions(revoked, state))
 
-          val completeWithRecords =
-            if (withRecords.nonEmpty) {
-              state.fetches.filterKeysStrictList(withRecords).traverse {
-                case (partition, partitionFetches) =>
-                  val records = Chunk.vector(state.records(partition).toVector)
-                  partitionFetches.values.toList.traverse(_.completeRevoked(records))
-              } >> ref
-                .updateAndGet(_.withoutFetchesAndRecords(withRecords))
-                .log(RevokedFetchesWithRecords(state.records.filterKeysStrict(withRecords), _))
+        val completeWithRecords =
+          if (withRecords.nonEmpty) {
+            state.fetches.filterKeysStrictList(withRecords).traverse {
+              case (partition, partitionFetches) =>
+                val records = Chunk.vector(state.records(partition).toVector)
+                partitionFetches.values.toList.traverse(_.completeRevoked(records))
+            } >> ref
+              .updateAndGet(_.withoutFetchesAndRecords(withRecords))
+              .log(RevokedFetchesWithRecords(state.records.filterKeysStrict(withRecords), _))
+          } else F.unit
+
+        val completeWithoutRecords =
+          if (withoutRecords.nonEmpty) {
+            state.fetches
+              .filterKeysStrictValuesList(withoutRecords)
+              .traverse(_.values.toList.traverse(_.completeRevoked(Chunk.empty))) >>
+              ref
+                .updateAndGet(_.withoutFetches(withoutRecords))
+                .log(RevokedFetchesWithoutRecords(withoutRecords, _))
+          } else F.unit
+
+        val removeRevokedRecords =
+          if (revokedNonFetches.nonEmpty) {
+            val revokedRecords =
+              state.records.filterKeysStrict(revokedNonFetches)
+
+            if (revokedRecords.nonEmpty) {
+              ref
+                .updateAndGet(_.withoutRecords(revokedRecords.keySet))
+                .log(RemovedRevokedRecords(revokedRecords, _))
             } else F.unit
+          } else F.unit
 
-          val completeWithoutRecords =
-            if (withoutRecords.nonEmpty) {
-              state.fetches
-                .filterKeysStrictValuesList(withoutRecords)
-                .traverse(_.values.toList.traverse(_.completeRevoked(Chunk.empty))) >>
-                ref
-                  .updateAndGet(_.withoutFetches(withoutRecords))
-                  .log(RevokedFetchesWithoutRecords(withoutRecords, _))
-            } else F.unit
+        val onRevoked =
+          state.onRebalances.foldLeft(F.unit)(_ >> _.onRevoked(revoked))
 
-          val removeRevokedRecords =
-            if (revokedNonFetches.nonEmpty) {
-              val revokedRecords =
-                state.records.filterKeysStrict(revokedNonFetches)
-
-              if (revokedRecords.nonEmpty) {
-                ref
-                  .updateAndGet(_.withoutRecords(revokedRecords.keySet))
-                  .log(RemovedRevokedRecords(revokedRecords, _))
-              } else F.unit
-            } else F.unit
-
-          val onRevoked =
-            state.onRebalances.foldLeft(F.unit)(_ >> _.onRevoked(revoked))
-
-          logRevoked >>
-            completeWithRecords >>
-            completeWithoutRecords >>
-            removeRevokedRecords >>
-            onRevoked
-        }
+        logRevoked >>
+          completeWithRecords >>
+          completeWithoutRecords >>
+          removeRevokedRecords >>
+          onRevoked
+      }
 
   private[this] def assignment(
     deferred: Deferred[F, Either[Throwable, SortedSet[TopicPartition]]],
@@ -515,7 +509,7 @@ private[kafka] object KafkaConsumerActor {
 
   final case class State[F[_], K, V](
     fetches: Map[TopicPartition, Map[StreamId, FetchRequest[F, K, V]]],
-    fetchesByPartitionStream: Map[TopicPartition, Set[PartitionStreamId]],
+    partitionStreamIds: Map[TopicPartition, PartitionStreamId],
     records: Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]],
     pendingCommits: Chain[Request.Commit[F, K, V]],
     onRebalances: Chain[OnRebalance[F, K, V]],
@@ -531,71 +525,49 @@ private[kafka] object KafkaConsumerActor {
       */
     def withFetch(
       partition: TopicPartition,
-      streamId: Int,
-      partitionStreamId: Int,
+      streamId: StreamId,
+      partitionStreamId: PartitionStreamId,
       deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
-    ): (State[F, K, V], Option[NonEmptyList[FetchRequest[F, K, V]]]) = {
-
-      val newFetchRequest = FetchRequest(deferred)
+    ): (State[F, K, V], List[FetchRequest[F, K, V]]) = {
+      val newFetchRequest =
+        FetchRequest(deferred)
 
       val oldPartitionFetches =
-        fetches.get(partition)
+        fetches.getOrElse(partition, Map.empty)
 
       val oldPartitionFetch =
-        oldPartitionFetches.flatMap(_.get(streamId)).map(f => NonEmptyList.one(f))
+        oldPartitionFetches.get(streamId)
 
-      val lastFetchesByPartitions =
-        fetchesByPartitionStream
-          .get(partition)
+      val oldPartitionStreamId =
+        partitionStreamIds.getOrElse(partition, 0)
 
-      // Is there any fetches to the same topic but  from other (newer) inner streams
-      val hasNewerStreamPartitions = lastFetchesByPartitions.exists(
-        lastFetches => lastFetches.exists(pStreamId => pStreamId > partitionStreamId)
-      )
-
-      val (newPartitionFetches, newStreamPartitions) = {
-        // filter all newer fetches by other inner streams
-        val streamPartitionsToStayCalc = lastFetchesByPartitions
-          .getOrElse(Set.empty)
-          .filter(pStreamId => pStreamId > partitionStreamId)
-
-        val oldPartitionFetchesCalc = oldPartitionFetches.getOrElse(Map.empty)
-
-        if (hasNewerStreamPartitions) {
-          // in this case this fetch will be closed without fetching
-          (oldPartitionFetchesCalc - streamId, streamPartitionsToStayCalc)
-        } else {
-          (
-            oldPartitionFetchesCalc
-              .updated(streamId, newFetchRequest),
-            streamPartitionsToStayCalc ++ Set(partitionStreamId)
-          )
-        }
-      }
-
-      val newFetchesByPartitionStream =
-        fetchesByPartitionStream.updated(partition, newStreamPartitions)
+      val hasMoreRecentPartitionStreamIds =
+        oldPartitionStreamId > partitionStreamId
 
       val newFetches =
-        fetches.updated(partition, newPartitionFetches)
+        fetches.updated(partition, {
+          if (hasMoreRecentPartitionStreamIds) oldPartitionFetches - streamId
+          else oldPartitionFetches.updated(streamId, newFetchRequest)
+        })
 
-      // need to revoke old fetch or current
-      val fetchesToRevoke = (if (hasNewerStreamPartitions) Some(NonEmptyList.one(newFetchRequest))
-                             else None) combine oldPartitionFetch
+      val newPartitionStreamIds =
+        partitionStreamIds.updated(partition, oldPartitionStreamId max partitionStreamId)
+
+      val fetchesToRevoke =
+        if (hasMoreRecentPartitionStreamIds)
+          newFetchRequest :: oldPartitionFetch.toList
+        else oldPartitionFetch.toList
 
       (
-        copy(fetches = newFetches, fetchesByPartitionStream = newFetchesByPartitionStream),
+        copy(fetches = newFetches, partitionStreamIds = newPartitionStreamIds),
         fetchesToRevoke
       )
     }
 
     def withoutFetches(partitions: Set[TopicPartition]): State[F, K, V] =
-      copy(fetches = fetches.filterKeysStrict(!partitions.contains(_)))
-
-    def withoutFetchesByPartition(partitions: Set[TopicPartition]): State[F, K, V] =
       copy(
-        fetchesByPartitionStream =
-          fetchesByPartitionStream.filterKeysStrict(!partitions.contains(_))
+        fetches = fetches.filterKeysStrict(!partitions.contains(_)),
+        partitionStreamIds = partitionStreamIds.filterKeysStrict(!partitions.contains(_))
       )
 
     def withRecords(
@@ -606,6 +578,7 @@ private[kafka] object KafkaConsumerActor {
     def withoutFetchesAndRecords(partitions: Set[TopicPartition]): State[F, K, V] =
       copy(
         fetches = fetches.filterKeysStrict(!partitions.contains(_)),
+        partitionStreamIds = partitionStreamIds.filterKeysStrict(!partitions.contains(_)),
         records = records.filterKeysStrict(!partitions.contains(_))
       )
 
@@ -641,17 +614,17 @@ private[kafka] object KafkaConsumerActor {
               append(fs.mkString("[", ", ", "]"))
           }("", ", ", "")
 
-      val fetchesByPartitionString =
-        fetchesByPartitionStream.toList
+      val partitionStreamIdsString =
+        partitionStreamIds.toList
           .sortBy { case (tp, _) => tp }
           .mkStringAppend {
-            case (append, (tp, fs)) =>
+            case (append, (tp, id)) =>
               append(tp.toString)
               append(" -> ")
-              append(fs.mkString("[", ", ", "]"))
+              append(id.toString)
           }("", ", ", "")
 
-      s"State(fetches = Map($fetchesString), fetchesByPartitionStream = $fetchesByPartitionString, records = Map(${recordsString(records)}), pendingCommits = $pendingCommits, onRebalances = $onRebalances, rebalancing = $rebalancing, subscribed = $subscribed, streaming = $streaming)"
+      s"State(fetches = Map($fetchesString), partitionStreamIds = Map($partitionStreamIdsString), records = Map(${recordsString(records)}), pendingCommits = $pendingCommits, onRebalances = $onRebalances, rebalancing = $rebalancing, subscribed = $subscribed, streaming = $streaming)"
     }
   }
 
@@ -659,7 +632,7 @@ private[kafka] object KafkaConsumerActor {
     def empty[F[_], K, V]: State[F, K, V] =
       State(
         fetches = Map.empty,
-        fetchesByPartitionStream = Map.empty,
+        partitionStreamIds = Map.empty,
         records = Map.empty,
         pendingCommits = Chain.empty,
         onRebalances = Chain.empty,
@@ -727,8 +700,8 @@ private[kafka] object KafkaConsumerActor {
 
     final case class Fetch[F[_], K, V](
       partition: TopicPartition,
-      streamId: Int,
-      partitionStreamId: Int,
+      streamId: StreamId,
+      partitionStreamId: PartitionStreamId,
       deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
     ) extends Request[F, K, V]
 

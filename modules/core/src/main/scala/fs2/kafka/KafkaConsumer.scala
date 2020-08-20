@@ -477,12 +477,10 @@ private[kafka] object KafkaConsumer {
           assigned: NonEmptySet[TopicPartition],
           partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
         ): F[Unit] = assigned.foldLeft(F.unit) {
-          case (acc, tp) =>
+          case (acc, partition) =>
             acc >> partitionStreamIdRef
               .modify(id => (id + 1, id))
-              .flatMap(
-                partitionStreamId => enqueueStream(streamId, partitionStreamId, tp, partitions)
-              )
+              .flatMap(enqueueStream(streamId, _, partition, partitions))
         }
 
         def onRebalance(
