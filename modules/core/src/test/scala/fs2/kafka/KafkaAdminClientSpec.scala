@@ -196,47 +196,49 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
         (config, topic) => {
           commonSetup(topic, config)
 
-          adminClientResource[IO](adminClientSettings(config)).use {
-            adminClient =>
-              for {
-                describedAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
-                _ <- IO(assert(describedAcls.isEmpty))
+          adminClientResource[IO](adminClientSettings(config))
+            .use {
+              adminClient =>
+                for {
+                  describedAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
+                  _ <- IO(assert(describedAcls.isEmpty))
 
-                aclEntry = new AccessControlEntry(
-                  "User:ANONYMOUS",
-                  "*",
-                  AclOperation.DESCRIBE,
-                  AclPermissionType.ALLOW
-                )
-                pattern = new ResourcePattern(ResourceType.TOPIC, topic, PatternType.LITERAL)
-                acl = new AclBinding(pattern, aclEntry)
-                _ <- adminClient.createAcls(List(acl))
-                foundAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
-                _ <- IO(assert(foundAcls.length == 1))
-                _ <- IO(assert(foundAcls.head.pattern() === pattern))
+                  aclEntry = new AccessControlEntry(
+                    "User:ANONYMOUS",
+                    "*",
+                    AclOperation.DESCRIBE,
+                    AclPermissionType.ALLOW
+                  )
+                  pattern = new ResourcePattern(ResourceType.TOPIC, topic, PatternType.LITERAL)
+                  acl = new AclBinding(pattern, aclEntry)
+                  _ <- adminClient.createAcls(List(acl))
+                  foundAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
+                  _ <- IO(assert(foundAcls.length == 1))
+                  _ <- IO(assert(foundAcls.head.pattern() === pattern))
 
-                // delete another Entry
-                _ <- adminClient.deleteAcls(
-                  List(
-                    new AclBindingFilter(
-                      ResourcePatternFilter.ANY,
-                      new AccessControlEntryFilter(
-                        "User:ANONYMOUS",
-                        "*",
-                        AclOperation.WRITE,
-                        AclPermissionType.ALLOW
+                  // delete another Entry
+                  _ <- adminClient.deleteAcls(
+                    List(
+                      new AclBindingFilter(
+                        ResourcePatternFilter.ANY,
+                        new AccessControlEntryFilter(
+                          "User:ANONYMOUS",
+                          "*",
+                          AclOperation.WRITE,
+                          AclPermissionType.ALLOW
+                        )
                       )
                     )
                   )
-                )
-                foundAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
-                _ <- IO(assert(foundAcls.length == 1))
+                  foundAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
+                  _ <- IO(assert(foundAcls.length == 1))
 
-                _ <- adminClient.deleteAcls(List(AclBindingFilter.ANY))
-                foundAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
-                _ <- IO(assert(foundAcls.isEmpty))
-              } yield ()
-          }.unsafeRunSync
+                  _ <- adminClient.deleteAcls(List(AclBindingFilter.ANY))
+                  foundAcls <- adminClient.describeAcls(AclBindingFilter.ANY)
+                  _ <- IO(assert(foundAcls.isEmpty))
+                } yield ()
+            }
+            .unsafeRunSync()
         }
       )
     }
@@ -245,13 +247,15 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       withKafka { (config, topic) =>
         commonSetup(topic, config)
 
-        adminClientResource[IO](adminClientSettings(config)).use { adminClient =>
-          for {
-            _ <- IO {
-              adminClient.toString should startWith("KafkaAdminClient$")
-            }
-          } yield ()
-        }.unsafeRunSync
+        adminClientResource[IO](adminClientSettings(config))
+          .use { adminClient =>
+            for {
+              _ <- IO {
+                adminClient.toString should startWith("KafkaAdminClient$")
+              }
+            } yield ()
+          }
+          .unsafeRunSync()
       }
     }
   }
@@ -271,6 +275,6 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       .evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
       .compile
       .lastOrError
-      .unsafeRunSync
+      .unsafeRunSync()
   }
 }

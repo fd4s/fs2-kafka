@@ -38,7 +38,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
             .compile
             .toVector
-            .unsafeRunSync
+            .unsafeRunSync()
 
         consumed should contain theSameElementsAs produced
       }
@@ -305,7 +305,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               }.toMap
             }
           }))
-        } yield ()).compile.drain.unsafeRunSync
+        } yield ()).compile.drain.unsafeRunSync()
       }
     }
 
@@ -353,7 +353,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             }
             .compile
             .lastOrError
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
@@ -385,7 +385,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .evalTap(_.fiber.join)
             .compile
             .toVector
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert(consumed.isEmpty)
       }
@@ -402,7 +402,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert(consumed.left.toOption.map(_.toString).contains(NotSubscribedException().toString))
       }
@@ -417,7 +417,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           subscribeName.left.toOption
@@ -435,7 +435,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           subscribeRegex.left.toOption
@@ -456,7 +456,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           assignEmptyName.left.toOption
@@ -478,7 +478,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           assignWithSubscribeName.left.toOption
@@ -496,7 +496,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         assert {
           subscribeWithAssignWithName.left.toOption
@@ -524,7 +524,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .lastOrError
             .attempt
-            .unsafeRunSync
+            .unsafeRunSync()
 
         consumed.left.toOption match {
           case Some(_: NoOffsetForPartitionException) => succeed
@@ -590,7 +590,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           }
           .compile
           .drain
-          .unsafeRunSync
+          .unsafeRunSync()
       }
     }
 
@@ -690,7 +690,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             consumer2Updates(1).size < 3 &&
             (consumer1Updates(3) ++ consumer2Updates(1)) == consumer1Updates(1)
           }))
-        } yield ()).compile.drain.unsafeRunSync
+        } yield ()).compile.drain.unsafeRunSync()
       }
     }
 
@@ -713,7 +713,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- Stream.eval(IO(assert {
             updates.length == 1 && updates.head.size == 3
           }))
-        } yield ()).compile.drain.unsafeRunSync
+        } yield ()).compile.drain.unsafeRunSync()
       }
     }
   }
