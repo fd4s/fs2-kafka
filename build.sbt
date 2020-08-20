@@ -1,12 +1,12 @@
-val catsEffectVersion = "2.1.2"
+val catsEffectVersion = "2.1.4"
 
 val catsVersion = "2.1.2"
 
-val confluentVersion = "5.4.2"
+val confluentVersion = "5.5.1"
 
-val embeddedKafkaVersion = "2.5.0"
+val embeddedKafkaVersion = "2.6.0"
 
-val fs2Version = "2.3.0"
+val fs2Version = "2.4.3"
 
 val kafkaVersion = "2.5.0"
 
@@ -80,7 +80,7 @@ lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
     "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "1.0.1",
+    "org.typelevel" %% "discipline-scalatest" % "2.0.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
