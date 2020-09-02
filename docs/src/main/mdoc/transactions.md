@@ -5,7 +5,7 @@ title: Transactions
 
 Kafka transactions are supported through a [`TransactionalKafkaProducer`][transactionalkafkaproducer]. In order to use transactions, the following steps should be taken. For details on [consumers](consumers.md) and [producers](producers.md), see the respective sections.
 
-- Create a `TransactionalProducerSettings` using a TopicPartition to generate the `transactional.id`.
+- Create a `TransactionalProducerSettings` using a `TopicPartition` to generate the `transactional.id`.
 
 - Use `withIsolationLevel(IsolationLevel.ReadCommitted)` on `ConsumerSettings`.
 
@@ -33,14 +33,16 @@ object Main extends IOApp {
         .withBootstrapServers("localhost:9092")
         .withGroupId("group")
 
-    val producerSettings = ProducerSettings[IO, String, String]
+    val producerSettings =
+      ProducerSettings[IO, String, String]
         .withBootstrapServers("localhost:9092")
 
-    val stream = consumerStream[IO]
+    val stream =
+      consumerStream[IO]
         .using(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.explicitPartitionedStream)
-        .flatMap {
+        .map {
           case (topicPartition, partitionStream) =>
             transactionalProducerStream[IO]
               .using(
@@ -50,21 +52,21 @@ object Main extends IOApp {
                   producerSettings
                 )
               )
-          .flatMap { producer =>
-            partitionStream.mapAsync(25) { committable =>
-              processRecord(committable.record)
-                .map { case (key, value) =>
-                  val record = ProducerRecord("topic", key, value)
-                  CommittableProducerRecords.one(record, committable.offset)
-                }
-            }
-              .groupWithin(500, 15.seconds)
-              .map(TransactionalProducerRecords(_))
-              .evalMap(producer.produce)
-          }
+              .flatMap { producer =>
+                partitionStream
+                  .mapAsync(25) { committable =>
+                    processRecord(committable.record)
+                      .map { case (key, value) =>
+                        val record = ProducerRecord("topic", key, value)
+                        CommittableProducerRecords.one(record, committable.offset)
+                      }
+                  }
+                  .groupWithin(500, 15.seconds)
+                  .map(TransactionalProducerRecords(_))
+                  .evalMap(producer.produce)
+              }
         }
-
-            
+        .parJoinUnbounded
 
     stream.compile.drain.as(ExitCode.Success)
   }

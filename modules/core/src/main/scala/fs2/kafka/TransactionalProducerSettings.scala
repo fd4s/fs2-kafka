@@ -17,9 +17,9 @@ import scala.concurrent.duration.FiniteDuration
   * [[TransactionalKafkaProducer]]. This includes a transactional ID and any
   * other [[ProducerSettings]].
   *
-  * A TopicPartition can be supplied to create a transactional ID which
-  * will remain consistent through application restarts and when kafka
-  * undergoes a rebalance.
+  * A `TopicPartition` can be supplied to create a `transactional.id`
+  * which will remain consistent through application restarts and
+  * when Kafka undergoes a rebalance.
   *
   * [[TransactionalProducerSettings]] instances are immutable and modification
   * functions return a new [[TransactionalProducerSettings]] instance.
@@ -80,15 +80,6 @@ object TransactionalProducerSettings {
   }
 
   def apply[F[_], K, V](
-    applicationId: String,
-    topicPartition: TopicPartition,
-    producerSettings: ProducerSettings[F, K, V]
-  ): TransactionalProducerSettings[F, K, V] = apply(
-    transactionalId = s"${applicationId}_${topicPartition.topic()}_${topicPartition.partition()}",
-    producerSettings = producerSettings
-  )
-
-  def apply[F[_], K, V](
     transactionalId: String,
     producerSettings: ProducerSettings[F, K, V]
   ): TransactionalProducerSettings[F, K, V] =
@@ -98,7 +89,18 @@ object TransactionalProducerSettings {
         .withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId)
     )
 
-  implicit def transactionalProducerSettingsShow[F[_], K, V]
-    : Show[TransactionalProducerSettings[F, K, V]] =
+  def apply[F[_], K, V](
+    applicationId: String,
+    topicPartition: TopicPartition,
+    producerSettings: ProducerSettings[F, K, V]
+  ): TransactionalProducerSettings[F, K, V] =
+    TransactionalProducerSettings(
+      transactionalId = s"${applicationId}_${topicPartition.topic()}_${topicPartition.partition()}",
+      producerSettings = producerSettings
+    )
+
+  // format: off
+  implicit def transactionalProducerSettingsShow[F[_], K, V]: Show[TransactionalProducerSettings[F, K, V]] =
     Show.fromToString
+  // format: on
 }

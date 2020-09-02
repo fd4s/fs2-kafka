@@ -185,7 +185,7 @@ package object kafka {
   def producerResource[F[_], K, V](settings: ProducerSettings[F, K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
-  ): Resource[F, KafkaProducer[F, K, V]] =
+  ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducer.resource(settings)
 
   /**
@@ -215,7 +215,7 @@ package object kafka {
   def producerStream[F[_], K, V](settings: ProducerSettings[F, K, V])(
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
-  ): Stream[F, KafkaProducer[F, K, V]] =
+  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     Stream.resource(producerResource(settings))
 
   /**

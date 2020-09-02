@@ -29,7 +29,7 @@ final class ProducerStream[F[_]] private[kafka] (
     */
   def using[K, V](settings: ProducerSettings[F, K, V])(
     implicit context: ContextShift[F]
-  ): Stream[F, KafkaProducer[F, K, V]] =
+  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     producerStream(settings)(F, context)
 
   override def toString: String =

@@ -28,7 +28,7 @@ final class ProducerResource[F[_]] private[kafka] (
     */
   def using[K, V](settings: ProducerSettings[F, K, V])(
     implicit context: ContextShift[F]
-  ): Resource[F, KafkaProducer[F, K, V]] =
+  ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     producerResource(settings)(F, context)
 
   override def toString: String =
