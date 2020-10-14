@@ -378,7 +378,7 @@ private[kafka] object KafkaConsumer {
     settings: ConsumerSettings[F, K, V],
     actor: Fiber[F, Unit],
     polls: Fiber[F, Unit],
-    streamIdRef: Ref[F, Int],
+    streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F]
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
@@ -407,8 +407,8 @@ private[kafka] object KafkaConsumer {
           (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)
 
         def enqueueStream(
-          streamId: Int,
-          partitionStreamId: Int,
+          streamId: StreamId,
+          partitionStreamId: PartitionStreamId,
           partition: TopicPartition,
           partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
         ): F[Unit] = {
@@ -472,8 +472,8 @@ private[kafka] object KafkaConsumer {
         }
 
         def enqueueStreams(
-          streamId: Int,
-          partitionStreamIdRef: Ref[F, Int],
+          streamId: StreamId,
+          partitionStreamIdRef: Ref[F, PartitionStreamId],
           assigned: NonEmptySet[TopicPartition],
           partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
         ): F[Unit] = assigned.foldLeft(F.unit) {
@@ -484,8 +484,8 @@ private[kafka] object KafkaConsumer {
         }
 
         def onRebalance(
-          streamId: Int,
-          partitionStreamIdRef: Ref[F, Int],
+          streamId: StreamId,
+          partitionStreamIdRef: Ref[F, PartitionStreamId],
           partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
         ): OnRebalance[F, K, V] = OnRebalance(
           onAssigned = assigned =>
@@ -496,8 +496,8 @@ private[kafka] object KafkaConsumer {
         )
 
         def requestAssignment(
-          streamId: Int,
-          partitionStreamIdRef: Ref[F, Int],
+          streamId: StreamId,
+          partitionStreamIdRef: Ref[F, PartitionStreamId],
           partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
         ): F[SortedSet[TopicPartition]] = {
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
@@ -515,9 +515,9 @@ private[kafka] object KafkaConsumer {
         }
 
         def initialEnqueue(
-          streamId: Int,
+          streamId: StreamId,
           partitions: Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]],
-          partitionStreamIdRef: Ref[F, Int]
+          partitionStreamIdRef: Ref[F, PartitionStreamId]
         ): F[Unit] =
           requestAssignment(streamId, partitionStreamIdRef, partitions).flatMap { assigned =>
             if (assigned.nonEmpty) {
@@ -808,7 +808,7 @@ private[kafka] object KafkaConsumer {
       requests <- Resource.liftF(Queue.unbounded[F, Request[F, K, V]])
       polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
-      streamId <- Resource.liftF(Ref.of[F, Int](0))
+      streamId <- Resource.liftF(Ref.of[F, StreamId](0))
       withConsumer <- WithConsumer(settings)
       actor = new KafkaConsumerActor(
         settings = settings,
