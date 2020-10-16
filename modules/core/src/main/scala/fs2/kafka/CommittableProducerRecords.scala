@@ -6,8 +6,13 @@
 
 package fs2.kafka
 
-import cats.{Foldable, Show}
+import cats.syntax.bifoldable._
+import cats.syntax.bitraverse._
+import cats.syntax.foldable._
+import cats.syntax.functor._
 import cats.syntax.show._
+import cats.syntax.traverse._
+import cats.{Applicative, Bitraverse, Eval, Foldable, Show, Traverse}
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
 
@@ -98,5 +103,78 @@ object CommittableProducerRecords {
           ", ",
           s", ${committable.offset})"
         )
+    }
+
+  implicit def committableProducerRecordsBitraverse[F[_]]
+    : Bitraverse[CommittableProducerRecords[F, *, *]] =
+    new Bitraverse[CommittableProducerRecords[F, *, *]] {
+      override def bitraverse[G[_], A, B, C, D](
+        fab: CommittableProducerRecords[F, A, B]
+      )(f: A => G[C], g: B => G[D])(
+        implicit G: Applicative[G]
+      ): G[CommittableProducerRecords[F, C, D]] = {
+        fab.records
+          .traverse { record =>
+            record.bitraverse(f, g)
+          }
+          .map { cd: Chunk[ProducerRecord[C, D]] =>
+            CommittableProducerRecords(cd, fab.offset)
+          }
+      }
+
+      override def bifoldLeft[A, B, C](
+        fab: CommittableProducerRecords[F, A, B],
+        c: C
+      )(f: (C, A) => C, g: (C, B) => C): C = {
+        fab.records.foldLeft(c) {
+          case (acc, record) =>
+            record.bifoldLeft(acc)(f, g)
+        }
+      }
+
+      override def bifoldRight[A, B, C](
+        fab: CommittableProducerRecords[F, A, B],
+        c: Eval[C]
+      )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] = {
+        fab.records.foldRight(c) {
+          case (record, acc) =>
+            record.bifoldRight(acc)(f, g)
+        }
+      }
+    }
+
+  implicit def committableProducerRecordsTraverse[F[_], K]
+    : Traverse[CommittableProducerRecords[F, K, *]] =
+    new Traverse[CommittableProducerRecords[F, K, *]] {
+      override def traverse[G[_], A, B](
+        fa: CommittableProducerRecords[F, K, A]
+      )(f: A => G[B])(implicit G: Applicative[G]): G[CommittableProducerRecords[F, K, B]] = {
+        fa.records
+          .traverse { record =>
+            record.traverse(f)
+          }
+          .map { b: Chunk[ProducerRecord[K, B]] =>
+            CommittableProducerRecords(b, fa.offset)
+          }
+      }
+
+      override def foldLeft[A, B](fa: CommittableProducerRecords[F, K, A], b: B)(
+        f: (B, A) => B
+      ): B = {
+        fa.records.foldLeft(b) {
+          case (acc, record) =>
+            record.foldLeft(acc)(f)
+        }
+      }
+
+      override def foldRight[A, B](
+        fa: CommittableProducerRecords[F, K, A],
+        lb: Eval[B]
+      )(f: (A, Eval[B]) => Eval[B]): Eval[B] = {
+        fa.records.foldRight(lb) {
+          case (record, acc) =>
+            record.foldRight(acc)(f)
+        }
+      }
     }
 }

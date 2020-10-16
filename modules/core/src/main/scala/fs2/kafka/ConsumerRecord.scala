@@ -6,10 +6,10 @@
 
 package fs2.kafka
 
-import cats.{Apply, Show}
 import cats.implicits._
+import cats.{Applicative, Apply, Bitraverse, Eval, Show, Traverse}
 import fs2.kafka.internal.syntax._
-import org.apache.kafka.clients.consumer.ConsumerRecord.{NULL_SIZE, NO_TIMESTAMP}
+import org.apache.kafka.clients.consumer.ConsumerRecord.{NO_TIMESTAMP, NULL_SIZE}
 import org.apache.kafka.common.record.TimestampType.{CREATE_TIME, LOG_APPEND_TIME}
 
 /**
@@ -81,6 +81,9 @@ sealed abstract class ConsumerRecord[+K, +V] {
     * specified leader epoch as the epoch for the record.
     */
   def withLeaderEpoch(leaderEpoch: Int): ConsumerRecord[K, V]
+
+  private[kafka] def withValue[V2](v: V2): ConsumerRecord[K, V2]
+  private[kafka] def withKeyValue[K2, V2](k: K2, v: V2): ConsumerRecord[K2, V2]
 }
 
 object ConsumerRecord {
@@ -130,6 +133,10 @@ object ConsumerRecord {
         b.append(", leaderEpoch = ").append(leaderEpoch.get)
       b.append(")").toString
     }
+
+    private[kafka] override def withValue[V2](v: V2): ConsumerRecord[K, V2] = copy(value = v)
+    private[kafka] override def withKeyValue[K2, V2](k: K2, v: V2): ConsumerRecord[K2, V2] =
+      copy(key = k, value = v)
   }
 
   /**
@@ -233,4 +240,51 @@ object ConsumerRecord {
       b.append(", leaderEpoch = ").append(record.leaderEpoch.get)
     b.append(")").toString
   }
+
+  implicit val consumerRecordBitraverse: Bitraverse[ConsumerRecord] =
+    new Bitraverse[ConsumerRecord] {
+      override def bitraverse[G[_], A, B, C, D](
+        fab: ConsumerRecord[A, B]
+      )(f: A => G[C], g: B => G[D])(implicit G: Applicative[G]): G[ConsumerRecord[C, D]] = {
+        G.product(f(fab.key), g(fab.value)).map {
+          case (c, d) =>
+            fab.withKeyValue(c, d)
+        }
+      }
+
+      override def bifoldLeft[A, B, C](
+        fab: ConsumerRecord[A, B],
+        c: C
+      )(f: (C, A) => C, g: (C, B) => C): C = {
+        g(f(c, fab.key), fab.value)
+      }
+
+      override def bifoldRight[A, B, C](
+        fab: ConsumerRecord[A, B],
+        c: Eval[C]
+      )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] = {
+        g(fab.value, f(fab.key, c))
+      }
+    }
+
+  implicit def consumerRecordTraverse[K]: Traverse[ConsumerRecord[K, *]] =
+    new Traverse[ConsumerRecord[K, *]] {
+      override def traverse[G[_], A, B](
+        fa: ConsumerRecord[K, A]
+      )(f: A => G[B])(implicit G: Applicative[G]): G[ConsumerRecord[K, B]] = {
+        f(fa.value).map { b =>
+          fa.withValue(b)
+        }
+      }
+
+      override def foldLeft[A, B](fa: ConsumerRecord[K, A], b: B)(f: (B, A) => B): B = {
+        f(b, fa.value)
+      }
+
+      override def foldRight[A, B](fa: ConsumerRecord[K, A], lb: Eval[B])(
+        f: (A, Eval[B]) => Eval[B]
+      ): Eval[B] = {
+        f(fa.value, lb)
+      }
+    }
 }
