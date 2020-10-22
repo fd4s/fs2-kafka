@@ -594,7 +594,7 @@ private[kafka] object KafkaConsumer {
                   .flatMap(updateQueue.enqueue1)
           )
 
-        Stream.eval {
+        Stream.eval[F, Stream[F, SortedSet[TopicPartition]]] {
           Queue.unbounded[F, SortedSet[TopicPartition]].flatMap { updateQueue =>
             Ref[F].of(SortedSet.empty[TopicPartition]).flatMap { assignmentRef =>
               Deferred[F, Unit].flatMap { initialAssignmentDeferred =>
@@ -803,8 +803,8 @@ private[kafka] object KafkaConsumer {
       keyDeserializer <- Resource.liftF(settings.keyDeserializer)
       valueDeserializer <- Resource.liftF(settings.valueDeserializer)
       id <- Resource.liftF(F.delay(new Object().hashCode))
-      implicit0(jitter: Jitter[F]) <- Resource.liftF(Jitter.default[F])
-      implicit0(logging: Logging[F]) <- Resource.liftF(Logging.default[F](id))
+      jitter <- Resource.liftF(Jitter.default[F])
+      logging <- Resource.liftF(Logging.default[F](id))
       requests <- Resource.liftF(Queue.unbounded[F, Request[F, K, V]])
       polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
@@ -817,7 +817,7 @@ private[kafka] object KafkaConsumer {
         ref = ref,
         requests = requests,
         withConsumer = withConsumer
-      )
+      )(implicitly, logging, jitter, implicitly)
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
     } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id, withConsumer)

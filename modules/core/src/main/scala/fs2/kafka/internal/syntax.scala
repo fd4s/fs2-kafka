@@ -137,7 +137,7 @@ private[kafka] object syntax {
     private val map: Map[K, F[V]]
   ) extends AnyVal {
     def asJavaMap(implicit F: Foldable[F]): util.Map[K, util.Collection[V]] =
-      map.map { case (k, fv) => k -> (fv.asJava: util.Collection[V]) }.asJava
+      new MapHasAsJava(map.map[K, util.Collection[V]] { case (k, fv) => k -> (fv.asJava: util.Collection[V]) }).asJava
   }
 
   implicit final class JavaUtilCollectionSyntax[A](

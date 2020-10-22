@@ -16,6 +16,8 @@ val scala212 = "2.12.12"
 
 val scala213 = "2.13.3"
 
+val dotty = "0.27.0-RC1"
+
 lazy val `fs2-kafka` = project
   .in(file("."))
   .settings(
@@ -34,13 +36,14 @@ lazy val core = project
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
-        "co.fs2" %% "fs2-core" % fs2Version,
+        ("co.fs2" %% "fs2-core" % fs2Version).withDottyCompat(scalaVersion.value),
         "org.apache.kafka" % "kafka-clients" % kafkaVersion
       )
     ),
     publishSettings,
     mimaSettings,
     scalaSettings,
+    Seq(crossScalaVersions := Seq(scala212, scala213, dotty)),
     testSettings
   )
 
@@ -51,7 +54,7 @@ lazy val vulcan = project
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
-        "com.github.fd4s" %% "vulcan" % vulcanVersion,
+        ("com.github.fd4s" %% "vulcan" % vulcanVersion).withDottyCompat(scalaVersion.value),
         "io.confluent" % "kafka-avro-serializer" % confluentVersion
       )
     ),
@@ -79,13 +82,20 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "2.0.1",
-    "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
+    ("io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion).withDottyCompat(scalaVersion.value),
+    ("org.typelevel" %% "discipline-scalatest" % "2.0.1").withDottyCompat(scalaVersion.value),
+    ("org.typelevel" %% "cats-effect-laws" % catsEffectVersion).withDottyCompat(scalaVersion.value),
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
-  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full),
+  //addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
+  
+    libraryDependencies ++= (
+    if (isDotty.value) Nil
+    else
+      Seq(
+        compilerPlugin(("org.typelevel" %% "kind-projector" % "0.11.0" ).cross(CrossVersion.full))
+      )),
+  //addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full),
   pomPostProcess := { (node: xml.Node) =>
     new xml.transform.RuleTransformer(new xml.transform.RewriteRule {
       def scopedDependency(e: xml.Elem): Boolean =
@@ -211,32 +221,47 @@ lazy val noPublishSettings =
     publishArtifact := false
   )
 
+// // Directly copied from typelevel/cats
+// def scalaVersionSpecificFolders(srcName: String, srcBaseDir: java.io.File, scalaVersion: String): List[sbt.File] = {
+//   (CrossVersion.partialVersion(scalaVersion) match {
+//     case Some((2, y)) => Seq("-2.x") ++ (if (y >= 13) Seq("-2.13+") else Nil)
+//     case Some((0, _)) => Seq("-2.13+") ++ Seq("-3.x")
+//     case _            => Nil
+//   }).map(suffix => srcBaseDir./())
+// }
+
 lazy val scalaSettings = Seq(
   scalaVersion := scala213,
-  crossScalaVersions := Seq(scala212, scala213),
+  crossScalaVersions := Seq(scala212, scala213, dotty),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
     "UTF-8",
     "-feature",
-    "-language:higherKinds",
+  //  "-language:higherKinds",
     "-language:implicitConversions",
+    "-Ykind-projector",
+    "-source:3.0-migration",
     "-unchecked",
     "-Xfatal-warnings",
-    "-Xlint",
-    "-Yno-adapted-args",
-    "-Ywarn-dead-code",
-    "-Ywarn-numeric-widen",
-    "-Ywarn-value-discard",
-    "-Ywarn-unused",
-    "-Ypartial-unification"
+   // "-Xlint",
+   // "-Yno-adapted-args",
+   // "-Ywarn-dead-code",
+   // "-Ywarn-numeric-widen",
+   // "-Ywarn-value-discard",
+  //  "-Ywarn-unused",
+   // "-Ypartial-unification"
   ).filter {
     case ("-Yno-adapted-args" | "-Ypartial-unification") if scalaVersion.value.startsWith("2.13") =>
       false
     case _ => true
   },
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
-  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value
+  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
+  Compile / unmanagedSourceDirectories ++= 
+    Seq(baseDirectory.value / "src" / "main" / "scala-2.13+")//file("modules/core/src/main/scala-2.13+"))//new File("modules/core/src/main/scala-2.13+/"))
+//  scalaVersionSpecificFolders("main", baseDirectory.value, scalaVersion.value),
+  //Test / unmanagedSourceDirectories ++= scalaVersionSpecificFolders("test", baseDirectory.value, scalaVersion.value),
 )
 
 lazy val testSettings = Seq(
