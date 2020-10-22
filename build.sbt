@@ -82,19 +82,21 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    ("io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion).withDottyCompat(scalaVersion.value),
+    ("io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion)
+      .withDottyCompat(scalaVersion.value),
     ("org.typelevel" %% "discipline-scalatest" % "2.0.1").withDottyCompat(scalaVersion.value),
     ("org.typelevel" %% "cats-effect-laws" % catsEffectVersion).withDottyCompat(scalaVersion.value),
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   //addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
-  
-    libraryDependencies ++= (
-    if (isDotty.value) Nil
-    else
-      Seq(
-        compilerPlugin(("org.typelevel" %% "kind-projector" % "0.11.0" ).cross(CrossVersion.full))
-      )),
+  libraryDependencies ++= (if (isDotty.value) Nil
+                           else
+                             Seq(
+                               compilerPlugin(
+                                 ("org.typelevel" %% "kind-projector" % "0.11.0")
+                                   .cross(CrossVersion.full)
+                               )
+                             )),
   //addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full),
   pomPostProcess := { (node: xml.Node) =>
     new xml.transform.RuleTransformer(new xml.transform.RewriteRule {
@@ -238,30 +240,44 @@ lazy val scalaSettings = Seq(
     "-encoding",
     "UTF-8",
     "-feature",
-  //  "-language:higherKinds",
     "-language:implicitConversions",
-    "-Ykind-projector",
-    "-source:3.0-migration",
     "-unchecked",
-    "-Xfatal-warnings",
-   // "-Xlint",
-   // "-Yno-adapted-args",
-   // "-Ywarn-dead-code",
-   // "-Ywarn-numeric-widen",
-   // "-Ywarn-value-discard",
-  //  "-Ywarn-unused",
-   // "-Ypartial-unification"
-  ).filter {
-    case ("-Yno-adapted-args" | "-Ypartial-unification") if scalaVersion.value.startsWith("2.13") =>
-      false
-    case _ => true
-  },
+    "-Xfatal-warnings"
+  ) ++ (
+    if (scalaVersion.value.startsWith("2.13"))
+      Seq(
+        "-language:higherKinds",
+        "-Xlint",
+        "-Ywarn-dead-code",
+        "-Ywarn-numeric-widen",
+        "-Ywarn-value-discard",
+        "-Ywarn-unused"
+      )
+    else if (scalaVersion.value.startsWith("2.12"))
+      Seq(
+        "-language:higherKinds",
+        "-Xlint",
+        "-Yno-adapted-args",
+        "-Ywarn-dead-code",
+        "-Ywarn-numeric-widen",
+        "-Ywarn-value-discard",
+        "-Ywarn-unused",
+        "-Ypartial-unification"
+      )
+    else
+      Seq(
+        "-Ykind-projector",
+        "-source:3.0-migration"
+      )
+  ),
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
   scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
-  Compile / unmanagedSourceDirectories ++= 
-    Seq(baseDirectory.value / "src" / "main" / "scala-2.13+")//file("modules/core/src/main/scala-2.13+"))//new File("modules/core/src/main/scala-2.13+/"))
-//  scalaVersionSpecificFolders("main", baseDirectory.value, scalaVersion.value),
-  //Test / unmanagedSourceDirectories ++= scalaVersionSpecificFolders("test", baseDirectory.value, scalaVersion.value),
+  Compile / unmanagedSourceDirectories ++=
+    Seq(
+      baseDirectory.value / "src" / "main" / (if (scalaVersion.value.startsWith("2.12"))
+                                                "scala-2.12"
+                                              else "scala-2.13+")
+    )
 )
 
 lazy val testSettings = Seq(

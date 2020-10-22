@@ -594,28 +594,30 @@ private[kafka] object KafkaConsumer {
                   .flatMap(updateQueue.enqueue1)
           )
 
-        Stream.eval[F, Stream[F, SortedSet[TopicPartition]]] {
-          Queue.unbounded[F, SortedSet[TopicPartition]].flatMap { updateQueue =>
-            Ref[F].of(SortedSet.empty[TopicPartition]).flatMap { assignmentRef =>
-              Deferred[F, Unit].flatMap { initialAssignmentDeferred =>
-                val onRebalance =
-                  onRebalanceWith(
-                    updateQueue = updateQueue,
-                    assignmentRef = assignmentRef,
-                    initialAssignmentDone = initialAssignmentDeferred.get
-                  )
+        Stream
+          .eval[F, Stream[F, SortedSet[TopicPartition]]] {
+            Queue.unbounded[F, SortedSet[TopicPartition]].flatMap { updateQueue =>
+              Ref[F].of(SortedSet.empty[TopicPartition]).flatMap { assignmentRef =>
+                Deferred[F, Unit].flatMap { initialAssignmentDeferred =>
+                  val onRebalance =
+                    onRebalanceWith(
+                      updateQueue = updateQueue,
+                      assignmentRef = assignmentRef,
+                      initialAssignmentDone = initialAssignmentDeferred.get
+                    )
 
-                assignment(Some(onRebalance))
-                  .flatMap { initialAssignment =>
-                    assignmentRef.set(initialAssignment) >>
-                      updateQueue.enqueue1(initialAssignment) >>
-                      initialAssignmentDeferred.complete(())
-                  }
-                  .as(updateQueue.dequeue.changes)
+                  assignment(Some(onRebalance))
+                    .flatMap { initialAssignment =>
+                      assignmentRef.set(initialAssignment) >>
+                        updateQueue.enqueue1(initialAssignment) >>
+                        initialAssignmentDeferred.complete(())
+                    }
+                    .as(updateQueue.dequeue.changes)
+                }
               }
             }
           }
-        }.flatten
+          .flatten
       }
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
@@ -810,14 +812,18 @@ private[kafka] object KafkaConsumer {
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, Int](0))
       withConsumer <- WithConsumer(settings)
-      actor = new KafkaConsumerActor(
-        settings = settings,
-        keyDeserializer = keyDeserializer,
-        valueDeserializer = valueDeserializer,
-        ref = ref,
-        requests = requests,
-        withConsumer = withConsumer
-      )(implicitly, logging, jitter, implicitly)
+      actor = {
+        implicit val logging0: Logging[F] = logging
+        implicit val jitter0: Jitter[F] = jitter
+        new KafkaConsumerActor(
+          settings = settings,
+          keyDeserializer = keyDeserializer,
+          valueDeserializer = valueDeserializer,
+          ref = ref,
+          requests = requests,
+          withConsumer = withConsumer
+        )
+      }
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
     } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id, withConsumer)
