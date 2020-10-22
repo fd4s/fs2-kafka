@@ -44,7 +44,7 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators {
   implicit def headerSerializerEq[A](implicit A: Arbitrary[A]): Eq[HeaderSerializer[A]] =
     Eq.instance { (s1, s2) =>
       Try {
-        forAll { a: A =>
+        forAll { (a: A) =>
           val r1 = s1.serialize(a)
           val r2 = s2.serialize(a)
           r1 should contain theSameElementsInOrderAs (r2)
@@ -55,7 +55,7 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators {
   implicit def headerDeserializerEq[A](implicit A: Eq[A]): Eq[HeaderDeserializer[A]] =
     Eq.instance { (d1, d2) =>
       Try {
-        forAll { bytes: Array[Byte] =>
+        forAll { (bytes: Array[Byte]) =>
           val r1 = d1.deserialize(bytes)
           val r2 = d2.deserialize(bytes)
           (r1 === r2) shouldBe true

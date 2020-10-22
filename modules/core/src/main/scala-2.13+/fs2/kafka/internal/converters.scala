@@ -1,0 +1,16 @@
+/*
+ * Copyright 2018-2020 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package fs2.kafka.internal
+
+import scala.collection.immutable.ArraySeq
+
+object converters {
+  val collection = scala.jdk.CollectionConverters
+
+  def unsafeWrapArray[A](array: Array[A]): Seq[A] =
+    ArraySeq.unsafeWrapArray(array)
+}
