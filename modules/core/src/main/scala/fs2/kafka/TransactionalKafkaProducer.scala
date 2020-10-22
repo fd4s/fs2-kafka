@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, Resource}
+import cats.effect.{Concurrent, Resource, Async, Outcome}
 import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.internal._
@@ -40,8 +40,7 @@ private[kafka] object TransactionalKafkaProducer {
   def resource[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     Resource.liftF(settings.producerSettings.keySerializer).flatMap { keySerializer =>
       Resource.liftF(settings.producerSettings.valueSerializer).flatMap { valueSerializer =>
@@ -84,9 +83,9 @@ private[kafka] object TransactionalKafkaProducer {
                           }
                         }
                     } {
-                      case (_, ExitCase.Completed) =>
+                      case (_, Outcome.Succeeded(_)) =>
                         F.delay(producer.commitTransaction())
-                      case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
+                      case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
                         F.delay(producer.abortTransaction())
                     }
                   }.flatten

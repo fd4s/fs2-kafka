@@ -448,8 +448,7 @@ object KafkaAdminClient {
   private[kafka] def resource[F[_]](
     settings: AdminClientSettings[F]
   )(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Resource[F, KafkaAdminClient[F]] =
     WithAdminClient(settings).map { client =>
       new KafkaAdminClient[F] {

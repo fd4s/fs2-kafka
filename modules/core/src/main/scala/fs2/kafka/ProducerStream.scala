@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift}
+import cats.effect.Async
 import fs2.Stream
 
 /**
@@ -19,7 +19,7 @@ import fs2.Stream
   * }}}
   */
 final class ProducerStream[F[_]] private[kafka] (
-  private val F: ConcurrentEffect[F]
+  private val F: Async[F]
 ) extends AnyVal {
 
   /**
@@ -27,10 +27,8 @@ final class ProducerStream[F[_]] private[kafka] (
     * This is equivalent to using `producerStream` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: ProducerSettings[F, K, V])(
-    implicit context: ContextShift[F]
-  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
-    producerStream(settings)(F, context)
+  def using[K, V](settings: ProducerSettings[F, K, V]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
+    producerStream(settings)(F)
 
   override def toString: String =
     "ProducerStream$" + System.identityHashCode(this)

@@ -148,7 +148,7 @@ object Serializer {
 
       override def suspend: Serializer[F, A] =
         Serializer.instance { (topic, headers, a) =>
-          F.suspend(serialize(topic, headers, a))
+          F.defer(serialize(topic, headers, a))
         }
 
       override def toString: String =

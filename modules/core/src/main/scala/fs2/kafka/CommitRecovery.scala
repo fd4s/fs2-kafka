@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.Timer
+import cats.effect.Temporal
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
@@ -44,9 +44,8 @@ abstract class CommitRecovery {
     offsets: Map[TopicPartition, OffsetAndMetadata],
     commit: F[Unit]
   )(
-    implicit F: MonadError[F, Throwable],
-    jitter: Jitter[F],
-    timer: Timer[F]
+    implicit F: Temporal[F],
+    jitter: Jitter[F]
   ): Throwable => F[Unit]
 }
 
@@ -89,15 +88,14 @@ object CommitRecovery {
         offsets: Map[TopicPartition, OffsetAndMetadata],
         commit: F[Unit]
       )(
-        implicit F: MonadError[F, Throwable],
-        jitter: Jitter[F],
-        timer: Timer[F]
+        implicit F: Temporal[F],
+        jitter: Jitter[F]
       ): Throwable => F[Unit] = {
         def retry(attempt: Int): Throwable => F[Unit] = {
           case retriable: RetriableCommitFailedException =>
             val commitWithRecovery = commit.handleErrorWith(retry(attempt + 1))
-            if (attempt <= 10) backoff(attempt).flatMap(timer.sleep) >> commitWithRecovery
-            else if (attempt <= 15) timer.sleep(10.seconds) >> commitWithRecovery
+            if (attempt <= 10) backoff(attempt).flatMap(F.sleep) >> commitWithRecovery
+            else if (attempt <= 15) F.sleep(10.seconds) >> commitWithRecovery
             else F.raiseError(CommitRecoveryException(attempt - 1, retriable, offsets))
 
           case nonRetriable: Throwable =>
@@ -120,9 +118,8 @@ object CommitRecovery {
         offsets: Map[TopicPartition, OffsetAndMetadata],
         commit: F[Unit]
       )(
-        implicit F: MonadError[F, Throwable],
-        jitter: Jitter[F],
-        timer: Timer[F]
+        implicit F: Temporal[F],
+        jitter: Jitter[F]
       ): Throwable => F[Unit] = F.raiseError
 
       override def toString: String =

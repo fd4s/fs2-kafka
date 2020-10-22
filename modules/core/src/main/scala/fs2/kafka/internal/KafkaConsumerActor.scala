@@ -7,9 +7,10 @@
 package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
-import cats.effect.{ConcurrentEffect, IO, Timer}
-import cats.effect.concurrent.{Deferred, Ref}
-import cats.implicits._
+import cats.effect.{Concurrent, IO, Async}
+import cats.effect.kernel.{Deferred, Ref}
+import cats.effect.unsafe.UnsafeRun
+import cats.syntax.all._
 import fs2.Chunk
 import fs2.concurrent.Queue
 import fs2.kafka._
@@ -29,6 +30,7 @@ import org.apache.kafka.clients.consumer.{
 }
 import org.apache.kafka.common.TopicPartition
 import scala.collection.immutable.SortedSet
+import cats.Functor
 
 /**
   * [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to
@@ -53,10 +55,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   requests: Queue[F, Request[F, K, V]],
   withConsumer: WithConsumer[F]
 )(
-  implicit F: ConcurrentEffect[F],
+  implicit F: Async[F],
+  unsafeRun: UnsafeRun[F],
   logging: Logging[F],
-  jitter: Jitter[F],
-  timer: Timer[F]
+  jitter: Jitter[F]
 ) {
   import logging._
 
@@ -69,10 +71,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
       override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
-        F.toIO(revoked(partitions.toSortedSet)).unsafeRunSync()
+        unsafeRun.unsafeRunSync(revoked(partitions.toSortedSet))
 
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
-        F.toIO(assigned(partitions.toSortedSet)).unsafeRunSync()
+        unsafeRun.unsafeRunSync(assigned(partitions.toSortedSet))
     }
 
   private[this] def subscribe(
@@ -98,6 +100,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .log(SubscribedTopics(topics, _))
       }
       .flatMap(deferred.complete)
+      .void
   }
 
   private[this] def subscribe(
@@ -123,6 +126,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .log(SubscribedPattern(pattern, _))
       }
       .flatMap(deferred.complete)
+      .void
   }
 
   private[this] def unsubscribe(
@@ -144,6 +148,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .log(Unsubscribed(_))
       }
       .flatMap(deferred.complete)
+      .void
   }
 
   private[this] def assign(
@@ -168,6 +173,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .log(ManuallyAssignedPartitions(partitions, _))
       }
       .flatMap(deferred.complete)
+      .void
   }
 
   private[this] def fetch(
@@ -198,13 +204,13 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         }
 
     def completeRevoked =
-      deferred.complete((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
+      deferred.complete((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked)).void
 
     assigned.ifM(storeFetch, completeRevoked)
   }
 
   private[this] def commitAsync(request: Request.Commit[F, K, V]): F[Unit] = {
-    val commit =
+    val commit: F[Either[Throwable, Unit]] =
       withConsumer { consumer =>
         F.delay {
           consumer.commitAsync(
@@ -216,7 +222,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               ): Unit = {
                 val result = Option(exception).toLeft(())
                 val complete = request.deferred.complete(result)
-                F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+                unsafeRun.unsafeRunSync(complete.void)
               }
             }
           )
@@ -225,7 +231,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
     commit.flatMap {
       case Right(()) => F.unit
-      case Left(e)   => request.deferred.complete(Left(e))
+      case Left(e)   => request.deferred.complete(Left(e)).void
     }
   }
 
@@ -333,7 +339,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       val commit =
         Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
           requests.enqueue1(Request.Commit(offsets, deferred)) >>
-            F.race(timer.sleep(settings.commitTimeout), deferred.get.rethrow)
+            F.race(F.sleep(settings.commitTimeout), deferred.get.rethrow)
               .flatMap {
                 case Right(_) => F.unit
                 case Left(_) =>
@@ -389,7 +395,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val poll: F[Unit] = {
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords] =
       withConsumer { consumer =>
-        F.suspend {
+        F.defer {
           val assigned = consumer.assignment.toSet
           val requested = state.fetches.keySetStrict
           val available = state.records.keySetStrict
@@ -491,14 +497,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 }
 
 private[kafka] object KafkaConsumerActor {
-  final case class FetchRequest[F[_], K, V](
+  final case class FetchRequest[F[_]: Functor, K, V](
     deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
   ) {
     def completeRevoked(chunk: Chunk[CommittableConsumerRecord[F, K, V]]): F[Unit] =
-      deferred.complete((chunk, FetchCompletedReason.TopicPartitionRevoked))
+      deferred.complete((chunk, FetchCompletedReason.TopicPartitionRevoked)).void
 
     def completeRecords(chunk: Chunk[CommittableConsumerRecord[F, K, V]]): F[Unit] =
-      deferred.complete((chunk, FetchCompletedReason.FetchedRecords))
+      deferred.complete((chunk, FetchCompletedReason.FetchedRecords)).void
 
     override def toString: String =
       "FetchRequest$" + System.identityHashCode(this)
@@ -528,7 +534,7 @@ private[kafka] object KafkaConsumerActor {
       streamId: StreamId,
       partitionStreamId: PartitionStreamId,
       deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
-    ): (State[F, K, V], List[FetchRequest[F, K, V]]) = {
+    )(implicit F: Functor[F]): (State[F, K, V], List[FetchRequest[F, K, V]]) = {
       val newFetchRequest =
         FetchRequest(deferred)
 

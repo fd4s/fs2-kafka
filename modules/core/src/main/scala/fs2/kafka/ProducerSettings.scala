@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Blocker, Sync}
+import cats.effect.{ Sync}
 import cats.Show
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -37,19 +37,6 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * The `Serializer` to use for serializing record values.
     */
   def valueSerializer: F[Serializer[F, V]]
-
-  /**
-    * The `Blocker` to use for blocking Kafka operations. If not
-    * explicitly provided, a default `Blocker` will be created
-    * when creating a `KafkaProducer` instance.
-    */
-  def blocker: Option[Blocker]
-
-  /**
-    * Returns a new [[ProducerSettings]] instance with the
-    * specified [[blocker]] to use for blocking operations.
-    */
-  def withBlocker(blocker: Blocker): ProducerSettings[F, K, V]
 
   /**
     * Properties which can be provided when creating a Java `KafkaProducer`
@@ -245,14 +232,11 @@ object ProducerSettings {
   private[this] final case class ProducerSettingsImpl[F[_], K, V](
     override val keySerializer: F[Serializer[F, K]],
     override val valueSerializer: F[Serializer[F, V]],
-    override val blocker: Option[Blocker],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val parallelism: Int,
     val createProducerWith: Map[String, String] => F[KafkaByteProducer]
   ) extends ProducerSettings[F, K, V] {
-    override def withBlocker(blocker: Blocker): ProducerSettings[F, K, V] =
-      copy(blocker = Some(blocker))
 
     override def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -327,7 +311,6 @@ object ProducerSettings {
     ProducerSettingsImpl(
       keySerializer = keySerializer,
       valueSerializer = valueSerializer,
-      blocker = None,
       properties = Map(
         ProducerConfig.RETRIES_CONFIG -> "0"
       ),

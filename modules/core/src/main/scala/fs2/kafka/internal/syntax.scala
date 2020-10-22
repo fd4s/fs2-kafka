@@ -7,8 +7,8 @@
 package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
-import cats.effect.{CancelToken, Concurrent, Sync}
-import cats.effect.concurrent.Ref
+import cats.effect.{Concurrent, Sync}
+import cats.effect.kernel.Ref
 import cats.implicits._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
@@ -21,6 +21,7 @@ import org.apache.kafka.common.KafkaFuture
 import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
+import cats.effect.kernel.Async
 
 private[kafka] object syntax {
   implicit final class LoggingSyntax[F[_], A](
@@ -205,23 +206,25 @@ private[kafka] object syntax {
     def void: KafkaFuture[Unit] =
       map(_ => ())
 
-    def cancelToken[F[_]](implicit F: Sync[F]): CancelToken[F] =
+    def cancelToken[F[_]](implicit F: Sync[F]): F[Unit] =
       F.delay { future.cancel(true); () }
 
-    // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
-    def cancelable[F[_]](implicit F: Concurrent[F]): F[A] =
-      F.cancelable { cb =>
-        future
-          .whenComplete(new BiConsumer[A, Throwable] {
-            override def accept(a: A, t: Throwable): Unit = t match {
-              case null                                         => cb(Right(a))
-              case _: CancellationException                     => ()
-              case e: CompletionException if e.getCause != null => cb(Left(e.getCause))
-              case e                                            => cb(Left(e))
-            }
-          })
-          .cancelToken
-      }
+    // // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
+    // def cancelable[F[_]](implicit F: Async[F]): F[A] =
+    //   F.async { cb =>
+    //     F.delay {
+    //     future
+    //       .whenComplete(new BiConsumer[A, Throwable] {
+    //         override def accept(a: A, t: Throwable): Unit = t match {
+    //           case null                                         => cb(Right(a))
+    //           case _: CancellationException                     => ()
+    //           case e: CompletionException if e.getCause != null => cb(Left(e.getCause))
+    //           case e                                            => cb(Left(e))
+    //         }
+    //       })
+    //     }
+    //       .cancelToken
+    //   }
   }
 
   implicit final class KafkaHeadersSyntax(

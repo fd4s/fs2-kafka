@@ -6,8 +6,8 @@
 
 package fs2.kafka.internal
 
-import cats.effect.Concurrent
-import cats.effect.concurrent.{Deferred, Ref}
+import cats.effect.kernel.{Deferred, Ref}
+import cats.effect.{Concurrent}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 
@@ -39,7 +39,7 @@ private[kafka] object Synchronized {
               Deferred[F, Unit].flatMap { next =>
                 F.bracket(ref.getAndSet(next)) { current =>
                   current.get.flatMap(_ => f(a))
-                }(_ => next.complete(()))
+                }(_ => next.complete(()).void)
               }
           }
         }

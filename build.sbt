@@ -1,4 +1,4 @@
-val catsEffectVersion = "2.2.0"
+val catsEffectVersion = "3.0.0-M1"
 
 val catsVersion = "2.1.2"
 
@@ -6,7 +6,7 @@ val confluentVersion = "6.0.0"
 
 val embeddedKafkaVersion = "2.6.0"
 
-val fs2Version = "2.4.4"
+val fs2Version = "3.0.0-M1"
 
 val kafkaVersion = "2.5.0"
 
@@ -222,7 +222,7 @@ lazy val scalaSettings = Seq(
     "-language:higherKinds",
     "-language:implicitConversions",
     "-unchecked",
-    "-Xfatal-warnings",
+   // "-Xfatal-warnings",
     "-Xlint",
     "-Yno-adapted-args",
     "-Ywarn-dead-code",

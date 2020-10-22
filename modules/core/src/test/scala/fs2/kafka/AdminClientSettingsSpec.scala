@@ -1,6 +1,6 @@
 package fs2.kafka
 
-import cats.effect.{Blocker, IO}
+import cats.effect.{IO}
 import cats.implicits._
 import org.apache.kafka.clients.admin.AdminClientConfig
 import scala.concurrent.duration._
@@ -126,27 +126,6 @@ final class AdminClientSettingsSpec extends BaseSpec {
           .attempt
           .unsafeRunSync()
           .isLeft
-      }
-    }
-
-    it("should provide withBlocker") {
-      assert {
-        Blocker[IO]
-          .use { blocker =>
-            IO {
-              settings
-                .withBlocker(blocker)
-                .blocker
-                .isDefined
-            }
-          }
-          .unsafeRunSync()
-      }
-    }
-
-    it("should not provide a blocker unless set") {
-      assert {
-        settings.blocker.isEmpty
       }
     }
 

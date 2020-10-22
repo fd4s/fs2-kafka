@@ -6,7 +6,8 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
+import cats.effect.{Concurrent, Resource, Async}
+import cats.effect.unsafe.UnsafeRun
 
 /**
   * [[ConsumerResource]] provides support for inferring the key and value
@@ -18,7 +19,7 @@ import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
   * }}}
   */
 final class ConsumerResource[F[_]] private[kafka] (
-  private val F: ConcurrentEffect[F]
+  private val F: Async[F]
 ) extends AnyVal {
 
   /**
@@ -26,11 +27,8 @@ final class ConsumerResource[F[_]] private[kafka] (
     * This is equivalent to using `consumerResource` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: ConsumerSettings[F, K, V])(
-    implicit context: ContextShift[F],
-    timer: Timer[F]
-  ): Resource[F, KafkaConsumer[F, K, V]] =
-    consumerResource(settings)(F, context, timer)
+  def using[K, V](settings: ConsumerSettings[F, K, V])(implicit ur: UnsafeRun[F]): Resource[F, KafkaConsumer[F, K, V]] =
+    consumerResource(settings)(F, ur)
 
   override def toString: String =
     "ConsumerResource$" + System.identityHashCode(this)

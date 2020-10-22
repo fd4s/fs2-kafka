@@ -1,8 +1,8 @@
 package fs2.kafka
 
 import cats.data.Chain
-import cats.effect.concurrent.Ref
-import cats.effect.{Clock, IO, Timer}
+import cats.effect.kernel.Ref
+import cats.effect.{Clock, IO}
 import cats.syntax.functor._
 import org.apache.kafka.clients.consumer.{OffsetAndMetadata, RetriableCommitFailedException}
 import org.apache.kafka.common.TopicPartition

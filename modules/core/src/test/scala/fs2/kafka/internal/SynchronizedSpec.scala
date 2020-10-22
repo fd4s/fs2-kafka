@@ -1,6 +1,6 @@
 package fs2.kafka.internal
 
-import cats.effect.concurrent.{MVar, Ref}
+import cats.effect.kernel.{MVar, Ref}
 import cats.effect.{Fiber, IO}
 import cats.implicits._
 import fs2.kafka.BaseAsyncSpec
