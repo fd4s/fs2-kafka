@@ -7,6 +7,7 @@
 package fs2.kafka.internal
 
 import cats.effect.{Resource, Async}
+import cats.effect.std.Semaphore
 import cats.implicits._
 import fs2.kafka.{KafkaByteConsumer, ConsumerSettings}
 import fs2.kafka.internal.syntax._
@@ -23,13 +24,12 @@ private[kafka] object WithConsumer {
   ): Resource[F, WithConsumer[F]] = {
 
     Resource[F, WithConsumer[F]] {
-      settings.createConsumer
-        .flatMap(Synchronized[F].of)
-        .map { synchronizedConsumer =>
+      (settings.createConsumer, Semaphore[F](1))
+        .mapN { (consumer, semaphore) =>
           val withConsumer =
             new WithConsumer[F] {
               override def apply[A](f: KafkaByteConsumer => F[A]): F[A] =
-                synchronizedConsumer.use { consumer =>
+                semaphore.permit.use { _ =>
                   F.defer(f(consumer))
                 }
             }

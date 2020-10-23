@@ -538,7 +538,7 @@ private[kafka] object KafkaConsumer {
             .eval(partitionQueue)
             .flatMap(_.dequeue.interruptWhen(fiber.joinAndEmbed(F.unit).attempt))
         }
-        
+
         override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
           partitionedStream.parJoinUnbounded
 

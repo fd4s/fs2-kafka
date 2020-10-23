@@ -9,6 +9,7 @@ package fs2.kafka.internal
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
 import cats.effect._
 import cats.effect.std._
+import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.Chunk
 import fs2.concurrent.Queue
@@ -338,17 +339,16 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       val commit =
         Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
           requests.enqueue1(Request.Commit(offsets, deferred)) >>
-            F.race(F.sleep(settings.commitTimeout), deferred.get.rethrow)
-              .flatMap {
-                case Right(_) => F.unit
-                case Left(_) =>
-                  F.raiseError[Unit] {
-                    CommitTimeoutException(
-                      settings.commitTimeout,
-                      offsets
-                    )
-                  }
-              }
+            deferred.get.rethrow
+              .timeoutTo(
+                settings.commitTimeout,
+                F.raiseError(
+                  CommitTimeoutException(
+                    settings.commitTimeout,
+                    offsets
+                  )
+                )
+              )
         }
 
       commit.handleErrorWith {
@@ -415,23 +415,21 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     def handleBatch(newRecords: ConsumerRecords): F[Unit] =
       ref.get.flatMap { state =>
         if (state.fetches.isEmpty) {
-          if (newRecords.isEmpty) F.unit
-          else {
-            ref
-              .updateAndGet(_.withRecords(newRecords))
-              .log(StoredRecords(newRecords, _))
-          }
+          ref
+            .updateAndGet(_.withRecords(newRecords))
+            .log(StoredRecords(newRecords, _))
+            .whenA(newRecords.nonEmpty)
         } else {
           val allRecords = state.records combine newRecords
 
-          if (allRecords.nonEmpty) {
+          F.whenA(allRecords.nonEmpty) {
             val requested = state.fetches.keySetStrict
 
             val canBeCompleted = allRecords.keySetStrict intersect requested
             val canBeStored = newRecords.keySetStrict diff canBeCompleted
 
             val complete =
-              if (canBeCompleted.nonEmpty) {
+              F.whenA(canBeCompleted.nonEmpty) {
                 state.fetches.filterKeysStrictList(canBeCompleted).traverse {
                   case (partition, fetches) =>
                     val records = Chunk.vector(allRecords(partition).toVector)
@@ -441,18 +439,18 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
                   .log(
                     CompletedFetchesWithRecords(allRecords.filterKeysStrict(canBeCompleted), _)
                   )
-              } else F.unit
+              }
 
             val store =
-              if (canBeStored.nonEmpty) {
+              F.whenA(canBeStored.nonEmpty) {
                 val storeRecords = newRecords.filterKeysStrict(canBeStored)
                 ref
                   .updateAndGet(_.withRecords(storeRecords))
                   .log(StoredRecords(storeRecords, _))
-              } else F.unit
+              }
 
             complete >> store
-          } else F.unit
+          }
         }
       }
 
