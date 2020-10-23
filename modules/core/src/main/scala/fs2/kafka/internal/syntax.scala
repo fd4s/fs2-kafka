@@ -7,7 +7,8 @@
 package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
-import cats.effect.{Sync, Ref}
+import cats.effect.{Ref, Async}
+import cats.effect.syntax.all._
 import cats.implicits._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
@@ -204,25 +205,27 @@ private[kafka] object syntax {
     def void: KafkaFuture[Unit] =
       map(_ => ())
 
-    def cancelToken[F[_]](implicit F: Sync[F]): F[Unit] =
-      F.delay { future.cancel(true); () }
+    def cancelToken[F[_]](implicit F: Async[F]): F[Option[F[Unit]]] =
+      F.blocking { future.cancel(true); () }
+        .start
+        .map(cancelFiber => Some(cancelFiber.joinAndEmbed(F.unit)))
 
-    // // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
-    // def cancelable[F[_]](implicit F: Async[F]): F[A] =
-    //   F.async { cb =>
-    //     F.delay {
-    //     future
-    //       .whenComplete(new BiConsumer[A, Throwable] {
-    //         override def accept(a: A, t: Throwable): Unit = t match {
-    //           case null                                         => cb(Right(a))
-    //           case _: CancellationException                     => ()
-    //           case e: CompletionException if e.getCause != null => cb(Left(e.getCause))
-    //           case e                                            => cb(Left(e))
-    //         }
-    //       })
-    //     }
-    //       .cancelToken
-    //   }
+    // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
+    def cancelable[F[_]](implicit F: Async[F]): F[A] =
+      F.async { (cb: (Either[Throwable, A] => Unit)) =>
+        F.blocking {
+            future
+              .whenComplete(new BiConsumer[A, Throwable] {
+                override def accept(a: A, t: Throwable): Unit = t match {
+                  case null                                         => cb(a.asRight)
+                  case _: CancellationException                     => ()
+                  case e: CompletionException if e.getCause != null => cb(e.getCause.asLeft)
+                  case e                                            => cb(e.asLeft)
+                }
+              })
+          }
+          .flatMap(_.cancelToken)
+      }
   }
 
   implicit final class KafkaHeadersSyntax(
