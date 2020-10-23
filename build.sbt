@@ -6,7 +6,7 @@ val confluentVersion = "6.0.0"
 
 val embeddedKafkaVersion = "2.6.0"
 
-val fs2Version = "3.0.0-M1"
+val fs2Version = "3.0.0-M2"
 
 val kafkaVersion = "2.5.0"
 
