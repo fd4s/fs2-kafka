@@ -67,7 +67,7 @@ private[kafka] object TransactionalKafkaProducer {
 
                 consumerGroupId.flatMap { groupId =>
                   withProducer { producer =>
-                    F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
+                    F.bracketCase(F.blocking(producer.beginTransaction())) { _ =>
                       records.records
                         .flatMap(_.records)
                         .traverse(
@@ -75,7 +75,7 @@ private[kafka] object TransactionalKafkaProducer {
                         )
                         .map(_.sequence)
                         .flatTap { _ =>
-                          F.delay {
+                          F.blocking {
                             producer.sendOffsetsToTransaction(
                               batch.offsets.asJava,
                               groupId
@@ -84,9 +84,9 @@ private[kafka] object TransactionalKafkaProducer {
                         }
                     } {
                       case (_, Outcome.Succeeded(_)) =>
-                        F.delay(producer.commitTransaction())
+                        F.blocking(producer.commitTransaction())
                       case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                        F.delay(producer.abortTransaction())
+                        F.blocking(producer.abortTransaction())
                     }
                   }.flatten
                 }

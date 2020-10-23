@@ -33,7 +33,7 @@ private[kafka] object WithProducer {
 
         val close =
           withProducer { producer =>
-            F.delay(producer.close(settings.closeTimeout.asJava))
+            F.blocking(producer.close(settings.closeTimeout.asJava))
           }
 
         (withProducer, close)
@@ -58,12 +58,12 @@ private[kafka] object WithProducer {
 
         val initTransactions =
           withProducer { producer =>
-            F.delay(producer.initTransactions())
+            F.blocking(producer.initTransactions())
           }
 
         val close =
           withProducer { producer =>
-            F.delay(producer.close(settings.producerSettings.closeTimeout.asJava))
+            F.blocking(producer.close(settings.producerSettings.closeTimeout.asJava))
           }
 
         initTransactions.as((withProducer, close))

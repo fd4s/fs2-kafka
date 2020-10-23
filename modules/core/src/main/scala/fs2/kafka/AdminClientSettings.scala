@@ -266,7 +266,7 @@ object AdminClientSettings {
       properties = Map.empty,
       closeTimeout = 20.seconds,
       createAdminClientWith = properties =>
-        F.delay {
+        F.blocking {
           AdminClient.create {
             (properties: Map[String, AnyRef]).asJava
           }

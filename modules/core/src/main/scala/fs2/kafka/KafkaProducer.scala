@@ -89,7 +89,7 @@ object KafkaProducer {
 
             override def metrics: F[Map[MetricName, Metric]] =
               withProducer { producer =>
-                F.delay(producer.metrics().asScala.toMap)
+                F.blocking(producer.metrics().asScala.toMap)
               }
 
             override def toString: String =
