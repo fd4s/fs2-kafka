@@ -620,11 +620,7 @@ private[kafka] object KafkaConsumer {
         }
 
         override def seek(partition: TopicPartition, offset: Long): F[Unit] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer.seek(partition, offset)
-            }
-          }
+          withConsumer { _.seek(partition, offset) }
 
         override def seekToBeginning: F[Unit] =
           seekToBeginning(List.empty[TopicPartition])
@@ -632,11 +628,7 @@ private[kafka] object KafkaConsumer {
         override def seekToBeginning[G[_]](partitions: G[TopicPartition])(
           implicit G: Foldable[G]
         ): F[Unit] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer.seekToBeginning(partitions.asJava)
-            }
-          }
+          withConsumer { _.seekToBeginning(partitions.asJava) }
 
         override def seekToEnd: F[Unit] =
           seekToEnd(List.empty[TopicPartition])
@@ -644,44 +636,24 @@ private[kafka] object KafkaConsumer {
         override def seekToEnd[G[_]](
           partitions: G[TopicPartition]
         )(implicit G: Foldable[G]): F[Unit] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer.seekToEnd(partitions.asJava)
-            }
-          }
+          withConsumer { _.seekToEnd(partitions.asJava) }
 
         override def partitionsFor(
           topic: String
         ): F[List[PartitionInfo]] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer.partitionsFor(topic).asScala.toList
-            }
-          }
+          withConsumer { _.partitionsFor(topic).asScala.toList }
 
         override def partitionsFor(
           topic: String,
           timeout: FiniteDuration
         ): F[List[PartitionInfo]] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer.partitionsFor(topic, timeout.asJava).asScala.toList
-            }
-          }
+          withConsumer { _.partitionsFor(topic, timeout.asJava).asScala.toList }
 
         override def position(partition: TopicPartition): F[Long] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer.position(partition)
-            }
-          }
+          withConsumer { _.position(partition) }
 
         override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer.position(partition, timeout.asJava)
-            }
-          }
+          withConsumer { _.position(partition, timeout.asJava) }
 
         override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
           subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
@@ -735,59 +707,43 @@ private[kafka] object KafkaConsumer {
         override def beginningOffsets(
           partitions: Set[TopicPartition]
         ): F[Map[TopicPartition, Long]] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer
-                .beginningOffsets(partitions.asJava)
-                .asInstanceOf[util.Map[TopicPartition, Long]]
-                .toMap
-            }
+          withConsumer {
+            _.beginningOffsets(partitions.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
           }
 
         override def beginningOffsets(
           partitions: Set[TopicPartition],
           timeout: FiniteDuration
         ): F[Map[TopicPartition, Long]] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer
-                .beginningOffsets(partitions.asJava, timeout.asJava)
-                .asInstanceOf[util.Map[TopicPartition, Long]]
-                .toMap
-            }
+          withConsumer {
+            _.beginningOffsets(partitions.asJava, timeout.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
           }
 
         override def endOffsets(
           partitions: Set[TopicPartition]
         ): F[Map[TopicPartition, Long]] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer
-                .endOffsets(partitions.asJava)
-                .asInstanceOf[util.Map[TopicPartition, Long]]
-                .toMap
-            }
+          withConsumer {
+            _.endOffsets(partitions.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
           }
 
         override def endOffsets(
           partitions: Set[TopicPartition],
           timeout: FiniteDuration
         ): F[Map[TopicPartition, Long]] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer
-                .endOffsets(partitions.asJava, timeout.asJava)
-                .asInstanceOf[util.Map[TopicPartition, Long]]
-                .toMap
-            }
+          withConsumer {
+            _.endOffsets(partitions.asJava, timeout.asJava)
+              .asInstanceOf[util.Map[TopicPartition, Long]]
+              .toMap
           }
 
         override def metrics: F[Map[MetricName, Metric]] =
-          withConsumer { consumer =>
-            F.delay {
-              consumer.metrics().asScala.toMap
-            }
-          }
+          withConsumer { _.metrics().asScala.toMap }
 
         override def toString: String =
           "KafkaConsumer$" + id

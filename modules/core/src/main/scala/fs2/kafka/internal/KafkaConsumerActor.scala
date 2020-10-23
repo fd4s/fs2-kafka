@@ -82,14 +82,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     deferred: Deferred[F, Either[Throwable, Unit]]
   ): F[Unit] = {
     val subscribe =
-      withConsumer { consumer =>
-        F.delay {
-          consumer.subscribe(
-            topics.toList.asJava,
-            consumerRebalanceListener
-          )
-        }.attempt
-      }
+      withConsumer {
+        _.subscribe(
+          topics.toList.asJava,
+          consumerRebalanceListener
+        )
+      }.attempt
 
     subscribe
       .flatTap {
@@ -108,14 +106,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     deferred: Deferred[F, Either[Throwable, Unit]]
   ): F[Unit] = {
     val subscribe =
-      withConsumer { consumer =>
-        F.delay {
-          consumer.subscribe(
-            pattern,
-            consumerRebalanceListener
-          )
-        }.attempt
-      }
+      withConsumer {
+        _.subscribe(
+          pattern,
+          consumerRebalanceListener
+        )
+      }.attempt
 
     subscribe
       .flatTap {
@@ -133,11 +129,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     deferred: Deferred[F, Either[Throwable, Unit]]
   ): F[Unit] = {
     val unsubscribe =
-      withConsumer { consumer =>
-        F.delay {
-          consumer.unsubscribe()
-        }.attempt
-      }
+      withConsumer { _.unsubscribe() }.attempt
 
     unsubscribe
       .flatTap {
@@ -156,13 +148,11 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     deferred: Deferred[F, Either[Throwable, Unit]]
   ): F[Unit] = {
     val assign =
-      withConsumer { consumer =>
-        F.delay {
-          consumer.assign(
-            partitions.toList.asJava
-          )
-        }.attempt
-      }
+      withConsumer {
+        _.assign(
+          partitions.toList.asJava
+        )
+      }.attempt
 
     assign
       .flatTap {
@@ -183,9 +173,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     deferred: Deferred[F, (Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)]
   ): F[Unit] = {
     val assigned =
-      withConsumer { consumer =>
-        F.delay(consumer.assignment.contains(partition))
-      }
+      withConsumer { _.assignment.contains(partition) }
 
     def storeFetch =
       ref
@@ -211,23 +199,21 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private[this] def commitAsync(request: Request.Commit[F, K, V]): F[Unit] = {
     val commit: F[Either[Throwable, Unit]] =
-      withConsumer { consumer =>
-        F.delay {
-          consumer.commitAsync(
-            request.offsets.asJava,
-            new OffsetCommitCallback {
-              override def onComplete(
-                offsets: util.Map[TopicPartition, OffsetAndMetadata],
-                exception: Exception
-              ): Unit = {
-                val result = Option(exception).toLeft(())
-                val complete = request.deferred.complete(result)
-                dispatcher.unsafeRunSync(complete.void)
-              }
+      withConsumer {
+        _.commitAsync(
+          request.offsets.asJava,
+          new OffsetCommitCallback {
+            override def onComplete(
+              offsets: util.Map[TopicPartition, OffsetAndMetadata],
+              exception: Exception
+            ): Unit = {
+              val result = Option(exception).toLeft(())
+              val complete = request.deferred.complete(result)
+              dispatcher.unsafeRunSync(complete.void)
             }
-          )
-        }.attempt
-      }
+          }
+        )
+      }.attempt
 
     commit.flatMap {
       case Right(()) => F.unit
@@ -318,7 +304,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     ref.get.flatMap { state =>
       val assigned: F[Either[Throwable, SortedSet[TopicPartition]]] =
         if (state.subscribed) withConsumer { consumer =>
-          F.delay(Right(consumer.assignment.toSortedSet))
+          Right(consumer.assignment.toSortedSet)
         } else F.pure(Left(NotSubscribedException()))
 
       val withOnRebalance =
@@ -394,23 +380,21 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val poll: F[Unit] = {
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords] =
       withConsumer { consumer =>
-        F.defer {
-          val assigned = consumer.assignment.toSet
-          val requested = state.fetches.keySetStrict
-          val available = state.records.keySetStrict
+        val assigned = consumer.assignment.toSet
+        val requested = state.fetches.keySetStrict
+        val available = state.records.keySetStrict
 
-          val resume = (requested intersect assigned) diff available
-          val pause = assigned diff resume
+        val resume = (requested intersect assigned) diff available
+        val pause = assigned diff resume
 
-          if (pause.nonEmpty)
-            consumer.pause(pause.asJava)
+        if (pause.nonEmpty)
+          consumer.pause(pause.asJava)
 
-          if (resume.nonEmpty)
-            consumer.resume(resume.asJava)
+        if (resume.nonEmpty)
+          consumer.resume(resume.asJava)
 
-          records(consumer.poll(pollTimeout))
-        }
-      }
+        records(consumer.poll(pollTimeout))
+      }.flatten
 
     def handleBatch(newRecords: ConsumerRecords): F[Unit] =
       ref.get.flatMap { state =>
