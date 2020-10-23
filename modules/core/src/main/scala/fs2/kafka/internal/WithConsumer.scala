@@ -13,7 +13,8 @@ import fs2.kafka.{KafkaByteConsumer, ConsumerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
-  def apply[A](f: KafkaByteConsumer => A): F[A]
+  def apply[A](f: KafkaByteConsumer => F[A]): F[A]
+  def blocking[A](f: KafkaByteConsumer => A): F[A]
 }
 
 private[kafka] object WithConsumer {
@@ -28,14 +29,17 @@ private[kafka] object WithConsumer {
         .mapN { (consumer, semaphore) =>
           val withConsumer =
             new WithConsumer[F] {
-              override def apply[A](f: KafkaByteConsumer => A): F[A] =
+              override def apply[A](f: KafkaByteConsumer => F[A]): F[A] =
                 semaphore.permit.use { _ =>
-                  F.blocking(f(consumer))
+                  F.defer(f(consumer))
                 }
+
+              override def blocking[A](f: KafkaByteConsumer => A): F[A] =
+                apply(a => F.blocking(f(a)))
             }
 
           val close =
-            withConsumer {
+            withConsumer.blocking {
               _.close(settings.closeTimeout.asJava)
             }
 
