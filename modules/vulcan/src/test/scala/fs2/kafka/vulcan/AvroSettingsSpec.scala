@@ -1,6 +1,7 @@
 package fs2.kafka.vulcan
 
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatestplus.scalacheck._
 

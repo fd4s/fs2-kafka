@@ -4,6 +4,7 @@ import cats.effect.{IO}
 import cats.implicits._
 import org.apache.kafka.clients.admin.AdminClientConfig
 import scala.concurrent.duration._
+import cats.effect.unsafe.implicits.global
 
 final class AdminClientSettingsSpec extends BaseSpec {
   describe("AdminClientSettings") {

@@ -2,6 +2,7 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.implicits._
+import cats.effect.unsafe.implicits.global
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewPartitions, NewTopic}
 import org.apache.kafka.common.TopicPartition

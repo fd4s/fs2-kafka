@@ -4,6 +4,7 @@ import cats.data.NonEmptySet
 import cats.effect.Ref
 import cats.effect.IO
 import cats.implicits._
+import cats.effect.unsafe.implicits.global
 import fs2.concurrent.{Queue, SignallingRef}
 import fs2.kafka.internal.converters.collection._
 import fs2.Stream

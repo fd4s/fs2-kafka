@@ -1,6 +1,7 @@
 package fs2.kafka
 
-import cats.effect.{IO}
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import scala.concurrent.duration._

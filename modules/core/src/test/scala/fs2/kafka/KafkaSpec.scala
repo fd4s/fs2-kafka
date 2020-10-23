@@ -2,6 +2,7 @@ package fs2.kafka
 
 import cats.ApplicativeError
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import cats.effect.Ref
 import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
