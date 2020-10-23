@@ -21,7 +21,7 @@ final class AvroSerializer[A] private[vulcan] (
       settings.createAvroSerializer(_).map {
         case (serializer, _) =>
           Serializer.instance { (topic, _, a) =>
-            F.suspend {
+            F.defer {
               codec.encode(a) match {
                 case Right(value) => F.pure(serializer.serialize(topic, value))
                 case Left(error)  => F.raiseError(error.throwable)

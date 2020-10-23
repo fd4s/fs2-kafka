@@ -6,7 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Concurrent, Resource, Async}
+import cats.effect.{Resource, Async}
 import cats.implicits._
 import fs2.kafka.AdminClientSettings
 import fs2.kafka.internal.syntax._

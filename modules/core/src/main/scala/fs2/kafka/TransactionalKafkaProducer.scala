@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Concurrent, Resource, Async, Outcome}
+import cats.effect.{Resource, Async, Outcome}
 import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.internal._

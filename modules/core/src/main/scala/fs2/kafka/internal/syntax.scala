@@ -7,7 +7,7 @@
 package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
-import cats.effect.{Concurrent, Sync, Ref}
+import cats.effect.{Sync, Ref}
 import cats.implicits._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
@@ -20,7 +20,6 @@ import org.apache.kafka.common.KafkaFuture
 import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
-import cats.effect.Async
 
 private[kafka] object syntax {
   implicit final class LoggingSyntax[F[_], A](

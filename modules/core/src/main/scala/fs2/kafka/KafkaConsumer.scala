@@ -9,7 +9,7 @@ package fs2.kafka
 import cats.{Foldable, Reducible}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.effect._
-import cats.effect.Resource.ExitCase
+import cats.effect.std._
 import cats.effect.implicits._
 import cats.implicits._
 import fs2.{Chunk, Stream}
@@ -814,6 +814,7 @@ private[kafka] object KafkaConsumer {
       polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, Int](0))
+      implicit0(dispatcher: Dispatcher[F]) <- Dispatcher[F]
       withConsumer <- WithConsumer(settings)
       actor = new KafkaConsumerActor(
         settings = settings,

@@ -7,8 +7,8 @@
 package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
-import cats.effect.{Concurrent, IO, Async}
-import cats.effect.{Deferred, Ref}
+import cats.effect._
+import cats.effect.std._
 import cats.syntax.all._
 import fs2.Chunk
 import fs2.concurrent.Queue
@@ -55,6 +55,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   withConsumer: WithConsumer[F]
 )(
   implicit F: Async[F],
+  dispatcher: Dispatcher[F],
   logging: Logging[F],
   jitter: Jitter[F]
 ) {
@@ -69,10 +70,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
       override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
-        unsafeRun.unsafeRunSync(revoked(partitions.toSortedSet))
+        dispatcher.unsafeRunSync(revoked(partitions.toSortedSet))
 
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
-        unsafeRun.unsafeRunSync(assigned(partitions.toSortedSet))
+        dispatcher.unsafeRunSync(assigned(partitions.toSortedSet))
     }
 
   private[this] def subscribe(
@@ -220,7 +221,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               ): Unit = {
                 val result = Option(exception).toLeft(())
                 val complete = request.deferred.complete(result)
-                unsafeRun.unsafeRunSync(complete.void)
+                dispatcher.unsafeRunSync(complete.void)
               }
             }
           )

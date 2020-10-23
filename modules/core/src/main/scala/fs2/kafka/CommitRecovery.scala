@@ -10,7 +10,7 @@ import cats.effect.Temporal
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import cats.{Functor, MonadError}
+import cats.Functor
 import org.apache.kafka.clients.consumer.{OffsetAndMetadata, RetriableCommitFailedException}
 import org.apache.kafka.common.TopicPartition
 

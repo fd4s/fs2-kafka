@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Concurrent, Temporal, Async}
+import cats.effect.Async
 import fs2.Stream
 
 /**

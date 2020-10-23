@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Concurrent, Resource, Async}
+import cats.effect.{Resource, Async}
 
 /**
   * [[ConsumerResource]] provides support for inferring the key and value
