@@ -8,7 +8,6 @@ package fs2
 
 import cats.effect._
 import scala.concurrent.duration.FiniteDuration
-import cats.effect.unsafe.UnsafeRun
 
 package object kafka {
   type Id[+A] = A
@@ -118,7 +117,7 @@ package object kafka {
     * }}}
     */
   def consumerResource[F[_], K, V](settings: ConsumerSettings[F, K, V])(
-    implicit F: Async[F], unsafeRun: UnsafeRun[F]
+    implicit F: Async[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     KafkaConsumer.consumerResource(settings)
 
@@ -147,7 +146,7 @@ package object kafka {
     * }}}
     */
   def consumerStream[F[_], K, V](settings: ConsumerSettings[F, K, V])(
-    implicit F: Async[F], ur: UnsafeRun[F]
+    implicit F: Async[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =
     Stream.resource(consumerResource(settings))
 

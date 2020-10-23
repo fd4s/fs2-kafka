@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ Sync}
+import cats.effect.{Sync}
 import cats.Show
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.ProducerConfig

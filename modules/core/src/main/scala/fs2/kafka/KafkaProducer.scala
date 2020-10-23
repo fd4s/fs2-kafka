@@ -8,7 +8,6 @@ package fs2.kafka
 
 import cats.Apply
 import cats.effect._
-import cats.effect.kernel.Deferred
 import cats.implicits._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
@@ -109,37 +108,36 @@ object KafkaProducer {
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
       asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
-
         F.async_ { cb =>
-            producer.send(
-              javaRecord,
-              callback { (metadata, exception) =>
-                  cb{ 
-                    if (exception == null) Right(F.pure((record, metadata)))
-                    else Left(exception)
-                  }
+          producer.send(
+            javaRecord,
+            callback { (metadata, exception) =>
+              cb {
+                if (exception == null) Right(F.pure((record, metadata)))
+                else Left(exception)
               }
-            )
-            ()
+            }
+          )
+          ()
         }
-        // Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
-        //   F.delay {
-        //       producer.send(
-        //         javaRecord,
-        //         callback { (metadata, exception) =>
-        //           val complete =
-        //             deferred.complete {
-        //               if (exception == null)
-        //                 Right((record, metadata))
-        //               else Left(exception)
-        //             }
+      // Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
+      //   F.delay {
+      //       producer.send(
+      //         javaRecord,
+      //         callback { (metadata, exception) =>
+      //           val complete =
+      //             deferred.complete {
+      //               if (exception == null)
+      //                 Right((record, metadata))
+      //               else Left(exception)
+      //             }
 
-        //           F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
-        //         }
-        //       )
-        //     }
-        //     .as(deferred.get.rethrow)
-        // }
+      //           F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+      //         }
+      //       )
+      //     }
+      //     .as(deferred.get.rethrow)
+      // }
       }
 
   private[this] def serializeToBytes[F[_], K, V](

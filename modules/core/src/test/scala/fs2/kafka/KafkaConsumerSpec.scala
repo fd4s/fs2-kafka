@@ -1,7 +1,7 @@
 package fs2.kafka
 
 import cats.data.NonEmptySet
-import cats.effect.kernel.Ref
+import cats.effect.Ref
 import cats.effect.IO
 import cats.implicits._
 import fs2.concurrent.{Queue, SignallingRef}

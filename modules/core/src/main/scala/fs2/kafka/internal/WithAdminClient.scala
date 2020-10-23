@@ -21,22 +21,22 @@ private[kafka] object WithAdminClient {
   def apply[F[_]](
     settings: AdminClientSettings[F]
   )(implicit F: Async[F]): Resource[F, WithAdminClient[F]] = {
-      Resource[F, WithAdminClient[F]] {
-        settings.createAdminClient.map { adminClient =>
-          val withAdminClient =
-            new WithAdminClient[F] {
-              override def apply[A](f: AdminClient => KafkaFuture[A]): F[A] =
-                ???
-                // context.blockOn(blocker) {
-                //   F.suspend(f(adminClient).cancelable)
-                // }
-            }
+    Resource[F, WithAdminClient[F]] {
+      settings.createAdminClient.map { adminClient =>
+        val withAdminClient =
+          new WithAdminClient[F] {
+            override def apply[A](f: AdminClient => KafkaFuture[A]): F[A] =
+              ???
+            // context.blockOn(blocker) {
+            //   F.suspend(f(adminClient).cancelable)
+            // }
+          }
 
-          val close =
-            F.blocking(adminClient.close(settings.closeTimeout.asJava))
+        val close =
+          F.blocking(adminClient.close(settings.closeTimeout.asJava))
 
-          (withAdminClient, close)
-        }
+        (withAdminClient, close)
+      }
     }
   }
 }

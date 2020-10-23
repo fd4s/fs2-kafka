@@ -7,7 +7,6 @@
 package fs2.kafka
 
 import cats.effect.{Concurrent, Resource, Async}
-import cats.effect.unsafe.UnsafeRun
 
 /**
   * [[ConsumerResource]] provides support for inferring the key and value
@@ -27,8 +26,10 @@ final class ConsumerResource[F[_]] private[kafka] (
     * This is equivalent to using `consumerResource` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: ConsumerSettings[F, K, V])(implicit ur: UnsafeRun[F]): Resource[F, KafkaConsumer[F, K, V]] =
-    consumerResource(settings)(F, ur)
+  def using[K, V](
+    settings: ConsumerSettings[F, K, V]
+  ): Resource[F, KafkaConsumer[F, K, V]] =
+    consumerResource(settings)(F)
 
   override def toString: String =
     "ConsumerResource$" + System.identityHashCode(this)

@@ -6,8 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.effect.kernel.{Deferred, Ref}
-import cats.effect.{Concurrent}
+import cats.effect._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 

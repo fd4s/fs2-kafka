@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.effect.{Concurrent, Resource}
-import cats.effect.kernel.Async
+import cats.effect.Async
 
 /**
   * [[ProducerResource]] provides support for inferring the key and value

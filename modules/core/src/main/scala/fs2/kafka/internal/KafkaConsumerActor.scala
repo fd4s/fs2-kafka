@@ -8,8 +8,7 @@ package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
 import cats.effect.{Concurrent, IO, Async}
-import cats.effect.kernel.{Deferred, Ref}
-import cats.effect.unsafe.UnsafeRun
+import cats.effect.{Deferred, Ref}
 import cats.syntax.all._
 import fs2.Chunk
 import fs2.concurrent.Queue
@@ -56,7 +55,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   withConsumer: WithConsumer[F]
 )(
   implicit F: Async[F],
-  unsafeRun: UnsafeRun[F],
   logging: Logging[F],
   jitter: Jitter[F]
 ) {

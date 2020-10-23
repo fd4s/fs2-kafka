@@ -1,7 +1,7 @@
 package fs2.kafka
 
 import cats.data.Chain
-import cats.effect.kernel.Ref
+import cats.effect.Ref
 import cats.effect.{Clock, IO}
 import cats.syntax.functor._
 import org.apache.kafka.clients.consumer.{OffsetAndMetadata, RetriableCommitFailedException}
