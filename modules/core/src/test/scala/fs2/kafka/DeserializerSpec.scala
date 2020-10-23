@@ -1,8 +1,9 @@
 package fs2.kafka
 
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import cats.laws.discipline._
-import cats.effect.laws.util._
+import cats.effect.laws._
 
 final class DeserializerSpec extends BaseCatsSpec with TestInstances {
   checkAll(

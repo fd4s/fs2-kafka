@@ -343,7 +343,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
           _ <- publishStream.concurrently(
             // run second stream to init rebalance after init rebalance, default setting is 3 secs
-            Stream(stream1, Stream.sleep(Duration(5, SECONDS)) >> stream2).parJoinUnbounded
+            Stream(stream1, Stream.sleep[IO](Duration(5, SECONDS)) >> stream2).parJoinUnbounded
           )
           streamsClosed <- Stream.eval(streamsClosedRef.get)
           _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions))
@@ -396,7 +396,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
           _ <- publishStream.concurrently(
             // run second stream to init rebalance after init rebalance, default setting is 3 secs
-            Stream(stream1, Stream.sleep(Duration(5, SECONDS)) >> stream2).parJoinUnbounded
+            Stream(stream1, Stream.sleep[IO](Duration(5, SECONDS)) >> stream2).parJoinUnbounded
           )
           streamsClosed <- Stream.eval(streamsClosedRef.get)
           _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions * 2))

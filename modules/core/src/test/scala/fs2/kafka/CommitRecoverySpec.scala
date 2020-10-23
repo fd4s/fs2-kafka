@@ -13,7 +13,7 @@ import scala.concurrent.duration.{FiniteDuration, TimeUnit}
 final class CommitRecoverySpec extends BaseAsyncSpec {
   describe("CommitRecovery#Default") {
     it("should retry with jittered exponential backoff and fixed rate") {
-      val (result, sleeps) =
+      val (result: Either[Throwable, Unit], sleeps: Chain[FiniteDuration]) =
         Ref
           .of[IO, Chain[FiniteDuration]](Chain.empty)
           .flatMap { ref =>

@@ -2,13 +2,13 @@ package fs2.kafka
 
 import cats._
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import cats.laws.discipline._
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 import org.scalacheck.Arbitrary
 import org.scalatest._
-import cats.effect.laws.util.TestContext
-import cats.effect.laws.util.TestInstances
+import cats.effect.laws._
 
 final class SerializerSpec extends BaseCatsSpec with TestInstances {
   checkAll(
