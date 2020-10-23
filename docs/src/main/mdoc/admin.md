@@ -115,9 +115,7 @@ def clusterNodes[F[_]: Concurrent]: F[Set[Node]] =
 There are functions available for working with consumer groups.
 
 ```scala mdoc:silent
-import cats.Parallel
-
-def consumerGroupOperations[F[_]: Concurrent: Parallel]: F[Unit] =
+def consumerGroupOperations[F[_]: Concurrent]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
     for {
       consumerGroupIds <- client.listConsumerGroups.groupIds
