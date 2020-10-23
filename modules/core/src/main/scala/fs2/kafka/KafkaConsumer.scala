@@ -429,15 +429,10 @@ private[kafka] object KafkaConsumer {
                         stopReqs.complete(()).void
 
                       case Right((chunk, reason)) =>
-                        val enqueueChunk =
-                          if (chunk.nonEmpty)
-                            chunks.enqueue1(Some(chunk))
-                          else F.unit
+                        val enqueueChunk = chunks.enqueue1(Some(chunk)).whenA(chunk.nonEmpty)
 
                         val completeRevoked: F[Unit] =
-                          if (reason.topicPartitionRevoked) {
-                            stopReqs.complete(()).void
-                          } else F.unit
+                          stopReqs.complete(()).void.whenA(reason.topicPartitionRevoked)
 
                         enqueueChunk >> completeRevoked
                     }
@@ -532,17 +527,18 @@ private[kafka] object KafkaConsumer {
             }
 
           val partitionQueue: F[Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]] =
-            Queue.unbounded[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
+            for {
+              partitions <- Queue.unbounded[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
+              streamId <- streamIdRef.updateAndGet(_ + 1)
+              partitionStreamIdRef <- Ref.of[F, Int](0)
+              _ <- initialEnqueue(streamId, partitions, partitionStreamIdRef)
+            } yield partitions
 
-          for {
-            partitions <- Stream.eval(partitionQueue)
-            streamId <- Stream.eval(streamIdRef.modify(n => (n + 1, n)))
-            partitionStreamIdRef <- Stream.eval(Ref.of[F, Int](0))
-            _ <- Stream.eval(initialEnqueue(streamId, partitions, partitionStreamIdRef))
-            out <- partitions.dequeue.interruptWhen(fiber.joinAndEmbed(F.unit).attempt)
-          } yield out
+          Stream
+            .eval(partitionQueue)
+            .flatMap(_.dequeue.interruptWhen(fiber.joinAndEmbed(F.unit).attempt))
         }
-
+        
         override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
           partitionedStream.parJoinUnbounded
 
