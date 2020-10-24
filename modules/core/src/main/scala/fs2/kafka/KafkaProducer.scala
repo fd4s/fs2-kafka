@@ -13,6 +13,7 @@ import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
 import org.apache.kafka.common.{Metric, MetricName}
+import cats.effect.std.Dispatcher
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -75,25 +76,27 @@ object KafkaProducer {
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
       Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
-        WithProducer(settings).map { withProducer =>
-          new KafkaProducer.Metrics[F, K, V] {
-            override def produce[P](
-              records: ProducerRecords[K, V, P]
-            ): F[F[ProducerResult[K, V, P]]] = {
-              withProducer { producer =>
-                records.records
-                  .traverse(produceRecord(keySerializer, valueSerializer, producer))
-                  .map(_.sequence.map(ProducerResult(_, records.passthrough)))
+        Dispatcher[F].flatMap { implicit dispatcher =>
+          WithProducer(settings).map { withProducer =>
+            new KafkaProducer.Metrics[F, K, V] {
+              override def produce[P](
+                records: ProducerRecords[K, V, P]
+              ): F[F[ProducerResult[K, V, P]]] = {
+                withProducer { producer =>
+                  records.records
+                    .traverse(produceRecord(keySerializer, valueSerializer, producer))
+                    .map(_.sequence.map(ProducerResult(_, records.passthrough)))
+                }
               }
+
+              override def metrics: F[Map[MetricName, Metric]] =
+                withProducer { producer =>
+                  F.blocking(producer.metrics().asScala.toMap)
+                }
+
+              override def toString: String =
+                "KafkaProducer$" + System.identityHashCode(this)
             }
-
-            override def metrics: F[Map[MetricName, Metric]] =
-              withProducer { producer =>
-                F.blocking(producer.metrics().asScala.toMap)
-              }
-
-            override def toString: String =
-              "KafkaProducer$" + System.identityHashCode(this)
           }
         }
       }
@@ -104,40 +107,28 @@ object KafkaProducer {
     valueSerializer: Serializer[F, V],
     producer: KafkaByteProducer
   )(
-    implicit F: Async[F]
+    implicit F: Async[F],
+    dispatcher: Dispatcher[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
       asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
-        F.async_ { cb =>
-          producer.send(
-            javaRecord,
-            callback { (metadata, exception) =>
-              cb {
-                if (exception == null) Right(F.pure((record, metadata)))
-                else Left(exception)
-              }
-            }
-          )
-          ()
-        }
-      // Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
-      //   F.delay {
-      //       producer.send(
-      //         javaRecord,
-      //         callback { (metadata, exception) =>
-      //           val complete =
-      //             deferred.complete {
-      //               if (exception == null)
-      //                 Right((record, metadata))
-      //               else Left(exception)
-      //             }
+        Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
+          F.delay {
+              producer.send(
+                javaRecord,
+                callback { (metadata, exception) =>
+                  val complete =
+                    deferred.complete {
+                      if (exception == null) Right((record, metadata))
+                      else Left(exception)
+                    }
 
-      //           F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
-      //         }
-      //       )
-      //     }
-      //     .as(deferred.get.rethrow)
-      // }
+                  dispatcher.unsafeRunSync(complete.void)
+                }
+              )
+            }
+            .as(deferred.get.rethrow)
+        }
       }
 
   private[this] def serializeToBytes[F[_], K, V](
