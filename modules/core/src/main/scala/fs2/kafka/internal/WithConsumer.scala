@@ -14,6 +14,7 @@ import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
   def apply[A](f: KafkaByteConsumer => F[A]): F[A]
+  def blocking[A](f: KafkaByteConsumer => A): F[A]
 }
 
 private[kafka] object WithConsumer {
@@ -35,15 +36,14 @@ private[kafka] object WithConsumer {
             new WithConsumer[F] {
               override def apply[A](f: KafkaByteConsumer => F[A]): F[A] =
                 semaphore.withPermit {
-                  context.blockOn(blocker) {
-                    f(consumer)
-                  }
+                  blocker.blockOn(f(consumer))
                 }
+
+              override def blocking[A](f: KafkaByteConsumer => A): F[A] =
+                apply(consumer => F.delay(f(consumer)))
             }
           }
-      }(_.apply { consumer =>
-        F.delay(consumer.close(settings.closeTimeout.asJava))
-      })
+      }(_.blocking { _.close(settings.closeTimeout.asJava) })
     }
   }
 }
