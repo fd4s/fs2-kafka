@@ -9,6 +9,7 @@ package fs2.kafka.internal
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector, StateT}
 import cats.effect.{ConcurrentEffect, IO, Timer}
 import cats.effect.concurrent.{Deferred, Ref}
+import cats.effect.syntax.all._
 import cats.implicits._
 import fs2.Chunk
 import fs2.concurrent.Queue
@@ -366,17 +367,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       val commit =
         Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
           requests.enqueue1(Request.Commit(offsets, deferred)) >>
-            F.race(timer.sleep(settings.commitTimeout), deferred.get.rethrow)
-              .flatMap {
-                case Right(_) => F.unit
-                case Left(_) =>
-                  F.raiseError[Unit] {
-                    CommitTimeoutException(
-                      settings.commitTimeout,
-                      offsets
-                    )
-                  }
-              }
+            deferred.get.rethrow.timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
+              CommitTimeoutException(
+                settings.commitTimeout,
+                offsets
+              )
+            })
         }
 
       commit.handleErrorWith {
