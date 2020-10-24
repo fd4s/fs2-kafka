@@ -28,24 +28,18 @@ private[kafka] object WithProducer {
         .getOrElse(Blockers.producer)
 
     blockerResource.flatMap { blocker =>
-      Resource[F, WithProducer[F]] {
+      Resource.make {
         settings.createProducer.map { producer =>
-          val withProducer =
-            new WithProducer[F] {
-              override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
-                context.blockOn(blocker) {
-                  f(producer)
-                }
-            }
-
-          val close =
-            withProducer { producer =>
-              F.delay(producer.close(settings.closeTimeout.asJava))
-            }
-
-          (withProducer, close)
+          new WithProducer[F] {
+            override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
+              context.blockOn(blocker) {
+                f(producer)
+              }
+          }
         }
-      }
+      }(_.apply { producer =>
+        F.delay(producer.close(settings.closeTimeout.asJava))
+      })
     }
   }
 
