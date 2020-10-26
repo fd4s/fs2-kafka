@@ -4,11 +4,11 @@ val catsVersion = "2.1.2"
 
 val confluentVersion = "6.0.0"
 
-val embeddedKafkaVersion = "2.6.0"
+val embeddedKafkaVersion = "6.0.0-ce"
 
 val fs2Version = "2.4.4"
 
-val kafkaVersion = "2.6.0"
+val kafkaVersion = "6.0.0-ce"
 
 val vulcanVersion = "1.2.0"
 
