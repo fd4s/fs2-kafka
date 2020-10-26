@@ -8,11 +8,11 @@ val embeddedKafkaVersion = "2.6.0"
 
 val fs2Version = "2.4.4"
 
-val kafkaVersion = "2.5.0"
+val kafkaVersion = "2.6.0"
 
 val vulcanVersion = "1.2.0"
 
-val scala212 = "2.12.12"
+val scala212 = "2.12.10"
 
 val scala213 = "2.13.3"
 
@@ -199,7 +199,9 @@ lazy val mimaSettings = Seq(
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
       ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.resource")
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.resource"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
     )
     // format: on
   }

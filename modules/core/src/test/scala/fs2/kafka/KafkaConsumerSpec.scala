@@ -2,7 +2,7 @@ package fs2.kafka
 
 import cats.data.NonEmptySet
 import cats.effect.concurrent.Ref
-import cats.effect.IO
+import cats.effect.{Fiber, IO}
 import cats.implicits._
 import fs2.concurrent.{Queue, SignallingRef}
 import fs2.kafka.internal.converters.collection._
@@ -11,6 +11,7 @@ import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 import org.apache.kafka.common.errors.TimeoutException
 import org.apache.kafka.common.TopicPartition
+
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
@@ -149,262 +150,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .unsafeRunSync()
 
         res should contain theSameElementsAs produced ++ produced
-      }
-    }
-
-    it("should correctly get partitions from topic via partitionsFor") {
-      withKafka { (config, topic) =>
-        val partitions = List(0, 1, 2)
-
-        createCustomTopic(topic, partitions = partitions.size)
-
-        val info =
-          consumerStream[IO]
-            .using(consumerSettings[IO](config))
-            .evalMap(_.partitionsFor(topic))
-
-        val res =
-          info.compile.lastOrError
-            .unsafeRunSync()
-
-        res.map(_.partition()) should contain theSameElementsAs partitions
-        res.map(_.topic()).toSet should contain theSameElementsAs Set(topic)
-      }
-    }
-
-    it("should fail when to get partitions from topic via partitionsFor with a small timeout") {
-      withKafka { (config, topic) =>
-        val partitions = List(0, 1, 2)
-
-        createCustomTopic(topic, partitions = partitions.size)
-
-        val info =
-          consumerStream[IO]
-            .using(consumerSettings[IO](config))
-            .evalTap(_.partitionsFor(topic, 1.nanos))
-
-        val res =
-          info.compile.lastOrError.attempt
-            .unsafeRunSync()
-
-        res.left.toOption match {
-          case Some(e) => e shouldBe a[TimeoutException]
-          case _       => fail("No exception was rised!")
-        }
-      }
-    }
-
-    it("should get metrics") {
-      withKafka { (config, topic) =>
-        val partitions = List(0, 1, 2)
-
-        createCustomTopic(topic, partitions = partitions.size)
-
-        val info =
-          consumerStream[IO]
-            .using(consumerSettings[IO](config))
-            .evalMap(_.metrics)
-
-        val res =
-          info
-            .take(1)
-            .compile
-            .lastOrError
-            .unsafeRunSync()
-
-        assert(res.nonEmpty)
-      }
-    }
-
-    it("should correctly unsubscribe") {
-      withKafka { (config, topic) =>
-        createCustomTopic(topic, partitions = 3)
-        val produced = (0 until 1).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
-
-        val cons = consumerStream[IO]
-          .using(consumerSettings[IO](config).withGroupId("test"))
-          .evalTap(_.subscribeTo(topic))
-
-        val topicStream = (for {
-          cntRef <- Stream.eval(Ref.of[IO, Int](0))
-          unsubscribed <- Stream.eval(Ref.of[IO, Boolean](false))
-          partitions <- Stream.eval(Ref.of[IO, Set[TopicPartition]](Set.empty[TopicPartition]))
-
-          consumer1 <- cons
-          consumer2 <- cons
-
-          _ <- Stream(
-            consumer1.stream.evalTap(_ => cntRef.update(_ + 1)),
-            consumer2.stream.concurrently(
-              consumer2.assignmentStream.evalTap(
-                assignedTopicPartitions => partitions.set(assignedTopicPartitions)
-              )
-            )
-          ).parJoinUnbounded
-
-          cntValue <- Stream.eval(cntRef.get)
-          unsubscribedValue <- Stream.eval(unsubscribed.get)
-          _ <- Stream.eval(
-            if (cntValue >= 3 && !unsubscribedValue) //wait for some processed elements from first consumer
-              unsubscribed.set(true) >> consumer1.unsubscribe // unsubscribe
-            else IO.unit
-          )
-          _ <- Stream.eval(IO { publishToKafka(topic, produced) }) // publish some elements to topic
-
-          partitionsValue <- Stream.eval(partitions.get)
-        } yield (partitionsValue)).interruptAfter(10.seconds)
-
-        val res = topicStream.compile.toVector
-          .unsafeRunSync()
-
-        res.last.size shouldBe 3 // in last message should be all partitions
-      }
-    }
-
-    it("should handle rebalance") {
-      withKafka { (config, topic) =>
-        createCustomTopic(topic, partitions = 3)
-        val produced1 = (0 until 100).map(n => s"key-$n" -> s"value->$n")
-        val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
-        val producedTotal = produced1.size.toLong + produced2.size.toLong
-
-        val consumer = (queue: Queue[IO, CommittableConsumerRecord[IO, String, String]]) =>
-          consumerStream[IO]
-            .using(consumerSettings(config))
-            .evalTap(_.subscribeTo(topic))
-            .evalMap(_.stream.evalMap(queue.enqueue1).compile.drain.start.void)
-
-        (for {
-          queue <- Stream.eval(Queue.unbounded[IO, CommittableConsumerRecord[IO, String, String]])
-          ref <- Stream.eval(Ref.of[IO, Map[String, Int]](Map.empty))
-          _ <- consumer(queue)
-          _ <- Stream.eval(IO.sleep(5.seconds))
-          _ <- Stream.eval(IO(publishToKafka(topic, produced1)))
-          _ <- consumer(queue)
-          _ <- Stream.eval(IO.sleep(5.seconds))
-          _ <- Stream.eval(IO(publishToKafka(topic, produced2)))
-          _ <- Stream.eval {
-            queue.dequeue
-              .evalMap { committable =>
-                ref.modify { counts =>
-                  val key = committable.record.key
-                  val newCounts = counts.updated(key, counts.getOrElse(key, 0) + 1)
-                  (newCounts, newCounts)
-                }
-              }
-              .takeWhile(_.size < 200)
-              .compile
-              .drain
-          }
-          keys <- Stream.eval(ref.get)
-          _ <- Stream.eval(IO(assert {
-            keys.size.toLong == producedTotal && {
-              keys == (0 until 200).map { n =>
-                s"key-$n" -> (if (n < 100) 2 else 1)
-              }.toMap
-            }
-          }))
-        } yield ()).compile.drain.unsafeRunSync()
-      }
-    }
-
-    it("should close all streams on rebalance when using partitionedStream") {
-
-      withKafka { (config, topic) =>
-        val numPartitions = 3
-        createCustomTopic(topic, partitions = numPartitions)
-
-        val timeoutRunTest = Duration(15, SECONDS)
-
-        def stream(streamsClosed: Ref[IO, Int]) = {
-          for {
-            consumer <- consumerStream[IO]
-              .using(consumerSettings[IO](config).withGroupId("test"))
-              .evalTap(_.subscribeTo(topic))
-            _ <- consumer.partitionedStream.map { stream =>
-              stream.onFinalize(streamsClosed.update(_ + 1))
-            }.parJoinUnbounded
-          } yield ()
-        }
-
-        val s = for {
-          stopSignal <- Stream.eval(SignallingRef[IO, Boolean](false))
-          streamsClosedRef <- Stream.eval(Ref.of[IO, Int](0))
-          stream1 = stream(streamsClosedRef)
-          stream2 = stream(streamsClosedRef)
-
-          publishStream = Stream
-            .unfold[IO, Int, Int](0)(cur => Some((cur, cur + 1)))
-            .evalTap(i => IO(publishToKafka(topic, Seq((s"key-$i", s"value-$i")))))
-            .repeat
-            .interruptWhen(stopSignal)
-
-          _ <- publishStream.concurrently(
-            // run second stream to init rebalance after init rebalance, default setting is 3 secs
-            Stream(stream1, Stream.sleep(Duration(5, SECONDS)) >> stream2).parJoinUnbounded
-          )
-          streamsClosed <- Stream.eval(streamsClosedRef.get)
-          _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions))
-        } yield (streamsClosed)
-
-        val closedStreams =
-          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync()
-
-        assert(closedStreams == numPartitions) // should close all first streams from first consumer
-      }
-    }
-
-    it("should close all streams on rebalance when using partitionedStream several times") {
-
-      withKafka { (config, topic) =>
-        val numPartitions = 3
-        createCustomTopic(topic, partitions = numPartitions)
-
-        val timeoutRunTest = Duration(15, SECONDS)
-
-        def stream(streamsClosed: Ref[IO, Int]) = {
-          for {
-            consumer <- consumerStream[IO]
-              .using(consumerSettings[IO](config).withGroupId("test"))
-              .evalTap(_.subscribeTo(topic))
-            _ <- consumer.partitionedStream
-              .map { stream =>
-                stream.onFinalize(streamsClosed.update(_ + 1))
-              }
-              .parJoinUnbounded
-              .concurrently(
-                consumer.partitionedStream.map { stream =>
-                  stream.onFinalize(streamsClosed.update(_ + 1))
-                }.parJoinUnbounded
-              )
-          } yield ()
-        }
-
-        val s = for {
-          stopSignal <- Stream.eval(SignallingRef[IO, Boolean](false))
-          streamsClosedRef <- Stream.eval(Ref.of[IO, Int](0))
-          stream1 = stream(streamsClosedRef)
-          stream2 = stream(streamsClosedRef)
-
-          publishStream = Stream
-            .unfold[IO, Int, Int](0)(cur => Some((cur, cur + 1)))
-            .evalTap(i => IO(publishToKafka(topic, Seq((s"key-$i", s"value-$i")))))
-            .repeat
-            .interruptWhen(stopSignal)
-
-          _ <- publishStream.concurrently(
-            // run second stream to init rebalance after init rebalance, default setting is 3 secs
-            Stream(stream1, Stream.sleep(Duration(5, SECONDS)) >> stream2).parJoinUnbounded
-          )
-          streamsClosed <- Stream.eval(streamsClosedRef.get)
-          _ <- Stream.eval(stopSignal.set(streamsClosed == numPartitions * 2))
-        } yield (streamsClosed)
-
-        val closedStreams =
-          s.interruptAfter(timeoutRunTest).compile.lastOrError.unsafeRunSync()
-
-        assert(closedStreams == numPartitions * 2) // should close all first streams from first consumer
       }
     }
 
@@ -730,6 +475,139 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
   }
 
+  describe("KafkaConsumer#partitionsMapStream") {
+    it("should handle rebalance") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 3)
+        val produced1 = (0 until 100).map(n => s"key-$n" -> s"value->$n")
+        val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
+        val producedTotal = produced1.size.toLong + produced2.size.toLong
+
+        def startConsumer(
+          consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
+          stopSignal: SignallingRef[IO, Boolean]
+        ): IO[Fiber[IO, Vector[Set[Int]]]] = {
+          Ref[IO]
+            .of(Vector.empty[Set[Int]])
+            .flatMap { assignedPartitionsRef =>
+              consumerStream[IO]
+                .using(consumerSettings(config))
+                .evalTap(_.subscribeTo(topic))
+                .flatMap(_.partitionsMapStream.filter(_.nonEmpty).evalMap { assignment =>
+                  assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
+                    Stream
+                      .emits(assignment.map {
+                        case (_, stream) =>
+                          stream.evalMap(consumedQueue.enqueue1)
+                      }.toList)
+                      .covary[IO]
+                  }
+                })
+                .flatten
+                .parJoinUnbounded
+                .interruptWhen(stopSignal)
+                .compile
+                .drain >> assignedPartitionsRef.get
+            }
+            .start
+        }
+
+        (for {
+          stopSignal <- SignallingRef[IO, Boolean](false)
+          queue <- Queue.unbounded[IO, CommittableConsumerRecord[IO, String, String]]
+          ref <- Ref.of[IO, Map[String, Int]](Map.empty)
+          fiber1 <- startConsumer(queue, stopSignal)
+          _ <- IO.sleep(5.seconds)
+          _ <- IO(publishToKafka(topic, produced1))
+          fiber2 <- startConsumer(queue, stopSignal)
+          _ <- IO.sleep(5.seconds)
+          _ <- IO(publishToKafka(topic, produced2))
+          _ <- queue.dequeue
+            .evalMap { committable =>
+              ref.modify { counts =>
+                val key = committable.record.key
+                val newCounts = counts.updated(key, counts.getOrElse(key, 0) + 1)
+                (newCounts, newCounts)
+              }
+            }
+            .takeWhile(_.size < 200)
+            .compile
+            .drain
+            .guarantee(stopSignal.set(true))
+          consumer1assignments <- fiber1.join
+          consumer2assignments <- fiber2.join
+          keys <- ref.get
+        } yield {
+          assert {
+            keys.size.toLong == producedTotal && {
+              keys == (0 until 200).map { n =>
+                s"key-$n" -> (if (n < 100) 2 else 1)
+              }.toMap
+            } &&
+            consumer1assignments.size == 2 &&
+            consumer1assignments(0) == Set(0, 1, 2) &&
+            consumer1assignments(1).size < 3 &&
+            consumer2assignments.size == 1 &&
+            consumer2assignments(0).size < 3 &&
+            consumer1assignments(1) ++ consumer2assignments(0) == Set(0, 1, 2)
+          }
+        }).unsafeRunSync()
+      }
+    }
+
+    it("should close all old streams on rebalance") {
+      withKafka { (config, topic) =>
+        val numPartitions = 3
+        createCustomTopic(topic, partitions = numPartitions)
+
+        val stream = {
+          consumerStream[IO]
+            .using(consumerSettings[IO](config).withGroupId("test"))
+            .evalTap(_.subscribeTo(topic))
+        }
+
+        (for {
+          stopSignal <- SignallingRef[IO, Boolean](false)
+          closedStreamsRef <- Ref[IO].of(Vector.empty[Int])
+          assignmentNumRef <- Ref[IO].of(1)
+          _ <- stream
+            .flatMap(_.partitionsMapStream)
+            .filter(_.nonEmpty)
+            .evalMap { assignment =>
+              assignmentNumRef.getAndUpdate(_ + 1).map { assignmentNum =>
+                if (assignmentNum == 1) {
+                  Stream
+                    .emits(assignment.map {
+                      case (partition, partitionStream) =>
+                        partitionStream.onFinalize {
+                          closedStreamsRef.update(_ :+ partition.partition())
+                        }
+                    }.toList)
+                    .covary[IO]
+                } else if (assignmentNum == 2) {
+                  Stream.eval(stopSignal.set(true)) >> Stream.empty.covary[IO]
+                } else {
+                  Stream.empty.covary[IO]
+                }
+              }
+            }
+            .flatten
+            .parJoinUnbounded
+            .concurrently(
+              // run second stream to start a rebalance after initial rebalance, default timeout is 3 secs
+              Stream.sleep(5.seconds) >> stream.flatMap(_.stream)
+            )
+            .interruptWhen(stopSignal)
+            .compile
+            .drain
+          closedStreams <- closedStreamsRef.get
+        } yield {
+          assert(closedStreams.toSet == Set(0, 1, 2))
+        }).unsafeRunSync()
+      }
+    }
+  }
+
   describe("KafkaConsumer#assignmentStream") {
     it("should stream assignment updates to listeners") {
       withKafka { (config, topic) =>
@@ -801,6 +679,122 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             updates.length == 1 && updates.head.size == 3
           }))
         } yield ()).compile.drain.unsafeRunSync()
+      }
+    }
+  }
+
+  describe("KafkaConsumer#unsubscribe") {
+    it("should correctly unsubscribe") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 3)
+        val produced = (0 until 1).map(n => s"key-$n" -> s"value->$n")
+        publishToKafka(topic, produced)
+
+        val cons = consumerStream[IO]
+          .using(consumerSettings[IO](config).withGroupId("test"))
+          .evalTap(_.subscribeTo(topic))
+
+        val topicStream = (for {
+          cntRef <- Stream.eval(Ref.of[IO, Int](0))
+          unsubscribed <- Stream.eval(Ref.of[IO, Boolean](false))
+          partitions <- Stream.eval(Ref.of[IO, Set[TopicPartition]](Set.empty[TopicPartition]))
+
+          consumer1 <- cons
+          consumer2 <- cons
+
+          _ <- Stream(
+            consumer1.stream.evalTap(_ => cntRef.update(_ + 1)),
+            consumer2.stream.concurrently(
+              consumer2.assignmentStream.evalTap(
+                assignedTopicPartitions => partitions.set(assignedTopicPartitions)
+              )
+            )
+          ).parJoinUnbounded
+
+          cntValue <- Stream.eval(cntRef.get)
+          unsubscribedValue <- Stream.eval(unsubscribed.get)
+          _ <- Stream.eval(
+            if (cntValue >= 3 && !unsubscribedValue) //wait for some processed elements from first consumer
+              unsubscribed.set(true) >> consumer1.unsubscribe // unsubscribe
+            else IO.unit
+          )
+          _ <- Stream.eval(IO { publishToKafka(topic, produced) }) // publish some elements to topic
+
+          partitionsValue <- Stream.eval(partitions.get)
+        } yield (partitionsValue)).interruptAfter(10.seconds)
+
+        val res = topicStream.compile.toVector
+          .unsafeRunSync()
+
+        res.last.size shouldBe 3 // in last message should be all partitions
+      }
+    }
+  }
+
+  describe("KafkaConsumer#partitionsFor") {
+    it("should correctly return partitions for topic") {
+      withKafka { (config, topic) =>
+        val partitions = List(0, 1, 2)
+
+        createCustomTopic(topic, partitions = partitions.size)
+
+        val info =
+          consumerStream[IO]
+            .using(consumerSettings[IO](config))
+            .evalMap(_.partitionsFor(topic))
+
+        val res =
+          info.compile.lastOrError
+            .unsafeRunSync()
+
+        res.map(_.partition()) should contain theSameElementsAs partitions
+        res.map(_.topic()).toSet should contain theSameElementsAs Set(topic)
+      }
+    }
+
+    it("should fail when timeout is too small") {
+      withKafka { (config, topic) =>
+        val partitions = List(0, 1, 2)
+
+        createCustomTopic(topic, partitions = partitions.size)
+
+        val info =
+          consumerStream[IO]
+            .using(consumerSettings[IO](config))
+            .evalTap(_.partitionsFor(topic, 1.nanos))
+
+        val res =
+          info.compile.lastOrError.attempt
+            .unsafeRunSync()
+
+        res.left.toOption match {
+          case Some(e) => e shouldBe a[TimeoutException]
+          case _       => fail("No exception was rised!")
+        }
+      }
+    }
+  }
+
+  describe("KafkaConsumer#metrics") {
+    it("should return metrics") {
+      withKafka { (config, topic) =>
+        val partitions = List(0, 1, 2)
+
+        createCustomTopic(topic, partitions = partitions.size)
+
+        val info =
+          consumerStream[IO]
+            .using(consumerSettings[IO](config))
+            .evalMap(_.metrics)
+
+        val res =
+          info
+            .take(1)
+            .compile
+            .lastOrError
+            .unsafeRunSync()
+
+        assert(res.nonEmpty)
       }
     }
   }
