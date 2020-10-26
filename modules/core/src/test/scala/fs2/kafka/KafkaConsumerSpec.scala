@@ -485,20 +485,31 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         def startConsumer(
           consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
-          stopSignal: SignallingRef[IO, Boolean],
+          stopSignal: SignallingRef[IO, Boolean]
         ): IO[Fiber[IO, Vector[Set[Int]]]] = {
-          Ref[IO].of(Vector.empty[Set[Int]]).flatMap { assignedPartitionsRef =>
-            consumerStream[IO]
-              .using(consumerSettings(config))
-              .evalTap(_.subscribeTo(topic))
-              .flatMap(_.partitionsMapStream.filter(_.nonEmpty).evalMap { assignment =>
-                assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
-                  Stream.emits(assignment.map { case (_, stream) =>
-                    stream.evalMap(consumedQueue.enqueue1)
-                  }.toList).covary[IO]
-                }
-              }).flatten.parJoinUnbounded.interruptWhen(stopSignal).compile.drain >> assignedPartitionsRef.get
-          }.start
+          Ref[IO]
+            .of(Vector.empty[Set[Int]])
+            .flatMap { assignedPartitionsRef =>
+              consumerStream[IO]
+                .using(consumerSettings(config))
+                .evalTap(_.subscribeTo(topic))
+                .flatMap(_.partitionsMapStream.filter(_.nonEmpty).evalMap { assignment =>
+                  assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
+                    Stream
+                      .emits(assignment.map {
+                        case (_, stream) =>
+                          stream.evalMap(consumedQueue.enqueue1)
+                      }.toList)
+                      .covary[IO]
+                  }
+                })
+                .flatten
+                .parJoinUnbounded
+                .interruptWhen(stopSignal)
+                .compile
+                .drain >> assignedPartitionsRef.get
+            }
+            .start
         }
 
         (for {
@@ -533,12 +544,12 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                 s"key-$n" -> (if (n < 100) 2 else 1)
               }.toMap
             } &&
-              consumer1assignments.size == 2 &&
-              consumer1assignments(0) == Set(0, 1, 2) &&
-              consumer1assignments(1).size < 3 &&
-              consumer2assignments.size == 1 &&
-              consumer2assignments(0).size < 3 &&
-              consumer1assignments(1) ++ consumer2assignments(0) == Set(0, 1, 2)
+            consumer1assignments.size == 2 &&
+            consumer1assignments(0) == Set(0, 1, 2) &&
+            consumer1assignments(1).size < 3 &&
+            consumer2assignments.size == 1 &&
+            consumer2assignments(0).size < 3 &&
+            consumer1assignments(1) ++ consumer2assignments(0) == Set(0, 1, 2)
           }
         }).unsafeRunSync()
       }
@@ -559,24 +570,36 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           stopSignal <- SignallingRef[IO, Boolean](false)
           closedStreamsRef <- Ref[IO].of(Vector.empty[Int])
           assignmentNumRef <- Ref[IO].of(1)
-          _ <- stream.flatMap(_.partitionsMapStream).filter(_.nonEmpty).evalMap { assignment =>
-            assignmentNumRef.getAndUpdate(_ + 1).map { assignmentNum =>
-              if (assignmentNum == 1) {
-                Stream.emits(assignment.map { case (partition, partitionStream) =>
-                  partitionStream.onFinalize {
-                    closedStreamsRef.update(_ :+ partition.partition())
-                  }
-                }.toList).covary[IO]
-              } else if (assignmentNum == 2) {
-                Stream.eval(stopSignal.set(true)) >> Stream.empty.covary[IO]
-              } else {
-                Stream.empty.covary[IO]
+          _ <- stream
+            .flatMap(_.partitionsMapStream)
+            .filter(_.nonEmpty)
+            .evalMap { assignment =>
+              assignmentNumRef.getAndUpdate(_ + 1).map { assignmentNum =>
+                if (assignmentNum == 1) {
+                  Stream
+                    .emits(assignment.map {
+                      case (partition, partitionStream) =>
+                        partitionStream.onFinalize {
+                          closedStreamsRef.update(_ :+ partition.partition())
+                        }
+                    }.toList)
+                    .covary[IO]
+                } else if (assignmentNum == 2) {
+                  Stream.eval(stopSignal.set(true)) >> Stream.empty.covary[IO]
+                } else {
+                  Stream.empty.covary[IO]
+                }
               }
             }
-          }.flatten.parJoinUnbounded.concurrently(
-            // run second stream to start a rebalance after initial rebalance, default timeout is 3 secs
-            Stream.sleep(5.seconds) >> stream.flatMap(_.stream)
-          ).interruptWhen(stopSignal).compile.drain
+            .flatten
+            .parJoinUnbounded
+            .concurrently(
+              // run second stream to start a rebalance after initial rebalance, default timeout is 3 secs
+              Stream.sleep(5.seconds) >> stream.flatMap(_.stream)
+            )
+            .interruptWhen(stopSignal)
+            .compile
+            .drain
           closedStreams <- closedStreamsRef.get
         } yield {
           assert(closedStreams.toSet == Set(0, 1, 2))

@@ -115,7 +115,8 @@ sealed abstract class KafkaConsumer[F[_], K, V] {
     * @see [[stream]]
     * @see [[partitionedStream]]
     */
-  def partitionsMapStream: Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]]
+  def partitionsMapStream
+    : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]]
 
   /**
     * Returns the set of partitions currently assigned to this consumer.
@@ -426,7 +427,8 @@ private[kafka] object KafkaConsumer {
         actorFiber combine pollsFiber
       }
 
-      override def partitionsMapStream: Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
+      override def partitionsMapStream
+        : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
@@ -439,7 +441,7 @@ private[kafka] object KafkaConsumer {
         def createPartitionStream(
           streamId: StreamId,
           partitionStreamId: PartitionStreamId,
-          partition: TopicPartition,
+          partition: TopicPartition
         ): F[Stream[F, CommittableConsumerRecord[F, K, V]]] = {
           for {
             chunks <- chunkQueue
@@ -470,23 +472,23 @@ private[kafka] object KafkaConsumer {
             }
 
             F.guarantee {
-              Stream
-                .repeatEval {
-                  stopReqs.tryGet.flatMap {
-                    case None =>
-                      Deferred[F, PartitionRequest] >>= fetchPartition
+                Stream
+                  .repeatEval {
+                    stopReqs.tryGet.flatMap {
+                      case None =>
+                        Deferred[F, PartitionRequest] >>= fetchPartition
 
-                    case Some(()) =>
-                      // Prevent issuing additional requests after partition is
-                      // revoked or shutdown happens, in case the stream isn't
-                      // interrupted fast enough
-                      F.unit
+                      case Some(()) =>
+                        // Prevent issuing additional requests after partition is
+                        // revoked or shutdown happens, in case the stream isn't
+                        // interrupted fast enough
+                        F.unit
+                    }
                   }
-                }
-                .interruptWhen(F.race(shutdown, stopReqs.get).void.attempt)
-                .compile
-                .drain
-            }(F.race(dequeueDone.get, chunks.enqueue1(None)).void)
+                  .interruptWhen(F.race(shutdown, stopReqs.get).void.attempt)
+                  .compile
+                  .drain
+              }(F.race(dequeueDone.get, chunks.enqueue1(None)).void)
               .start
               .as {
                 chunks.dequeue.unNoneTerminate
@@ -501,43 +503,51 @@ private[kafka] object KafkaConsumer {
           streamId: StreamId,
           partitionStreamIdRef: Ref[F, PartitionStreamId],
           assigned: SortedSet[TopicPartition],
-          partitionsMapQueue: PartitionsMapQueue,
+          partitionsMapQueue: PartitionsMapQueue
         ): F[Unit] = {
           if (assigned.isEmpty) {
             partitionsMapQueue.enqueue1(Map.empty)
           } else {
             val indexedAssigned = assigned.toVector.zipWithIndex
-            partitionStreamIdRef.modify { id =>
-              val result = indexedAssigned.map { case (partition, idx) =>
-                (partition, idx + id)
-              }
-              val (_, lastId) = result.last
-              (lastId + 1, result)
-            }.flatMap { partitions: Vector[(TopicPartition, PartitionStreamId)] =>
-              partitions.traverse { case (partition, partitionStreamId) =>
-                createPartitionStream(streamId, partitionStreamId, partition).map { stream =>
-                  partition -> stream
+            partitionStreamIdRef
+              .modify { id =>
+                val result = indexedAssigned.map {
+                  case (partition, idx) =>
+                    (partition, idx + id)
                 }
-              }.map(_.toMap)
-            }.flatMap { assignment: PartitionsMap =>
-              partitionsMapQueue.enqueue1(assignment)
-            }
+                val (_, lastId) = result.last
+                (lastId + 1, result)
+              }
+              .flatMap { partitions: Vector[(TopicPartition, PartitionStreamId)] =>
+                partitions
+                  .traverse {
+                    case (partition, partitionStreamId) =>
+                      createPartitionStream(streamId, partitionStreamId, partition).map { stream =>
+                        partition -> stream
+                      }
+                  }
+                  .map(_.toMap)
+              }
+              .flatMap { assignment: PartitionsMap =>
+                partitionsMapQueue.enqueue1(assignment)
+              }
           }
         }
 
         def onRebalance(
           streamId: StreamId,
           partitionStreamIdRef: Ref[F, PartitionStreamId],
-          partitionsMapQueue: PartitionsMapQueue,
+          partitionsMapQueue: PartitionsMapQueue
         ): OnRebalance[F, K, V] = OnRebalance(
-          onAssigned = assigned => enqueueAssignment(streamId, partitionStreamIdRef, assigned, partitionsMapQueue),
+          onAssigned = assigned =>
+            enqueueAssignment(streamId, partitionStreamIdRef, assigned, partitionsMapQueue),
           onRevoked = _ => F.unit
         )
 
         def requestAssignment(
           streamId: StreamId,
           partitionStreamIdRef: Ref[F, PartitionStreamId],
-          partitionsMapQueue: PartitionsMapQueue,
+          partitionsMapQueue: PartitionsMapQueue
         ): F[SortedSet[TopicPartition]] = {
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request =
@@ -558,8 +568,9 @@ private[kafka] object KafkaConsumer {
           partitionsMapQueue: PartitionsMapQueue,
           partitionStreamIdRef: Ref[F, PartitionStreamId]
         ): F[Unit] =
-          requestAssignment(streamId, partitionStreamIdRef, partitionsMapQueue).flatMap { assigned =>
-            enqueueAssignment(streamId, partitionStreamIdRef, assigned, partitionsMapQueue)
+          requestAssignment(streamId, partitionStreamIdRef, partitionsMapQueue).flatMap {
+            assigned =>
+              enqueueAssignment(streamId, partitionStreamIdRef, assigned, partitionsMapQueue)
           }
 
         for {
@@ -573,8 +584,9 @@ private[kafka] object KafkaConsumer {
 
       override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] = {
         partitionsMapStream.flatMap { partitionsMap =>
-          Stream.emits(partitionsMap.toVector.map { case (_, partitionStream) =>
-            partitionStream
+          Stream.emits(partitionsMap.toVector.map {
+            case (_, partitionStream) =>
+              partitionStream
           })
         }
       }
