@@ -153,12 +153,8 @@ object KafkaProducer {
       case (keyBytes, valueBytes) =>
         new KafkaByteProducerRecord(
           record.topic,
-          if (record.partition.isDefined)
-            record.partition.get: java.lang.Integer
-          else null,
-          if (record.timestamp.isDefined)
-            record.timestamp.get: java.lang.Long
-          else null,
+          record.partition.fold[java.lang.Integer](null)(identity),
+          record.timestamp.fold[java.lang.Long](null)(identity),
           keyBytes,
           valueBytes,
           record.headers.asJava
