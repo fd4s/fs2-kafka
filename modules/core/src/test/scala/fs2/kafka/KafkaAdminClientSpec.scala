@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.implicits._
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewPartitions, NewTopic}
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.acl._
 import org.apache.kafka.common.config.ConfigResource
@@ -24,7 +25,10 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
           .use { adminClient =>
             for {
               consumerGroupIds <- adminClient.listConsumerGroups.groupIds
-              _ <- IO(assert(consumerGroupIds.size == 1))
+              consumerGroupId <- IO(consumerGroupIds match {
+                case List(groupId) => groupId
+                case _             => fail()
+              })
               consumerGroupListings <- adminClient.listConsumerGroups.listings
               _ <- IO(assert(consumerGroupListings.size == 1))
               describedConsumerGroups <- adminClient.describeConsumerGroups(consumerGroupIds)
@@ -33,16 +37,29 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                 adminClient.listConsumerGroups.toString should
                   startWith("ListConsumerGroups$")
               }
-              consumerGroupOffsets <- consumerGroupIds.parTraverse { groupId =>
+              consumerGroupsOffsets <- consumerGroupIds.parTraverse { groupId =>
                 adminClient
                   .listConsumerGroupOffsets(groupId)
                   .partitionsToOffsetAndMetadata
                   .map((groupId, _))
               }
-              _ <- IO(assert(consumerGroupOffsets.size == 1))
+              (_, consumerGroupOffsetsMap) <- IO(consumerGroupsOffsets match {
+                case List(offsets) => offsets
+                case _             => fail()
+              })
+              _ <- IO(
+                assert(
+                  consumerGroupOffsetsMap
+                    .map {
+                      case (_, offset) =>
+                        offset.offset()
+                    }
+                    .forall(_ > 0)
+                )
+              )
               _ <- IO {
                 adminClient
-                  .listConsumerGroupOffsets("group")
+                  .listConsumerGroupOffsets(consumerGroupId)
                   .toString shouldBe "ListConsumerGroupOffsets(groupId = group)"
               }
               consumerGroupOffsetsPartitions <- consumerGroupIds.parTraverse { groupId =>
@@ -55,10 +72,32 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
               _ <- IO(assert(consumerGroupOffsetsPartitions.size == 1))
               _ <- IO {
                 adminClient
-                  .listConsumerGroupOffsets("group")
+                  .listConsumerGroupOffsets(consumerGroupId)
                   .forPartitions(List(new TopicPartition("topic", 0)))
                   .toString shouldBe "ListConsumerGroupOffsetsForPartitions(groupId = group, partitions = List(topic-0))"
               }
+              partition0 = new TopicPartition(topic, 0)
+              updatedOffset = new OffsetAndMetadata(0)
+              _ <- adminClient
+                .alterConsumerGroupOffsets(consumerGroupId, Map(partition0 -> updatedOffset))
+              _ <- adminClient
+                .listConsumerGroupOffsets(consumerGroupId)
+                .partitionsToOffsetAndMetadata
+                .map { res =>
+                  val expected = consumerGroupOffsetsMap.updated(partition0, updatedOffset)
+                  assert {
+                    res(partition0) != consumerGroupOffsetsMap(partition0) && res == expected
+                  }
+                }
+              _ <- adminClient
+                .deleteConsumerGroupOffsets(consumerGroupId, Set(partition0))
+              _ <- adminClient
+                .listConsumerGroupOffsets(consumerGroupId)
+                .partitionsToOffsetAndMetadata
+                .map { res =>
+                  val expected = consumerGroupOffsetsMap - partition0
+                  assert(res == expected)
+                }
             } yield ()
           }
           .unsafeRunSync()
