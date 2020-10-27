@@ -6,7 +6,11 @@
 
 package fs2.kafka
 
-import cats.Show
+import cats.{Eq, Show}
+import cats.syntax.eq._
+import cats.instances.long._
+import cats.instances.option._
+import cats.instances.boolean._
 
 /**
   * [[Timestamp]] is an optional timestamp value representing
@@ -103,4 +107,13 @@ object Timestamp {
 
   implicit val timestampShow: Show[Timestamp] =
     Show.fromToString
+
+  implicit val timestampEq: Eq[Timestamp] =
+    Eq.instance {
+      case (l, r) =>
+        l.createTime === r.createTime &&
+          l.logAppendTime === r.logAppendTime &&
+          l.unknownTime === r.unknownTime &&
+          l.isEmpty === r.isEmpty
+    }
 }

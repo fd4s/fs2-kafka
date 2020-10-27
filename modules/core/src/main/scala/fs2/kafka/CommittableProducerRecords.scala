@@ -11,8 +11,9 @@ import cats.syntax.bitraverse._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.show._
+import cats.syntax.eq._
 import cats.syntax.traverse._
-import cats.{Applicative, Bitraverse, Eval, Foldable, Show, Traverse}
+import cats.{Applicative, Bitraverse, Eq, Eval, Foldable, Show, Traverse}
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
 
@@ -103,6 +104,13 @@ object CommittableProducerRecords {
           ", ",
           s", ${committable.offset})"
         )
+    }
+
+  implicit def committableProducerRecordsEq[F[_], K: Eq, V: Eq]
+    : Eq[CommittableProducerRecords[F, K, V]] =
+    Eq.instance {
+      case (l, r) =>
+        l.records === r.records && l.offset === r.offset
     }
 
   implicit def committableProducerRecordsBitraverse[F[_]]

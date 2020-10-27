@@ -82,6 +82,7 @@ lazy val dependencySettings = Seq(
     "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
     "org.typelevel" %% "discipline-scalatest" % "2.1.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
+    "org.typelevel" %% "cats-testkit-scalatest" % "2.0.0",
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.1" cross CrossVersion.full),
@@ -208,7 +209,11 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaProducer.resource"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalKafkaProducer.resource"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withValue"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withKeyValue"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withValue"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withKeyValue")
     )
     // format: on
   }

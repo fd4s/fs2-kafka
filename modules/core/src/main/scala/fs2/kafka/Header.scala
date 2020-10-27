@@ -6,7 +6,9 @@
 
 package fs2.kafka
 
-import cats.Show
+import cats.{Eq, Show}
+import cats.syntax.eq._
+import cats.instances.string._
 
 /**
   * [[Header]] represents a `String` key and `Array[Byte]` value
@@ -62,4 +64,10 @@ object Header {
 
   implicit val headerShow: Show[Header] =
     Show.fromToString
+
+  implicit val headerEq: Eq[Header] =
+    Eq.instance {
+      case (l, r) =>
+        l.key === r.key && l.value.sameElements(r.value)
+    }
 }

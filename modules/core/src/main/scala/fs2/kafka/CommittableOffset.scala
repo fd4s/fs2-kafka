@@ -6,9 +6,8 @@
 
 package fs2.kafka
 
-import cats.ApplicativeError
+import cats.{ApplicativeError, Eq, Show}
 import cats.instances.string._
-import cats.Show
 import cats.syntax.show._
 import fs2.kafka.internal.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -131,4 +130,12 @@ object CommittableOffset {
 
   implicit def committableOffsetShow[F[_]]: Show[CommittableOffset[F]] =
     Show.fromToString
+
+  implicit def committableOffsetEq[F[_]]: Eq[CommittableOffset[F]] =
+    Eq.instance {
+      case (l, r) =>
+        l.topicPartition == r.topicPartition &&
+          l.offsetAndMetadata == r.offsetAndMetadata &&
+          l.consumerGroupId == r.consumerGroupId
+    }
 }

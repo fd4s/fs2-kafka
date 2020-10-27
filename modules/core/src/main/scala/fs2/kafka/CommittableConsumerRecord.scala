@@ -11,8 +11,9 @@ import cats.syntax.bitraverse._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.show._
+import cats.syntax.eq._
 import cats.syntax.traverse._
-import cats.{Applicative, Bitraverse, Eval, Show, Traverse}
+import cats.{Applicative, Bitraverse, Eq, Eval, Show, Traverse}
 
 /**
   * [[CommittableConsumerRecord]] is a Kafka record along with an
@@ -75,6 +76,14 @@ object CommittableConsumerRecord {
     V: Show[V]
   ): Show[CommittableConsumerRecord[F, K, V]] = Show.show { cm =>
     show"CommittableConsumerRecord(${cm.record}, ${cm.offset})"
+  }
+
+  implicit def committableConsumerRecordEq[F[_], K: Eq, V: Eq]
+    : Eq[CommittableConsumerRecord[F, K, V]] = {
+    Eq.instance {
+      case (l, r) =>
+        l.record === r.record && l.offset === r.offset
+    }
   }
 
   implicit def committableConsumerRecordBitraverse[F[_]]

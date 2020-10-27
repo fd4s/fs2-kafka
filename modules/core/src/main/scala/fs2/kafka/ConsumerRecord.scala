@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.implicits._
-import cats.{Applicative, Apply, Bitraverse, Eval, Show, Traverse}
+import cats.{Applicative, Apply, Bitraverse, Eq, Eval, Show, Traverse}
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.ConsumerRecord.{NO_TIMESTAMP, NULL_SIZE}
 import org.apache.kafka.common.record.TimestampType.{CREATE_TIME, LOG_APPEND_TIME}
@@ -240,6 +240,21 @@ object ConsumerRecord {
       b.append(", leaderEpoch = ").append(record.leaderEpoch.get)
     b.append(")").toString
   }
+
+  implicit def consumerRecordEq[K: Eq, V: Eq]: Eq[ConsumerRecord[K, V]] =
+    Eq.instance {
+      case (l, r) =>
+        l.topic === r.topic &&
+          l.partition === r.partition &&
+          l.offset === r.offset &&
+          l.key === r.key &&
+          l.value === r.value &&
+          l.headers === r.headers &&
+          l.timestamp === r.timestamp &&
+          l.serializedKeySize === r.serializedKeySize &&
+          l.serializedValueSize === r.serializedValueSize &&
+          l.leaderEpoch === r.leaderEpoch
+    }
 
   implicit val consumerRecordBitraverse: Bitraverse[ConsumerRecord] =
     new Bitraverse[ConsumerRecord] {

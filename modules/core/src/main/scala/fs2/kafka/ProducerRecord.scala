@@ -6,9 +6,14 @@
 
 package fs2.kafka
 
-import cats.{Applicative, Bitraverse, Eval, Show, Traverse}
+import cats.{Applicative, Bitraverse, Eq, Eval, Show, Traverse}
 import cats.syntax.functor._
 import cats.syntax.show._
+import cats.syntax.eq._
+import cats.instances.string._
+import cats.instances.int._
+import cats.instances.long._
+import cats.instances.option._
 
 /**
   * [[ProducerRecord]] represents a record which can be produced
@@ -131,6 +136,17 @@ object ProducerRecord {
     if (record.headers.nonEmpty) b.append(", headers = ").append(record.headers)
     b.append(")").toString
   }
+
+  implicit def producerRecordEq[K: Eq, V: Eq]: Eq[ProducerRecord[K, V]] =
+    Eq.instance {
+      case (l, r) =>
+        l.topic === r.topic &&
+          l.partition === r.partition &&
+          l.timestamp === r.timestamp &&
+          l.key === r.key &&
+          l.value === r.value &&
+          l.headers === r.headers
+    }
 
   implicit val producerRecordBitraverse: Bitraverse[ProducerRecord] =
     new Bitraverse[ProducerRecord] {
