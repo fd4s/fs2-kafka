@@ -13,6 +13,7 @@ import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
   def apply[A](f: KafkaByteProducer => F[A]): F[A]
+  def blocking[A](f: KafkaByteProducer => A): F[A]
 }
 
 private[kafka] object WithProducer {
@@ -32,9 +33,10 @@ private[kafka] object WithProducer {
         settings.createProducer.map { producer =>
           new WithProducer[F] {
             override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
-              context.blockOn(blocker) {
-                f(producer)
-              }
+              blocker.blockOn { f(producer) }
+
+            override def blocking[A](f: KafkaByteProducer => A): F[A] =
+              apply(producer => F.delay(f(producer)))
           }
         }
       }(_.apply { producer =>
@@ -60,20 +62,17 @@ private[kafka] object WithProducer {
           val withProducer =
             new WithProducer[F] {
               override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
-                context.blockOn(blocker) {
-                  f(producer)
-                }
+                blocker.blockOn { f(producer) }
+
+              override def blocking[A](f: KafkaByteProducer => A): F[A] =
+                apply(producer => F.delay(f(producer)))
             }
 
           val initTransactions =
-            withProducer { producer =>
-              F.delay(producer.initTransactions())
-            }
+            withProducer.blocking { _.initTransactions() }
 
           val close =
-            withProducer { producer =>
-              F.delay(producer.close(settings.producerSettings.closeTimeout.asJava))
-            }
+            withProducer.blocking { _.close(settings.producerSettings.closeTimeout.asJava) }
 
           initTransactions.as((withProducer, close))
         }
