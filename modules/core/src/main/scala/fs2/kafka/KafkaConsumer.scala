@@ -336,12 +336,11 @@ private[kafka] object KafkaConsumer {
   ): Resource[F, Fiber[F, Unit]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        F.guaranteeCase {
-            requests.tryDequeue1
-              .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
-              .flatMap(actor.handle(_) >> context.shift)
-              .foreverM[Unit]
-          } {
+        requests.tryDequeue1
+          .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
+          .flatMap(actor.handle(_) >> context.shift)
+          .foreverM[Unit]
+          .guaranteeCase {
             case ExitCase.Error(e) => deferred.complete(Left(e))
             case _                 => deferred.complete(Right(()))
           }
@@ -359,12 +358,11 @@ private[kafka] object KafkaConsumer {
   ): Resource[F, Fiber[F, Unit]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        F.guaranteeCase {
-            polls
-              .enqueue1(Request.poll)
-              .flatMap(_ => timer.sleep(pollInterval))
-              .foreverM[Unit]
-          } {
+        polls
+          .enqueue1(Request.poll)
+          .flatMap(_ => timer.sleep(pollInterval))
+          .foreverM[Unit]
+          .guaranteeCase {
             case ExitCase.Error(e) => deferred.complete(Left(e))
             case _                 => deferred.complete(Right(()))
           }
@@ -385,13 +383,13 @@ private[kafka] object KafkaConsumer {
     new KafkaConsumer[F, K, V] {
       override val fiber: Fiber[F, Unit] = {
         val actorFiber =
-          Fiber[F, Unit](F.guaranteeCase(actor.join) {
+          Fiber[F, Unit](actor.join.guaranteeCase {
             case ExitCase.Completed => polls.cancel
             case _                  => F.unit
           }, actor.cancel)
 
         val pollsFiber =
-          Fiber[F, Unit](F.guaranteeCase(polls.join) {
+          Fiber[F, Unit](polls.join.guaranteeCase {
             case ExitCase.Completed => actor.cancel
             case _                  => F.unit
           }, polls.cancel)
@@ -442,24 +440,23 @@ private[kafka] object KafkaConsumer {
                   }
                 }
 
-                F.guarantee {
-                    Stream
-                      .repeatEval {
-                        stopReqs.tryGet.flatMap {
-                          case None =>
-                            Deferred[F, PartitionRequest] >>= fetchPartition
+                Stream
+                  .repeatEval {
+                    stopReqs.tryGet.flatMap {
+                      case None =>
+                        Deferred[F, PartitionRequest] >>= fetchPartition
 
-                          case Some(()) =>
-                            // Prevent issuing additional requests after partition is
-                            // revoked or shutdown happens, in case the stream isn't
-                            // interrupted fast enough
-                            F.unit
-                        }
-                      }
-                      .interruptWhen(F.race(shutdown, stopReqs.get).void.attempt)
-                      .compile
-                      .drain
-                  }(F.race(dequeueDone.get, chunks.enqueue1(None)).void)
+                      case Some(()) =>
+                        // Prevent issuing additional requests after partition is
+                        // revoked or shutdown happens, in case the stream isn't
+                        // interrupted fast enough
+                        F.unit
+                    }
+                  }
+                  .interruptWhen(F.race(shutdown, stopReqs.get).void.attempt)
+                  .compile
+                  .drain
+                  .guarantee(F.race(dequeueDone.get, chunks.enqueue1(None)).void)
                   .start
                   .as {
                     chunks.dequeue.unNoneTerminate

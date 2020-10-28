@@ -7,6 +7,7 @@
 package fs2.kafka
 
 import cats.effect.{Concurrent, ContextShift, ExitCase, Resource}
+import cats.effect.syntax.all._
 import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.internal._
@@ -68,27 +69,28 @@ private[kafka] object TransactionalKafkaProducer {
 
                 consumerGroupId.flatMap { groupId =>
                   withProducer { producer =>
-                    F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
-                      records.records
-                        .flatMap(_.records)
-                        .traverse(
-                          KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
-                        )
-                        .map(_.sequence)
-                        .flatTap { _ =>
-                          F.delay {
-                            producer.sendOffsetsToTransaction(
-                              batch.offsets.asJava,
-                              groupId
-                            )
+                    F.delay(producer.beginTransaction())
+                      .bracketCase { _ =>
+                        records.records
+                          .flatMap(_.records)
+                          .traverse(
+                            KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
+                          )
+                          .map(_.sequence)
+                          .flatTap { _ =>
+                            F.delay {
+                              producer.sendOffsetsToTransaction(
+                                batch.offsets.asJava,
+                                groupId
+                              )
+                            }
                           }
-                        }
-                    } {
-                      case (_, ExitCase.Completed) =>
-                        F.delay(producer.commitTransaction())
-                      case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
-                        F.delay(producer.abortTransaction())
-                    }
+                      } {
+                        case (_, ExitCase.Completed) =>
+                          F.delay(producer.commitTransaction())
+                        case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
+                          F.delay(producer.abortTransaction())
+                      }
                   }.flatten
                 }
               }
