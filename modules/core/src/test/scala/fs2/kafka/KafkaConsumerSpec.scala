@@ -11,6 +11,7 @@ import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 import org.apache.kafka.common.errors.TimeoutException
 import org.apache.kafka.common.TopicPartition
+import org.scalatest.Assertion
 
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
@@ -179,42 +180,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should commit the last processed offsets") {
-      withKafka { (config, topic) =>
-        createCustomTopic(topic, partitions = 3)
-        val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
-
-        val committed =
-          Stream(consumerSettings[IO](config))
-            .flatMap(consumerStream[IO].using)
-            .evalTap(_.subscribe(topic.r))
-            .flatMap { consumer =>
-              consumer.stream
-                .take(produced.size.toLong)
-                .map(_.offset)
-                .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
-                .evalMap(batch => batch.commit.as(batch.offsets))
-            }
-            .compile
-            .lastOrError
-            .unsafeRunSync()
-
-        assert {
-          committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
-          withKafkaConsumer(consumerProperties(config)) { consumer =>
-            committed.values.toList.foldMap(_.offset)
-
-            committed.foldLeft(true) {
-              case (result, (topicPartition, offsetAndMetadata)) =>
-                result &&
-                  consumer
-                    .committed(Set(topicPartition).asJava)
-                    .asScala
-                    .get(topicPartition)
-                    .contains(offsetAndMetadata)
-            }
-          }
-        }
+      commitTest {
+        case (_, offsetBatch) =>
+          offsetBatch.commit
       }
     }
 
@@ -775,6 +743,24 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
   }
 
+  describe("KafkaConsumer#commitAsync") {
+    it("should commit offsets of messages from the topic to which consumer assigned") {
+      commitTest {
+        case (consumer, offsetBatch) =>
+          consumer.commitAsync(offsetBatch.offsets)
+      }
+    }
+  }
+
+  describe("KafkaConsumer#commitSync") {
+    it("should commit offsets of messages from the topic to which consumer assigned") {
+      commitTest {
+        case (consumer, offsetBatch) =>
+          consumer.commitSync(offsetBatch.offsets)
+      }
+    }
+  }
+
   describe("KafkaConsumer#metrics") {
     it("should return metrics") {
       withKafka { (config, topic) =>
@@ -795,6 +781,46 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .unsafeRunSync()
 
         assert(res.nonEmpty)
+      }
+    }
+  }
+
+  private def commitTest(
+    commit: (KafkaConsumer[IO, String, String], CommittableOffsetBatch[IO]) => IO[Unit]
+  ): Assertion = {
+    withKafka { (config, topic) =>
+      val partitionsAmount = 3
+      createCustomTopic(topic, partitions = partitionsAmount)
+      val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
+      publishToKafka(topic, produced)
+
+      val partitions = (0 until partitionsAmount).toSet
+
+      val createConsumer = consumerStream[IO]
+        .using(consumerSettings[IO](config))
+        .evalTap(_.subscribeTo(topic))
+
+      val committed = (for {
+        consumer <- createConsumer
+        consumed <- consumer.stream
+          .take(produced.size.toLong)
+          .map(_.offset)
+          .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
+        _ <- Stream.eval(commit(consumer, consumed))
+      } yield consumed.offsets).compile.lastOrError.unsafeRunSync()
+
+      val actuallyCommitted = withKafkaConsumer(consumerProperties(config)) { consumer =>
+        consumer
+          .committed(partitions.map { partition =>
+            new TopicPartition(topic, partition)
+          }.asJava)
+          .asScala
+          .toMap
+      }
+
+      assert {
+        committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
+        committed == actuallyCommitted
       }
     }
   }
