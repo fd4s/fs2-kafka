@@ -66,4 +66,20 @@ trait KafkaConsume[F[_], K, V] {
     */
   def partitionsMapStream
     : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]]
+
+  /**
+    * Stops consuming new messages from Kafka.
+    * This method could be used to implement a graceful shutdown.<br>
+    * <br>
+    * This method has a few effects:
+    * 1. After this call no more data will be fetched from Kafka through the `poll` method.
+    * 2. All currently running streams will continue to run until all in-flight messages will be processed.
+    *    It means that streams will be completed when all fetched messages will be processed.<br>
+    * <br>
+    * If some of the [[stream]] methods will be called after [[stopConsuming]] call,
+    * these methods will return empty streams.<br>
+    * <br>
+    * More than one call of [[stopConsuming]] will have no effect.
+    */
+  def stopConsuming: F[Unit]
 }
