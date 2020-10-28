@@ -7,7 +7,7 @@
 package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector, StateT}
-import cats.effect.{ConcurrentEffect, Timer}
+import cats.effect.{ConcurrentEffect, ContextShift, Timer}
 import cats.effect.concurrent.Ref
 import cats.effect.syntax.all._
 import cats.implicits._
@@ -26,8 +26,7 @@ import java.util.regex.Pattern
 import org.apache.kafka.clients.consumer.{
   ConsumerConfig,
   ConsumerRebalanceListener,
-  OffsetAndMetadata,
-  OffsetCommitCallback
+  OffsetAndMetadata
 }
 import org.apache.kafka.common.TopicPartition
 
@@ -57,6 +56,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   withConsumer: WithConsumer[F]
 )(
   implicit F: ConcurrentEffect[F],
+  context: ContextShift[F],
   logging: Logging[F],
   jitter: Jitter[F],
   timer: Timer[F]
@@ -199,15 +199,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       withConsumer.blocking {
         _.commitAsync(
           request.offsets.asJava,
-          new OffsetCommitCallback {
-            override def onComplete(
-              offsets: util.Map[TopicPartition, OffsetAndMetadata],
-              exception: Exception
-            ): Unit = {
-              val result = Option(exception).toLeft(())
-              request.callback(result)
-            }
-          }
+          (_, exception) => request.callback(Option(exception).toLeft(()))
         )
       }.attempt
 
@@ -353,6 +345,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         F.asyncF[Unit] { cb =>
             requests.enqueue1(Request.Commit(offsets, cb))
           }
+          .guarantee(context.shift)
           .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
             CommitTimeoutException(
               settings.commitTimeout,
