@@ -82,7 +82,7 @@ object KafkaProducer {
             override def produce[P](
               records: ProducerRecords[K, V, P]
             ): F[F[ProducerResult[K, V, P]]] = {
-              withProducer { producer =>
+              withProducer { (producer, _) =>
                 records.records
                   .traverse(produceRecord(keySerializer, valueSerializer, producer))
                   .map(_.sequence.map(ProducerResult(_, records.passthrough)))
@@ -104,7 +104,8 @@ object KafkaProducer {
     valueSerializer: Serializer[F, V],
     producer: KafkaByteProducer
   )(
-    implicit F: Concurrent[F]
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
       asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
@@ -123,6 +124,7 @@ object KafkaProducer {
           }
           .start
           .map(_.join)
+          .guarantee(context.shift)
       }
 
   private[this] def serializeToBytes[F[_], K, V](

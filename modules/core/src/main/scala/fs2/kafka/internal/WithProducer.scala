@@ -7,12 +7,13 @@
 package fs2.kafka.internal
 
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
+import cats.{~>, Id}
 import cats.implicits._
 import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
-  def apply[A](f: KafkaByteProducer => F[A]): F[A]
+  def apply[A](f: (KafkaByteProducer, Id ~> F) => F[A]): F[A]
   def blocking[A](f: KafkaByteProducer => A): F[A]
 }
 
@@ -32,16 +33,18 @@ private[kafka] object WithProducer {
       Resource.make {
         settings.createProducer.map { producer =>
           new WithProducer[F] {
-            override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
-              blocker.blockOn { f(producer) }
+            private val blockingK = new ~>[Id, F] {
+              override def apply[A](a: A) = blocker.delay(a)
+            }
+
+            override def apply[A](f: (KafkaByteProducer, Id ~> F) => F[A]): F[A] =
+              f(producer, blockingK)
 
             override def blocking[A](f: KafkaByteProducer => A): F[A] =
-              apply(producer => F.delay(f(producer)))
+              blocker.delay(f(producer))
           }
         }
-      }(_.apply { producer =>
-        F.delay(producer.close(settings.closeTimeout.asJava))
-      })
+      }(_.blocking { _.close(settings.closeTimeout.asJava) })
     }
   }
 
@@ -61,11 +64,15 @@ private[kafka] object WithProducer {
         settings.producerSettings.createProducer.flatMap { producer =>
           val withProducer =
             new WithProducer[F] {
-              override def apply[A](f: KafkaByteProducer => F[A]): F[A] =
-                blocker.blockOn { f(producer) }
+              private val blockingK = new ~>[Id, F] {
+                override def apply[A](a: A) = blocker.delay(a)
+              }
+
+              override def apply[A](f: (KafkaByteProducer, Id ~> F) => F[A]): F[A] =
+                f(producer, blockingK)
 
               override def blocking[A](f: KafkaByteProducer => A): F[A] =
-                apply(producer => F.delay(f(producer)))
+                blocker.delay(f(producer))
             }
 
           val initTransactions =
