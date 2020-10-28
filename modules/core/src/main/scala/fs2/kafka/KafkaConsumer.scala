@@ -420,7 +420,8 @@ private[kafka] object KafkaConsumer {
             _ <- partitions.enqueue1 {
               Stream.eval {
                 def fetchPartition(deferred: Deferred[F, PartitionRequest]): F[Unit] = {
-                  val request = Request.Fetch(partition, streamId, partitionStreamId, deferred)
+                  val request =
+                    Request.Fetch(partition, streamId, partitionStreamId, deferred.complete)
                   val fetch = requests.enqueue1(request) >> deferred.get
                   F.race(shutdown, fetch).flatMap {
                     case Left(()) =>
@@ -503,7 +504,7 @@ private[kafka] object KafkaConsumer {
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request =
               Request.Assignment[F, K, V](
-                deferred,
+                deferred.complete,
                 Some(onRebalance(streamId, partitionStreamIdRef, partitions))
               )
             val assignment = requests.enqueue1(request) >> deferred.get.rethrow
@@ -542,10 +543,10 @@ private[kafka] object KafkaConsumer {
         partitionedStream.parJoinUnbounded
 
       private[this] def request[A](
-        request: Deferred[F, Either[Throwable, A]] => Request[F, K, V]
+        request: (Either[Throwable, A] => F[Unit]) => Request[F, K, V]
       ): F[A] =
         Deferred[F, Either[Throwable, A]].flatMap { deferred =>
-          requests.enqueue1(request(deferred)) >>
+          requests.enqueue1(request(deferred.complete)) >>
             F.race(fiber.join, deferred.get.rethrow).flatMap {
               case Left(()) => F.raiseError(ConsumerShutdownException())
               case Right(a) => F.pure(a)
@@ -560,7 +561,7 @@ private[kafka] object KafkaConsumer {
       ): F[SortedSet[TopicPartition]] =
         request { deferred =>
           Request.Assignment(
-            deferred = deferred,
+            callback = deferred,
             onRebalance = onRebalance
           )
         }
@@ -658,33 +659,33 @@ private[kafka] object KafkaConsumer {
         subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
       override def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] =
-        request { deferred =>
+        request { callback =>
           Request.SubscribeTopics(
             topics = topics.toNonEmptyList,
-            deferred = deferred
+            callback = callback
           )
         }
 
       override def subscribe(regex: Regex): F[Unit] =
-        request { deferred =>
+        request { callback =>
           Request.SubscribePattern(
             pattern = regex.pattern,
-            deferred = deferred
+            callback = callback
           )
         }
 
       override def unsubscribe: F[Unit] =
-        request { deferred =>
+        request { callback =>
           Request.Unsubscribe(
-            deferred = deferred
+            callback = callback
           )
         }
 
       override def assign(partitions: NonEmptySet[TopicPartition]): F[Unit] =
-        request { deferred =>
+        request { callback =>
           Request.Assign(
             topicPartitions = partitions,
-            deferred = deferred
+            callback = callback
           )
         }
 
