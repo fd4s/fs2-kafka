@@ -7,8 +7,8 @@
 package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector, StateT}
-import cats.effect.{ConcurrentEffect, IO, Timer}
-import cats.effect.concurrent.{Deferred, Ref}
+import cats.effect.{ConcurrentEffect, Timer}
+import cats.effect.concurrent.Ref
 import cats.effect.syntax.all._
 import cats.implicits._
 import fs2.Chunk
@@ -205,8 +205,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               exception: Exception
             ): Unit = {
               val result = Option(exception).toLeft(())
-              val complete = request.callback(result)
-              F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+              request.callback(result)
             }
           }
         )
@@ -214,7 +213,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
     commit.flatMap {
       case Right(()) => F.unit
-      case Left(e)   => request.callback(Left(e))
+      case Left(e)   => F.delay(request.callback(Left(e)))
     }
   }
 
@@ -351,15 +350,15 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
       val commit =
-        Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-          requests.enqueue1(Request.Commit(offsets, deferred.complete)) >>
-            deferred.get.rethrow.timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
-              CommitTimeoutException(
-                settings.commitTimeout,
-                offsets
-              )
-            })
-        }
+        F.asyncF[Unit] { cb =>
+            requests.enqueue1(Request.Commit(offsets, cb))
+          }
+          .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
+            CommitTimeoutException(
+              settings.commitTimeout,
+              offsets
+            )
+          })
 
       commit.handleErrorWith {
         settings.commitRecovery
@@ -818,7 +817,7 @@ private[kafka] object KafkaConsumerActor {
 
     final case class Commit[F[_], K, V](
       offsets: Map[TopicPartition, OffsetAndMetadata],
-      callback: Either[Throwable, Unit] => F[Unit]
+      callback: Either[Throwable, Unit] => Unit
     ) extends Request[F, K, V]
   }
 }
