@@ -556,9 +556,9 @@ private[kafka] object KafkaConsumer {
       private def assignment(
         onRebalance: Option[OnRebalance[F, K, V]]
       ): F[SortedSet[TopicPartition]] =
-        request { deferred =>
+        request { callback =>
           Request.Assignment(
-            callback = deferred,
+            callback = callback,
             onRebalance = onRebalance
           )
         }
