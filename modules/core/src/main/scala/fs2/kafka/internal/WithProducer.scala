@@ -7,14 +7,16 @@
 package fs2.kafka.internal
 
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
-import cats.{~>, Id}
 import cats.implicits._
 import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
-  def apply[A](f: (KafkaByteProducer, Id ~> F) => F[A]): F[A]
-  def blocking[A](f: KafkaByteProducer => A): F[A]
+  def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A]
+
+  def blocking[A](f: KafkaByteProducer => A): F[A] = apply {
+    case (producer, blocking) => blocking(f(producer))
+  }
 }
 
 private[kafka] object WithProducer {
@@ -24,9 +26,9 @@ private[kafka] object WithProducer {
     implicit F: Sync[F],
     context: ContextShift[F]
   ): Resource[F, WithProducer[F]] =
-    blockerResource(settings).flatMap { blocker =>
+    blockingResource(settings).flatMap { blocking =>
       Resource.make(
-        settings.createProducer.map(create(_, blocker))
+        settings.createProducer.map(create(_, blocking))
       )(_.blocking { _.close(settings.closeTimeout.asJava) })
     }
 
@@ -36,10 +38,10 @@ private[kafka] object WithProducer {
     implicit F: Sync[F],
     context: ContextShift[F]
   ): Resource[F, WithProducer[F]] =
-    blockerResource(settings.producerSettings).flatMap { blocker =>
+    blockingResource(settings.producerSettings).flatMap { blocking =>
       Resource[F, WithProducer[F]] {
         settings.producerSettings.createProducer.flatMap { producer =>
-          val withProducer = create(producer, blocker)
+          val withProducer = create(producer, blocking)
 
           val initTransactions = withProducer.blocking { _.initTransactions() }
 
@@ -53,25 +55,19 @@ private[kafka] object WithProducer {
       }
     }
 
-  private def blockerResource[F[_]: Sync](
+  private def blockingResource[F[_]: Sync: ContextShift](
     settings: ProducerSettings[F, _, _]
-  ): Resource[F, Blocker] =
+  ): Resource[F, Blocking[F]] =
     settings.blocker
       .map(Resource.pure[F, Blocker])
       .getOrElse(Blockers.producer)
+      .map(Blocking.fromBlocker[F])
 
-  private def create[F[_]: Sync: ContextShift](
+  private def create[F[_]](
     producer: KafkaByteProducer,
-    blocker: Blocker
+    _blocking: Blocking[F]
   ): WithProducer[F] = new WithProducer[F] {
-    private val blockingK = new ~>[Id, F] {
-      override def apply[A](a: A) = blocker.delay(a)
-    }
-
-    override def apply[A](f: (KafkaByteProducer, Id ~> F) => F[A]): F[A] =
-      f(producer, blockingK)
-
-    override def blocking[A](f: KafkaByteProducer => A): F[A] =
-      blocker.delay(f(producer))
+    override def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A] =
+      f(producer, _blocking)
   }
 }
