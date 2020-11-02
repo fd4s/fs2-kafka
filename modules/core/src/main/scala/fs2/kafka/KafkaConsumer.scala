@@ -426,15 +426,10 @@ private[kafka] object KafkaConsumer {
                       stopReqs.complete(())
 
                     case Right((chunk, reason)) =>
-                      val enqueueChunk =
-                        if (chunk.nonEmpty)
-                          chunks.enqueue1(Some(chunk))
-                        else F.unit
+                      val enqueueChunk = chunks.enqueue1(Some(chunk)).unlessA(chunk.isEmpty)
 
                       val completeRevoked =
-                        if (reason.topicPartitionRevoked) {
-                          stopReqs.complete(())
-                        } else F.unit
+                        stopReqs.complete(()).whenA(reason.topicPartitionRevoked)
 
                       enqueueChunk >> completeRevoked
                   }
@@ -477,7 +472,7 @@ private[kafka] object KafkaConsumer {
         ): F[Unit] = assigned.foldLeft(F.unit) {
           case (acc, partition) =>
             acc >> partitionStreamIdRef
-              .modify(id => (id + 1, id))
+              .getAndUpdate(_ + 1)
               .flatMap(enqueueStream(streamId, _, partition, partitions))
         }
 
@@ -518,22 +513,25 @@ private[kafka] object KafkaConsumer {
           partitionStreamIdRef: Ref[F, Int]
         ): F[Unit] =
           requestAssignment(streamId, partitionStreamIdRef, partitions).flatMap { assigned =>
-            if (assigned.nonEmpty) {
-              val nonEmpty = NonEmptySet.fromSetUnsafe(assigned)
-              enqueueStreams(streamId, partitionStreamIdRef, nonEmpty, partitions)
-            } else F.unit
+            NonEmptySet
+              .fromSet(assigned)
+              .traverse(
+                nonEmpty => enqueueStreams(streamId, partitionStreamIdRef, nonEmpty, partitions)
+              )
+              .void
           }
 
         val partitionQueue: F[Queue[F, Stream[F, CommittableConsumerRecord[F, K, V]]]] =
           Queue.unbounded[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
 
-        for {
-          partitions <- Stream.eval(partitionQueue)
-          streamId <- Stream.eval(streamIdRef.modify(n => (n + 1, n)))
-          partitionStreamIdRef <- Stream.eval(Ref.of[F, Int](0))
-          _ <- Stream.eval(initialEnqueue(streamId, partitions, partitionStreamIdRef))
-          out <- partitions.dequeue.interruptWhen(fiber.join.attempt)
-        } yield out
+        Stream
+          .eval {
+            (streamIdRef.getAndUpdate(_ + 1), partitionQueue, Ref[F].of(0)).mapN {
+              case (streamId, partitions, partitionStreamIdRef) =>
+                initialEnqueue(streamId, partitions, partitionStreamIdRef).as(partitions)
+            }.flatten
+          }
+          .flatMap { _.dequeue.interruptWhen(fiber.join.attempt) }
       }
 
       override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
@@ -544,11 +542,8 @@ private[kafka] object KafkaConsumer {
       ): F[A] =
         Deferred[F, Either[Throwable, A]].flatMap { deferred =>
           requests.enqueue1(request(deferred.complete)) >>
-            F.race(fiber.join, deferred.get.rethrow).flatMap {
-              case Left(()) => F.raiseError(ConsumerShutdownException())
-              case Right(a) => F.pure(a)
-            }
-        }
+            F.race(fiber.join.as(ConsumerShutdownException()), deferred.get.rethrow)
+        }.rethrow
 
       override def assignment: F[SortedSet[TopicPartition]] =
         assignment(Option.empty)
@@ -577,41 +572,36 @@ private[kafka] object KafkaConsumer {
             onAssigned = assigned =>
               initialAssignmentDone >>
                 assignmentRef
-                  .modify { assignment =>
-                    val newAssignment = assignment ++ assigned
-                    (newAssignment, newAssignment)
-                  }
+                  .updateAndGet(_ ++ assigned)
                   .flatMap(updateQueue.enqueue1),
             onRevoked = revoked =>
               initialAssignmentDone >>
                 assignmentRef
-                  .modify { assignment =>
-                    val newAssignment = assignment -- revoked
-                    (newAssignment, newAssignment)
-                  }
+                  .updateAndGet(_ -- revoked)
                   .flatMap(updateQueue.enqueue1)
           )
 
         Stream.eval {
-          Queue.unbounded[F, SortedSet[TopicPartition]].flatMap { updateQueue =>
-            Ref[F].of(SortedSet.empty[TopicPartition]).flatMap { assignmentRef =>
-              Deferred[F, Unit].flatMap { initialAssignmentDeferred =>
-                val onRebalance =
-                  onRebalanceWith(
-                    updateQueue = updateQueue,
-                    assignmentRef = assignmentRef,
-                    initialAssignmentDone = initialAssignmentDeferred.get
-                  )
+          (
+            Queue.unbounded[F, SortedSet[TopicPartition]],
+            Ref[F].of(SortedSet.empty[TopicPartition]),
+            Deferred[F, Unit]
+          ).tupled.flatMap {
+            case (updateQueue, assignmentRef, initialAssignmentDeferred) =>
+              val onRebalance =
+                onRebalanceWith(
+                  updateQueue = updateQueue,
+                  assignmentRef = assignmentRef,
+                  initialAssignmentDone = initialAssignmentDeferred.get
+                )
 
-                assignment(Some(onRebalance))
-                  .flatMap { initialAssignment =>
-                    assignmentRef.set(initialAssignment) >>
-                      updateQueue.enqueue1(initialAssignment) >>
-                      initialAssignmentDeferred.complete(())
-                  }
-                  .as(updateQueue.dequeue.changes)
-              }
-            }
+              assignment(Some(onRebalance))
+                .flatMap { initialAssignment =>
+                  assignmentRef.set(initialAssignment) >>
+                    updateQueue.enqueue1(initialAssignment) >>
+                    initialAssignmentDeferred.complete(())
+                }
+                .as(updateQueue.dequeue.changes)
           }
         }.flatten
       }

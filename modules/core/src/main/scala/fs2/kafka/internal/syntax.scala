@@ -33,16 +33,6 @@ private[kafka] object syntax {
       fa.flatMap(a => logging.log(f(a)))
   }
 
-  implicit final class RefSyntax[F[_], A](
-    private val ref: Ref[F, A]
-  ) extends AnyVal {
-    def updateAndGet(f: A => A): F[A] =
-      ref.modify { a =>
-        val fa = f(a)
-        (fa, fa)
-      }
-  }
-
   implicit final class FiniteDurationSyntax(
     private val duration: FiniteDuration
   ) extends AnyVal {

@@ -287,10 +287,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- Stream.eval {
             queue.dequeue
               .evalMap { committable =>
-                ref.modify { counts =>
+                ref.updateAndGet { counts =>
                   val key = committable.record.key
-                  val newCounts = counts.updated(key, counts.getOrElse(key, 0) + 1)
-                  (newCounts, newCounts)
+                  counts.updated(key, counts.getOrElse(key, 0) + 1)
                 }
               }
               .takeWhile(_.size < 200)

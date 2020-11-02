@@ -194,22 +194,18 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     assigned.ifM(storeFetch, completeRevoked)
   }
 
-  private[this] def commitAsync(request: Request.Commit[F, K, V]): F[Unit] = {
-    val commit =
-      withConsumer.blocking {
-        _.commitAsync(
-          request.offsets.asJava,
-          (_, exception) => request.callback(Option(exception).toLeft(()))
-        )
-      }.attempt
-
-    commit.flatMap {
-      case Right(()) => F.unit
-      case Left(e)   => F.delay(request.callback(Left(e)))
+  private[this] def commitAsync(request: Request.Commit[F, K, V]): F[Unit] =
+    withConsumer { (consumer, _) =>
+      F.delay {
+          consumer.commitAsync(
+            request.offsets.asJava,
+            (_, exception) => request.callback(Option(exception).toLeft(()))
+          )
+        }
+        .handleErrorWith(e => F.delay(request.callback(Left(e))))
     }
-  }
 
-  private[this] def commit(request: Request.Commit[F, K, V]): F[Unit] = {
+  private[this] def commit(request: Request.Commit[F, K, V]): F[Unit] =
     ref
       .modify { state =>
         if (state.rebalancing) {
@@ -221,7 +217,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         case Some(log) => logging.log(log)
         case None      => commitAsync(request)
       }
-  }
 
   private[this] def assigned(assigned: SortedSet[TopicPartition]): F[Unit] =
     ref
@@ -319,9 +314,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     onRebalance: Option[OnRebalance[F, K, V]]
   ): F[Unit] = {
     def resolveDeferred(subscribed: Boolean): F[Unit] = {
-      val result = if (subscribed) withConsumer.blocking { consumer =>
-        Right(consumer.assignment.toSortedSet)
-      } else F.pure(Left(NotSubscribedException()))
+      val result =
+        if (subscribed) withConsumer.blocking(_.assignment.toSortedSet.asRight)
+        else F.pure(Left(NotSubscribedException()))
 
       result.flatMap(callback)
     }
