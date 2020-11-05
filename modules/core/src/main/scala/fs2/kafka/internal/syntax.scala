@@ -8,7 +8,6 @@ package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.{CancelToken, Concurrent, Sync}
-import cats.effect.concurrent.Ref
 import cats.implicits._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray

@@ -144,7 +144,7 @@ private[kafka] object LogEntry {
 
   final case class RevokedPreviousFetch(
     partition: TopicPartition,
-    streamId: Int
+    streamId: StreamId
   ) extends LogEntry {
     override def level: LogLevel = Warn
     override def message: String =
