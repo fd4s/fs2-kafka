@@ -122,9 +122,9 @@ object KafkaProducer {
             )
             ()
           }
+          .guarantee(context.shift)
           .start
           .map(_.join)
-          .guarantee(context.shift)
       }
 
   private[this] def serializeToBytes[F[_], K, V](
