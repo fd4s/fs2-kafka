@@ -16,7 +16,7 @@ val scala212 = "2.12.12"
 
 val scala213 = "2.13.3"
 
-val dotty = "0.27.0-RC1"
+val dotty = "3.0.0-M1"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -83,7 +83,7 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     ("io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion)
       .withDottyCompat(scalaVersion.value),
-    "org.typelevel" %% "discipline-scalatest" % "2.0.1",
+    //"org.typelevel" %% "discipline-scalatest" % "2.0.1",
     ("org.typelevel" %% "cats-effect-laws" % catsEffectVersion)
       .excludeAll("org.typelevel")
       .withDottyCompat(scalaVersion.value),
