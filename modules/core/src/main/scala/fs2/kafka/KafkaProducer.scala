@@ -8,7 +8,7 @@ package fs2.kafka
 
 import cats.Apply
 import cats.effect._
-import cats.effect.concurrent.Deferred
+import cats.effect.syntax.all._
 import cats.implicits._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
@@ -72,7 +72,7 @@ object KafkaProducer {
   private[kafka] def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
+    implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
@@ -82,7 +82,7 @@ object KafkaProducer {
             override def produce[P](
               records: ProducerRecords[K, V, P]
             ): F[F[ProducerResult[K, V, P]]] = {
-              withProducer { producer =>
+              withProducer { (producer, _) =>
                 records.records
                   .traverse(produceRecord(keySerializer, valueSerializer, producer))
                   .map(_.sequence.map(ProducerResult(_, records.passthrough)))
@@ -90,9 +90,7 @@ object KafkaProducer {
             }
 
             override def metrics: F[Map[MetricName, Metric]] =
-              withProducer { producer =>
-                F.delay(producer.metrics().asScala.toMap)
-              }
+              withProducer.blocking { _.metrics().asScala.toMap }
 
             override def toString: String =
               "KafkaProducer$" + System.identityHashCode(this)
@@ -106,28 +104,27 @@ object KafkaProducer {
     valueSerializer: Serializer[F, V],
     producer: KafkaByteProducer
   )(
-    implicit F: ConcurrentEffect[F]
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
       asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
-        Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
-          F.delay {
-              producer.send(
-                javaRecord,
-                callback { (metadata, exception) =>
-                  val complete =
-                    deferred.complete {
-                      if (exception == null)
-                        Right((record, metadata))
-                      else Left(exception)
-                    }
-
-                  F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+        F.async { (cb: Either[Throwable, (ProducerRecord[K, V], RecordMetadata)] => Unit) =>
+            producer.send(
+              javaRecord,
+              callback { (metadata, exception) =>
+                cb {
+                  if (exception == null)
+                    Right((record, metadata))
+                  else Left(exception)
                 }
-              )
-            }
-            .as(deferred.get.rethrow)
-        }
+              }
+            )
+            ()
+          }
+          .guarantee(context.shift)
+          .start
+          .map(_.join)
       }
 
   private[this] def serializeToBytes[F[_], K, V](
@@ -153,12 +150,8 @@ object KafkaProducer {
       case (keyBytes, valueBytes) =>
         new KafkaByteProducerRecord(
           record.topic,
-          if (record.partition.isDefined)
-            record.partition.get: java.lang.Integer
-          else null,
-          if (record.timestamp.isDefined)
-            record.timestamp.get: java.lang.Long
-          else null,
+          record.partition.fold[java.lang.Integer](null)(identity),
+          record.timestamp.fold[java.lang.Long](null)(identity),
           keyBytes,
           valueBytes,
           record.headers.asJava

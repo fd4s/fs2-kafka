@@ -1,6 +1,6 @@
 val catsEffectVersion = "2.2.0"
 
-val catsVersion = "2.1.2"
+val catsVersion = "2.2.0"
 
 val confluentVersion = "6.0.0"
 
@@ -200,6 +200,14 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
       ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.resource"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.produceRecord"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.package.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.ProducerResource.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalProducerResource.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.ProducerStream.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalProducerStream.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaProducer.resource"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalKafkaProducer.resource"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
     )

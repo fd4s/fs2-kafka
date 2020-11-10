@@ -364,12 +364,11 @@ private[kafka] object KafkaConsumer {
   ): Resource[F, Fiber[F, Unit]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        F.guaranteeCase {
-            requests.tryDequeue1
-              .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
-              .flatMap(actor.handle(_) >> context.shift)
-              .foreverM[Unit]
-          } {
+        requests.tryDequeue1
+          .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
+          .flatMap(actor.handle(_) >> context.shift)
+          .foreverM[Unit]
+          .guaranteeCase {
             case ExitCase.Error(e) => deferred.complete(Left(e))
             case _                 => deferred.complete(Right(()))
           }
@@ -387,12 +386,11 @@ private[kafka] object KafkaConsumer {
   ): Resource[F, Fiber[F, Unit]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        F.guaranteeCase {
-            polls
-              .enqueue1(Request.poll)
-              .flatMap(_ => timer.sleep(pollInterval))
-              .foreverM[Unit]
-          } {
+        polls
+          .enqueue1(Request.poll)
+          .flatMap(_ => timer.sleep(pollInterval))
+          .foreverM[Unit]
+          .guaranteeCase {
             case ExitCase.Error(e) => deferred.complete(Left(e))
             case _                 => deferred.complete(Right(()))
           }
@@ -413,13 +411,13 @@ private[kafka] object KafkaConsumer {
     new KafkaConsumer[F, K, V] {
       override val fiber: Fiber[F, Unit] = {
         val actorFiber =
-          Fiber[F, Unit](F.guaranteeCase(actor.join) {
+          Fiber[F, Unit](actor.join.guaranteeCase {
             case ExitCase.Completed => polls.cancel
             case _                  => F.unit
           }, actor.cancel)
 
         val pollsFiber =
-          Fiber[F, Unit](F.guaranteeCase(polls.join) {
+          Fiber[F, Unit](polls.join.guaranteeCase {
             case ExitCase.Completed => actor.cancel
             case _                  => F.unit
           }, polls.cancel)
@@ -450,45 +448,40 @@ private[kafka] object KafkaConsumer {
             stopReqs <- Deferred.tryable[F, Unit]
           } yield Stream.eval {
             def fetchPartition(deferred: Deferred[F, PartitionRequest]): F[Unit] = {
-              val request = Request.Fetch(partition, streamId, partitionStreamId, deferred)
+              val request =
+                Request.Fetch(partition, streamId, partitionStreamId, deferred.complete)
               val fetch = requests.enqueue1(request) >> deferred.get
               F.race(shutdown, fetch).flatMap {
                 case Left(()) =>
                   stopReqs.complete(())
 
                 case Right((chunk, reason)) =>
-                  val enqueueChunk =
-                    if (chunk.nonEmpty)
-                      chunks.enqueue1(Some(chunk))
-                    else F.unit
+                  val enqueueChunk = chunks.enqueue1(Some(chunk)).unlessA(chunk.isEmpty)
 
                   val completeRevoked =
-                    if (reason.topicPartitionRevoked) {
-                      stopReqs.complete(())
-                    } else F.unit
+                    stopReqs.complete(()).whenA(reason.topicPartitionRevoked)
 
                   enqueueChunk >> completeRevoked
               }
             }
 
-            F.guarantee {
-                Stream
-                  .repeatEval {
-                    stopReqs.tryGet.flatMap {
-                      case None =>
-                        Deferred[F, PartitionRequest] >>= fetchPartition
+            Stream
+              .repeatEval {
+                stopReqs.tryGet.flatMap {
+                  case None =>
+                    Deferred[F, PartitionRequest] >>= fetchPartition
 
-                      case Some(()) =>
-                        // Prevent issuing additional requests after partition is
-                        // revoked or shutdown happens, in case the stream isn't
-                        // interrupted fast enough
-                        F.unit
-                    }
-                  }
-                  .interruptWhen(F.race(shutdown, stopReqs.get).void.attempt)
-                  .compile
-                  .drain
-              }(F.race(dequeueDone.get, chunks.enqueue1(None)).void)
+                  case Some(()) =>
+                    // Prevent issuing additional requests after partition is
+                    // revoked or shutdown happens, in case the stream isn't
+                    // interrupted fast enough
+                    F.unit
+                }
+              }
+              .interruptWhen(F.race(shutdown, stopReqs.get).void.attempt)
+              .compile
+              .drain
+              .guarantee(F.race(dequeueDone.get, chunks.enqueue1(None)).void)
               .start
               .as {
                 chunks.dequeue.unNoneTerminate
@@ -552,7 +545,7 @@ private[kafka] object KafkaConsumer {
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request =
               Request.Assignment[F, K, V](
-                deferred,
+                deferred.complete,
                 Some(onRebalance(streamId, partitionStreamIdRef, partitionsMapQueue))
               )
             val assignment = requests.enqueue1(request) >> deferred.get.rethrow
@@ -595,15 +588,12 @@ private[kafka] object KafkaConsumer {
         partitionedStream.parJoinUnbounded
 
       private[this] def request[A](
-        request: Deferred[F, Either[Throwable, A]] => Request[F, K, V]
+        request: (Either[Throwable, A] => F[Unit]) => Request[F, K, V]
       ): F[A] =
         Deferred[F, Either[Throwable, A]].flatMap { deferred =>
-          requests.enqueue1(request(deferred)) >>
-            F.race(fiber.join, deferred.get.rethrow).flatMap {
-              case Left(()) => F.raiseError(ConsumerShutdownException())
-              case Right(a) => F.pure(a)
-            }
-        }
+          requests.enqueue1(request(deferred.complete)) >>
+            F.race(fiber.join.as(ConsumerShutdownException()), deferred.get.rethrow)
+        }.rethrow
 
       override def assignment: F[SortedSet[TopicPartition]] =
         assignment(Option.empty)
@@ -611,9 +601,9 @@ private[kafka] object KafkaConsumer {
       private def assignment(
         onRebalance: Option[OnRebalance[F, K, V]]
       ): F[SortedSet[TopicPartition]] =
-        request { deferred =>
+        request { callback =>
           Request.Assignment(
-            deferred = deferred,
+            callback = callback,
             onRebalance = onRebalance
           )
         }
@@ -632,51 +622,42 @@ private[kafka] object KafkaConsumer {
             onAssigned = assigned =>
               initialAssignmentDone >>
                 assignmentRef
-                  .modify { assignment =>
-                    val newAssignment = assignment ++ assigned
-                    (newAssignment, newAssignment)
-                  }
+                  .updateAndGet(_ ++ assigned)
                   .flatMap(updateQueue.enqueue1),
             onRevoked = revoked =>
               initialAssignmentDone >>
                 assignmentRef
-                  .modify { assignment =>
-                    val newAssignment = assignment -- revoked
-                    (newAssignment, newAssignment)
-                  }
+                  .updateAndGet(_ -- revoked)
                   .flatMap(updateQueue.enqueue1)
           )
 
         Stream.eval {
-          Queue.unbounded[F, SortedSet[TopicPartition]].flatMap { updateQueue =>
-            Ref[F].of(SortedSet.empty[TopicPartition]).flatMap { assignmentRef =>
-              Deferred[F, Unit].flatMap { initialAssignmentDeferred =>
-                val onRebalance =
-                  onRebalanceWith(
-                    updateQueue = updateQueue,
-                    assignmentRef = assignmentRef,
-                    initialAssignmentDone = initialAssignmentDeferred.get
-                  )
+          (
+            Queue.unbounded[F, SortedSet[TopicPartition]],
+            Ref[F].of(SortedSet.empty[TopicPartition]),
+            Deferred[F, Unit]
+          ).tupled.flatMap {
+            case (updateQueue, assignmentRef, initialAssignmentDeferred) =>
+              val onRebalance =
+                onRebalanceWith(
+                  updateQueue = updateQueue,
+                  assignmentRef = assignmentRef,
+                  initialAssignmentDone = initialAssignmentDeferred.get
+                )
 
-                assignment(Some(onRebalance))
-                  .flatMap { initialAssignment =>
-                    assignmentRef.set(initialAssignment) >>
-                      updateQueue.enqueue1(initialAssignment) >>
-                      initialAssignmentDeferred.complete(())
-                  }
-                  .as(updateQueue.dequeue.changes)
-              }
-            }
+              assignment(Some(onRebalance))
+                .flatMap { initialAssignment =>
+                  assignmentRef.set(initialAssignment) >>
+                    updateQueue.enqueue1(initialAssignment) >>
+                    initialAssignmentDeferred.complete(())
+                }
+                .as(updateQueue.dequeue.changes)
           }
         }.flatten
       }
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer.seek(partition, offset)
-          }
-        }
+        withConsumer.blocking { _.seek(partition, offset) }
 
       override def seekToBeginning: F[Unit] =
         seekToBeginning(List.empty[TopicPartition])
@@ -684,11 +665,7 @@ private[kafka] object KafkaConsumer {
       override def seekToBeginning[G[_]](partitions: G[TopicPartition])(
         implicit G: Foldable[G]
       ): F[Unit] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer.seekToBeginning(partitions.asJava)
-          }
-        }
+        withConsumer.blocking { _.seekToBeginning(partitions.asJava) }
 
       override def seekToEnd: F[Unit] =
         seekToEnd(List.empty[TopicPartition])
@@ -696,76 +673,56 @@ private[kafka] object KafkaConsumer {
       override def seekToEnd[G[_]](
         partitions: G[TopicPartition]
       )(implicit G: Foldable[G]): F[Unit] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer.seekToEnd(partitions.asJava)
-          }
-        }
+        withConsumer.blocking { _.seekToEnd(partitions.asJava) }
 
       override def partitionsFor(
         topic: String
       ): F[List[PartitionInfo]] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer.partitionsFor(topic).asScala.toList
-          }
-        }
+        withConsumer.blocking { _.partitionsFor(topic).asScala.toList }
 
       override def partitionsFor(
         topic: String,
         timeout: FiniteDuration
       ): F[List[PartitionInfo]] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer.partitionsFor(topic, timeout.asJava).asScala.toList
-          }
-        }
+        withConsumer.blocking { _.partitionsFor(topic, timeout.asJava).asScala.toList }
 
       override def position(partition: TopicPartition): F[Long] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer.position(partition)
-          }
-        }
+        withConsumer.blocking { _.position(partition) }
 
       override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer.position(partition, timeout.asJava)
-          }
-        }
+        withConsumer.blocking { _.position(partition, timeout.asJava) }
 
       override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
         subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
       override def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] =
-        request { deferred =>
+        request { callback =>
           Request.SubscribeTopics(
             topics = topics.toNonEmptyList,
-            deferred = deferred
+            callback = callback
           )
         }
 
       override def subscribe(regex: Regex): F[Unit] =
-        request { deferred =>
+        request { callback =>
           Request.SubscribePattern(
             pattern = regex.pattern,
-            deferred = deferred
+            callback = callback
           )
         }
 
       override def unsubscribe: F[Unit] =
-        request { deferred =>
+        request { callback =>
           Request.Unsubscribe(
-            deferred = deferred
+            callback = callback
           )
         }
 
       override def assign(partitions: NonEmptySet[TopicPartition]): F[Unit] =
-        request { deferred =>
+        request { callback =>
           Request.Assign(
             topicPartitions = partitions,
-            deferred = deferred
+            callback = callback
           )
         }
 
@@ -787,59 +744,43 @@ private[kafka] object KafkaConsumer {
       override def beginningOffsets(
         partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer
-              .beginningOffsets(partitions.asJava)
-              .asInstanceOf[util.Map[TopicPartition, Long]]
-              .toMap
-          }
+        withConsumer.blocking {
+          _.beginningOffsets(partitions.asJava)
+            .asInstanceOf[util.Map[TopicPartition, Long]]
+            .toMap
         }
 
       override def beginningOffsets(
         partitions: Set[TopicPartition],
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer
-              .beginningOffsets(partitions.asJava, timeout.asJava)
-              .asInstanceOf[util.Map[TopicPartition, Long]]
-              .toMap
-          }
+        withConsumer.blocking {
+          _.beginningOffsets(partitions.asJava, timeout.asJava)
+            .asInstanceOf[util.Map[TopicPartition, Long]]
+            .toMap
         }
 
       override def endOffsets(
         partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer
-              .endOffsets(partitions.asJava)
-              .asInstanceOf[util.Map[TopicPartition, Long]]
-              .toMap
-          }
+        withConsumer.blocking {
+          _.endOffsets(partitions.asJava)
+            .asInstanceOf[util.Map[TopicPartition, Long]]
+            .toMap
         }
 
       override def endOffsets(
         partitions: Set[TopicPartition],
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer
-              .endOffsets(partitions.asJava, timeout.asJava)
-              .asInstanceOf[util.Map[TopicPartition, Long]]
-              .toMap
-          }
+        withConsumer.blocking {
+          _.endOffsets(partitions.asJava, timeout.asJava)
+            .asInstanceOf[util.Map[TopicPartition, Long]]
+            .toMap
         }
 
       override def metrics: F[Map[MetricName, Metric]] =
-        withConsumer { consumer =>
-          F.delay {
-            consumer.metrics().asScala.toMap
-          }
-        }
+        withConsumer.blocking { _.metrics().asScala.toMap }
 
       override def toString: String =
         "KafkaConsumer$" + id
