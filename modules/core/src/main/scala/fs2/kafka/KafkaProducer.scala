@@ -10,6 +10,7 @@ import cats.Apply
 import cats.effect._
 import cats.effect.syntax.all._
 import cats.implicits._
+import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
@@ -69,7 +70,18 @@ object KafkaProducer {
     def metrics: F[Map[MetricName, Metric]]
   }
 
-  private[kafka] def resource[F[_], K, V](
+  /**
+    * Creates a new [[KafkaProducer]] in the `Resource` context,
+    * using the specified [[ProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaProducer.resource[F].using(settings)
+    * }}}
+    */
+  def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: Concurrent[F],
@@ -99,6 +111,49 @@ object KafkaProducer {
       }
     }
 
+  /**
+    * Alternative version of `resource` where the `F[_]` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ProducerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaProducer.resource[F].using(settings)
+    * }}}
+    */
+  def resource[F[_]](implicit F: Concurrent[F]): ProducerResource[F] =
+    new ProducerResource(F)
+
+  /**
+    * Creates a new [[KafkaProducer]] in the `Stream` context,
+    * using the specified [[ProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaProducer.stream[F].using(settings)
+    * }}}
+    */
+  def stream[F[_], K, V](settings: ProducerSettings[F, K, V])(
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
+  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
+    Stream.resource(KafkaProducer.resource(settings))
+
+  /**
+    * Alternative version of `stream` where the `F[_]` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ProducerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaProducer.stream[F].using(settings)
+    * }}}
+    */
+  def stream[F[_]](implicit F: Concurrent[F]): ProducerStream[F] =
+    new ProducerStream[F](F)
+
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V],
@@ -126,6 +181,27 @@ object KafkaProducer {
           .start
           .map(_.join)
       }
+
+  /**
+    * Creates a [[KafkaProducer]] using the provided settings and
+    * produces record in batches, limiting the number of records
+    * in the same batch using [[ProducerSettings#parallelism]].
+    */
+  def pipe[F[_]: Concurrent: ContextShift, K, V, P](
+    settings: ProducerSettings[F, K, V]
+  ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
+    records => stream(settings).flatMap(produce(settings, _).apply(records))
+
+  /**
+    * Produces records in batches using the provided [[KafkaProducer]].
+    * The number of records in the same batch is limited using the
+    * [[ProducerSettings#parallelism]] setting.
+    */
+  def pipe[F[_]: Concurrent, K, V, P](
+    settings: ProducerSettings[F, K, V],
+    producer: KafkaProducer[F, K, V]
+  ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
+    _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
 
   private[this] def serializeToBytes[F[_], K, V](
     keySerializer: Serializer[F, K],
