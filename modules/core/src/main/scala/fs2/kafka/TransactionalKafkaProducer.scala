@@ -7,7 +7,8 @@
 package fs2.kafka
 
 import cats.effect.{Resource, Async, Outcome}
-import cats.implicits._
+import cats.effect.syntax.all._
+import cats.syntax.all._
 import fs2.Chunk
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
@@ -68,28 +69,31 @@ private[kafka] object TransactionalKafkaProducer {
                     else F.pure(batch.consumerGroupIds.head)
 
                   consumerGroupId.flatMap { groupId =>
-                    withProducer { producer =>
-                      F.bracketCase(F.blocking(producer.beginTransaction())) { _ =>
-                        records.records
-                          .flatMap(_.records)
-                          .traverse(
-                            KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
-                          )
-                          .map(_.sequence)
-                          .flatTap { _ =>
-                            F.blocking {
-                              producer.sendOffsetsToTransaction(
-                                batch.offsets.asJava,
-                                groupId
-                              )
+                    withProducer { (producer, blocking) =>
+                      blocking(producer.beginTransaction())
+                        .bracketCase { _ =>
+                          records.records
+                            .flatMap(_.records)
+                            .traverse(
+                              KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
+                            )
+                            .map(_.sequence)
+                            .flatTap { _ =>
+                              blocking {
+                                producer.sendOffsetsToTransaction(
+                                  batch.offsets.asJava,
+                                  groupId
+                                )
+                              }
                             }
+                        } { (_, outcome: Outcome[F, Throwable, _]) =>
+                          outcome match {
+                            case Outcome.Succeeded(_) =>
+                              blocking(producer.commitTransaction())
+                            case Outcome.Canceled() | Outcome.Errored(_) =>
+                              blocking(producer.abortTransaction())
                           }
-                      } {
-                        case (_, Outcome.Succeeded(_)) =>
-                          F.blocking(producer.commitTransaction())
-                        case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                          F.blocking(producer.abortTransaction())
-                      }
+                        }
                     }.flatten
                   }
                 }

@@ -1,6 +1,6 @@
 val catsEffectVersion = "3.0.0-M2"
 
-val catsVersion = "2.1.2"
+val catsVersion = "2.2.0"
 
 val confluentVersion = "6.0.0"
 
@@ -8,11 +8,11 @@ val embeddedKafkaVersion = "2.6.0"
 
 val fs2Version = "3.0.0-M2"
 
-val kafkaVersion = "2.5.0"
+val kafkaVersion = "2.6.0"
 
 val vulcanVersion = "1.2.0"
 
-val scala212 = "2.12.12"
+val scala212 = "2.12.10"
 
 val scala213 = "2.13.3"
 
@@ -200,7 +200,17 @@ lazy val mimaSettings = Seq(
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
       ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.resource")
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.resource"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.produceRecord"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.package.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.ProducerResource.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalProducerResource.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.ProducerStream.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalProducerStream.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaProducer.resource"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalKafkaProducer.resource"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
     )
     // format: on
   }
@@ -223,7 +233,7 @@ lazy val scalaSettings = Seq(
     "-language:higherKinds",
     "-language:implicitConversions",
     "-unchecked",
-   // "-Xfatal-warnings",
+    // "-Xfatal-warnings",
     "-Xlint",
     "-Yno-adapted-args",
     "-Ywarn-dead-code",

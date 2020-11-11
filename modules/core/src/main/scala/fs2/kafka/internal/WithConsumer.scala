@@ -13,8 +13,11 @@ import fs2.kafka.{KafkaByteConsumer, ConsumerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
-  def apply[A](f: KafkaByteConsumer => F[A]): F[A]
-  def blocking[A](f: KafkaByteConsumer => A): F[A]
+  def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A]
+
+  def blocking[A](f: KafkaByteConsumer => A): F[A] = apply {
+    case (producer, blocking) => blocking(f(producer))
+  }
 }
 
 private[kafka] object WithConsumer {
@@ -23,28 +26,22 @@ private[kafka] object WithConsumer {
   )(
     implicit F: Async[F]
   ): Resource[F, WithConsumer[F]] = {
+    val blockingResource =
+      settings.blocker
+        .map(Resource.pure[F, Blocker])
+        .getOrElse(Blockers.consumer)
+        .map(Blocking.fromBlocker[F])
 
-    Resource[F, WithConsumer[F]] {
-      (settings.createConsumer, Semaphore[F](1))
-        .mapN { (consumer, semaphore) =>
-          val withConsumer =
+    blockingResource.flatMap { blocking_ =>
+      Resource.make {
+        (settings.createConsumer, Semaphore[F](1L))
+          .mapN { (consumer, semaphore) =>
             new WithConsumer[F] {
-              override def apply[A](f: KafkaByteConsumer => F[A]): F[A] =
-                semaphore.permit.use { _ =>
-                  F.defer(f(consumer))
-                }
-
-              override def blocking[A](f: KafkaByteConsumer => A): F[A] =
-                apply(a => F.blocking(f(a)))
+              override def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A] =
+                semaphore.permit.use { f(consumer, blocking_) }
             }
-
-          val close =
-            withConsumer.blocking {
-              _.close(settings.closeTimeout.asJava)
-            }
-
-          (withConsumer, close)
-        }
+          }
+      }(_.blocking { _.close(settings.closeTimeout.asJava) })
     }
   }
 }
