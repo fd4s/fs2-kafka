@@ -38,9 +38,7 @@ trait Offsets[F[_]] {
     * Note that this seek evaluates lazily, and only on the next call
     * to `poll` or `position`.
     */
-  def seekToBeginning[G[_]](partitions: G[TopicPartition])(
-    implicit G: Foldable[G]
-  ): F[Unit]
+  def seekToBeginning[G[_]: Foldable](partitions: G[TopicPartition]): F[Unit]
 
   /**
     * Seeks to the last offset for each currently assigned partition.
@@ -60,9 +58,7 @@ trait Offsets[F[_]] {
     * Note that this seek evaluates lazily, and only on the next call
     * to `poll` or `position`.
     */
-  def seekToEnd[G[_]](partitions: G[TopicPartition])(
-    implicit G: Foldable[G]
-  ): F[Unit]
+  def seekToEnd[G[_]: Foldable](partitions: G[TopicPartition]): F[Unit]
 
   /**
     * Returns the offset of the next record that will be fetched.<br>

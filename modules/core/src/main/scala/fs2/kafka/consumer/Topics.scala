@@ -31,9 +31,7 @@ trait Topics[F[_]] {
     * Timeout is determined by `default.api.timeout.ms`, which
     * is set using [[ConsumerSettings#withDefaultApiTimeout]].
     */
-  def beginningOffsets(
-    partitions: Set[TopicPartition]
-  ): F[Map[TopicPartition, Long]]
+  def beginningOffsets(partitions: Set[TopicPartition]): F[Map[TopicPartition, Long]]
 
   /**
     * Returns the first offset for the specified partitions.
@@ -49,9 +47,7 @@ trait Topics[F[_]] {
     * Timeout is determined by `request.timeout.ms`, which
     * is set using [[ConsumerSettings#withRequestTimeout]].
     */
-  def endOffsets(
-    partitions: Set[TopicPartition]
-  ): F[Map[TopicPartition, Long]]
+  def endOffsets(partitions: Set[TopicPartition]): F[Map[TopicPartition, Long]]
 
   /**
     * Returns the last offset for the specified partitions.

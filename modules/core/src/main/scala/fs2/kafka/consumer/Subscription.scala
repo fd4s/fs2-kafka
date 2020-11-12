@@ -27,7 +27,7 @@ trait Subscription[F[_]] {
     *
     * @param topics the topics to which the consumer should subscribe
     */
-  def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit]
+  def subscribe[G[_]: Reducible](topics: G[String]): F[Unit]
 
   /**
     * Subscribes the consumer to the topics matching the specified `Regex`.
