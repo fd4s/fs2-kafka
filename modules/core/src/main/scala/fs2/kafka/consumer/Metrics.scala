@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2020 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka.consumer
 
 import org.apache.kafka.common.{MetricName, Metric}
