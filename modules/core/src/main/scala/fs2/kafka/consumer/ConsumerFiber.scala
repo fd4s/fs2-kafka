@@ -12,10 +12,10 @@ trait ConsumerFiber[F[_]] {
 
   /**
     * A `Fiber` that can be used to cancel the underlying consumer, or
-    * wait for it to complete. If you're using [[stream]], or any other
-    * provided stream in [[KafkaConsumer]], these will be automatically
-    * interrupted when the underlying consumer has been cancelled or
-    * when it finishes with an exception.<br>
+    * wait for it to complete. If you're using [[KafkaConsumer.stream]], 
+    * or any other provided stream in [[KafkaConsumer]], these will be 
+    * automatically interrupted when the underlying consumer has been 
+    * cancelled or when it finishes with an exception.<br>
     * <br>
     * Whenever `cancel` is invoked, an attempt will be made to stop the
     * underlying consumer. The `cancel` operation will not wait for the
