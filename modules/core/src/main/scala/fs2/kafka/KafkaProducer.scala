@@ -10,6 +10,7 @@ import cats.Apply
 import cats.effect._
 import cats.effect.syntax.all._
 import cats.implicits._
+import fs2.Stream
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
@@ -154,6 +155,13 @@ object KafkaProducer {
   }
 
   object Connection {
+    def stream[F[_]](
+      settings: ProducerSettings[F, _, _]
+    )(
+      implicit F: Concurrent[F],
+      context: ContextShift[F]
+    ): Stream[F, Connection[F]] = Stream.resource(resource(settings))
+
     def resource[F[_]](
       settings: ProducerSettings[F, _, _]
     )(
