@@ -152,7 +152,7 @@ object KafkaProducer {
       settings: ProducerSettings[F, K, V]
     ): F[KafkaProducer.Metrics[F, K, V]]
   }
-  
+
   object Connection {
     def resource[F[_]](
       settings: ProducerSettings[F, _, _]
