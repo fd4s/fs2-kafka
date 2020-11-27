@@ -75,29 +75,7 @@ object KafkaProducer {
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
-    Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
-      Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
-        WithProducer(settings).map { withProducer =>
-          new KafkaProducer.Metrics[F, K, V] {
-            override def produce[P](
-              records: ProducerRecords[K, V, P]
-            ): F[F[ProducerResult[K, V, P]]] = {
-              withProducer { (producer, _) =>
-                records.records
-                  .traverse(produceRecord(keySerializer, valueSerializer, producer))
-                  .map(_.sequence.map(ProducerResult(_, records.passthrough)))
-              }
-            }
-
-            override def metrics: F[Map[MetricName, Metric]] =
-              withProducer.blocking { _.metrics().asScala.toMap }
-
-            override def toString: String =
-              "KafkaProducer$" + System.identityHashCode(this)
-          }
-        }
-      }
-    }
+    Connection.resource(settings).evalMap(_.withSerializersFrom(settings))
 
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
@@ -163,4 +141,53 @@ object KafkaProducer {
       override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
         f(metadata, exception)
     }
+
+  abstract class Connection[F[_]] {
+    def withSerializers[K, V](
+      forKey: Serializer[F, K],
+      forValue: Serializer[F, V]
+    ): KafkaProducer.Metrics[F, K, V]
+
+    def withSerializersFrom[K, V](
+      settings: ProducerSettings[F, K, V]
+    ): F[KafkaProducer.Metrics[F, K, V]]
+  }
+  object Connection {
+    def resource[F[_]](
+      settings: ProducerSettings[F, _, _]
+    )(
+      implicit F: Concurrent[F],
+      context: ContextShift[F]
+    ): Resource[F, Connection[F]] =
+      WithProducer(settings).map { withProducer =>
+        new Connection[F] {
+          override def withSerializers[K, V](
+            keySerializer: Serializer[F, K],
+            valueSerializer: Serializer[F, V]
+          ): KafkaProducer.Metrics[F, K, V] =
+            new KafkaProducer.Metrics[F, K, V] {
+              override def produce[P](
+                records: ProducerRecords[K, V, P]
+              ): F[F[ProducerResult[K, V, P]]] = {
+                withProducer { (producer, _) =>
+                  records.records
+                    .traverse(produceRecord(keySerializer, valueSerializer, producer))
+                    .map(_.sequence.map(ProducerResult(_, records.passthrough)))
+                }
+              }
+
+              override def metrics: F[Map[MetricName, Metric]] =
+                withProducer.blocking { _.metrics().asScala.toMap }
+
+              override def toString: String =
+                "KafkaProducer$" + System.identityHashCode(this)
+            }
+
+          override def withSerializersFrom[K, V](
+            settings: ProducerSettings[F, K, V]
+          ): F[KafkaProducer.Metrics[F, K, V]] =
+            (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
+        }
+      }
+  }
 }
