@@ -10,7 +10,7 @@ import org.apache.kafka.common.TopicPartition
 import cats.Foldable
 import scala.concurrent.duration.FiniteDuration
 
-trait Offsets[F[_]] {
+trait KafkaOffsets[F[_]] {
 
   /**
     * Overrides the fetch offsets that the consumer will use when reading the

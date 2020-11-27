@@ -10,7 +10,7 @@ import fs2._
 import fs2.kafka.CommittableConsumerRecord
 import org.apache.kafka.common.TopicPartition
 
-trait Consume[F[_], K, V] {
+trait KafkaConsume[F[_], K, V] {
 
   /**
     * Alias for `partitionedStream.parJoinUnbounded`.

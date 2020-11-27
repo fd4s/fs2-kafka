@@ -9,7 +9,7 @@ package fs2.kafka.consumer
 import cats.Reducible
 import scala.util.matching.Regex
 
-trait Subscription[F[_]] {
+trait KafkaSubscription[F[_]] {
 
   /**
     * Subscribes the consumer to the specified topics. Note that you have to

@@ -10,7 +10,7 @@ import org.apache.kafka.common.PartitionInfo
 import scala.concurrent.duration.FiniteDuration
 import org.apache.kafka.common.TopicPartition
 
-trait Topics[F[_]] {
+trait KafkaTopics[F[_]] {
 
   /**
     * Returns the partitions for the specified topic.

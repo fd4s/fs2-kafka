@@ -8,7 +8,7 @@ package fs2.kafka.consumer
 
 import org.apache.kafka.common.{MetricName, Metric}
 
-trait Metrics[F[_]] {
+trait KafkaMetrics[F[_]] {
 
   /**
     * Returns consumer metrics.

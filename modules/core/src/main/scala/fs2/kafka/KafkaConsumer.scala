@@ -63,13 +63,13 @@ import scala.util.matching.Regex
   * one finishes, let the [[KafkaConsumer]] shutdown and create a new one.
   */
 sealed abstract class KafkaConsumer[F[_], K, V]
-    extends Consume[F, K, V]
-    with Assignment[F]
-    with Offsets[F]
-    with Subscription[F]
-    with Topics[F]
-    with Metrics[F]
-    with ConsumerFiber[F]
+    extends KafkaConsume[F, K, V]
+    with KafkaAssignment[F]
+    with KafkaOffsets[F]
+    with KafkaSubscription[F]
+    with KafkaTopics[F]
+    with KafkaMetrics[F]
+    with KafkaConsumerFiber[F]
 
 private[kafka] object KafkaConsumer {
   private[this] def startConsumerActor[F[_], K, V](
