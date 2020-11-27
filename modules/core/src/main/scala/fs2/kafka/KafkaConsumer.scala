@@ -69,7 +69,7 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaSubscription[F]
     with KafkaTopics[F]
     with KafkaMetrics[F]
-    with KafkaConsumerFiber[F]
+    with KafkaConsumerLifecycle[F]
 
 private[kafka] object KafkaConsumer {
   private[this] def startConsumerActor[F[_], K, V](

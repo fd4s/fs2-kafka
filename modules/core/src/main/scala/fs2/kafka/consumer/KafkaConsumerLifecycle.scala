@@ -8,7 +8,7 @@ package fs2.kafka.consumer
 
 import cats.effect.Fiber
 
-trait KafkaConsumerFiber[F[_]] {
+trait KafkaConsumerLifecycle[F[_]] {
 
   /**
     * A `Fiber` that can be used to cancel the underlying consumer, or
