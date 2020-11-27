@@ -142,7 +142,7 @@ object KafkaProducer {
         f(metadata, exception)
     }
 
-  abstract class Connection[F[_]] {
+  sealed abstract class Connection[F[_]] {
     def withSerializers[K, V](
       keySerializer: Serializer[F, K],
       valueSerializer: Serializer[F, V]
