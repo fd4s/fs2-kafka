@@ -45,7 +45,7 @@ val avroSettings =
 We can then create a `Serializer` and `Deserializer` instance for `Person`.
 
 ```scala mdoc:silent
-import fs2.kafka.{Deserializer, RecordDeserializer, RecordSerializer, Serializer}
+import fs2.kafka.{RecordDeserializer, RecordSerializer}
 import fs2.kafka.vulcan.{avroDeserializer, avroSerializer}
 
 implicit val personSerializer: RecordSerializer[IO, Person] =

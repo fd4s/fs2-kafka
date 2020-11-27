@@ -11,7 +11,6 @@ Following is an example showing how to:
 
 ```scala mdoc
 import cats.effect.{ExitCode, IO, IOApp}
-import cats.syntax.functor._
 import fs2.kafka._
 import scala.concurrent.duration._
 
@@ -31,8 +30,7 @@ object Main extends IOApp {
         .withBootstrapServers("localhost:9092")
 
     val stream =
-      consumerStream[IO]
-        .using(consumerSettings)
+      consumerStream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
         .mapAsync(25) { committable =>

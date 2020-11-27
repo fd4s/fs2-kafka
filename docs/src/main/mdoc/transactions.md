@@ -17,7 +17,6 @@ Following is an example where transactions are used to consume, process, produce
 
 ```scala mdoc
 import cats.effect.{ExitCode, IO, IOApp}
-import cats.syntax.functor._
 import fs2.kafka._
 import scala.concurrent.duration._
 
@@ -41,11 +40,9 @@ object Main extends IOApp {
       )
 
     val stream =
-      transactionalProducerStream[IO]
-        .using(producerSettings)
+      transactionalProducerStream(producerSettings)
         .flatMap { producer =>
-          consumerStream[IO]
-            .using(consumerSettings)
+          consumerStream(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)
             .mapAsync(25) { committable =>
