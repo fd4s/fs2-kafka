@@ -144,14 +144,15 @@ object KafkaProducer {
 
   abstract class Connection[F[_]] {
     def withSerializers[K, V](
-      forKey: Serializer[F, K],
-      forValue: Serializer[F, V]
+      keySerializer: Serializer[F, K],
+      valueSerializer: Serializer[F, V]
     ): KafkaProducer.Metrics[F, K, V]
 
     def withSerializersFrom[K, V](
       settings: ProducerSettings[F, K, V]
     ): F[KafkaProducer.Metrics[F, K, V]]
   }
+  
   object Connection {
     def resource[F[_]](
       settings: ProducerSettings[F, _, _]
