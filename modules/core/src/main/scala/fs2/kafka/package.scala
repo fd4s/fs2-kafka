@@ -61,7 +61,7 @@ package object kafka {
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 
   /**
-    * Alias for [[KafkaProducer.pipe]]
+    * Alias for `KafkaProducer.pipe
     */
   def produce[F[_]: Concurrent: ContextShift, K, V, P](
     settings: ProducerSettings[F, K, V]
@@ -69,7 +69,7 @@ package object kafka {
     KafkaProducer.pipe(settings)
 
   /**
-    * Alias for [[KafkaProducer.pipe]]
+    * Alias for `KafkaProducer.pipe`
     */
   def produce[F[_]: Concurrent, K, V, P](
     settings: ProducerSettings[F, K, V],
@@ -163,7 +163,7 @@ package object kafka {
     new ConsumerStream[F](F)
 
   /**
-    * Alias for [[KafkaProducer.resource]]
+    * Alias for `KafkaProducer.resource`
     */
   def producerResource[F[_]: Concurrent: ContextShift, K, V](
     settings: ProducerSettings[F, K, V]
@@ -171,19 +171,19 @@ package object kafka {
     KafkaProducer.resource(settings)
 
   /**
-    * Alias for [[KafkaProducer.resource]]
+    * Alias for `KafkaProducer.resource`
     */
   def producerResource[F[_]: Concurrent]: ProducerResource[F] = KafkaProducer.resource
 
   /**
-    * Alias for [[KafkaProducer.stream]]
+    * Alias for `KafkaProducer.stream`
     */
   def producerStream[F[_]: Concurrent: ContextShift, K, V](
     settings: ProducerSettings[F, K, V]
   ): Stream[F, KafkaProducer.Metrics[F, K, V]] = KafkaProducer.stream(settings)
 
   /**
-    * Alias for [[KafkaProducer.stream]]
+    * Alias for `KafkaProducer.stream`
     */
   def producerStream[F[_]: Concurrent]: ProducerStream[F] =
     KafkaProducer.stream[F]
