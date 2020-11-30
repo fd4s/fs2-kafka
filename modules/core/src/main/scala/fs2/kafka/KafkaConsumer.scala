@@ -797,21 +797,26 @@ private[kafka] object KafkaConsumer {
       keyDeserializer <- Resource.liftF(settings.keyDeserializer)
       valueDeserializer <- Resource.liftF(settings.valueDeserializer)
       id <- Resource.liftF(F.delay(new Object().hashCode))
-      implicit0(jitter: Jitter[F]) <- Resource.liftF(Jitter.default[F])
-      implicit0(logging: Logging[F]) <- Resource.liftF(Logging.default[F](id))
+      jitter <- Resource.liftF(Jitter.default[F])
+      logging <- Resource.liftF(Logging.default[F](id))
       requests <- Resource.liftF(Queue.unbounded[F, Request[F, K, V]])
       polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, StreamId](0))
       withConsumer <- WithConsumer(settings)
-      actor = new KafkaConsumerActor(
-        settings = settings,
-        keyDeserializer = keyDeserializer,
-        valueDeserializer = valueDeserializer,
-        ref = ref,
-        requests = requests,
-        withConsumer = withConsumer
-      )
+      actor = {
+        implicit val jitter0: Jitter[F] = jitter
+        implicit val logging0: Logging[F] = logging
+
+        new KafkaConsumerActor(
+          settings = settings,
+          keyDeserializer = keyDeserializer,
+          valueDeserializer = valueDeserializer,
+          ref = ref,
+          requests = requests,
+          withConsumer = withConsumer
+        )
+      }
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
     } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id, withConsumer)
