@@ -239,7 +239,7 @@ private[kafka] object KafkaConsumer {
                   }
                   .map(_.toMap)
               }
-              .flatMap { assignment: PartitionsMap =>
+              .flatMap { (assignment: PartitionsMap) =>
                 partitionsMapQueue.enqueue1(assignment)
               }
           }
