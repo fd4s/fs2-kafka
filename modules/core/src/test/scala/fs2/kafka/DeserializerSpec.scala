@@ -6,9 +6,9 @@ import cats.effect.laws.util._
 
 final class DeserializerSpec extends BaseCatsSpec with TestInstances {
   checkAll(
-    "Deserializer[IO, ?]", {
+    "Deserializer[IO, *]", {
       implicit val testContext: TestContext = TestContext()
-      MonadErrorTests[Deserializer[IO, ?], Throwable].monadError[String, String, String]
+      MonadErrorTests[Deserializer[IO, *], Throwable].monadError[String, String, String]
     }
   )
 

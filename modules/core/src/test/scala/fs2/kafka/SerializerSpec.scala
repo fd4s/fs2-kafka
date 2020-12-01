@@ -12,9 +12,9 @@ import cats.effect.laws.util.TestInstances
 
 final class SerializerSpec extends BaseCatsSpec with TestInstances {
   checkAll(
-    "Serializer[IO, ?]", {
+    "Serializer[IO, *]", {
       implicit val testContext: TestContext = TestContext()
-      ContravariantTests[Serializer[IO, ?]].contravariant[String, String, String]
+      ContravariantTests[Serializer[IO, *]].contravariant[String, String, String]
     }
   )
 
