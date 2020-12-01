@@ -60,17 +60,13 @@ package object kafka {
   ): Pipe[F, CommittableOffset[F], Unit] =
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 
-  /**
-    * Alias for `KafkaProducer.pipe
-    */
+  @deprecated("use KafkaProducer.pipe", "1.2.0")
   def produce[F[_]: Concurrent: ContextShift, K, V, P](
     settings: ProducerSettings[F, K, V]
   ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
     KafkaProducer.pipe(settings)
 
-  /**
-    * Alias for `KafkaProducer.pipe`
-    */
+  @deprecated("use KafkaProducer.pipe", "1.2.0")
   def produce[F[_]: Concurrent, K, V, P](
     settings: ProducerSettings[F, K, V],
     producer: KafkaProducer[F, K, V]
@@ -162,29 +158,21 @@ package object kafka {
   def consumerStream[F[_]](implicit F: ConcurrentEffect[F]): ConsumerStream[F] =
     new ConsumerStream[F](F)
 
-  /**
-    * Alias for `KafkaProducer.resource`
-    */
+  @deprecated("use KafkaProducer.resource", "1.2.0")
   def producerResource[F[_]: Concurrent: ContextShift, K, V](
     settings: ProducerSettings[F, K, V]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducer.resource(settings)
 
-  /**
-    * Alias for `KafkaProducer.resource`
-    */
+  @deprecated("use KafkaProducer.resource", "1.2.0")
   def producerResource[F[_]: Concurrent]: ProducerResource[F] = KafkaProducer.resource
 
-  /**
-    * Alias for `KafkaProducer.stream`
-    */
+  @deprecated("use KafkaProducer.stream", "1.2.0")
   def producerStream[F[_]: Concurrent: ContextShift, K, V](
     settings: ProducerSettings[F, K, V]
   ): Stream[F, KafkaProducer.Metrics[F, K, V]] = KafkaProducer.stream(settings)
 
-  /**
-    * Alias for `KafkaProducer.stream`
-    */
+  @deprecated("use KafkaProducer.stream", "1.2.0")
   def producerStream[F[_]: Concurrent]: ProducerStream[F] =
     KafkaProducer.stream[F]
 

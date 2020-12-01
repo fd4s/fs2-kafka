@@ -190,7 +190,7 @@ object KafkaProducer {
   def pipe[F[_]: Concurrent: ContextShift, K, V, P](
     settings: ProducerSettings[F, K, V]
   ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
-    records => stream(settings).flatMap(produce(settings, _).apply(records))
+    records => stream(settings).flatMap(pipe(settings, _).apply(records))
 
   /**
     * Produces records in batches using the provided [[KafkaProducer]].

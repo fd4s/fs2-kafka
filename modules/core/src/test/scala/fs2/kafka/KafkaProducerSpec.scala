@@ -5,6 +5,22 @@ import cats.implicits._
 import fs2.{Chunk, Stream}
 
 final class KafkaProducerSpec extends BaseKafkaSpec {
+
+  describe("creating producers") {
+    it("should support defined syntax") {
+      val settings =
+        ProducerSettings[IO, String, String]
+
+      KafkaProducer.resource[IO, String, String](settings)
+      KafkaProducer.resource[IO].toString should startWith("ProducerResource$")
+      KafkaProducer.resource[IO].using(settings)
+
+      KafkaProducer.stream[IO, String, String](settings)
+      KafkaProducer.stream[IO].toString should startWith("ProducerStream$")
+      KafkaProducer.stream[IO].using(settings)
+    }
+  }
+
   it("should be able to produce records with single") {
     withKafka { (config, topic) =>
       createCustomTopic(topic, partitions = 3)
