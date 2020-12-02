@@ -73,28 +73,19 @@ package object kafka {
   ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
     KafkaProducer.pipe(settings, producer)
 
-  /**
-    * Creates a new [[KafkaAdminClient]] in the `Resource` context,
-    * using the specified [[AdminClientSettings]]. If working in a
-    * `Stream` context, you might prefer [[adminClientStream]].
-    */
+  @deprecated("use KafkaAdminClient.resource", "1.2.0")
   def adminClientResource[F[_]](settings: AdminClientSettings[F])(
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, KafkaAdminClient[F]] =
     KafkaAdminClient.resource(settings)
 
-  /**
-    * Creates a new [[KafkaAdminClient]] in the `Stream` context,
-    * using the specified [[AdminClientSettings]]. If you're not
-    * working in a `Stream` context, you might instead prefer to
-    * use the [[adminClientResource]] function.
-    */
+  @deprecated("use KafkaConsumer.stream", "1.2.0")
   def adminClientStream[F[_]](settings: AdminClientSettings[F])(
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Stream[F, KafkaAdminClient[F]] =
-    Stream.resource(adminClientResource(settings))
+    KafkaAdminClient.stream(settings)
 
   @deprecated("use KafkaConsumer.resource", "1.2.0")
   def consumerResource[F[_], K, V](settings: ConsumerSettings[F, K, V])(

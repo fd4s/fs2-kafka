@@ -16,12 +16,24 @@ import org.apache.kafka.common.resource.{
 }
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
+
+  describe("creating admin clients") {
+    it("should support defined syntax") {
+      val settings =
+        AdminClientSettings[IO]
+
+      KafkaAdminClient.resource[IO](settings)
+      KafkaAdminClient.stream[IO](settings)
+    }
+  }
+
   describe("KafkaAdminClient") {
     it("should support consumer groups-related functionalities") {
       withKafka { (config, topic) =>
         commonSetup(topic, config)
 
-        adminClientResource[IO](adminClientSettings(config))
+        KafkaAdminClient
+          .resource[IO](adminClientSettings(config))
           .use { adminClient =>
             for {
               consumerGroupIds <- adminClient.listConsumerGroups.groupIds
@@ -109,7 +121,8 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       withKafka { (config, topic) =>
         commonSetup(topic, config)
 
-        adminClientResource[IO](adminClientSettings(config))
+        KafkaAdminClient
+          .resource[IO](adminClientSettings(config))
           .use { adminClient =>
             for {
               clusterNodes <- adminClient.describeCluster.nodes
@@ -131,7 +144,8 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       withKafka { (config, topic) =>
         commonSetup(topic, config)
 
-        adminClientResource[IO](adminClientSettings(config))
+        KafkaAdminClient
+          .resource[IO](adminClientSettings(config))
           .use { adminClient =>
             for {
               cr <- IO.pure(new ConfigResource(ConfigResource.Type.TOPIC, topic))
@@ -156,7 +170,8 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       withKafka { (config, topic) =>
         commonSetup(topic, config)
 
-        adminClientResource[IO](adminClientSettings(config))
+        KafkaAdminClient
+          .resource[IO](adminClientSettings(config))
           .use { adminClient =>
             for {
               topicNames <- adminClient.listTopics.names
@@ -236,7 +251,8 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
         (config, topic) => {
           commonSetup(topic, config)
 
-          adminClientResource[IO](adminClientSettings(config))
+          KafkaAdminClient
+            .resource[IO](adminClientSettings(config))
             .use {
               adminClient =>
                 for {
@@ -287,7 +303,8 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       withKafka { (config, topic) =>
         commonSetup(topic, config)
 
-        adminClientResource[IO](adminClientSettings(config))
+        KafkaAdminClient
+          .resource[IO](adminClientSettings(config))
           .use { adminClient =>
             for {
               _ <- IO {
