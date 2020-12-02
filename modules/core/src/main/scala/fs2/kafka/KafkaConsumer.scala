@@ -41,6 +41,10 @@ import scala.util.matching.Regex
   *   that continually request records for a single partition. Order
   *   is guaranteed per topic-partition, but all assigned partitions
   *   will have to be processed in parallel.<br>
+  * - [[partitionsMapStream]] provides a stream where each element contains
+  *   a current assignment. The current assignment is the `Map`, where keys
+  *   is a `TopicPartition`, and values are streams with records for a
+  *   particular `TopicPartition`.
   * <br>
   * For the streams, records are wrapped in [[CommittableConsumerRecord]]s
   * which provide [[CommittableOffset]]s with the ability to commit
