@@ -156,20 +156,20 @@ In addition, there are several settings specific to the library.
 
 ## Consumer Creation
 
-Once [`ConsumerSettings`][consumersettings] is defined, use `consumerStream` to create a [`KafkaConsumer`][kafkaconsumer] instance.
+Once [`ConsumerSettings`][consumersettings] is defined, use `KafkaConsumer.stream` to create a [`KafkaConsumer`][kafkaconsumer] instance.
 
 ```scala mdoc:silent
 object ConsumerExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      consumerStream(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
 
     stream.compile.drain.as(ExitCode.Success)
   }
 }
 ```
 
-There is also `consumerResource` for when it's preferable to work with `Resource`. Both these functions create an underlying Java Kafka consumer and start work in the background to support record streaming. In addition, they both also guarantee resource cleanup (closing the Kafka consumer and stopping background work).
+There is also `KafkaConsumer.resource` for when it's preferable to work with `Resource`. Both these functions create an underlying Java Kafka consumer and start work in the background to support record streaming. In addition, they both also guarantee resource cleanup (closing the Kafka consumer and stopping background work).
 
 In the example above, we simply create the consumer and then immediately shutdown after resource cleanup. [`KafkaConsumer`][kafkaconsumer] supports much of the Java Kafka consumer functionality in addition to record streaming, but for streaming records, we first have to subscribe to a topic.
 
@@ -181,7 +181,7 @@ We can use `subscribe` with a non-empty collection of topics, or `subscribeTo` f
 object ConsumerSubscribeExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      consumerStream(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
 
     stream.compile.drain.as(ExitCode.Success)
@@ -199,7 +199,7 @@ Once subscribed to at least one topic, we can use `stream` for a `Stream` of [`C
 object ConsumerStreamExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      consumerStream(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
 
@@ -219,7 +219,7 @@ object ConsumerPartitionedStreamExample extends IOApp {
       IO(println(s"Processing record: $record"))
 
     val stream =
-      consumerStream(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.partitionedStream)
         .map { partitionStream =>
@@ -248,7 +248,7 @@ object ConsumerMapAsyncExample extends IOApp {
       IO(println(s"Processing record: $record"))
 
     val stream =
-      consumerStream(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
         .mapAsync(25) { committable =>
@@ -275,7 +275,7 @@ object ConsumerCommitBatchExample extends IOApp {
       IO(println(s"Processing record: $record"))
 
     val stream =
-      consumerStream(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
         .mapAsync(25) { committable =>

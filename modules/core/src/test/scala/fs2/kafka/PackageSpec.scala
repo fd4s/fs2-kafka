@@ -13,21 +13,6 @@ final class PackageSpec extends BaseAsyncSpec {
     }
   }
 
-  describe("creating consumers") {
-    it("should support defined syntax") {
-      val settings =
-        ConsumerSettings[IO, String, String]
-
-      consumerResource[IO, String, String](settings)
-      consumerResource[IO].toString should startWith("ConsumerResource$")
-      consumerResource[IO].using(settings)
-
-      consumerStream[IO, String, String](settings)
-      consumerStream[IO].toString should startWith("ConsumerStream$")
-      consumerStream[IO].using(settings)
-    }
-  }
-
   describe("creating transactional producers") {
     it("should support defined syntax") {
       val settings = TransactionalProducerSettings("id", ProducerSettings[IO, String, String])

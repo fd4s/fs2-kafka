@@ -43,7 +43,7 @@ object Main extends IOApp {
       transactionalProducerStream[IO]
         .using(producerSettings)
         .flatMap { producer =>
-          consumerStream[IO]
+          KafkaConsumer.stream[IO]
             .using(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)

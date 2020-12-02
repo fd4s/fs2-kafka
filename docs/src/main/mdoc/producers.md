@@ -169,7 +169,7 @@ val consumerSettings =
 object ProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      consumerStream[IO]
+      KafkaConsumer.stream[IO]
         .using(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
@@ -199,7 +199,7 @@ object PartitionedProduceExample extends IOApp {
       KafkaProducer.stream[IO]
         .using(producerSettings)
         .flatMap { producer =>
-          consumerStream[IO]
+          KafkaConsumer.stream[IO]
             .using(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.partitionedStream)
@@ -230,7 +230,7 @@ object KafkaProducerProduceExample extends IOApp {
       KafkaProducer.stream[IO]
         .using(producerSettings)
         .flatMap { producer =>
-          consumerStream[IO]
+          KafkaConsumer.stream[IO]
             .using(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)
@@ -262,7 +262,7 @@ object KafkaProducerProduceFlattenExample extends IOApp {
       KafkaProducer.stream[IO]
         .using(producerSettings)
         .flatMap { producer =>
-          consumerStream[IO]
+          KafkaConsumer.stream[IO]
             .using(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)

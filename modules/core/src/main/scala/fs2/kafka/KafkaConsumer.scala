@@ -504,7 +504,27 @@ private[kafka] object KafkaConsumer {
         "KafkaConsumer$" + id
     }
 
+  @deprecated("use KafkaConsumer.resource", "1.2.0")
   def consumerResource[F[_], K, V](
+    settings: ConsumerSettings[F, K, V]
+  )(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F],
+    timer: Timer[F]
+  ): Resource[F, KafkaConsumer[F, K, V]] = resource(settings)
+
+  /**
+    * Creates a new [[KafkaConsumer]] in the `Resource` context,
+    * using the specified [[ConsumerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaConsumer.resource[F].using(settings)
+    * }}}
+    */
+  def resource[F[_], K, V](
     settings: ConsumerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
@@ -538,4 +558,47 @@ private[kafka] object KafkaConsumer {
       actor <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
     } yield createKafkaConsumer(requests, settings, actor, polls, streamId, id, withConsumer)
+
+  /**
+    * Alternative version of `resource` where the `F[_]` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ConsumerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaConsumer.resource[F].using(settings)
+    * }}}
+    */
+  def resource[F[_]](implicit F: ConcurrentEffect[F]): ConsumerResource[F] = new ConsumerResource(F)
+
+  /**
+    * Creates a new [[KafkaConsumer]] in the `Stream` context,
+    * using the specified [[ConsumerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaConsumer.stream[F].using(settings)
+    * }}}
+    */
+  def stream[F[_], K, V](settings: ConsumerSettings[F, K, V])(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F],
+    timer: Timer[F]
+  ): Stream[F, KafkaConsumer[F, K, V]] =
+    Stream.resource(resource(settings))
+
+  /**
+    * Alternative version of `stream` where the `F[_]` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ConsumerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * consumerStream[F].using(settings)
+    * }}}
+    */
+  def stream[F[_]](implicit F: ConcurrentEffect[F]): ConsumerStream[F] =
+    new ConsumerStream[F](F)
 }

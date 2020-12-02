@@ -305,7 +305,8 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
     publishToKafka(topic, produced)
 
-    consumerStream[IO]
+    KafkaConsumer
+      .stream[IO]
       .using(consumerSettings(config))
       .evalTap(_.subscribe(topic.r))
       .flatMap(_.stream)
