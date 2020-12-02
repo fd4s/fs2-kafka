@@ -12,10 +12,10 @@ import fs2.Stream
 /**
   * [[TransactionalProducerStream]] provides support for inferring
   * the key and value type from [[TransactionalProducerSettings]]
-  * when using `transactionalProducerStream` with the following syntax.
+  * when using `TransactionalKafkaProducer.stream` with the following syntax.
   *
   * {{{
-  * transactionalProducerStream[F].using(settings)
+  * TransactionalKafkaProducer.stream[F].using(settings)
   * }}}
   */
 final class TransactionalProducerStream[F[_]] private[kafka] (
@@ -24,13 +24,13 @@ final class TransactionalProducerStream[F[_]] private[kafka] (
 
   /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Stream` context.
-    * This is equivalent to using `transactionalProducerStream` directly,
+    * This is equivalent to using `TransactionalKafkaProducer.stream` directly,
     * except we're able to infer the key and value type.
     */
   def using[K, V](settings: TransactionalProducerSettings[F, K, V])(
     implicit context: ContextShift[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
-    transactionalProducerStream(settings)(F, context)
+    TransactionalKafkaProducer.stream(settings)(F, context)
 
   override def toString: String =
     "TransactionalProducerStream$" + System.identityHashCode(this)
