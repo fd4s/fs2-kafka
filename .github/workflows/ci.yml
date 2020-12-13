@@ -1,0 +1,17 @@
+name: ci
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - uses: olafurpg/setup-scala@v10
+    - uses: coursier/cache-action@v5
+    - run: sbt validate
+    - uses: codecov/codecov-action@v1
