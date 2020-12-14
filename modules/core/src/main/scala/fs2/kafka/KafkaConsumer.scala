@@ -22,6 +22,7 @@ import fs2.kafka.internal.syntax._
 import fs2.kafka.consumer._
 import java.util
 
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
 
 import scala.collection.immutable.SortedSet
@@ -41,6 +42,10 @@ import scala.util.matching.Regex
   *   that continually request records for a single partition. Order
   *   is guaranteed per topic-partition, but all assigned partitions
   *   will have to be processed in parallel.<br>
+  * - [[partitionsMapStream]] provides a stream where each element contains
+  *   a current assignment. The current assignment is the `Map`, where keys
+  *   is a `TopicPartition`, and values are streams with records for a
+  *   particular `TopicPartition`.
   * <br>
   * For the streams, records are wrapped in [[CommittableConsumerRecord]]s
   * which provide [[CommittableOffset]]s with the ability to commit
@@ -68,6 +73,7 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaOffsets[F]
     with KafkaSubscription[F]
     with KafkaTopics[F]
+    with KafkaCommit[F]
     with KafkaMetrics[F]
     with KafkaConsumerLifecycle[F]
 
@@ -304,6 +310,24 @@ private[kafka] object KafkaConsumer {
 
       override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
         partitionedStream.parJoinUnbounded
+
+      override def commitAsync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = {
+        request { callback =>
+          Request.ManualCommitAsync(
+            callback = callback,
+            offsets = offsets
+          )
+        }
+      }
+
+      override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = {
+        request { callback =>
+          Request.ManualCommitSync(
+            callback = callback,
+            offsets = offsets
+          )
+        }
+      }
 
       private[this] def request[A](
         request: (Either[Throwable, A] => F[Unit]) => Request[F, K, V]

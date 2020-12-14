@@ -239,6 +239,18 @@ The `partitionStream` in the example above is a `Stream` of records for a single
 
 Note that we have to use `parJoinUnbounded` here so that all partitions are processed. While `parJoinUnbounded` doesn't limit the number of streams running concurrently, the actual limit is the number of assigned partitions. In fact, `stream` is just an alias for `partitionedStream.parJoinUnbounded`.
 
+Sometimes it could be desirable to not just get streams for each topic-partition (like in `partitionedStream`), but also have additional information, from which topic-partition each stream produces records. There is a `partitionsMapStream` method for that. It has the next signature:
+
+```scala
+def partitionsMapStream: Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]]
+```
+
+Each element of `partitionsMapStream` contains a current assignment. The current assignment is the `Map`, where keys are a `TopicPartition`, and values are streams with records for a particular `TopicPartition`.
+
+New assignments will be received on each rebalance. On rebalance, Kafka revoke all previously assigned partitions, and after that assigned new partitions all at once. `partitionsMapStream` reflects this process in a streaming manner. It means that you could use `partitionsMapStream` for some custom rebalance handling.
+
+Note, that partition streams for revoked partitions will be closed after the new assignment comes.
+
 When processing of records is independent of each other, as is the case with `processRecord` above, it's often easier and more performant to use `stream` and `mapAsync`, as seen in the example below. Generally, it's crucial to ensure there are no data races between processing of any two records.
 
 ```scala mdoc:silent
