@@ -22,6 +22,7 @@ import fs2.kafka.internal.syntax._
 import fs2.kafka.consumer._
 import java.util
 
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
 
 import scala.collection.immutable.SortedSet
@@ -72,6 +73,7 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaOffsets[F]
     with KafkaSubscription[F]
     with KafkaTopics[F]
+    with KafkaCommit[F]
     with KafkaMetrics[F]
     with KafkaConsumerLifecycle[F]
 
@@ -308,6 +310,24 @@ private[kafka] object KafkaConsumer {
 
       override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
         partitionedStream.parJoinUnbounded
+
+      override def commitAsync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = {
+        request { callback =>
+          Request.ManualCommitAsync(
+            callback = callback,
+            offsets = offsets
+          )
+        }
+      }
+
+      override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = {
+        request { callback =>
+          Request.ManualCommitSync(
+            callback = callback,
+            offsets = offsets
+          )
+        }
+      }
 
       private[this] def request[A](
         request: (Either[Throwable, A] => F[Unit]) => Request[F, K, V]
