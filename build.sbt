@@ -213,7 +213,7 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withValue"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withKeyValue"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withValue"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withKeyValue")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withKeyValue"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync")
     )
