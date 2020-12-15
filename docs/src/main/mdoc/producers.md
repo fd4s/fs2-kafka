@@ -138,20 +138,20 @@ The following settings are specific to the library.
 
 ## Producer Creation
 
-Once [`ProducerSettings`][producersettings] is defined, use `KafkaProducer.stream` to create a [`KafkaProducer`][kafkaproducer] instance.
+Once [`ProducerSettings`][producersettings] is defined, use `producerStream` to create a [`KafkaProducer`][kafkaproducer] instance.
 
 ```scala mdoc:silent
 object ProducerExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream(producerSettings)
+      producerStream(producerSettings)
 
     stream.compile.drain.as(ExitCode.Success)
   }
 }
 ```
 
-There is also `KafkaProducer.resource` for when it's preferable to work with `Resource`. Both these functions create an underlying Java Kafka producer. They both also guarantee resource cleanup, i.e. closing the Kafka producer instance.
+There is also `producerResource` for when it's preferable to work with `Resource`. Both these functions create an underlying Java Kafka producer. They both also guarantee resource cleanup, i.e. closing the Kafka producer instance.
 
 In the example above, we simply create the producer and then immediately shutdown after resource cleanup. [`KafkaProducer`][kafkaproducer] only supports producing records, and there is a separate producer available to support [transactions](transactions.md).
 
@@ -196,8 +196,7 @@ If we're producing in multiple places in our stream, we can create the `KafkaPro
 object PartitionedProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream[IO]
-        .using(producerSettings)
+      producerStream(producerSettings)
         .flatMap { producer =>
           consumerStream[IO]
             .using(consumerSettings)
@@ -227,8 +226,7 @@ If we need more control of how records are produced, we can use `KafkaProducer#p
 object KafkaProducerProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream[IO]
-        .using(producerSettings)
+      producerStream(producerSettings)
         .flatMap { producer =>
           consumerStream[IO]
             .using(consumerSettings)
@@ -259,8 +257,7 @@ Sometimes there is a need to wait for individual `ProducerRecords` to send. In t
 object KafkaProducerProduceFlattenExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream[IO]
-        .using(producerSettings)
+      producerStream(producerSettings)
         .flatMap { producer =>
           consumerStream[IO]
             .using(consumerSettings)
