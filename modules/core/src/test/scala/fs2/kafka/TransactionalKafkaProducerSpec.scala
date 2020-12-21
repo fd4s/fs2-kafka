@@ -12,11 +12,11 @@ import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.ProducerFencedException
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.scalatest.{EitherValues, OptionValues}
+import org.scalatest.EitherValues
 
 import scala.concurrent.duration._
 
-class TransactionalKafkaProducerSpec extends BaseKafkaSpec with OptionValues with EitherValues {
+class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
   it("should be able to produce single records in a transaction") {
     withKafka { (config, topic) =>

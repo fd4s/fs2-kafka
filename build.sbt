@@ -1,12 +1,12 @@
-val catsEffectVersion = "2.2.0"
+val catsEffectVersion = "2.3.1"
 
-val catsVersion = "2.2.0"
+val catsVersion = "2.3.1"
 
 val confluentVersion = "6.0.0"
 
 val embeddedKafkaVersion = "2.6.0"
 
-val fs2Version = "2.4.4"
+val fs2Version = "2.5.0-M3"
 
 val kafkaVersion = "2.5.0"
 
@@ -16,7 +16,7 @@ val scala212 = "2.12.12"
 
 val scala213 = "2.13.3"
 
-val dotty = "3.0.0-M1"
+val dotty = "3.0.0-M2"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -36,7 +36,7 @@ lazy val core = project
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
-        ("co.fs2" %% "fs2-core" % fs2Version).withDottyCompat(scalaVersion.value),
+        "co.fs2" %% "fs2-core" % fs2Version,
         "org.apache.kafka" % "kafka-clients" % kafkaVersion
       )
     ),
@@ -53,13 +53,14 @@ lazy val vulcan = project
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
-        ("com.github.fd4s" %% "vulcan" % vulcanVersion).withDottyCompat(scalaVersion.value),
+        "com.github.fd4s" %% "vulcan" % vulcanVersion,
         "io.confluent" % "kafka-avro-serializer" % confluentVersion
       )
     ),
     publishSettings,
     mimaSettings,
     scalaSettings,
+    crossScalaVersions := Seq(scala212, scala213, dotty),
     testSettings
   )
   .dependsOn(core)
@@ -83,13 +84,10 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     ("io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion)
       .withDottyCompat(scalaVersion.value),
-    //"org.typelevel" %% "discipline-scalatest" % "2.0.1",
-    ("org.typelevel" %% "cats-effect-laws" % catsEffectVersion)
-      .excludeAll("org.typelevel")
-      .withDottyCompat(scalaVersion.value),
-    ("org.typelevel" %% "cats-laws" % catsVersion).intransitive.withDottyCompat(scalaVersion.value),
-    ("org.typelevel" %% "cats-kernel-laws" % catsVersion).intransitive
-      .withDottyCompat(scalaVersion.value),
+    "org.typelevel" %% "discipline-scalatest" % "2.1.1",
+    "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
+    "org.typelevel" %% "cats-laws" % catsVersion,
+    "org.typelevel" %% "cats-kernel-laws" % catsVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3",
     "jline" % "jline" % "2.14.2"
   ).map(_ % Test),
@@ -336,9 +334,9 @@ addCommandsAlias(
   "validate",
   List(
     "+clean",
-    "+coverage",
+    "coverage",
     "+test",
-    "+coverageReport",
+    "coverageReport",
     "+mimaReportBinaryIssues",
     "+scalafmtCheck",
     "scalafmtSbtCheck",
