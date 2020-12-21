@@ -16,7 +16,7 @@ val scala212 = "2.12.10"
 
 val scala213 = "2.13.3"
 
-val dotty = "3.0.0-M2"
+val scala3 = "3.0.0-M2"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -60,7 +60,7 @@ lazy val vulcan = project
     publishSettings,
     mimaSettings,
     scalaSettings,
-    crossScalaVersions := Seq(scala212, scala213, dotty),
+    crossScalaVersions := Seq(scala212, scala213),
     testSettings
   )
   .dependsOn(core)
@@ -82,7 +82,7 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    ("io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion)
+    "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion)
       .withDottyCompat(scalaVersion.value),
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
@@ -238,7 +238,7 @@ lazy val noPublishSettings =
 
 lazy val scalaSettings = Seq(
   scalaVersion := scala213,
-  crossScalaVersions := Seq(scala212, scala213, dotty),
+  crossScalaVersions := Seq(scala212, scala213, scala3),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",

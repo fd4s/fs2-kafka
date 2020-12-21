@@ -8,7 +8,7 @@ package fs2.kafka.internal
 
 import scala.collection.immutable.ArraySeq
 
-object converters {
+private[kafka] object converters {
   val collection = scala.jdk.CollectionConverters
 
   def unsafeWrapArray[A](array: Array[A]): Seq[A] =

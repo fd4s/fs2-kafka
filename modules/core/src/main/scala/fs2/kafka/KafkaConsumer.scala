@@ -235,7 +235,7 @@ private[kafka] object KafkaConsumer {
                 val (_, lastId) = result.last
                 (lastId + 1, result)
               }
-              .flatMap { partitions: Vector[(TopicPartition, PartitionStreamId)] =>
+              .flatMap { (partitions: Vector[(TopicPartition, PartitionStreamId)]) =>
                 partitions
                   .traverse {
                     case (partition, partitionStreamId) =>
@@ -378,7 +378,7 @@ private[kafka] object KafkaConsumer {
             Queue.unbounded[F, SortedSet[TopicPartition]],
             Ref[F].of(SortedSet.empty[TopicPartition]),
             Deferred[F, Unit]
-          ).tupled.flatMap {
+          ).tupled.flatMap[Stream[F, SortedSet[TopicPartition]]] {
             case (updateQueue, assignmentRef, initialAssignmentDeferred) =>
               val onRebalance =
                 onRebalanceWith(
@@ -395,7 +395,7 @@ private[kafka] object KafkaConsumer {
                 }
                 .as(updateQueue.dequeue.changes)
           }
-          .flatten
+        }.flatten
       }
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
