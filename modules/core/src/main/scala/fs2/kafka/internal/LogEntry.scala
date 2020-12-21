@@ -7,8 +7,8 @@
 package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
-import cats.effect.concurrent.Deferred
 import cats.implicits._
+import fs2.Chunk
 import fs2.kafka.CommittableConsumerRecord
 import fs2.kafka.internal.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
@@ -62,12 +62,12 @@ private[kafka] object LogEntry {
 
   final case class StoredFetch[F[_], K, V, A](
     partition: TopicPartition,
-    deferred: Deferred[F, A],
+    callback: ((Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)) => F[Unit],
     state: State[F, K, V]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
-      s"Stored fetch [$deferred] for partition [$partition]. Current state [$state]."
+      s"Stored fetch [$callback] for partition [$partition]. Current state [$state]."
   }
 
   final case class StoredOnRebalance[F[_], K, V](
@@ -144,7 +144,7 @@ private[kafka] object LogEntry {
 
   final case class RevokedPreviousFetch(
     partition: TopicPartition,
-    streamId: Int
+    streamId: StreamId
   ) extends LogEntry {
     override def level: LogLevel = Warn
     override def message: String =

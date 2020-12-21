@@ -6,7 +6,8 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, Resource}
+import cats.effect.{Concurrent, ContextShift, ExitCase, Resource}
+import cats.effect.syntax.all._
 import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.internal._
@@ -40,7 +41,7 @@ private[kafka] object TransactionalKafkaProducer {
   def resource[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
+    implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     Resource.liftF(settings.producerSettings.keySerializer).flatMap { keySerializer =>
@@ -67,28 +68,29 @@ private[kafka] object TransactionalKafkaProducer {
                   else F.pure(batch.consumerGroupIds.head)
 
                 consumerGroupId.flatMap { groupId =>
-                  withProducer { producer =>
-                    F.bracketCase(F.delay(producer.beginTransaction())) { _ =>
-                      records.records
-                        .flatMap(_.records)
-                        .traverse(
-                          KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
-                        )
-                        .map(_.sequence)
-                        .flatTap { _ =>
-                          F.delay {
-                            producer.sendOffsetsToTransaction(
-                              batch.offsets.asJava,
-                              groupId
-                            )
+                  withProducer { (producer, blocking) =>
+                    blocking(producer.beginTransaction())
+                      .bracketCase { _ =>
+                        records.records
+                          .flatMap(_.records)
+                          .traverse(
+                            KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
+                          )
+                          .map(_.sequence)
+                          .flatTap { _ =>
+                            blocking {
+                              producer.sendOffsetsToTransaction(
+                                batch.offsets.asJava,
+                                groupId
+                              )
+                            }
                           }
-                        }
-                    } {
-                      case (_, ExitCase.Completed) =>
-                        F.delay(producer.commitTransaction())
-                      case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
-                        F.delay(producer.abortTransaction())
-                    }
+                      } {
+                        case (_, ExitCase.Completed) =>
+                          blocking(producer.commitTransaction())
+                        case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
+                          blocking(producer.abortTransaction())
+                      }
                   }.flatten
                 }
               }

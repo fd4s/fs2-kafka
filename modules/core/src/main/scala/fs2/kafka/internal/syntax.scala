@@ -8,7 +8,6 @@ package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.{CancelToken, Concurrent, Sync}
-import cats.effect.concurrent.Ref
 import cats.implicits._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
@@ -31,16 +30,6 @@ private[kafka] object syntax {
       logging: Logging[F]
     ): F[Unit] =
       fa.flatMap(a => logging.log(f(a)))
-  }
-
-  implicit final class RefSyntax[F[_], A](
-    private val ref: Ref[F, A]
-  ) extends AnyVal {
-    def updateAndGet(f: A => A): F[A] =
-      ref.modify { a =>
-        val fa = f(a)
-        (fa, fa)
-      }
   }
 
   implicit final class FiniteDurationSyntax(

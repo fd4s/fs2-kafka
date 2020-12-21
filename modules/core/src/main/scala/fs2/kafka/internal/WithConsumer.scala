@@ -7,12 +7,17 @@
 package fs2.kafka.internal
 
 import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
+import cats.effect.concurrent.Semaphore
 import cats.implicits._
 import fs2.kafka.{KafkaByteConsumer, ConsumerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
-  def apply[A](f: KafkaByteConsumer => F[A]): F[A]
+  def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A]
+
+  def blocking[A](f: KafkaByteConsumer => A): F[A] = apply {
+    case (producer, blocking) => blocking(f(producer))
+  }
 }
 
 private[kafka] object WithConsumer {
@@ -22,34 +27,22 @@ private[kafka] object WithConsumer {
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, WithConsumer[F]] = {
-    val blockerResource =
+    val blockingResource =
       settings.blocker
         .map(Resource.pure[F, Blocker])
         .getOrElse(Blockers.consumer)
+        .map(Blocking.fromBlocker[F])
 
-    blockerResource.flatMap { blocker =>
-      Resource[F, WithConsumer[F]] {
-        settings.createConsumer
-          .flatMap(Synchronized[F].of)
-          .map { synchronizedConsumer =>
-            val withConsumer =
-              new WithConsumer[F] {
-                override def apply[A](f: KafkaByteConsumer => F[A]): F[A] =
-                  synchronizedConsumer.use { consumer =>
-                    context.blockOn(blocker) {
-                      f(consumer)
-                    }
-                  }
-              }
-
-            val close =
-              withConsumer { consumer =>
-                F.delay(consumer.close(settings.closeTimeout.asJava))
-              }
-
-            (withConsumer, close)
+    blockingResource.flatMap { blocking_ =>
+      Resource.make {
+        (settings.createConsumer, Semaphore[F](1L))
+          .mapN { (consumer, semaphore) =>
+            new WithConsumer[F] {
+              override def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A] =
+                semaphore.withPermit { f(consumer, blocking_) }
+            }
           }
-      }
+      }(_.blocking { _.close(settings.closeTimeout.asJava) })
     }
   }
 }

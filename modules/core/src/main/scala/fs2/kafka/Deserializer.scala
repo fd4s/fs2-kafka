@@ -232,9 +232,7 @@ object Deserializer {
   ): Deserializer[F, Option[A]] =
     deserializer.option
 
-  type MonadDeserializerError[F[_]] = MonadError[Deserializer[F, *], Throwable]
-
-  implicit def monadError[F[_]](implicit F: Sync[F]): MonadDeserializerError[F] =
+  implicit def monadError[F[_]](implicit F: Sync[F]): MonadError[Deserializer[F, *], Throwable] =
     new MonadError[Deserializer[F, *], Throwable] {
       override def pure[A](a: A): Deserializer[F, A] =
         Deserializer.const(a)

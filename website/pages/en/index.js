@@ -95,7 +95,7 @@ class Index extends React.Component {
       </Container>
     );
 
-    const index = `[![Travis](https://img.shields.io/travis/fd4s/fs2-kafka/master.svg)](https://travis-ci.org/fd4s/fs2-kafka) [![Codecov](https://img.shields.io/codecov/c/github/fd4s/fs2-kafka.svg)](https://codecov.io/gh/fd4s/fs2-kafka) [![Gitter](https://img.shields.io/gitter/room/fd4s/fs2-kafka.svg?colorB=36bc97)](https://gitter.im/fd4s/fs2-kafka) [![Version](https://img.shields.io/badge/version-v${latestVersionBadge}-orange.svg)](https://index.scala-lang.org/fd4s/fs2-kafka)
+    const index = `[![GitHub Actions](https://img.shields.io/github/workflow/status/fd4s/fs2-kafka/ci)](https://github.com/fd4s/fs2-kafka/actions) [![Codecov](https://img.shields.io/codecov/c/github/fd4s/fs2-kafka.svg)](https://codecov.io/gh/fd4s/fs2-kafka) [![Gitter](https://img.shields.io/gitter/room/fd4s/fs2-kafka.svg?colorB=36bc97)](https://gitter.im/fd4s/fs2-kafka) [![Version](https://img.shields.io/badge/version-v${latestVersionBadge}-orange.svg)](https://index.scala-lang.org/fd4s/fs2-kafka)
 
 Functional streams for Kafka with [FS2](https://fs2.io) and the official Apache Kafka client.<br>
 Project is under active development. Feedback and contributions welcome.

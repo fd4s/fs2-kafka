@@ -11,7 +11,6 @@ Following is an example showing how to:
 
 ```scala mdoc
 import cats.effect.{ExitCode, IO, IOApp}
-import cats.syntax.functor._
 import fs2.kafka._
 import scala.concurrent.duration._
 

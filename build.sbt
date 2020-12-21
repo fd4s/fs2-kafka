@@ -2,17 +2,17 @@ val catsEffectVersion = "2.3.1"
 
 val catsVersion = "2.3.1"
 
-val confluentVersion = "6.0.0"
+val confluentVersion = "6.0.1"
 
 val embeddedKafkaVersion = "2.6.0"
 
 val fs2Version = "2.5.0-M3"
 
-val kafkaVersion = "2.5.0"
+val kafkaVersion = "2.6.0"
 
 val vulcanVersion = "1.2.0"
 
-val scala212 = "2.12.12"
+val scala212 = "2.12.10"
 
 val scala213 = "2.13.3"
 
@@ -95,7 +95,7 @@ lazy val dependencySettings = Seq(
                            else
                              Seq(
                                compilerPlugin(
-                                 ("org.typelevel" %% "kind-projector" % "0.11.0")
+                                 ("org.typelevel" %% "kind-projector" % "0.11.1")
                                    .cross(CrossVersion.full)
                                )
                              )),
@@ -212,7 +212,19 @@ lazy val mimaSettings = Seq(
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
       ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.resource")
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.resource"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.produceRecord"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.package.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.ProducerResource.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalProducerResource.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.ProducerStream.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalProducerStream.*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaProducer.resource"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalKafkaProducer.resource"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
     )
     // format: on
   }

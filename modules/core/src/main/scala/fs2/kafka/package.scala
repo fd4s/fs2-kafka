@@ -60,31 +60,18 @@ package object kafka {
   ): Pipe[F, CommittableOffset[F], Unit] =
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 
-  /**
-    * Creates a [[KafkaProducer]] using the provided settings and
-    * produces record in batches, limiting the number of records
-    * in the same batch using [[ProducerSettings#parallelism]].
-    */
-  def produce[F[_], K, V, P](
+  @deprecated("use KafkaProducer.pipe", "1.2.0")
+  def produce[F[_]: Concurrent: ContextShift, K, V, P](
     settings: ProducerSettings[F, K, V]
-  )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
   ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
-    records => producerStream(settings).flatMap(produce(settings, _).apply(records))
+    KafkaProducer.pipe(settings)
 
-  /**
-    * Produces records in batches using the provided [[KafkaProducer]].
-    * The number of records in the same batch is limited using the
-    * [[ProducerSettings#parallelism]] setting.
-    */
-  def produce[F[_], K, V, P](
+  @deprecated("use KafkaProducer.pipe", "1.2.0")
+  def produce[F[_]: Concurrent, K, V, P](
     settings: ProducerSettings[F, K, V],
     producer: KafkaProducer[F, K, V]
-  )(
-    implicit F: ConcurrentEffect[F]
   ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
-    _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
+    KafkaProducer.pipe(settings, producer)
 
   /**
     * Creates a new [[KafkaAdminClient]] in the `Resource` context,
@@ -171,65 +158,23 @@ package object kafka {
   def consumerStream[F[_]](implicit F: ConcurrentEffect[F]): ConsumerStream[F] =
     new ConsumerStream[F](F)
 
-  /**
-    * Creates a new [[KafkaProducer]] in the `Resource` context,
-    * using the specified [[ProducerSettings]]. Note that there
-    * is another version where `F[_]` is specified explicitly and
-    * the key and value type can be inferred, which allows you
-    * to use the following syntax.
-    *
-    * {{{
-    * producerResource[F].using(settings)
-    * }}}
-    */
-  def producerResource[F[_], K, V](settings: ProducerSettings[F, K, V])(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+  @deprecated("use KafkaProducer.resource", "1.2.0")
+  def producerResource[F[_]: Concurrent: ContextShift, K, V](
+    settings: ProducerSettings[F, K, V]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducer.resource(settings)
 
-  /**
-    * Alternative version of `producerResource` where the `F[_]` is
-    * specified explicitly, and where the key and value type can
-    * be inferred from the [[ProducerSettings]]. This allows you
-    * to use the following syntax.
-    *
-    * {{{
-    * producerResource[F].using(settings)
-    * }}}
-    */
-  def producerResource[F[_]](implicit F: ConcurrentEffect[F]): ProducerResource[F] =
-    new ProducerResource(F)
+  @deprecated("use KafkaProducer.resource", "1.2.0")
+  def producerResource[F[_]: Concurrent]: ProducerResource[F] = KafkaProducer.resource
 
-  /**
-    * Creates a new [[KafkaProducer]] in the `Stream` context,
-    * using the specified [[ProducerSettings]]. Note that there
-    * is another version where `F[_]` is specified explicitly and
-    * the key and value type can be inferred, which allows you
-    * to use the following syntax.
-    *
-    * {{{
-    * producerStream[F].using(settings)
-    * }}}
-    */
-  def producerStream[F[_], K, V](settings: ProducerSettings[F, K, V])(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
-  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
-    Stream.resource(producerResource(settings))
+  @deprecated("use KafkaProducer.stream", "1.2.0")
+  def producerStream[F[_]: Concurrent: ContextShift, K, V](
+    settings: ProducerSettings[F, K, V]
+  ): Stream[F, KafkaProducer.Metrics[F, K, V]] = KafkaProducer.stream(settings)
 
-  /**
-    * Alternative version of `producerStream` where the `F[_]` is
-    * specified explicitly, and where the key and value type can
-    * be inferred from the [[ProducerSettings]]. This allows you
-    * to use the following syntax.
-    *
-    * {{{
-    * producerStream[F].using(settings)
-    * }}}
-    */
-  def producerStream[F[_]](implicit F: ConcurrentEffect[F]): ProducerStream[F] =
-    new ProducerStream[F](F)
+  @deprecated("use KafkaProducer.stream", "1.2.0")
+  def producerStream[F[_]: Concurrent]: ProducerStream[F] =
+    KafkaProducer.stream[F]
 
   /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context,
@@ -244,7 +189,7 @@ package object kafka {
   def transactionalProducerResource[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
+    implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     TransactionalKafkaProducer.resource(settings)
@@ -260,7 +205,7 @@ package object kafka {
     * }}}
     */
   def transactionalProducerResource[F[_]](
-    implicit F: ConcurrentEffect[F]
+    implicit F: Concurrent[F]
   ): TransactionalProducerResource[F] =
     new TransactionalProducerResource(F)
 
@@ -277,7 +222,7 @@ package object kafka {
   def transactionalProducerStream[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
+    implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
     Stream.resource(transactionalProducerResource(settings))
@@ -293,7 +238,7 @@ package object kafka {
     * }}}
     */
   def transactionalProducerStream[F[_]](
-    implicit F: ConcurrentEffect[F]
+    implicit F: Concurrent[F]
   ): TransactionalProducerStream[F] =
     new TransactionalProducerStream(F)
 }

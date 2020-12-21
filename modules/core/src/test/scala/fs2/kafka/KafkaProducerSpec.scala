@@ -5,6 +5,22 @@ import cats.implicits._
 import fs2.{Chunk, Stream}
 
 final class KafkaProducerSpec extends BaseKafkaSpec {
+
+  describe("creating producers") {
+    it("should support defined syntax") {
+      val settings =
+        ProducerSettings[IO, String, String]
+
+      KafkaProducer.resource[IO, String, String](settings)
+      KafkaProducer.resource[IO].toString should startWith("ProducerResource$")
+      KafkaProducer.resource[IO].using(settings)
+
+      KafkaProducer.stream[IO, String, String](settings)
+      KafkaProducer.stream[IO].toString should startWith("ProducerStream$")
+      KafkaProducer.stream[IO].using(settings)
+    }
+  }
+
   it("should be able to produce records with single") {
     withKafka { (config, topic) =>
       createCustomTopic(topic, partitions = 3)
@@ -13,7 +29,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       val produced =
         (for {
           settings <- Stream(producerSettings[IO](config))
-          producer <- producerStream[IO].using(settings)
+          producer <- KafkaProducer.stream[IO].using(settings)
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           records <- Stream.chunk(Chunk.seq(toProduce).map {
             case passthrough @ (key, value) =>
@@ -43,7 +59,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val produced =
         (for {
-          producer <- producerStream[IO].using(producerSettings(config))
+          producer <- KafkaProducer.stream[IO].using(producerSettings(config))
           records = ProducerRecords(toProduce.map {
             case (key, value) =>
               ProducerRecord(topic, key, value)
@@ -73,7 +89,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val result =
         (for {
-          producer <- producerStream[IO].using(producerSettings(config))
+          producer <- KafkaProducer.stream[IO].using(producerSettings(config))
           records = ProducerRecords(Nil, passthrough)
           result <- Stream.eval(producer.produce(records).flatten)
         } yield result).compile.lastOrError.unsafeRunSync()
@@ -89,7 +105,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val result =
         (for {
-          producer <- producerStream[IO].using(producerSettings(config))
+          producer <- KafkaProducer.stream[IO].using(producerSettings(config))
           result <- Stream.eval {
             producer.produce(ProducerRecords(Nil, passthrough)).flatten
           }
@@ -104,7 +120,8 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       createCustomTopic(topic, partitions = 3)
 
       val info =
-        producerStream[IO]
+        KafkaProducer
+          .stream[IO]
           .using(producerSettings(config))
           .evalMap(_.metrics)
 
