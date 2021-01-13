@@ -748,7 +748,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         val run = for {
           consumedRef <- Ref[IO].of(Vector.empty[(String, String)])
-          _ <- KafkaConsumer.consumerResource(settings).use { consumer =>
+          _ <- KafkaConsumer.resource(settings).use { consumer =>
             for {
               _ <- consumer.subscribeTo(topic)
               _ <- consumer.stream
@@ -780,7 +780,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         createCustomTopic(topic)
         val settings = consumerSettings[IO](config)
 
-        val run = KafkaConsumer.consumerResource(settings).use { consumer =>
+        val run = KafkaConsumer.resource(settings).use { consumer =>
           for {
             _ <- consumer.subscribeTo(topic)
             runStream = consumer.stream.compile.drain

@@ -325,7 +325,7 @@ object NoGracefulShutdownExample extends IOApp {
       }.through(commitBatchWithin(100, 15.seconds)).compile.drain
     }
 
-    consumerResource(consumerSettings).use { consumer =>
+    KafkaConsumer.resource(consumerSettings).use { consumer =>
       run(consumer).as(ExitCode.Success)
     }
   }
@@ -362,7 +362,7 @@ object WithGracefulShutdownExample extends IOApp {
     for {
       stoppedDeferred <- Deferred[IO, Either[Throwable, Unit]] // [1]
       gracefulShutdownStartedRef <- Ref[IO].of(false) // [2]
-      _ <- consumerResource(consumerSettings)
+      _ <- KafkaConsumer.resource(consumerSettings)
         .allocated.bracketCase { case (consumer, _) => // [3] 
           run(consumer).attempt.flatMap { result: Either[Throwable, Unit] => // [4]
             gracefulShutdownStartedRef.get.flatMap {
