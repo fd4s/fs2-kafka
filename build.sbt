@@ -6,7 +6,7 @@ val confluentVersion = "6.0.1"
 
 val embeddedKafkaVersion = "2.6.0"
 
-val fs2Version = "2.5.0-M3"
+val fs2Version = "2.5.0"
 
 val kafkaVersion = "2.6.0"
 
@@ -82,7 +82,7 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion)
+    ("io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion)
       .withDottyCompat(scalaVersion.value),
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
@@ -222,6 +222,7 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaProducer.resource"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalKafkaProducer.resource"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.stopConsuming"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
