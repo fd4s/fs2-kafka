@@ -77,8 +77,8 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaMetrics[F]
     with KafkaConsumerLifecycle[F]
 
-private[kafka] object KafkaConsumer {
-  private[this] def startConsumerActor[F[_], K, V](
+object KafkaConsumer {
+  private def startConsumerActor[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     polls: Queue[F, Request[F, K, V]],
     actor: KafkaConsumerActor[F, K, V]
@@ -101,7 +101,7 @@ private[kafka] object KafkaConsumer {
       }
     }(_.cancel)
 
-  private[this] def startPollScheduler[F[_], K, V](
+  private def startPollScheduler[F[_], K, V](
     polls: Queue[F, Request[F, K, V]],
     pollInterval: FiniteDuration
   )(
@@ -123,7 +123,7 @@ private[kafka] object KafkaConsumer {
       }
     }(_.cancel)
 
-  private[this] def createKafkaConsumer[F[_], K, V](
+  private def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     settings: ConsumerSettings[F, K, V],
     actor: Fiber[F, Unit],
