@@ -4,13 +4,13 @@ import cats.data.NonEmptySet
 import cats.effect.concurrent.Ref
 import cats.effect.{Fiber, IO}
 import cats.implicits._
+import fs2.Stream
 import fs2.concurrent.{Queue, SignallingRef}
 import fs2.kafka.internal.converters.collection._
-import fs2.Stream
 import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
-import org.apache.kafka.common.errors.TimeoutException
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.TimeoutException
 import org.scalatest.Assertion
 
 import scala.collection.immutable.SortedSet
@@ -730,6 +730,87 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .unsafeRunSync()
 
         res.last.size shouldBe 3 // in last message should be all partitions
+      }
+    }
+  }
+
+  describe("KafkaConsumer#stopConsuming") {
+    it("should gracefully stop running stream") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 1)
+        val messages = 20
+        val produced1 = (0 until messages).map(n => n.toString -> n.toString).toVector
+        val produced2 = (messages until messages * 2).map(n => n.toString -> n.toString).toVector
+        publishToKafka(topic, produced1)
+
+        // all messages from a single poll batch should land into one chunk
+        val settings = consumerSettings[IO](config).withMaxPollRecords(messages)
+
+        val run = for {
+          consumedRef <- Ref[IO].of(Vector.empty[(String, String)])
+          _ <- KafkaConsumer.consumerResource(settings).use { consumer =>
+            for {
+              _ <- consumer.subscribeTo(topic)
+              _ <- consumer.stream
+                .evalMap { msg =>
+                  consumedRef.getAndUpdate(_ :+ (msg.record.key -> msg.record.value)).flatMap {
+                    prevConsumed =>
+                      if (prevConsumed.isEmpty) {
+                        // stop consuming right after the first message was received and publish a new batch
+                        consumer.stopConsuming >> IO(publishToKafka(topic, produced2))
+                      } else IO.unit
+                  } >> msg.offset.commit
+                }
+                .compile
+                .drain
+            } yield ()
+          }
+          consumed <- consumedRef.get
+        } yield consumed
+
+        val consumed = run.timeout(15.seconds).unsafeRunSync()
+
+        // only messages from the first batch (before stopConsuming was called) should be received
+        assert(consumed == produced1)
+      }
+    }
+
+    it("should stop running stream even when there is no data in it") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic)
+        val settings = consumerSettings[IO](config)
+
+        val run = KafkaConsumer.consumerResource(settings).use { consumer =>
+          for {
+            _ <- consumer.subscribeTo(topic)
+            runStream = consumer.stream.compile.drain
+            stopStream = consumer.stopConsuming
+            _ <- (runStream, IO.sleep(1.second) >> stopStream).parTupled
+          } yield succeed
+        }
+
+        run.timeout(15.seconds).unsafeRunSync()
+      }
+    }
+
+    it("should not start new streams after 'stopConsuming' call") {
+      withKafka { (config, topic) =>
+        createCustomTopic(topic, partitions = 1)
+        val produced = (0 until 10).map(n => n.toString -> n.toString).toVector
+        publishToKafka(topic, produced)
+
+        val run = consumerStream[IO]
+          .using(consumerSettings[IO](config))
+          .evalTap(_.subscribeTo(topic))
+          .evalTap(_.stopConsuming)
+          .evalTap(_ => IO(publishToKafka(topic, produced)))
+          .flatMap(_.stream.evalTap { _ =>
+            IO.raiseError(new RuntimeException("Stream should be empty"))
+          })
+
+        run.compile.drain.unsafeRunSync()
+
+        succeed
       }
     }
   }
