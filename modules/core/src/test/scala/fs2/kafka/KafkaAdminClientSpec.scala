@@ -43,10 +43,11 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                   .partitionsToOffsetAndMetadata
                   .map((groupId, _))
               }
-              (_, consumerGroupOffsetsMap) <- IO(consumerGroupsOffsets match {
+              offsets <- IO(consumerGroupsOffsets match {
                 case List(offsets) => offsets
                 case _             => fail()
               })
+              (_, consumerGroupOffsetsMap) = offsets
               _ <- IO(
                 assert(
                   consumerGroupOffsetsMap

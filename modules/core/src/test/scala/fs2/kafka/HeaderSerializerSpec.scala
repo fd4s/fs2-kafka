@@ -26,7 +26,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
     val serializer =
       HeaderSerializer.const[Int](Array())
 
-    forAll { i: Int =>
+    forAll { (i: Int) =>
       serializer.serialize(i).isEmpty shouldBe true
     }
   }
@@ -35,7 +35,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
     val serializer =
       HeaderSerializer.asNull[Int]
 
-    forAll { i: Int =>
+    forAll { (i: Int) =>
       val serialized = serializer.serialize(i)
       serialized shouldBe null
     }
@@ -45,7 +45,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
     val serializer =
       HeaderSerializer.empty[Int]
 
-    forAll { i: Int =>
+    forAll { (i: Int) =>
       val serialized = serializer.serialize(i)
       serialized shouldBe empty
     }
@@ -57,7 +57,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
 
     serializer.serialize(None) shouldBe null
 
-    forAll { s: String =>
+    forAll { (s: String) =>
       serializer.serialize(Some(s)) shouldBe
         HeaderSerializer[String].serialize(s)
     }
@@ -74,7 +74,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
   def roundtrip[A: Arbitrary: Eq](
     serializer: HeaderSerializer[A],
     deserializer: HeaderDeserializer[A]
-  ): Assertion = forAll { a: A =>
+  ): Assertion = forAll { (a: A) =>
     val serialized = serializer.serialize(a)
     val deserialized = deserializer.deserialize(serialized)
     assert(deserialized === a)
@@ -83,7 +83,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
   def roundtripAttempt[A: Arbitrary: Eq](
     serializer: HeaderSerializer[A],
     deserializer: HeaderDeserializer.Attempt[A]
-  ): Assertion = forAll { a: A =>
+  ): Assertion = forAll { (a: A) =>
     val serialized = serializer.serialize(a)
     val deserialized = deserializer.deserialize(serialized)
     assert(deserialized.toOption === Option(a))

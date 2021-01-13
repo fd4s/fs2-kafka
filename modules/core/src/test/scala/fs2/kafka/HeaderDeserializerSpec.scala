@@ -28,7 +28,7 @@ final class HeaderDeserializerSpec extends BaseCatsSpec {
 
     deserializer.deserialize(null) shouldBe None
 
-    forAll { s: String =>
+    forAll { (s: String) =>
       val serialized = HeaderSerializer[String].serialize(s)
       deserializer.deserialize(serialized) shouldBe Some(s)
     }

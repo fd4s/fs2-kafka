@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -232,8 +232,8 @@ object Deserializer {
   ): Deserializer[F, Option[A]] =
     deserializer.option
 
-  implicit def monadError[F[_]](implicit F: Sync[F]): MonadError[Deserializer[F, ?], Throwable] =
-    new MonadError[Deserializer[F, ?], Throwable] {
+  implicit def monadError[F[_]](implicit F: Sync[F]): MonadError[Deserializer[F, *], Throwable] =
+    new MonadError[Deserializer[F, *], Throwable] {
       override def pure[A](a: A): Deserializer[F, A] =
         Deserializer.const(a)
 

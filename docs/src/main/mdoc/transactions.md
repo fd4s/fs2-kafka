@@ -17,7 +17,6 @@ Following is an example where transactions are used to consume, process, produce
 
 ```scala mdoc
 import cats.effect.{ExitCode, IO, IOApp}
-import cats.syntax.functor._
 import fs2.kafka._
 import scala.concurrent.duration._
 

@@ -18,7 +18,7 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("should return false for exists") {
-      forAll { key: String =>
+      forAll { (key: String) =>
         assert(!Headers.empty.exists(key))
       }
     }
@@ -185,13 +185,13 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("should return true for existing key") {
-      forAll { key: String =>
+      forAll { (key: String) =>
         assert(Headers(Header(key, "value")).exists(key))
       }
     }
 
     it("should return false for non-existing key") {
-      forAll { key: String =>
+      forAll { (key: String) =>
         whenever(key != "key") {
           assert(!Headers(Header("key", "value")).exists(key))
         }
