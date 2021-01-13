@@ -658,7 +658,7 @@ object KafkaConsumer {
     * to use the following syntax.
     *
     * {{{
-    * consumerStream[F].using(settings)
+    * KafkaConsumer.stream[F].using(settings)
     * }}}
     */
   def stream[F[_]](implicit F: ConcurrentEffect[F]): ConsumerStream[F] =
