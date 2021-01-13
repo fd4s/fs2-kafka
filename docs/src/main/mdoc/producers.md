@@ -179,7 +179,7 @@ object ProduceExample extends IOApp {
           val record = ProducerRecord("topic", key, value)
           ProducerRecords.one(record, committable.offset)
         }
-        .through(produce(producerSettings))
+        .through(KafkaProducer.pipe(producerSettings))
 
     stream.compile.drain.as(ExitCode.Success)
   }
@@ -211,7 +211,7 @@ object PartitionedProduceExample extends IOApp {
                   val record = ProducerRecord("topic", key, value)
                   ProducerRecords.one(record, committable.offset)
                 }
-                .through(produce(producerSettings, producer))
+                .through(KafkaProducer.pipe(producerSettings, producer))
             }
             .parJoinUnbounded
         }

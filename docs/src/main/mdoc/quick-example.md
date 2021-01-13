@@ -41,7 +41,7 @@ object Main extends IOApp {
               ProducerRecords.one(record, committable.offset)
             }
         }
-        .through(produce(producerSettings))
+        .through(KafkaProducer.pipe(producerSettings))
         .map(_.passthrough)
         .through(commitBatchWithin(500, 15.seconds))
 
