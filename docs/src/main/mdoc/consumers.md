@@ -208,7 +208,7 @@ object ConsumerStreamExample extends IOApp {
 }
 ```
 
-Note that this is an infinite stream, meaning it will only terminate if it's interrupted, errors, or if we turn it into a finite stream (using e.g. `take`). It's usually desired that consumer streams keep running indefinitely, so that incoming records get processed quickly &mdash; one notable exception being when testing streams.
+Note that this is an infinite stream, meaning it will only terminate if it's interrupted, errors, or if we turn it into a finite stream (using e.g. `take`). It's usually desired that consumer streams keep running indefinitely, so that incoming records get processed quickly &mdash; one notable exception being when testing streams. Also, you could gracefully stop stream using `stopConsuming` method. More info about it in the [graceful shutdown](#graceful-shutdown) section.
 
 When using `stream`, records on all assigned partitions end up in the same `Stream`. Depending on how records are processed, we might want to separate records per topic-partition. This exact functionality is provided by `partitionedStream`.
 
@@ -308,6 +308,107 @@ The batch commit functions uses [`CommittableOffsetBatch`][committableoffsetbatc
 For at-least-once delivery, offset commit has to be the last step in the stream. Anything that happens after offset commit cannot be part of the at-least-once guarantee. This is the main reason why batch commit functions return `Unit`, as they should always be the last part of the stream definition.
 
 If we're sure we need to commit every offset, we can `commit` individual [`CommittableOffset`][committableoffset]s. Note there is a substantial performance implication to committing every offset, and it should be avoided when possible. The approach also limits parallelism, since offset commits need to preserve topic-partition ordering.
+
+## Graceful shutdown
+
+With the fs2-kafka you could gracefully shutdown a `KafkaConsumer`. Consider this example:
+
+```scala mdoc:silent
+object NoGracefulShutdownExample extends IOApp {
+  def run(args: List[String]): IO[ExitCode] = {
+    def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
+      IO(println(s"Processing record: $record"))
+
+    def run(consumer: KafkaConsumer[IO, String, String]): IO[Unit] = {
+      consumer.subscribeTo("topic") >> consumer.stream.evalMap { msg =>
+        processRecord(msg).as(msg.offset)
+      }.through(commitBatchWithin(100, 15.seconds)).compile.drain
+    }
+
+    consumerResource(consumerSettings).use { consumer =>
+      run(consumer).as(ExitCode.Success)
+    }
+  }
+}
+```
+
+When this application will be closed (for example, using Ctrl + C in the terminal) the `stream` inside the `run` function will be simply interrupted. It means that there is no guarantee that all in-flight records will be processed to the end of the stream, and there is no guarantee that all records will pass through all stream steps. For example, a record could be processed in the `processRecord`, but not committed. Note that even when a stream is interrupted all resources will be safely closed.
+
+Usually, this is normal behavior for Kafka consumers because most of them work with the _at least once_ semantics. But sometimes, it is necessary to process all in-flight messages and close the `KafkaConsumer` instance only after that.
+
+To achieve this behavior we could use a `stopConsuming` method on a` KafkaConsumer`. Calling this method has the next effects:
+1. After this call no more data will be fetched from Kafka through the `poll` method.
+2. All currently running streams will continue to run until all in-flight messages will be processed.
+   It means that streams will be completed when all fetched messages will be processed.
+
+We could combine `stopConsuming` with the custom resource handling and implement a graceful shutdown. Let's try it:
+
+```scala mdoc:silent
+import cats.effect.concurrent.{Deferred, Ref}
+
+object WithGracefulShutdownExample extends IOApp {
+  def run(args: List[String]): IO[ExitCode] = {
+    def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
+      IO(println(s"Processing record: $record"))
+
+    def run(consumer: KafkaConsumer[IO, String, String]): IO[Unit] = {
+      consumer.subscribeTo("topic") >> consumer.stream.evalMap { msg =>
+        processRecord(msg).as(msg.offset)
+      }.through(commitBatchWithin(100, 15.seconds)).compile.drain
+    }
+
+    def handleError(e: Throwable): IO[Unit] = IO(println(e.toString))
+    
+    for {
+      stoppedDeferred <- Deferred[IO, Either[Throwable, Unit]] // [1]
+      gracefulShutdownStartedRef <- Ref[IO].of(false) // [2]
+      _ <- consumerResource(consumerSettings)
+        .allocated.bracketCase { case (consumer, _) => // [3] 
+          run(consumer).attempt.flatMap { result: Either[Throwable, Unit] => // [4]
+            gracefulShutdownStartedRef.get.flatMap {
+              case true => stoppedDeferred.complete(result) // [5]
+              case false => IO.pure(result).rethrow // [6]
+            }
+          }.uncancelable // [7]
+        } { case ((consumer, closeConsumer), exitCase) => // [8]
+          (exitCase match {
+            case ExitCase.Error(e) => handleError(e) // [9]
+            case _ => for {
+              _ <- gracefulShutdownStartedRef.set(true) // [10]
+              _ <- consumer.stopConsuming // [11]
+              stopResult <- stoppedDeferred.get // [12]
+                .timeoutTo(10.seconds, IO.pure(Left(new RuntimeException("Graceful shutdown timed out")))) // [13]
+              _ <- stopResult match { // [14]
+                case Right(()) => IO.unit
+                case Left(e) => handleError(e)
+              }
+            } yield ()
+          }).guarantee(closeConsumer) // [15]
+        }
+    } yield ExitCode.Success
+  }
+}
+```
+
+1. We need a `Deferred` to wait until records processing is finished.
+2. Also, we need some flag to distinguish between graceful and regular shutdown. It would be needed for error handling.
+3. We need somehow implement our custom closing logic. To do this we can use `allocated` with the `bracketCase` instead of `use` on the consumer resource. This is a low-level API for `Resource` specifically for cases like this.
+4. In the `use` section of `bracketCase` we start our main application logic. When graceful shutdown will be started, the `run` function will return either some result (in our case there is no result) or failed with an error. This result should be passed to a `stoppedDeferred`. To not lose errors we should use `attempt` on this result to convert it to an `Either[Throwable, Unit]`.
+5. If a graceful shutdown started, we pass `result` to a `stoppedDeferred`.
+6. If a graceful shutdown is not started we pass `result` further with the `rethrow`. This case is needed mostly for cases when the `run` function failed with an error during its work.
+7. It's important to wrap all our application logic in the `uncancelable`. Without it when the graceful shutdown will be started `run` method will be just interrupted, and `stoppedDeferred` will be never resolved.
+8. Here we started our custom closing logic.
+9. If our main app logic failed with an error, we should not start a graceful shutdown, we should close consumer regularly. We may also handle an error somehow, for example, log an error.
+10. If there were no errors during application work, we may start a graceful shutdown.
+11. Stopping our consumer. After this call stream inside the `run` function will receive only already fetched records and after that finish.
+12. Waiting until the `run` function finished with some result and resolved `stoppedDeferred`.
+13. Let's add a timeout for our graceful shutdown. This is not absolutely necessary, but if your processing contains many steps, a graceful shutdown may take a while.
+14. When `stoppedDeferred` returns some result, we could somehow handle it. For example, we could handle an error case.
+15. Don't forget to call the `closeConsumer` function.
+
+You may notice, that actual graceful shutdown implementation requires a decent amount of low-level handwork. `stopConsuming` is just a building block for making your own graceful shutdown, not a ready-made solution for all needs. This design is intentional, because different applications may need different graceful shutdown logic. For example, what if your application has multiple consumers? Or some other components in your application may also need to participate in a graceful shutdown somehow? Because of that graceful shutdown with `stopConsuming` considered as a low level and advanced feature.
+
+Also note, that even if you implement a graceful shutdown your application may fall with an error. And in this case, a graceful shutdown will not be invoked. It means that your application should be ready to an _at least once_ semantic even when a graceful shutdown is implemented. Or, if you need an _exactly once_ semantic, consider using [transactions](transactions.md).
 
 [commitrecovery-default]: @API_BASE_URL@/CommitRecovery$.html#Default:fs2.kafka.CommitRecovery
 [committableconsumerrecord]: @API_BASE_URL@/CommittableConsumerRecord.html
