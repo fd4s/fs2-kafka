@@ -9,7 +9,7 @@ Kafka transactions are supported through a [`TransactionalKafkaProducer`][transa
 
 - Use `withIsolationLevel(IsolationLevel.ReadCommitted)` on `ConsumerSettings`.
 
-- Use `transactionalProducerStream` to create a producer with support for transactions.
+- Use `TransactionalKafkaProducer.stream` to create a producer with support for transactions.
 
 - Create `CommittableProducerRecords` and wrap them in `TransactionalProducerRecords`.
 
@@ -40,10 +40,10 @@ object Main extends IOApp {
       )
 
     val stream =
-      transactionalProducerStream[IO]
+      TransactionalKafkaProducer.stream[IO]
         .using(producerSettings)
         .flatMap { producer =>
-          consumerStream[IO]
+          KafkaConsumer.stream[IO]
             .using(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)

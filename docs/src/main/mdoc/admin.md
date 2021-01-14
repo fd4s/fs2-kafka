@@ -42,7 +42,7 @@ Once settings are defined, we can use create an admin client in a `Stream`.
 def kafkaAdminClientStream[F[_]: Concurrent: ContextShift](
   bootstrapServers: String
 ): Stream[F, KafkaAdminClient[F]] =
-  adminClientStream(adminClientSettings[F](bootstrapServers))
+  KafkaAdminClient.stream(adminClientSettings[F](bootstrapServers))
 ```
 
 Alternatively, we can create an admin client in a `Resource` context.
@@ -51,7 +51,7 @@ Alternatively, we can create an admin client in a `Resource` context.
 def kafkaAdminClientResource[F[_]: Concurrent: ContextShift](
   bootstrapServers: String
 ): Resource[F, KafkaAdminClient[F]] =
-  adminClientResource(adminClientSettings[F](bootstrapServers))
+  KafkaAdminClient.resource(adminClientSettings[F](bootstrapServers))
 ```
 
 ## Topics
