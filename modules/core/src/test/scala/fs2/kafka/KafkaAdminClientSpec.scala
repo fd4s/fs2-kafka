@@ -242,7 +242,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       }
     }
 
-    it("should support ACLs-related functionality") {
+    ignore("should support ACLs-related functionality") {
       withKafka(
         Map(
           "authorizer.class.name" -> "kafka.security.auth.SimpleAclAuthorizer",
