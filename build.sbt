@@ -16,7 +16,7 @@ val scala212 = "2.12.10"
 
 val scala213 = "2.13.3"
 
-val scala3 = "3.0.0-M2"
+val scala3 = "3.0.0-M3"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -60,7 +60,6 @@ lazy val vulcan = project
     publishSettings,
     mimaSettings,
     scalaSettings,
-    crossScalaVersions := Seq(scala212, scala213),
     testSettings
   )
   .dependsOn(core)
@@ -202,7 +201,7 @@ lazy val publishSettings =
 
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
-    if (publishArtifact.value) {
+    if (publishArtifact.value && !isDotty.value) {
       Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
     } else Set()
   },
@@ -347,9 +346,7 @@ addCommandsAlias(
   "validate",
   List(
     "+clean",
-    //"coverage",
     "+test",
-    //"coverageReport",
     "+mimaReportBinaryIssues",
     "+scalafmtCheck",
     "scalafmtSbtCheck",
