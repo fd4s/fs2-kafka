@@ -34,7 +34,7 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
     */
   def produce[P](
     records: TransactionalProducerRecords[F, K, V, P]
-  ): F[ProducerResult[K, V, P]]
+  ): F[ProducerResult[P, K, V]]
 }
 
 object TransactionalKafkaProducer {
@@ -61,7 +61,7 @@ object TransactionalKafkaProducer {
           new TransactionalKafkaProducer[F, K, V] {
             override def produce[P](
               records: TransactionalProducerRecords[F, K, V, P]
-            ): F[ProducerResult[K, V, P]] =
+            ): F[ProducerResult[P, K, V]] =
               produceTransaction(records)
                 .map(ProducerResult(_, records.passthrough))
 

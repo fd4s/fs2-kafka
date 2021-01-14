@@ -50,8 +50,8 @@ abstract class KafkaProducer[F[_], K, V] {
     *   but losing the order of produced records.
     */
   def produce[P](
-    records: ProducerRecords[K, V, P]
-  ): F[F[ProducerResult[K, V, P]]]
+    records: ProducerRecords[P, K, V]
+  ): F[F[ProducerResult[P, K, V]]]
 }
 
 object KafkaProducer {
@@ -96,8 +96,8 @@ object KafkaProducer {
   ): KafkaProducer.Metrics[F, K, V] =
     new KafkaProducer.Metrics[F, K, V] {
       override def produce[P](
-        records: ProducerRecords[K, V, P]
-      ): F[F[ProducerResult[K, V, P]]] = {
+        records: ProducerRecords[P, K, V]
+      ): F[F[ProducerResult[P, K, V]]] = {
         withProducer { (producer, _) =>
           records.records
             .traverse(produceRecord(keySerializer, valueSerializer, producer))
@@ -190,7 +190,7 @@ object KafkaProducer {
     */
   def pipe[F[_]: Concurrent: ContextShift, K, V, P](
     settings: ProducerSettings[F, K, V]
-  ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
+  ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
     records => stream(settings).flatMap(pipe(settings, _).apply(records))
 
   /**
@@ -201,7 +201,7 @@ object KafkaProducer {
   def pipe[F[_]: Concurrent, K, V, P](
     settings: ProducerSettings[F, K, V],
     producer: KafkaProducer[F, K, V]
-  ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
+  ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
     _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
 
   private[this] def serializeToBytes[F[_], K, V](
