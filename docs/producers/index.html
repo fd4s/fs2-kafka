@@ -169,7 +169,7 @@
 <span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ProduceExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
     <span class="hljs-keyword">val</span> stream =
-      consumerStream[<span class="hljs-type">IO</span>]
+      <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
         .using(consumerSettings)
         .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
         .flatMap(_.stream)
@@ -179,7 +179,7 @@
           <span class="hljs-keyword">val</span> record = <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, key, value)
           <span class="hljs-type">ProducerRecords</span>.one(record, committable.offset)
         }
-        .through(produce(producerSettings))
+        .through(<span class="hljs-type">KafkaProducer</span>.pipe(producerSettings))
 
     stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
   }
@@ -194,7 +194,7 @@
       <span class="hljs-type">KafkaProducer</span>.stream[<span class="hljs-type">IO</span>]
         .using(producerSettings)
         .flatMap { producer =&gt;
-          consumerStream[<span class="hljs-type">IO</span>]
+          <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
             .using(consumerSettings)
             .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
             .flatMap(_.partitionedStream)
@@ -206,7 +206,7 @@
                   <span class="hljs-keyword">val</span> record = <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, key, value)
                   <span class="hljs-type">ProducerRecords</span>.one(record, committable.offset)
                 }
-                .through(produce(producerSettings, producer))
+                .through(<span class="hljs-type">KafkaProducer</span>.pipe(producerSettings, producer))
             }
             .parJoinUnbounded
         }
@@ -222,7 +222,7 @@
       <span class="hljs-type">KafkaProducer</span>.stream[<span class="hljs-type">IO</span>]
         .using(producerSettings)
         .flatMap { producer =&gt;
-          consumerStream[<span class="hljs-type">IO</span>]
+          <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
             .using(consumerSettings)
             .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
             .flatMap(_.stream)
@@ -250,7 +250,7 @@
       <span class="hljs-type">KafkaProducer</span>.stream[<span class="hljs-type">IO</span>]
         .using(producerSettings)
         .flatMap { producer =&gt;
-          consumerStream[<span class="hljs-type">IO</span>]
+          <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
             .using(consumerSettings)
             .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
             .flatMap(_.stream)

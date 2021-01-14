@@ -58,7 +58,7 @@
 <ul>
 <li><p>Create a <code>TransactionalProducerSettings</code> specifying the transactional ID.</p></li>
 <li><p>Use <code>withIsolationLevel(IsolationLevel.ReadCommitted)</code> on <code>ConsumerSettings</code>.</p></li>
-<li><p>Use <code>transactionalProducerStream</code> to create a producer with support for transactions.</p></li>
+<li><p>Use <code>TransactionalKafkaProducer.stream</code> to create a producer with support for transactions.</p></li>
 <li><p>Create <code>CommittableProducerRecords</code> and wrap them in <code>TransactionalProducerRecords</code>.</p></li>
 </ul>
 <p>Following is an example where transactions are used to consume, process, produce, and commit.</p>
@@ -86,10 +86,10 @@
       )
 
     <span class="hljs-keyword">val</span> stream =
-      transactionalProducerStream[<span class="hljs-type">IO</span>]
+      <span class="hljs-type">TransactionalKafkaProducer</span>.stream[<span class="hljs-type">IO</span>]
         .using(producerSettings)
         .flatMap { producer =&gt;
-          consumerStream[<span class="hljs-type">IO</span>]
+          <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
             .using(consumerSettings)
             .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
             .flatMap(_.stream)
