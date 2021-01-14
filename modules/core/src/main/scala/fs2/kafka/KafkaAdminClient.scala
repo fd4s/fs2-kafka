@@ -8,6 +8,7 @@ package fs2.kafka
 
 import cats.Foldable
 import cats.effect._
+import fs2.Stream
 import fs2.kafka.KafkaAdminClient._
 import fs2.kafka.internal.WithAdminClient
 import fs2.kafka.internal.converters.collection._
@@ -23,7 +24,7 @@ import org.apache.kafka.common.{Node, TopicPartition}
   * describe queries about topics, consumer groups, offsets, and other entities
   * related to Kafka.<br>
   * <br>
-  * Use [[adminClientResource]] or [[adminClientStream]] to create an instance.
+  * Use [[KafkaAdminClient.resource]] or [[KafkaAdminClient.stream]] to create an instance.
   */
 sealed abstract class KafkaAdminClient[F[_]] {
 
@@ -474,7 +475,12 @@ object KafkaAdminClient {
   ): F[Unit] =
     withAdminClient(_.deleteConsumerGroupOffsets(groupId, partitions.asJava).all().void)
 
-  private[kafka] def resource[F[_]](
+  /**
+    * Creates a new [[KafkaAdminClient]] in the `Resource` context,
+    * using the specified [[AdminClientSettings]]. If working in a
+    * `Stream` context, you might prefer [[KafkaAdminClient.stream]].
+    */
+  def resource[F[_]](
     settings: AdminClientSettings[F]
   )(
     implicit F: Concurrent[F],
@@ -561,4 +567,16 @@ object KafkaAdminClient {
           "KafkaAdminClient$" + System.identityHashCode(this)
       }
     }
+
+  /**
+    * Creates a new [[KafkaAdminClient]] in the `Stream` context,
+    * using the specified [[AdminClientSettings]]. If you're not
+    * working in a `Stream` context, you might instead prefer to
+    * use the [[KafkaAdminClient.resource]].
+    */
+  def stream[F[_]](settings: AdminClientSettings[F])(
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
+  ): Stream[F, KafkaAdminClient[F]] =
+    Stream.resource(KafkaAdminClient.resource(settings))
 }

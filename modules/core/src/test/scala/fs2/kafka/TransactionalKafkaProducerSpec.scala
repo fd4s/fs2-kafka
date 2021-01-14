@@ -18,6 +18,24 @@ import scala.concurrent.duration._
 
 class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
+  describe("creating transactional producers") {
+    it("should support defined syntax") {
+      val settings = TransactionalProducerSettings("id", ProducerSettings[IO, String, String])
+
+      TransactionalKafkaProducer.resource[IO, String, String](settings)
+      TransactionalKafkaProducer.resource[IO].toString should startWith(
+        "TransactionalProducerResource$"
+      )
+      TransactionalKafkaProducer.resource[IO].using(settings)
+
+      TransactionalKafkaProducer.stream[IO, String, String](settings)
+      TransactionalKafkaProducer.stream[IO].toString should startWith(
+        "TransactionalProducerStream$"
+      )
+      TransactionalKafkaProducer.stream[IO].using(settings)
+    }
+  }
+
   it("should be able to produce single records in a transaction") {
     withKafka { (config, topic) =>
       createCustomTopic(topic, partitions = 3)
@@ -25,7 +43,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
       val produced =
         (for {
-          producer <- transactionalProducerStream(
+          producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
               "id",
               producerSettings[IO](config)
@@ -82,7 +100,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
       val produced =
         (for {
-          producer <- transactionalProducerStream(
+          producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
               "id",
               producerSettings[IO](config)
@@ -145,7 +163,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
       val produced =
         (for {
-          producer <- transactionalProducerStream(
+          producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
               "id",
               producerSettings[IO](config)
@@ -218,7 +236,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
       val produced =
         (for {
-          producer <- transactionalProducerStream(
+          producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
               "id",
               producerSettings[IO](config)
