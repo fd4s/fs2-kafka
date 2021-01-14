@@ -4,16 +4,20 @@ val catsVersion = "2.3.1"
 
 val confluentVersion = "6.0.1"
 
-val embeddedKafkaVersion = "2.6.0"
 
 val fs2Version = "2.5.0"
 
-val kafkaVersion = "2.6.0"
+val kafkaVersion = "2.7.0"
 
 val vulcanVersion = "1.3.0"
 
-val scala212 = "2.12.10"
-
+/*
+  scala 2.12 and 2.13 patch versions need to exactly match those used for
+  building the Kafka version used in Embedded Kafka.
+  See https://github.com/embeddedkafka/embedded-kafka#important-known-limitation
+*/
+val embeddedKafkaVersion = "2.7.0"
+val scala212 = "2.12.12"
 val scala213 = "2.13.3"
 
 val scala3 = "3.0.0-M3"
