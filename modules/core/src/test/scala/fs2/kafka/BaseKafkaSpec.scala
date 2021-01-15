@@ -79,7 +79,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
     val adminClient = AdminClient.create(
       Map[String, Object](
         AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers,
-        AdminClientConfig.CLIENT_ID_CONFIG -> "embedded-kafka-admin-client",
+        AdminClientConfig.CLIENT_ID_CONFIG -> "test-kafka-admin-client",
         AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG -> "10000",
         AdminClientConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG -> "10000"
       ).asJava
@@ -102,7 +102,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
     Map(
       ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers,
       ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
-      ConsumerConfig.GROUP_ID_CONFIG -> "group",
+      ConsumerConfig.GROUP_ID_CONFIG -> "test-group-id",
       ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"
     )
 
@@ -215,7 +215,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
       }
       if (messagesRead < number) {
         throw new TimeoutException(
-          s"Unable to retrieve $number message(s) from Kafka in $timeout"
+          s"Unable to retrieve $number message(s) from Kafka in $timeout - got $messagesRead"
         )
       }
       messagesBuffers.view.map { case (k, v) => (k, v.toList) }.toMap
