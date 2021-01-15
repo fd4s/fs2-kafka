@@ -18,7 +18,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
 
   describe("KafkaAdminClient") {
     it("should support consumer groups-related functionalities") {
-      withKafka { topic =>
+      withTopic { topic =>
         commonSetup(topic)
 
         KafkaAdminClient
@@ -107,7 +107,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
 
     it("should support cluster-related functionalities") {
-      withKafka { topic =>
+      withTopic { topic =>
         commonSetup(topic)
 
         KafkaAdminClient
@@ -130,7 +130,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
 
     it("should support config-related functionalities") {
-      withKafka { topic =>
+      withTopic { topic =>
         commonSetup(topic)
 
         KafkaAdminClient
@@ -156,7 +156,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
 
     it("should support topic-related functionalities") {
-      withKafka { topic =>
+      withTopic { topic =>
         commonSetup(topic)
 
         KafkaAdminClient
@@ -232,7 +232,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
 
     it("should support ACLs-related functionality") {
-      withKafka(
+      withTopic(
         topic => {
           commonSetup(topic)
 
@@ -285,7 +285,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
 
     it("should support misc defined functionality") {
-      withKafka { topic =>
+      withTopic { topic =>
         commonSetup(topic)
 
         KafkaAdminClient

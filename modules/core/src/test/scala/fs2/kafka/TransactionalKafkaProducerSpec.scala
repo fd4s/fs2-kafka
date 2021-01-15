@@ -36,7 +36,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 
   it("should be able to produce single records in a transaction") {
-    withKafka { topic =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 to 10).map(n => s"key-$n" -> s"value-$n")
 
@@ -89,7 +89,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 
   it("should be able to produce multiple records in a transaction") {
-    withKafka { topic =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce =
         Chunk.seq((0 to 100).toList.map(n => s"key-$n" -> s"value-$n"))
@@ -153,7 +153,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 
   it("should abort transactions if committing offsets fails") {
-    withKafka { topic =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n").toList
       val toPassthrough = "passthrough"
@@ -229,7 +229,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 
   it("should use user-specified transaction timeouts") {
-    withKafka { topic =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n")
 

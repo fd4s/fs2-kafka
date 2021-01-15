@@ -22,7 +22,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
   }
 
   it("should be able to produce records with single") {
-    withKafka { (topic) =>
+    withTopic { (topic) =>
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 until 100).map(n => s"key-$n" -> s"value->$n")
 
@@ -52,7 +52,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
   }
 
   it("should be able to produce records with multiple") {
-    withKafka { topic =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 until 10).map(n => s"key-$n" -> s"value->$n").toList
       val toPassthrough = "passthrough"
@@ -83,7 +83,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
   }
 
   it("should be able to produce zero records with multiple") {
-    withKafka { topic =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val passthrough = "passthrough"
 
@@ -99,7 +99,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
   }
 
   it("should be able to produce zero records with passthrough") {
-    withKafka { topic =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val passthrough = "passthrough"
 
@@ -116,7 +116,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
   }
 
   it("should get metrics") {
-    withKafka { topic =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
 
       val info =
