@@ -37,7 +37,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
   final val consumerPollingTimeout: FiniteDuration = 1.second
   protected val producerPublishTimeout: FiniteDuration = 10.seconds
 
-  override val container = new KafkaContainer(Some("6.0.1"))
+  override val container = new KafkaContainer()
     .configure { container =>
       container
         .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
