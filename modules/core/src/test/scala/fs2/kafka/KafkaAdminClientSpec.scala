@@ -14,7 +14,7 @@ import org.apache.kafka.common.resource.{
   ResourceType
 }
 
-final class KafkaAdminClientSpec extends BaseKafkaSpec2 {
+final class KafkaAdminClientSpec extends BaseKafkaSpec {
 
   describe("KafkaAdminClient") {
     it("should support consumer groups-related functionalities") {

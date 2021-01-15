@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.implicits._
 import fs2.{Chunk, Stream}
 
-final class KafkaProducerSpec extends BaseKafkaSpec2 {
+final class KafkaProducerSpec extends BaseKafkaSpec {
 
   describe("creating producers") {
     it("should support defined syntax") {

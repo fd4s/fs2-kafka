@@ -5,7 +5,7 @@ import cats.implicits._
 import fs2.Stream
 import org.scalactic.TypeCheckedTripleEquals
 
-final class KafkaProducerConnectionSpec extends BaseKafkaSpec2 with TypeCheckedTripleEquals {
+final class KafkaProducerConnectionSpec extends BaseKafkaSpec with TypeCheckedTripleEquals {
   it("should allow instantiating multiple producers with different serializers") {
     withKafka { (topic) =>
       createCustomTopic(topic, partitions = 3)

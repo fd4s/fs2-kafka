@@ -15,7 +15,7 @@ import org.scalatest.Assertion
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
-final class KafkaConsumerSpec extends BaseKafkaSpec2 {
+final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   type Consumer = KafkaConsumer[IO, String, String]
 
