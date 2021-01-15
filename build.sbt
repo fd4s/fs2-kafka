@@ -4,8 +4,6 @@ val catsVersion = "2.3.1"
 
 val confluentVersion = "6.0.1"
 
-val embeddedKafkaVersion = "2.6.0"
-
 val fs2Version = "2.5.0"
 
 val kafkaVersion = "2.6.0"
@@ -81,7 +79,6 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
     "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
     "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",

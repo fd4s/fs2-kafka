@@ -17,7 +17,6 @@ import org.apache.kafka.clients.admin.NewTopic
 import scala.util.Try
 import org.apache.kafka.clients.admin.AdminClient
 
-import net.manub.embeddedkafka.{KafkaUnavailableException, duration2JavaDuration}
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata, OffsetResetStrategy}
 import org.apache.kafka.common.{KafkaException, TopicPartition}
 import scala.collection.mutable.ListBuffer
@@ -237,7 +236,7 @@ abstract class BaseKafkaSpecBase extends BaseAsyncSpec {
 
       while (messagesRead < number && System.nanoTime < timeoutNanoTime) {
         val recordIter =
-          consumer.poll(duration2JavaDuration(consumerPollingTimeout)).iterator
+          consumer.poll(java.time.Duration.ofMillis(consumerPollingTimeout.toMillis)).iterator
         if (resetTimeoutOnEachMessage && recordIter.hasNext) {
           timeoutNanoTime = System.nanoTime + timeout.toNanos
         }
@@ -260,7 +259,7 @@ abstract class BaseKafkaSpecBase extends BaseAsyncSpec {
 
     consumer.close()
     messages.recover {
-      case ex: KafkaException => throw new KafkaUnavailableException(ex)
+      case ex: KafkaException => throw new Exception("Kafka unavailable", ex)
     }.get
   }
 
@@ -298,7 +297,7 @@ abstract class BaseKafkaSpecBase extends BaseAsyncSpec {
     producer.close()
 
     val _ = records.collectFirst {
-      case Failure(ex) => throw new KafkaUnavailableException(ex)
+      case Failure(ex) => throw new Exception("Kafka unavialable", ex)
     }
   }
 
@@ -327,7 +326,7 @@ abstract class BaseKafkaSpecBase extends BaseAsyncSpec {
     kafkaProducer.close()
 
     sendResult match {
-      case Failure(ex) => throw new KafkaUnavailableException(ex)
+      case Failure(ex) => throw new Exception("Kafka unavailable", ex)
       case _           => // OK
     }
   }
