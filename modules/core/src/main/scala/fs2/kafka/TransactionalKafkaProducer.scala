@@ -33,7 +33,7 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
     * transaction completes successfully.
     */
   def produce[P](
-    records: TransactionalProducerRecords[F, K, V, P]
+    records: TransactionalProducerRecords[F, P, K, V]
   ): F[ProducerResult[P, K, V]]
 }
 
@@ -60,13 +60,13 @@ object TransactionalKafkaProducer {
         WithProducer(settings).map { withProducer =>
           new TransactionalKafkaProducer[F, K, V] {
             override def produce[P](
-              records: TransactionalProducerRecords[F, K, V, P]
+              records: TransactionalProducerRecords[F, P, K, V]
             ): F[ProducerResult[P, K, V]] =
               produceTransaction(records)
                 .map(ProducerResult(_, records.passthrough))
 
             private[this] def produceTransaction[P](
-              records: TransactionalProducerRecords[F, K, V, P]
+              records: TransactionalProducerRecords[F, P, K, V]
             ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
               if (records.records.isEmpty) F.pure(Chunk.empty)
               else {
