@@ -62,7 +62,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
               _ <- IO {
                 adminClient
                   .listConsumerGroupOffsets(consumerGroupId)
-                  .toString shouldBe "ListConsumerGroupOffsets(groupId = group)"
+                  .toString shouldBe "ListConsumerGroupOffsets(groupId = test-group-id)"
               }
               consumerGroupOffsetsPartitions <- consumerGroupIds.parTraverse { groupId =>
                 adminClient
@@ -76,7 +76,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                 adminClient
                   .listConsumerGroupOffsets(consumerGroupId)
                   .forPartitions(List(new TopicPartition("topic", 0)))
-                  .toString shouldBe "ListConsumerGroupOffsetsForPartitions(groupId = group, partitions = List(topic-0))"
+                  .toString shouldBe "ListConsumerGroupOffsetsForPartitions(groupId = test-group-id, partitions = List(topic-0))"
               }
               partition0 = new TopicPartition(topic, 0)
               updatedOffset = new OffsetAndMetadata(0)
