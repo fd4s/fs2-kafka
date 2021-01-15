@@ -175,7 +175,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
   def consumeNumberKeyedMessagesFromTopics[K, V](
     topics: Set[String],
     number: Int,
-    timeout: Duration = 5.seconds,
+    timeout: Duration = 10.seconds,
     resetTimeoutOnEachMessage: Boolean = true,
     customProperties: Map[String, Object] = Map.empty
   )(
