@@ -310,15 +310,12 @@ def addCommandsAlias(name: String, values: List[String]) =
 addCommandsAlias(
   "validate",
   List(
-    "+clean",
-    "+coverage",
-    "+test",
-    "+coverageReport",
-    "+mimaReportBinaryIssues",
-    "+scalafmtCheck",
+    "clean",
+    "test",
+    "mimaReportBinaryIssues",
+    "scalafmtCheck",
     "scalafmtSbtCheck",
-    "+headerCheck",
-    "+doc",
-    "docs/run"
+    "headerCheck",
+    "doc"
   )
 )
