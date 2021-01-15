@@ -13,10 +13,9 @@ import org.apache.kafka.common.resource.{
   ResourcePatternFilter,
   ResourceType
 }
-import com.dimafeng.testcontainers.KafkaContainer
+import com.dimafeng.testcontainers.{KafkaContainer, ForEachTestContainer}
 
-
-final class KafkaAdminClientSpec extends BaseKafkaSpec2 {
+final class KafkaAdminClientSpec extends BaseKafkaSpecBase with ForEachTestContainer {
 
   override val container = new KafkaContainer(Some("6.0.1"))
     .configure { container =>
@@ -28,20 +27,10 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec2 {
         )
         .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
         .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.auth.SimpleAclAuthorizer")
-    .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
+        .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
 
       ()
     }
-
-  describe("creating admin clients") {
-    it("should support defined syntax") {
-      val settings =
-        AdminClientSettings[IO]
-
-      KafkaAdminClient.resource[IO](settings)
-      KafkaAdminClient.stream[IO](settings)
-    }
-  }
 
   describe("KafkaAdminClient") {
     it("should support consumer groups-related functionalities") {
@@ -347,4 +336,5 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec2 {
       .lastOrError
       .unsafeRunSync()
   }
+
 }

@@ -5,8 +5,7 @@ import fs2.kafka.internal.converters.collection._
 import java.util.UUID
 
 import scala.util.Failure
-
-import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}
+import com.dimafeng.testcontainers.{KafkaContainer, ForAllTestContainer}
 
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer}
@@ -31,14 +30,7 @@ import scala.collection.mutable.ListBuffer
 import java.util.concurrent.TimeoutException
 import org.apache.kafka.common.serialization.StringSerializer
 
-abstract class BaseKafkaSpec2 extends BaseAsyncSpec with ForAllTestContainer {
-
-  val zkSessionTimeoutMs = 10000
-  val zkConnectionTimeoutMs = 10000
-  protected val topicCreationTimeout: FiniteDuration = 2.seconds
-  protected val topicDeletionTimeout: FiniteDuration = 2.seconds
-  protected val adminClientCloseTimeout: FiniteDuration = 2.seconds
-  final val transactionTimeoutInterval: FiniteDuration = 1.second
+abstract class BaseKafkaSpec2 extends BaseKafkaSpecBase with ForAllTestContainer {
 
   override val container = new KafkaContainer(Some("6.0.1"))
     .configure { container =>
@@ -52,6 +44,18 @@ abstract class BaseKafkaSpec2 extends BaseAsyncSpec with ForAllTestContainer {
 
       ()
     }
+}
+
+abstract class BaseKafkaSpecBase extends BaseAsyncSpec {
+
+  def container: KafkaContainer
+
+  val zkSessionTimeoutMs = 10000
+  val zkConnectionTimeoutMs = 10000
+  protected val topicCreationTimeout: FiniteDuration = 2.seconds
+  protected val topicDeletionTimeout: FiniteDuration = 2.seconds
+  protected val adminClientCloseTimeout: FiniteDuration = 2.seconds
+  final val transactionTimeoutInterval: FiniteDuration = 1.second
 
   protected val consumerPollingTimeout: FiniteDuration = 1.second
 
@@ -102,6 +106,9 @@ abstract class BaseKafkaSpec2 extends BaseAsyncSpec with ForAllTestContainer {
     res
   }
 
+  final def adminClientProperties: Map[String, String] =
+    Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers)
+
   final def adminClientSettings: AdminClientSettings[IO] =
     AdminClientSettings[IO]
       .withProperties(adminClientProperties)
@@ -113,9 +120,6 @@ abstract class BaseKafkaSpec2 extends BaseAsyncSpec with ForAllTestContainer {
 
   final def producerSettings[F[_]](implicit F: Sync[F]): ProducerSettings[F, String, String] =
     ProducerSettings[F, String, String].withProperties(defaultProducerConf)
-
-  final def adminClientProperties: Map[String, String] =
-    Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers)
 
   final def consumerProperties: Map[String, String] =
     Map(
