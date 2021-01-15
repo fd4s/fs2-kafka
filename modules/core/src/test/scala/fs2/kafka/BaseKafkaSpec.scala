@@ -31,6 +31,12 @@ import org.apache.kafka.common.serialization.StringDeserializer
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
 
+  final val adminClientCloseTimeout: FiniteDuration = 2.seconds
+  final val transactionTimeoutInterval: FiniteDuration = 1.second
+
+  final val consumerPollingTimeout: FiniteDuration = 1.second
+  protected val producerPublishTimeout: FiniteDuration = 10.seconds
+
   override val container = new KafkaContainer(Some("6.0.1"))
     .configure { container =>
       container
@@ -45,12 +51,6 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
 
       ()
     }
-
-  final val adminClientCloseTimeout: FiniteDuration = 2.seconds
-  final val transactionTimeoutInterval: FiniteDuration = 1.second
-
-  final val consumerPollingTimeout: FiniteDuration = 1.second
-  protected val producerPublishTimeout: FiniteDuration = 10.seconds
 
   implicit final val stringSerializer: KafkaSerializer[String] = new StringSerializer
 
