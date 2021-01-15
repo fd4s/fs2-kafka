@@ -4,23 +4,21 @@ import cats.effect.{IO, Sync}
 import fs2.kafka.internal.converters.collection._
 import java.util.UUID
 
+import scala.util.Failure
+
 import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}
 
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer}
 import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import org.apache.kafka.common.serialization.{ByteArrayDeserializer}
 
 import scala.concurrent.duration._
 import org.apache.kafka.clients.admin.NewTopic
 import scala.util.Try
 import org.apache.kafka.clients.admin.AdminClient
 
-import net.manub.embeddedkafka.{
-  EmbeddedKafkaConfig,
-  KafkaUnavailableException,
-  duration2JavaDuration
-}
+import net.manub.embeddedkafka.{KafkaUnavailableException, duration2JavaDuration}
 import org.apache.kafka.clients.consumer.{
   ConsumerConfig,
   KafkaConsumer,
@@ -31,6 +29,7 @@ import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.{KafkaException, TopicPartition}
 import scala.collection.mutable.ListBuffer
 import java.util.concurrent.TimeoutException
+import org.apache.kafka.common.serialization.StringSerializer
 
 abstract class BaseKafkaSpec2 extends BaseAsyncSpec with ForAllTestContainer {
 
@@ -47,9 +46,10 @@ abstract class BaseKafkaSpec2 extends BaseAsyncSpec with ForAllTestContainer {
         .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
         .withEnv(
           "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
-          transactionTimeoutInterval.toMillis.toString)
-          .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
-        
+          transactionTimeoutInterval.toMillis.toString
+        )
+        .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+
       ()
     }
 
@@ -102,34 +102,30 @@ abstract class BaseKafkaSpec2 extends BaseAsyncSpec with ForAllTestContainer {
     res
   }
 
-  final def adminClientSettings(
-    config: EmbeddedKafkaConfig
-  ): AdminClientSettings[IO] =
+  final def adminClientSettings: AdminClientSettings[IO] =
     AdminClientSettings[IO]
-      .withProperties(adminClientProperties(config))
+      .withProperties(adminClientProperties)
 
-  final def consumerSettings[F[_]](
-    config: EmbeddedKafkaConfig
-  )(implicit F: Sync[F]): ConsumerSettings[F, String, String] =
+  final def consumerSettings[F[_]](implicit F: Sync[F]): ConsumerSettings[F, String, String] =
     ConsumerSettings[F, String, String]
-      .withProperties(consumerProperties(config))
+      .withProperties(consumerProperties)
       .withRecordMetadata(_.timestamp.toString)
 
   final def producerSettings[F[_]](implicit F: Sync[F]): ProducerSettings[F, String, String] =
     ProducerSettings[F, String, String].withProperties(defaultProducerConf)
 
-  final def adminClientProperties(config: EmbeddedKafkaConfig): Map[String, String] =
-    Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}")
+  final def adminClientProperties: Map[String, String] =
+    Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers)
 
-  final def consumerProperties(config: EmbeddedKafkaConfig): Map[String, String] =
+  final def consumerProperties: Map[String, String] =
     Map(
-      ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}",
+      ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers,
       ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
       ConsumerConfig.GROUP_ID_CONFIG -> "group"
     )
 
-  final def producerProperties(config: EmbeddedKafkaConfig): Map[String, String] =
-    Map(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> s"localhost:${config.kafkaPort}")
+  final def producerProperties: Map[String, String] =
+    Map(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers)
 
   // final def withKafka[A](props: Map[String, String], f: (EmbeddedKafkaConfig, String) => A): A =
   //   withRunningKafkaOnFoundPort(
@@ -268,10 +264,71 @@ abstract class BaseKafkaSpec2 extends BaseAsyncSpec with ForAllTestContainer {
     }.get
   }
 
+  protected val producerPublishTimeout: FiniteDuration = 10.seconds
+
   private def defaultProducerConf =
     Map[String, String](
       ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers,
       ProducerConfig.MAX_BLOCK_MS_CONFIG -> 10000.toString,
       ProducerConfig.RETRY_BACKOFF_MS_CONFIG -> 1000.toString
     )
+
+  def publishToKafka[K, T](topic: String, messages: Seq[(K, T)])(
+    implicit keySerializer: org.apache.kafka.common.serialization.Serializer[K],
+    serializer: org.apache.kafka.common.serialization.Serializer[T]
+  ): Unit = {
+    val producer =
+      new org.apache.kafka.clients.producer.KafkaProducer(
+        defaultProducerConf.asInstanceOf[Map[String, Object]].asJava,
+        keySerializer,
+        serializer
+      )
+
+    val tupleToRecord =
+      (new org.apache.kafka.clients.producer.ProducerRecord(topic, _: K, _: T)).tupled
+
+    val futureSend = tupleToRecord andThen producer.send
+
+    val futures = messages.map(futureSend)
+
+    // Assure all messages sent before returning, and fail on first send error
+    val records =
+      futures.map(f => Try(f.get(producerPublishTimeout.length, producerPublishTimeout.unit)))
+
+    producer.close()
+
+    val _ = records.collectFirst {
+      case Failure(ex) => throw new KafkaUnavailableException(ex)
+    }
+  }
+
+  def publishToKafka[T](
+    topic: String,
+    message: T
+  )(implicit serializer: org.apache.kafka.common.serialization.Serializer[T]): Unit =
+    publishToKafka(
+      new org.apache.kafka.clients.producer.KafkaProducer(
+        defaultProducerConf.asInstanceOf[Map[String, Object]].asJava,
+        new StringSerializer(),
+        serializer
+      ),
+      new org.apache.kafka.clients.producer.ProducerRecord[String, T](topic, message)
+    )
+
+  private def publishToKafka[K, T](
+    kafkaProducer: org.apache.kafka.clients.producer.KafkaProducer[K, T],
+    record: org.apache.kafka.clients.producer.ProducerRecord[K, T]
+  ): Unit = {
+    val sendFuture = kafkaProducer.send(record)
+    val sendResult = Try {
+      sendFuture.get(producerPublishTimeout.length, producerPublishTimeout.unit)
+    }
+
+    kafkaProducer.close()
+
+    sendResult match {
+      case Failure(ex) => throw new KafkaUnavailableException(ex)
+      case _           => // OK
+    }
+  }
 }

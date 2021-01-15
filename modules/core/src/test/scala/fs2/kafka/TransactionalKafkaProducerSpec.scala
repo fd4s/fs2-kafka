@@ -11,7 +11,7 @@ import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.ProducerFencedException
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.scalatest.{EitherValues, OptionValues}
+import org.scalatest.EitherValues
 
 import scala.concurrent.duration._
 
@@ -37,7 +37,6 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec2 with EitherValues {
 
   it("should be able to produce single records in a transaction") {
     withKafka { topic =>
-
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 to 10).map(n => s"key-$n" -> s"value-$n")
 
@@ -78,7 +77,11 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec2 with EitherValues {
       produced should contain theSameElementsAs toProduce
 
       val consumed = {
-        consumeNumberKeyedMessagesFrom[String, String](topic, produced.size, customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed"))
+        consumeNumberKeyedMessagesFrom[String, String](
+          topic,
+          produced.size,
+          customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+        )
       }
 
       consumed should contain theSameElementsAs produced.toList
@@ -213,7 +216,12 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec2 with EitherValues {
       produced shouldBe Left(error)
 
       val consumedOrError = {
-        Either.catchNonFatal(consumeFirstKeyedMessageFrom[String, String](topic, customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")))
+        Either.catchNonFatal(
+          consumeFirstKeyedMessageFrom[String, String](
+            topic,
+            customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+          )
+        )
       }
 
       consumedOrError.isLeft shouldBe true
@@ -266,7 +274,12 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec2 with EitherValues {
       produced.left.value shouldBe a[ProducerFencedException]
 
       val consumedOrError = {
-        Either.catchNonFatal(consumeFirstKeyedMessageFrom[String, String](topic, customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")))
+        Either.catchNonFatal(
+          consumeFirstKeyedMessageFrom[String, String](
+            topic,
+            customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+          )
+        )
       }
 
       consumedOrError.isLeft shouldBe true
