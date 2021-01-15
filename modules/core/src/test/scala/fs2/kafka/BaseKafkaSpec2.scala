@@ -18,13 +18,7 @@ import scala.util.Try
 import org.apache.kafka.clients.admin.AdminClient
 
 import net.manub.embeddedkafka.{KafkaUnavailableException, duration2JavaDuration}
-import org.apache.kafka.clients.consumer.{
-  ConsumerConfig,
-  KafkaConsumer,
-  OffsetAndMetadata,
-  OffsetResetStrategy
-}
-import org.apache.kafka.common.serialization.Deserializer
+import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata, OffsetResetStrategy}
 import org.apache.kafka.common.{KafkaException, TopicPartition}
 import scala.collection.mutable.ListBuffer
 import java.util.concurrent.TimeoutException
@@ -182,8 +176,8 @@ abstract class BaseKafkaSpecBase extends BaseAsyncSpec {
     customProperties: Map[String, Object] = Map.empty
   )(
     implicit
-    keyDeserializer: Deserializer[K],
-    valueDeserializer: Deserializer[V]
+    keyDeserializer: KafkaDeserializer[K],
+    valueDeserializer: KafkaDeserializer[V]
   ): (K, V) =
     consumeNumberKeyedMessagesFrom[K, V](topic, 1, autoCommit, customProperties = customProperties)(
       keyDeserializer,
@@ -197,8 +191,8 @@ abstract class BaseKafkaSpecBase extends BaseAsyncSpec {
     customProperties: Map[String, Object] = Map.empty
   )(
     implicit
-    keyDeserializer: Deserializer[K],
-    valueDeserializer: Deserializer[V]
+    keyDeserializer: KafkaDeserializer[K],
+    valueDeserializer: KafkaDeserializer[V]
   ): List[(K, V)] =
     consumeNumberKeyedMessagesFromTopics(
       Set(topic),
@@ -219,15 +213,15 @@ abstract class BaseKafkaSpecBase extends BaseAsyncSpec {
     customProperties: Map[String, Object] = Map.empty
   )(
     implicit
-    keyDeserializer: Deserializer[K],
-    valueDeserializer: Deserializer[V]
+    keyDeserializer: KafkaDeserializer[K],
+    valueDeserializer: KafkaDeserializer[V]
   ): Map[String, List[(K, V)]] = {
     val consumerProperties = defaultConsumerConfig ++ customProperties ++ Map[String, Object](
       ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> autoCommit.toString
     )
 
     var timeoutNanoTime = System.nanoTime + timeout.toNanos
-    val consumer = new KafkaConsumer[K, V](
+    val consumer = new org.apache.kafka.clients.consumer.KafkaConsumer[K, V](
       consumerProperties.asJava,
       keyDeserializer,
       valueDeserializer
@@ -259,7 +253,7 @@ abstract class BaseKafkaSpecBase extends BaseAsyncSpec {
           s"Unable to retrieve $number message(s) from Kafka in $timeout"
         )
       }
-      messagesBuffers.view.mapValues(_.toList).toMap
+      messagesBuffers.view.map { case (k, v) => (k, v.toList) }.toMap
     }
 
     consumer.close()

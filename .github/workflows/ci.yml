@@ -14,8 +14,6 @@ jobs:
         fetch-depth: 0
     - uses: olafurpg/setup-scala@v10
     - uses: coursier/cache-action@v5
-    - name: setup-docker
-      uses: docker-practice/actions-setup-docker@v1
     - run: sbt ++${{ matrix.scala }} validate
     - if: matrix.scala == '2.13.3'
       run: sbt "++${{ matrix.scala }} docs/run"
