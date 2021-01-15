@@ -91,14 +91,14 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
     res
   }
 
-  final lazy val adminClientProperties: Map[String, String] =
+  final def adminClientProperties: Map[String, String] =
     Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers)
 
-  final lazy val adminClientSettings: AdminClientSettings[IO] =
+  final def adminClientSettings: AdminClientSettings[IO] =
     AdminClientSettings[IO]
       .withProperties(adminClientProperties)
 
-  final lazy val defaultConsumerProperties: Map[String, String] =
+  final def defaultConsumerProperties: Map[String, String] =
     Map(
       ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers,
       ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
