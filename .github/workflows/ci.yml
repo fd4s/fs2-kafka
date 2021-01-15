@@ -6,7 +6,7 @@ jobs:
   validate:
     strategy:
       matrix:
-        scala: [2.13.3, 2.12.12]
+        scala: [2.13.3, 2.12.10]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
