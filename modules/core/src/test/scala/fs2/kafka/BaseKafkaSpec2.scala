@@ -5,7 +5,7 @@ import fs2.kafka.internal.converters.collection._
 import java.util.UUID
 
 import scala.util.Failure
-import com.dimafeng.testcontainers.{KafkaContainer, ForAllTestContainer}
+import com.dimafeng.testcontainers.{KafkaContainer, ForEachTestContainer}
 
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer}
@@ -24,7 +24,7 @@ import scala.collection.mutable.ListBuffer
 import java.util.concurrent.TimeoutException
 import org.apache.kafka.common.serialization.StringSerializer
 
-abstract class BaseKafkaSpec2 extends BaseKafkaSpecBase with ForAllTestContainer {
+abstract class BaseKafkaSpec2 extends BaseKafkaSpecBase with ForEachTestContainer {
 
   override val container = new KafkaContainer(Some("6.0.1"))
     .configure { container =>
@@ -35,6 +35,8 @@ abstract class BaseKafkaSpec2 extends BaseKafkaSpecBase with ForAllTestContainer
           transactionTimeoutInterval.toMillis.toString
         )
         .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.auth.SimpleAclAuthorizer")
+        .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
 
       ()
     }

@@ -13,24 +13,8 @@ import org.apache.kafka.common.resource.{
   ResourcePatternFilter,
   ResourceType
 }
-import com.dimafeng.testcontainers.{KafkaContainer, ForEachTestContainer}
 
-final class KafkaAdminClientSpec extends BaseKafkaSpecBase with ForEachTestContainer {
-
-  override val container = new KafkaContainer(Some("6.0.1"))
-    .configure { container =>
-      container
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
-        .withEnv(
-          "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
-          transactionTimeoutInterval.toMillis.toString
-        )
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
-        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.auth.SimpleAclAuthorizer")
-        .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
-
-      ()
-    }
+final class KafkaAdminClientSpec extends BaseKafkaSpec2 {
 
   describe("KafkaAdminClient") {
     it("should support consumer groups-related functionalities") {
