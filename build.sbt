@@ -12,7 +12,7 @@ val kafkaVersion = "2.6.0"
 
 val vulcanVersion = "1.3.0"
 
-val scala212 = "2.12.10"
+val scala212 = "2.12.12"
 
 val scala213 = "2.13.3"
 
@@ -310,15 +310,12 @@ def addCommandsAlias(name: String, values: List[String]) =
 addCommandsAlias(
   "validate",
   List(
-    "+clean",
-    "+coverage",
-    "+test",
-    "+coverageReport",
-    "+mimaReportBinaryIssues",
-    "+scalafmtCheck",
+    "clean",
+    "test",
+    "mimaReportBinaryIssues",
+    "scalafmtCheck",
     "scalafmtSbtCheck",
-    "+headerCheck",
-    "+doc",
-    "docs/run"
+    "headerCheck",
+    "doc"
   )
 )
