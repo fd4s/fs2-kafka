@@ -2,10 +2,11 @@ name: ci
 on:
   push:
     branches: ['*']
-  pull_request:
-    branches: ['*']
 jobs:
   validate:
+    strategy:
+      matrix:
+        scala: [3.0.0-M3, 2.13.3, 2.12.12]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -14,4 +15,6 @@ jobs:
     - uses: olafurpg/setup-scala@v10
     - uses: coursier/cache-action@v5
     - run: sbt validate
-    - uses: codecov/codecov-action@v1
+    - run: sbt ++${{ matrix.scala }} validate
+    - if: matrix.scala == '2.13.3'
+      run: sbt "++${{ matrix.scala }} docs/run"
