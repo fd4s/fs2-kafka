@@ -2,7 +2,6 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.implicits._
-import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewPartitions, NewTopic}
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
@@ -14,8 +13,25 @@ import org.apache.kafka.common.resource.{
   ResourcePatternFilter,
   ResourceType
 }
+import com.dimafeng.testcontainers.KafkaContainer
 
-final class KafkaAdminClientSpec extends BaseKafkaSpec {
+
+final class KafkaAdminClientSpec extends BaseKafkaSpec2 {
+
+  override val container = new KafkaContainer(Some("6.0.1"))
+    .configure { container =>
+      container
+        .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+        .withEnv(
+          "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
+          transactionTimeoutInterval.toMillis.toString
+        )
+        .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.auth.SimpleAclAuthorizer")
+    .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
+
+      ()
+    }
 
   describe("creating admin clients") {
     it("should support defined syntax") {
@@ -29,11 +45,11 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
 
   describe("KafkaAdminClient") {
     it("should support consumer groups-related functionalities") {
-      withKafka { (config, topic) =>
-        commonSetup(topic, config)
+      withKafka { topic =>
+        commonSetup(topic)
 
         KafkaAdminClient
-          .resource[IO](adminClientSettings(config))
+          .resource[IO](adminClientSettings)
           .use { adminClient =>
             for {
               consumerGroupIds <- adminClient.listConsumerGroups.groupIds
@@ -118,11 +134,11 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
 
     it("should support cluster-related functionalities") {
-      withKafka { (config, topic) =>
-        commonSetup(topic, config)
+      withKafka { topic =>
+        commonSetup(topic)
 
         KafkaAdminClient
-          .resource[IO](adminClientSettings(config))
+          .resource[IO](adminClientSettings)
           .use { adminClient =>
             for {
               clusterNodes <- adminClient.describeCluster.nodes
@@ -141,11 +157,11 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
 
     it("should support config-related functionalities") {
-      withKafka { (config, topic) =>
-        commonSetup(topic, config)
+      withKafka { topic =>
+        commonSetup(topic)
 
         KafkaAdminClient
-          .resource[IO](adminClientSettings(config))
+          .resource[IO](adminClientSettings)
           .use { adminClient =>
             for {
               cr <- IO.pure(new ConfigResource(ConfigResource.Type.TOPIC, topic))
@@ -167,11 +183,11 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
 
     it("should support topic-related functionalities") {
-      withKafka { (config, topic) =>
-        commonSetup(topic, config)
+      withKafka { topic =>
+        commonSetup(topic)
 
         KafkaAdminClient
-          .resource[IO](adminClientSettings(config))
+          .resource[IO](adminClientSettings)
           .use { adminClient =>
             for {
               topicNames <- adminClient.listTopics.names
@@ -244,15 +260,11 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
 
     it("should support ACLs-related functionality") {
       withKafka(
-        Map(
-          "authorizer.class.name" -> "kafka.security.auth.SimpleAclAuthorizer",
-          "allow.everyone.if.no.acl.found" -> "true"
-        ),
-        (config, topic) => {
-          commonSetup(topic, config)
+        topic => {
+          commonSetup(topic)
 
           KafkaAdminClient
-            .resource[IO](adminClientSettings(config))
+            .resource[IO](adminClientSettings)
             .use {
               adminClient =>
                 for {
@@ -300,11 +312,11 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
 
     it("should support misc defined functionality") {
-      withKafka { (config, topic) =>
-        commonSetup(topic, config)
+      withKafka { topic =>
+        commonSetup(topic)
 
         KafkaAdminClient
-          .resource[IO](adminClientSettings(config))
+          .resource[IO](adminClientSettings)
           .use { adminClient =>
             for {
               _ <- IO {
@@ -317,14 +329,14 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     }
   }
 
-  def commonSetup(topic: String, config: EmbeddedKafkaConfig): Unit = {
+  def commonSetup(topic: String): Unit = {
     createCustomTopic(topic, partitions = 3)
     val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
     publishToKafka(topic, produced)
 
     KafkaConsumer
       .stream[IO]
-      .using(consumerSettings(config))
+      .using(consumerSettings)
       .evalTap(_.subscribe(topic.r))
       .flatMap(_.stream)
       .take(produced.size.toLong)
