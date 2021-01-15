@@ -9,7 +9,7 @@ import fs2.{Chunk, Stream}
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.errors.ProducerFencedException
+import org.apache.kafka.common.errors.InvalidProducerEpochException
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.scalatest.EitherValues
 
@@ -271,7 +271,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           result <- Stream.eval(producer.produce(records).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 
-      produced.left.value shouldBe a[ProducerFencedException]
+      produced.left.value shouldBe an[InvalidProducerEpochException]
 
       val consumedOrError = {
         Either.catchNonFatal(
