@@ -799,7 +799,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val produced = (0 until 10).map(n => n.toString -> n.toString).toVector
         publishToKafka(topic, produced)
 
-        val run = KafkaConsumer.stream[IO]
+        val run = KafkaConsumer
+          .stream[IO]
           .using(consumerSettings[IO](config))
           .evalTap(_.subscribeTo(topic))
           .evalTap(_.stopConsuming)
@@ -915,7 +916,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
       val partitions = (0 until partitionsAmount).toSet
 
-      val createConsumer = KafkaConsumer.stream[IO]
+      val createConsumer = KafkaConsumer
+        .stream[IO]
         .using(consumerSettings[IO](config))
         .evalTap(_.subscribeTo(topic))
 
