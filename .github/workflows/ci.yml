@@ -14,7 +14,6 @@ jobs:
         fetch-depth: 0
     - uses: olafurpg/setup-scala@v10
     - uses: coursier/cache-action@v5
-    - run: sbt validate
     - run: sbt ++${{ matrix.scala }} validate
     - if: matrix.scala == '2.13.3'
       run: sbt "++${{ matrix.scala }} docs/run"
