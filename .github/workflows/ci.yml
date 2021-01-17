@@ -54,7 +54,7 @@ jobs:
 
       - run: sbt ++${{ matrix.scala }} ci
 
-      - if: matrix.scala == 2.13.3
+      - if: matrix.scala == '2.13.3'
         run: sbt ++${{ matrix.scala }} docs/run
 
       - name: Compress target directories

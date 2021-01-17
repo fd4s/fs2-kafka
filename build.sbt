@@ -165,7 +165,7 @@ ThisBuild / githubWorkflowTargetBranches := Seq("master", "series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
-  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == $scala213"))
+  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
 )
 
 ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
