@@ -10,7 +10,7 @@ import cats.ApplicativeError
 import cats.instances.string._
 import cats.Show
 import cats.syntax.show._
-import fs2.kafka.internal.instances._
+import fs2.kafka.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
