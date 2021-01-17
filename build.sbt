@@ -353,9 +353,7 @@ addCommandsAlias(
   "ci",
   List(
     "clean",
-    "coverage",
     "test",
-    "coverageReport",
     "mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
