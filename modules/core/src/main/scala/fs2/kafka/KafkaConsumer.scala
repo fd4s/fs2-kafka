@@ -16,7 +16,7 @@ import fs2.{Chunk, Stream}
 import fs2.concurrent.{NoneTerminatedQueue, Queue}
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
-import fs2.kafka.internal.instances._
+import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.consumer._
