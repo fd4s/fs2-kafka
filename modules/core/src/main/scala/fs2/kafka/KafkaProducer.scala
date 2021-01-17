@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -87,28 +87,29 @@ object KafkaProducer {
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
-    Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
-      Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
-        WithProducer(settings).map { withProducer =>
-          new KafkaProducer.Metrics[F, K, V] {
-            override def produce[P](
-              records: ProducerRecords[K, V, P]
-            ): F[F[ProducerResult[K, V, P]]] = {
-              withProducer { (producer, _) =>
-                records.records
-                  .traverse(produceRecord(keySerializer, valueSerializer, producer))
-                  .map(_.sequence.map(ProducerResult(_, records.passthrough)))
-              }
-            }
+    KafkaProducerConnection.resource(settings).evalMap(_.withSerializersFrom(settings))
 
-            override def metrics: F[Map[MetricName, Metric]] =
-              withProducer.blocking { _.metrics().asScala.toMap }
-
-            override def toString: String =
-              "KafkaProducer$" + System.identityHashCode(this)
-          }
+  private[kafka] def from[F[_]: Concurrent: ContextShift, K, V](
+    withProducer: WithProducer[F],
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V]
+  ): KafkaProducer.Metrics[F, K, V] =
+    new KafkaProducer.Metrics[F, K, V] {
+      override def produce[P](
+        records: ProducerRecords[K, V, P]
+      ): F[F[ProducerResult[K, V, P]]] = {
+        withProducer { (producer, _) =>
+          records.records
+            .traverse(produceRecord(keySerializer, valueSerializer, producer))
+            .map(_.sequence.map(ProducerResult(_, records.passthrough)))
         }
       }
+
+      override def metrics: F[Map[MetricName, Metric]] =
+        withProducer.blocking { _.metrics().asScala.toMap }
+
+      override def toString: String =
+        "KafkaProducer$" + System.identityHashCode(this)
     }
 
   /**
@@ -190,7 +191,7 @@ object KafkaProducer {
   def pipe[F[_]: Concurrent: ContextShift, K, V, P](
     settings: ProducerSettings[F, K, V]
   ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
-    records => stream(settings).flatMap(produce(settings, _).apply(records))
+    records => stream(settings).flatMap(pipe(settings, _).apply(records))
 
   /**
     * Produces records in batches using the provided [[KafkaProducer]].

@@ -7,7 +7,7 @@ final class JitterSpec extends BaseSpec {
     it("should always apply jitter on values") {
       val jitter: Jitter[IO] = Jitter.default[IO].unsafeRunSync()
 
-      forAll { n: Double =>
+      forAll { (n: Double) =>
         whenever(!n.isNaN) {
           val jittered = jitter.withJitter(n).unsafeRunSync()
 
@@ -23,7 +23,7 @@ final class JitterSpec extends BaseSpec {
     it("should never apply jitter on values") {
       val jitter: Jitter[Id] = Jitter.none
 
-      forAll { n: Double =>
+      forAll { (n: Double) =>
         whenever(!n.isNaN) {
           assert(jitter.withJitter(n) == n)
         }

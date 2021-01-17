@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -213,8 +213,8 @@ object Serializer {
   ): Serializer[F, Option[A]] =
     serializer.option
 
-  implicit def contravariant[F[_]]: Contravariant[Serializer[F, ?]] =
-    new Contravariant[Serializer[F, ?]] {
+  implicit def contravariant[F[_]]: Contravariant[Serializer[F, *]] =
+    new Contravariant[Serializer[F, *]] {
       override def contramap[A, B](serializer: Serializer[F, A])(f: B => A): Serializer[F, B] =
         serializer.contramap(f)
     }

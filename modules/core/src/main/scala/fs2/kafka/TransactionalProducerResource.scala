@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,10 +11,10 @@ import cats.effect.{Concurrent, ContextShift, Resource}
 /**
   * [[TransactionalProducerResource]] provides support for inferring
   * the key and value type from [[TransactionalProducerSettings]]
-  * when using `transactionalProducerResource` with the following syntax.
+  * when using `TransactionalKafkaProducer.resource` with the following syntax.
   *
   * {{{
-  * transactionalProducerResource[F].using(settings)
+  * TransactionalKafkaProducer.resource[F].using(settings)
   * }}}
   */
 final class TransactionalProducerResource[F[_]] private[kafka] (
@@ -23,13 +23,13 @@ final class TransactionalProducerResource[F[_]] private[kafka] (
 
   /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context.
-    * This is equivalent to using `transactionalProducerResource` directly,
+    * This is equivalent to using `TransactionalKafkaProducer.resource` directly,
     * except we're able to infer the key and value type.
     */
   def using[K, V](settings: TransactionalProducerSettings[F, K, V])(
     implicit context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    transactionalProducerResource(settings)(F, context)
+    TransactionalKafkaProducer.resource(settings)(F, context)
 
   override def toString: String =
     "TransactionalProducerResource$" + System.identityHashCode(this)

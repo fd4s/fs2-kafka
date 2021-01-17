@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,7 +9,7 @@ package fs2.kafka
 import cats.effect.{Concurrent, ContextShift, ExitCase, Resource}
 import cats.effect.syntax.all._
 import cats.implicits._
-import fs2.Chunk
+import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
@@ -37,7 +37,18 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
   ): F[ProducerResult[K, V, P]]
 }
 
-private[kafka] object TransactionalKafkaProducer {
+object TransactionalKafkaProducer {
+
+  /**
+    * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context,
+    * using the specified [[TransactionalProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and the key and
+    * value type can be inferred, which allows you to use the following syntax.
+    *
+    * {{{
+    * TransactionalKafkaProducer.resource[F].using(settings)
+    * }}}
+    */
   def resource[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
@@ -102,4 +113,52 @@ private[kafka] object TransactionalKafkaProducer {
         }
       }
     }
+
+  /**
+    * Alternative version of `TransactionalKafkaProducer.resource` where the `F[_]`
+    * is specified explicitly, and where the key and value type can be
+    * inferred from the [[TransactionalProducerSettings]]. This allows
+    * you to use the following syntax.
+    *
+    * {{{
+    * TransactionalKafkaProducer.resource[F].using(settings)
+    * }}}
+    */
+  def resource[F[_]](
+    implicit F: Concurrent[F]
+  ): TransactionalProducerResource[F] =
+    new TransactionalProducerResource(F)
+
+  /**
+    * Creates a new [[TransactionalKafkaProducer]] in the `Stream` context,
+    * using the specified [[TransactionalProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and the key and
+    * value type can be inferred, which allows you to use the following syntax.
+    *
+    * {{{
+    * TransactionalKafkaProducer.stream[F].using(settings)
+    * }}}
+    */
+  def stream[F[_], K, V](
+    settings: TransactionalProducerSettings[F, K, V]
+  )(
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
+  ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
+    Stream.resource(resource(settings))
+
+  /**
+    * Alternative version of `TransactionalKafkaProducer.stream` where the `F[_]`
+    * is specified explicitly, and where the key and value type can be
+    * inferred from the [[TransactionalProducerSettings]]. This allows
+    * you to use the following syntax.
+    *
+    * {{{
+    * TransactionalKafkaProducer.stream[F].using(settings)
+    * }}}
+    */
+  def stream[F[_]](
+    implicit F: Concurrent[F]
+  ): TransactionalProducerStream[F] =
+    new TransactionalProducerStream(F)
 }

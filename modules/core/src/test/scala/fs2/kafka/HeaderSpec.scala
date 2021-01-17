@@ -27,14 +27,14 @@ final class HeaderSpec extends BaseSpec {
     }
 
     it("should deserialize with as") {
-      forAll { s: String =>
+      forAll { (s: String) =>
         val header = Header("key", s)
         assert(header.as[String] == s)
       }
     }
 
     it("should deserialize with attemptAs") {
-      forAll { i: Int =>
+      forAll { (i: Int) =>
         val header = Header("key", i)
         assert(header.attemptAs[Int] == Right(i))
       }

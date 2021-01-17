@@ -12,9 +12,9 @@ import cats.effect.laws.util.TestInstances
 
 final class SerializerSpec extends BaseCatsSpec with TestInstances {
   checkAll(
-    "Serializer[IO, ?]", {
+    "Serializer[IO, *]", {
       implicit val testContext: TestContext = TestContext()
-      ContravariantTests[Serializer[IO, ?]].contravariant[String, String, String]
+      ContravariantTests[Serializer[IO, *]].contravariant[String, String, String]
     }
   )
 
@@ -159,7 +159,7 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
         case _       => Serializer[IO, String].contramap[Int](_.toString)
       }
 
-    forAll { i: Int =>
+    forAll { (i: Int) =>
       val serialized = serializer.serialize("topic", Headers.empty, i)
       val expected = Serializer[IO, Int].serialize("topic", Headers.empty, i)
       serialized.unsafeRunSync() shouldBe expected.unsafeRunSync()
@@ -204,7 +204,7 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
     val serializer =
       Serializer.asNull[IO, Int]
 
-    forAll { i: Int =>
+    forAll { (i: Int) =>
       val serialized = serializer.serialize("topic", Headers.empty, i)
       serialized.unsafeRunSync() shouldBe null
     }
@@ -214,7 +214,7 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
     val serializer =
       Serializer.empty[IO, Int]
 
-    forAll { i: Int =>
+    forAll { (i: Int) =>
       val serialized = serializer.serialize("topic", Headers.empty, i)
       serialized.unsafeRunSync() shouldBe empty
     }
@@ -226,7 +226,7 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
 
     serializer.serialize("topic", Headers.empty, None).unsafeRunSync() shouldBe null
 
-    forAll { s: String =>
+    forAll { (s: String) =>
       serializer.serialize("topic", Headers.empty, Some(s)).unsafeRunSync() shouldBe
         Serializer[IO, String].serialize("topic", Headers.empty, s).unsafeRunSync()
     }

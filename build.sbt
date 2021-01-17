@@ -1,16 +1,16 @@
-val catsEffectVersion = "2.2.0"
+val catsEffectVersion = "2.3.1"
 
-val catsVersion = "2.2.0"
+val catsVersion = "2.3.1"
 
-val confluentVersion = "6.0.0"
+val confluentVersion = "6.0.1"
 
 val embeddedKafkaVersion = "2.6.0"
 
-val fs2Version = "2.4.6"
+val fs2Version = "2.5.0"
 
 val kafkaVersion = "2.6.0"
 
-val vulcanVersion = "1.2.0"
+val vulcanVersion = "1.3.0"
 
 val scala212 = "2.12.10"
 
@@ -80,12 +80,11 @@ lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
     "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "2.0.1",
+    "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
-  addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.1" cross CrossVersion.full),
+  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full),
   pomPostProcess := { (node: xml.Node) =>
     new xml.transform.RuleTransformer(new xml.transform.RewriteRule {
       def scopedDependency(e: xml.Elem): Boolean =
@@ -208,7 +207,10 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalProducerStream.*"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaProducer.resource"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalKafkaProducer.resource"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.stopConsuming"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
     )
     // format: on

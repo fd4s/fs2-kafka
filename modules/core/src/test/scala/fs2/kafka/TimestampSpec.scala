@@ -5,7 +5,7 @@ import cats.syntax.show._
 final class TimestampSpec extends BaseSpec {
   describe("Timeout#createTime") {
     it("should have a createTime") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         val timestamp = Timestamp.createTime(value)
         timestamp.createTime shouldBe Some(value)
         timestamp.nonEmpty shouldBe true
@@ -14,19 +14,19 @@ final class TimestampSpec extends BaseSpec {
     }
 
     it("should not have a logAppendTime") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         Timestamp.createTime(value).logAppendTime shouldBe None
       }
     }
 
     it("should not have an unknownTime") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         Timestamp.createTime(value).unknownTime shouldBe None
       }
     }
 
     it("should include the createTime in toString") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         val timestamp = Timestamp.createTime(value)
         timestamp.toString should include(s"createTime = $value")
         timestamp.toString shouldBe timestamp.show
@@ -36,7 +36,7 @@ final class TimestampSpec extends BaseSpec {
 
   describe("Timeout#logAppendTime") {
     it("should have a logAppendTime") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         val timestamp = Timestamp.logAppendTime(value)
         timestamp.logAppendTime shouldBe Some(value)
         timestamp.nonEmpty shouldBe true
@@ -45,19 +45,19 @@ final class TimestampSpec extends BaseSpec {
     }
 
     it("should not have a createTime") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         Timestamp.logAppendTime(value).createTime shouldBe None
       }
     }
 
     it("should not have an unknownTime") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         Timestamp.logAppendTime(value).unknownTime shouldBe None
       }
     }
 
     it("should include the logAppendTime in toString") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         val timestamp = Timestamp.logAppendTime(value)
         timestamp.toString should include(s"logAppendTime = $value")
         timestamp.toString shouldBe timestamp.show
@@ -67,19 +67,19 @@ final class TimestampSpec extends BaseSpec {
 
   describe("Timeout#unknownTime") {
     it("should not have a logAppendTime") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         Timestamp.unknownTime(value).logAppendTime shouldBe None
       }
     }
 
     it("should not have a createTime") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         Timestamp.unknownTime(value).createTime shouldBe None
       }
     }
 
     it("should have an unknownTime") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         val timestamp = Timestamp.unknownTime(value)
         timestamp.unknownTime shouldBe Some(value)
         timestamp.nonEmpty shouldBe true
@@ -88,7 +88,7 @@ final class TimestampSpec extends BaseSpec {
     }
 
     it("should include the unknownTime in toString") {
-      forAll { value: Long =>
+      forAll { (value: Long) =>
         val timestamp = Timestamp.unknownTime(value)
         timestamp.toString should include(s"unknownTime = $value")
         timestamp.toString shouldBe timestamp.show
