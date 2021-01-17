@@ -556,15 +556,6 @@ object KafkaConsumer {
         "KafkaConsumer$" + id
     }
 
-  @deprecated("use KafkaConsumer.resource", "1.2.0")
-  def consumerResource[F[_], K, V](
-    settings: ConsumerSettings[F, K, V]
-  )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F],
-    timer: Timer[F]
-  ): Resource[F, KafkaConsumer[F, K, V]] = resource(settings)
-
   /**
     * Creates a new [[KafkaConsumer]] in the `Resource` context,
     * using the specified [[ConsumerSettings]]. Note that there
