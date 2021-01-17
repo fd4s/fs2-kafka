@@ -9,7 +9,7 @@ package fs2.kafka.internal
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.{CancelToken, Concurrent, Sync}
 import cats.implicits._
-import fs2.kafka.{Header, Headers, KafkaHeaders}
+import fs2.kafka.{Header, Headers, JavaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
 import fs2.kafka.internal.converters.collection._
 import java.time.Duration
@@ -213,8 +213,8 @@ private[kafka] object syntax {
       }
   }
 
-  implicit final class KafkaHeadersSyntax(
-    private val headers: KafkaHeaders
+  implicit final class JavaHeadersSyntax(
+    private val headers: JavaHeaders
   ) extends AnyVal {
     def asScala: Headers =
       Headers.fromSeq {
