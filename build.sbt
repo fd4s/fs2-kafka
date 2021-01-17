@@ -168,6 +168,8 @@ ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
 )
 
+ThisBuild / githubWorkflowArtifactUpload := false
+
 ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
 ThisBuild / githubWorkflowPublishTargetBranches :=
   Seq(RefPredicate.StartsWith(Ref.Tag("v")))
