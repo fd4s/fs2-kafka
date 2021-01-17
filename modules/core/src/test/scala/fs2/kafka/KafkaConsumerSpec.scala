@@ -779,8 +779,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         publishToKafka(topic, produced)
 
         val run = KafkaConsumer
-          .stream[IO]
-          .using(consumerSettings[IO](config))
+          .stream(consumerSettings[IO](config))
           .evalTap(_.subscribeTo(topic))
           .evalTap(_.stopConsuming)
           .evalTap(_ => IO(publishToKafka(topic, produced)))
@@ -893,8 +892,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       val partitions = (0 until partitionsAmount).toSet
 
       val createConsumer = KafkaConsumer
-        .stream[IO]
-        .using(consumerSettings[IO](config))
+        .stream(consumerSettings[IO](config))
         .evalTap(_.subscribeTo(topic))
 
       val committed = (for {
