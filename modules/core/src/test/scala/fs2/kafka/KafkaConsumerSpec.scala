@@ -32,7 +32,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       KafkaConsumer.resource[IO].using(settings)
 
       KafkaConsumer.stream[IO, String, String](settings)
-      KafkaConsumer.stream[IO].toString should startWith("KafkaConsumer.stream$")
+      KafkaConsumer.stream[IO].toString should startWith("ConsumerStream$")
       KafkaConsumer.stream[IO].using(settings)
     }
   }
