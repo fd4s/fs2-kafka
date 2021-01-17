@@ -401,7 +401,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       )
     )
 
-  private[this] def records(batch: KafkaByteConsumerRecords): F[ConsumerRecords] =
+  private[this] def records(batch: JavaByteConsumerRecords): F[ConsumerRecords] =
     batch.partitions.toVector
       .traverse { partition =>
         NonEmptyVector

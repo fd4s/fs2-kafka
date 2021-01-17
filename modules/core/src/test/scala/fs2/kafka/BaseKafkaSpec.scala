@@ -13,10 +13,10 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import scala.concurrent.duration._
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with EmbeddedKafka {
-  implicit final val stringSerializer: KafkaSerializer[String] =
+  implicit final val stringSerializer: JavaSerializer[String] =
     new org.apache.kafka.common.serialization.StringSerializer
 
-  implicit final val stringDeserializer: KafkaDeserializer[String] =
+  implicit final val stringDeserializer: JavaDeserializer[String] =
     new org.apache.kafka.common.serialization.StringDeserializer
 
   final val transactionTimeoutInterval: FiniteDuration = 1.second
