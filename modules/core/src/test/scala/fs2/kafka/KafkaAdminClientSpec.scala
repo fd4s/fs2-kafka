@@ -163,17 +163,26 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
           .resource[IO](adminClientSettings)
           .use { adminClient =>
             for {
-              topicNames <- adminClient.listTopics.names.map(_.filterNot(_.startsWith("__confluent")))
+              topicNames <- adminClient.listTopics.names.map(
+                _.filterNot(_.startsWith("__confluent"))
+              )
               _ <- IO(assert(topicNames.size == 1))
-              topicListings <- adminClient.listTopics.listings.map(_.filterNot(_.name.startsWith("__confluent")))
+              topicListings <- adminClient.listTopics.listings.map(
+                _.filterNot(_.name.startsWith("__confluent"))
+              )
               _ <- IO(assert(topicListings.size == 1))
-              topicNamesToListings <- adminClient.listTopics.namesToListings.map(_.filter{case (key, _) => !key.startsWith("__confluent")})
+              topicNamesToListings <- adminClient.listTopics.namesToListings.map(_.filter {
+                case (key, _) => !key.startsWith("__confluent")
+              })
               _ <- IO(assert(topicNamesToListings.size == 1))
-              topicNamesInternal <- adminClient.listTopics.includeInternal.names.map(_.filterNot(_.startsWith("__confluent")))
+              topicNamesInternal <- adminClient.listTopics.includeInternal.names
+                .map(_.filterNot(_.startsWith("__confluent")))
               _ <- IO(assert(topicNamesInternal.size == 2))
-              topicListingsInternal <- adminClient.listTopics.includeInternal.listings.map(_.filterNot(_.name.startsWith("__confluent")))
+              topicListingsInternal <- adminClient.listTopics.includeInternal.listings
+                .map(_.filterNot(_.name.startsWith("__confluent")))
               _ <- IO(assert(topicListingsInternal.size == 2))
-              topicNamesToListingsInternal <- adminClient.listTopics.includeInternal.namesToListings.map(_.filter{case (key, _) => !key.startsWith("__confluent")})
+              topicNamesToListingsInternal <- adminClient.listTopics.includeInternal.namesToListings
+                .map(_.filter { case (key, _) => !key.startsWith("__confluent") })
               _ <- IO(assert(topicNamesToListingsInternal.size == 2))
               _ <- IO {
                 adminClient.listTopics.toString should startWith("ListTopics$")
