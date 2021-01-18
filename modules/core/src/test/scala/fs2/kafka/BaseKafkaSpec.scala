@@ -54,6 +54,7 @@ import java.util.concurrent.TimeoutException
 import org.apache.kafka.common.serialization.StringSerializer
 import java.util.concurrent.TimeUnit
 import org.apache.kafka.common.serialization.StringDeserializer
+import org.scalatest.Args
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
 
@@ -63,7 +64,9 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
   final val consumerPollingTimeout: FiniteDuration = 1.second
   protected val producerPublishTimeout: FiniteDuration = 10.seconds
 
-  override val container = new KafkaContainer()
+  override def runTest(testName: String, args: Args) = super.runTest(testName, args)
+
+  override val container: KafkaContainer = new KafkaContainer()
     .configure { container =>
       container
         .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
