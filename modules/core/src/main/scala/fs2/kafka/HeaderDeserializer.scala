@@ -115,7 +115,7 @@ object HeaderDeserializer {
     * and `configure` functions won't be called for the delegate. Also,
     * the topic is an empty `String` and no headers are provided.
     */
-  def delegate[A](deserializer: KafkaDeserializer[A]): HeaderDeserializer[A] =
+  def delegate[A](deserializer: JavaDeserializer[A]): HeaderDeserializer[A] =
     HeaderDeserializer.instance { bytes =>
       deserializer.deserialize("", bytes)
     }

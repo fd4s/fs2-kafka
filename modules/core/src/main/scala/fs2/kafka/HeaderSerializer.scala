@@ -77,7 +77,7 @@ object HeaderSerializer {
     * `configure` functions won't be called for the delegate. Also,
     * the topic is an empty `String` and no headers are provided.
     */
-  def delegate[A](serializer: KafkaSerializer[A]): HeaderSerializer[A] =
+  def delegate[A](serializer: JavaSerializer[A]): HeaderSerializer[A] =
     HeaderSerializer.instance { a =>
       serializer.serialize("", a)
     }
