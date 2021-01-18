@@ -8,7 +8,6 @@ package fs2.kafka
 
 import cats.Apply
 import cats.effect._
-import cats.effect.syntax.all._
 import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2._
@@ -177,7 +176,7 @@ object KafkaProducer {
                       else Left(exception)
                     }
 
-                  complete.toIO.unsafeRunSync()
+                  F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
                 }
               )
             }
