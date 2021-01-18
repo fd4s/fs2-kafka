@@ -52,12 +52,12 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
   }
 
   it("should preserve order of records within a partition") {
-    withKafka { (config, topic) =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 1)
       val toProduce = (0 until 100).map(n => s"key-$n" -> s"value->$n")
 
       (for {
-        producer <- KafkaProducer.stream[IO].using(producerSettings[IO](config))
+        producer <- KafkaProducer.stream[IO].using(producerSettings[IO])
         records <- Stream.chunk(Chunk.seq(toProduce).map {
           case passthrough @ (key, value) =>
             ProducerRecords.one(ProducerRecord(topic, key, value), passthrough)
