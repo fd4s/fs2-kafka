@@ -80,8 +80,7 @@
         .withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
 
     <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
-        .using(consumerSettings)
+      <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
         .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
         .flatMap(_.stream)
         .mapAsync(<span class="hljs-number">25</span>) { committable =&gt;

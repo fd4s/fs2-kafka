@@ -169,8 +169,7 @@
 <span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ProduceExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
     <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
-        .using(consumerSettings)
+      <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
         .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
         .flatMap(_.stream)
         .map { committable =&gt;
@@ -191,11 +190,9 @@
 <pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">PartitionedProduceExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
     <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">KafkaProducer</span>.stream[<span class="hljs-type">IO</span>]
-        .using(producerSettings)
+      <span class="hljs-type">KafkaProducer</span>.stream(producerSettings)
         .flatMap { producer =&gt;
-          <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
-            .using(consumerSettings)
+          <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
             .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
             .flatMap(_.partitionedStream)
             .map { partition =&gt;
@@ -219,11 +216,9 @@
 <pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">KafkaProducerProduceExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
     <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">KafkaProducer</span>.stream[<span class="hljs-type">IO</span>]
-        .using(producerSettings)
+      <span class="hljs-type">KafkaProducer</span>.stream(producerSettings)
         .flatMap { producer =&gt;
-          <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
-            .using(consumerSettings)
+          <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
             .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
             .flatMap(_.stream)
             .map { committable =&gt;
@@ -247,11 +242,9 @@
 <pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">KafkaProducerProduceFlattenExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
     <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">KafkaProducer</span>.stream[<span class="hljs-type">IO</span>]
-        .using(producerSettings)
+      <span class="hljs-type">KafkaProducer</span>.stream(producerSettings)
         .flatMap { producer =&gt;
-          <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
-            .using(consumerSettings)
+          <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
             .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
             .flatMap(_.stream)
             .map { committable =&gt;

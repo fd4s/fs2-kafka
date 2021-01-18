@@ -86,11 +86,9 @@
       )
 
     <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">TransactionalKafkaProducer</span>.stream[<span class="hljs-type">IO</span>]
-        .using(producerSettings)
+      <span class="hljs-type">TransactionalKafkaProducer</span>.stream(producerSettings)
         .flatMap { producer =&gt;
-          <span class="hljs-type">KafkaConsumer</span>.stream[<span class="hljs-type">IO</span>]
-            .using(consumerSettings)
+          <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
             .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
             .flatMap(_.stream)
             .mapAsync(<span class="hljs-number">25</span>) { committable =&gt;
