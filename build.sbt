@@ -213,23 +213,19 @@ lazy val publishSettings =
   )
 
 lazy val mimaSettings = Seq(
-  mimaPreviousArtifacts := {
-    if (publishArtifact.value) {
-      Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
-    } else Set()
-  },
+  // Restore this after releasing v2.0.0
+  // mimaPreviousArtifacts := {
+  //   if (publishArtifact.value) {
+  //     Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
+  //   } else Set()
+  // },
+  mimaPreviousArtifacts := Set(),
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.package.*"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.stopConsuming"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*")
     )
     // format: on
   }
