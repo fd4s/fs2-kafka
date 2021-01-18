@@ -55,8 +55,8 @@ object TransactionalKafkaProducer {
   )(
     implicit F: Async[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    Resource.liftF(settings.producerSettings.keySerializer).flatMap { keySerializer =>
-      Resource.liftF(settings.producerSettings.valueSerializer).flatMap { valueSerializer =>
+    Resource.eval(settings.producerSettings.keySerializer).flatMap { keySerializer =>
+      Resource.eval(settings.producerSettings.valueSerializer).flatMap { valueSerializer =>
         Dispatcher[F].flatMap { implicit dispatcher =>
           WithProducer(settings).map { withProducer =>
             new TransactionalKafkaProducer[F, K, V] {
