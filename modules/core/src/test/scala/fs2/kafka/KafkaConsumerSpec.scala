@@ -468,7 +468,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         def startConsumer(
           consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
           stopSignal: SignallingRef[IO, Boolean]
-        ): IO[Fiber[IO, Vector[Set[Int]]]] = {
+        ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] = {
           Ref[IO]
             .of(Vector.empty[Set[Int]])
             .flatMap { assignedPartitionsRef =>
@@ -516,8 +516,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .drain
             .guarantee(stopSignal.set(true))
-          consumer1assignments <- fiber1.join
-          consumer2assignments <- fiber2.join
+          consumer1assignments <- fiber1.joinAndEmbedNever
+          consumer2assignments <- fiber2.joinAndEmbedNever
           keys <- ref.get
         } yield {
           assert {
@@ -576,7 +576,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .parJoinUnbounded
             .concurrently(
               // run second stream to start a rebalance after initial rebalance, default timeout is 3 secs
-              Stream.sleep(5.seconds) >> stream.flatMap(_.stream)
+              Stream.sleep[IO](5.seconds) >> stream.flatMap(_.stream)
             )
             .interruptWhen(stopSignal)
             .compile

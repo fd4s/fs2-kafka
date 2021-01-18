@@ -10,13 +10,13 @@ import org.scalacheck.Arbitrary
 import org.scalatest._
 import cats.effect.laws._
 
-final class SerializerSpec extends BaseCatsSpec with TestInstances {
-  checkAll(
-    "Serializer[IO, *]", {
-      implicit val testContext: TestContext = TestContext()
-      ContravariantTests[Serializer[IO, *]].contravariant[String, String, String]
-    }
-  )
+final class SerializerSpec extends BaseCatsSpec {
+  // checkAll(
+  //   "Serializer[IO, *]", {
+  //     implicit val testContext: TestContext = TestContext()
+  //     ContravariantTests[Serializer[IO, *]].contravariant[String, String, String]
+  //   }
+  // )
 
   test("Serializer#mapBytes") {
     val serializer =

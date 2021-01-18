@@ -84,6 +84,7 @@ lazy val dependencySettings = Seq(
     "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
+    "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full),
