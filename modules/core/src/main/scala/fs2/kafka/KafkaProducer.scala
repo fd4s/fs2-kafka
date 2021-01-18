@@ -166,20 +166,22 @@ object KafkaProducer {
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
       asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
-        F.async_ { (cb: Either[Throwable, (ProducerRecord[K, V], RecordMetadata)] => Unit) =>
-            producer.send(
-              javaRecord, { (metadata, exception) =>
-                cb {
-                  if (exception == null)
-                    Right((record, metadata))
-                  else Left(exception)
+        Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
+          F.blocking {
+              producer.send(
+                javaRecord, { (metadata, exception) =>
+                  val complete =
+                    deferred.complete {
+                      if (exception == null)
+                        Right((record, metadata))
+                      else Left(exception)
+                    }.void
+                  dispatcher.unsafeRunSync(complete)
                 }
-              }
-            )
-            ()
-          }
-          .start
-          .map(_.joinAndEmbedNever)
+              )
+            }
+            .as(deferred.get.rethrow)
+        }
       }
 
   /**
