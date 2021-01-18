@@ -7,7 +7,6 @@ import cats.implicits._
 import fs2.Stream
 import fs2.concurrent.{Queue, SignallingRef}
 import fs2.kafka.internal.converters.collection._
-import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.TimeoutException
@@ -39,15 +38,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#stream") {
     it("should consume all records with subscribe") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
         val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
 
         val consumed =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings(config))
+            .stream(consumerSettings[IO])
             .evalTap(_.subscribeTo(topic))
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
@@ -63,15 +61,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should consume all records with subscribing for several consumers") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
         val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
 
         val consumed =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings[IO](config).withGroupId("test"))
+            .stream(consumerSettings[IO].withGroupId("test"))
             .evalTap(_.subscribeTo(topic))
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
@@ -94,7 +91,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should consume records with assign by partitions") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
         val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
@@ -103,8 +100,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         val consumed =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings[IO](config).withGroupId("test2"))
+            .stream(consumerSettings[IO].withGroupId("test2"))
             .evalTap(_.assign(topic, partitions))
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
@@ -121,15 +117,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should consume all records with assign without partitions") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
         val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
 
         val consumed =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings[IO](config).withGroupId("test"))
+            .stream(consumerSettings[IO].withGroupId("test"))
             .evalTap(_.assign(topic))
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
@@ -145,15 +140,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should consume all records to several consumers with assign") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
         val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
 
         val consumed =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings[IO](config).withGroupId("test2"))
+            .stream(consumerSettings[IO].withGroupId("test2"))
             .evalTap(_.assign(topic))
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
             .flatMap(_.stream)
@@ -175,27 +169,27 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should read from the given offset") {
-      withKafka {
+      withTopic {
         seekTest(numRecords = 100, readOffset = 90)
       }
     }
 
     it("should fail to read from a negative offset") {
-      withKafka {
+      withTopic {
         an[IllegalArgumentException] should be thrownBy seekTest(
           numRecords = 100,
           readOffset = -1
-        )(_, _)
+        )(_)
       }
     }
 
     it("should fail to read from a partition not assigned to this consumer") {
-      withKafka {
+      withTopic {
         an[IllegalStateException] should be thrownBy seekTest(
           numRecords = 100,
           readOffset = 90,
           partition = Some(123)
-        )(_, _)
+        )(_)
       }
     }
 
@@ -207,11 +201,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should interrupt the stream when cancelled") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         val consumed =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings(config))
+            .stream(consumerSettings[IO])
             .evalTap(_.subscribeTo(topic))
             .evalTap(_.fiber.cancel)
             .flatTap(_.stream)
@@ -225,13 +218,12 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should fail with an error if not subscribed or assigned") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
 
         val consumed =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings(config))
+            .stream(consumerSettings[IO])
             .flatMap(_.stream)
             .compile
             .lastOrError
@@ -243,11 +235,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should fail with an error if subscribe is invalid") {
-      withKafka { (config, _) =>
+      withTopic { _ =>
         val subscribeName =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings(config))
+            .stream(consumerSettings[IO])
             .evalMap(_.subscribeTo(""))
             .compile
             .lastOrError
@@ -258,8 +249,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         val subscribeRegex =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings(config))
+            .stream(consumerSettings[IO])
             .evalTap(_.subscribeTo("topic"))
             .evalMap(_.subscribe("".r))
             .compile
@@ -272,11 +262,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should fail with an error if assign is invalid") {
-      withKafka { (config, _) =>
+      withTopic { _ =>
         val assignEmptyName =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings(config))
+            .stream(consumerSettings[IO])
             .evalMap(_.assign("", NonEmptySet.fromSetUnsafe(SortedSet(0))))
             .compile
             .lastOrError
@@ -294,11 +283,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("an error should occur if subscribe and assign at the same time") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         val assignWithSubscribeName =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings(config))
+            .stream(consumerSettings[IO])
             .evalTap(_.subscribeTo(topic))
             .evalMap(_.assign(topic, NonEmptySet.fromSetUnsafe(SortedSet(0))))
             .compile
@@ -316,8 +304,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         val subscribeWithAssignWithName =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings(config))
+            .stream(consumerSettings[IO])
             .evalTap(_.assign(topic, NonEmptySet.fromSetUnsafe(SortedSet(0))))
             .evalMap(_.subscribeTo(topic))
             .compile
@@ -337,14 +324,13 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should propagate consumer errors to stream") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
 
         val consumed =
           KafkaConsumer
-            .stream[IO]
-            .using {
-              consumerSettings[IO](config)
+            .stream {
+              consumerSettings[IO]
                 .withAutoOffsetReset(AutoOffsetReset.None)
             }
             .evalTap(_.subscribeTo(topic))
@@ -363,7 +349,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should be able to work with offsets") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 1)
         val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
@@ -373,8 +359,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val timeout = 10.seconds
 
         KafkaConsumer
-          .stream[IO]
-          .using(consumerSettings(config))
+          .stream(consumerSettings[IO])
           .evalTap(_.subscribeTo(topic))
           .flatTap { consumer =>
             consumer.stream
@@ -424,7 +409,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     def seekTest(numRecords: Long, readOffset: Long, partition: Option[Int] = None)(
-      config: EmbeddedKafkaConfig,
       topic: String
     ) = {
       createCustomTopic(topic)
@@ -434,8 +418,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
       val consumed =
         KafkaConsumer
-          .stream[IO]
-          .using(consumerSettings(config))
+          .stream(consumerSettings[IO])
           .flatMap { consumer =>
             val validSeekParams =
               consumer.stream
@@ -475,7 +458,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#partitionsMapStream") {
     it("should handle rebalance") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
         val produced1 = (0 until 100).map(n => s"key-$n" -> s"value->$n")
         val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
@@ -489,8 +472,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .of(Vector.empty[Set[Int]])
             .flatMap { assignedPartitionsRef =>
               KafkaConsumer
-                .stream[IO]
-                .using(consumerSettings(config))
+                .stream(consumerSettings[IO])
                 .evalTap(_.subscribeTo(topic))
                 .flatMap(_.partitionsMapStream.filter(_.nonEmpty).evalMap { assignment =>
                   assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
@@ -555,16 +537,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should close all old streams on rebalance") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         val numPartitions = 3
         createCustomTopic(topic, partitions = numPartitions)
 
-        val stream = {
+        val stream =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings[IO](config).withGroupId("test"))
+            .stream(consumerSettings[IO].withGroupId("test"))
             .evalTap(_.subscribeTo(topic))
-        }
 
         (for {
           stopSignal <- SignallingRef[IO, Boolean](false)
@@ -610,15 +590,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#assignmentStream") {
     it("should stream assignment updates to listeners") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
 
         val consumer =
           for {
             queue <- Stream.eval(Queue.noneTerminated[IO, SortedSet[TopicPartition]])
             _ <- KafkaConsumer
-              .stream[IO]
-              .using(consumerSettings(config))
+              .stream(consumerSettings[IO])
               .evalTap(_.subscribeTo(topic))
               .evalMap { consumer =>
                 consumer.assignmentStream
@@ -661,13 +640,12 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("begin from the current assignments") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
 
         (for {
           consumer <- KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings(config))
+            .stream(consumerSettings[IO])
             .evalTap(_.subscribeTo(topic))
           _ <- Stream.eval(IO.sleep(5.seconds)).concurrently(consumer.stream)
           queue <- Stream.eval(Queue.noneTerminated[IO, SortedSet[TopicPartition]])
@@ -687,14 +665,13 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#unsubscribe") {
     it("should correctly unsubscribe") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
         val produced = (0 until 1).map(n => s"key-$n" -> s"value->$n")
         publishToKafka(topic, produced)
 
         val cons = KafkaConsumer
-          .stream[IO]
-          .using(consumerSettings[IO](config).withGroupId("test"))
+          .stream(consumerSettings[IO].withGroupId("test"))
           .evalTap(_.subscribeTo(topic))
 
         val topicStream = (for {
@@ -736,7 +713,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#stopConsuming") {
     it("should gracefully stop running stream") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 1)
         val messages = 20
         val produced1 = (0 until messages).map(n => n.toString -> n.toString).toVector
@@ -744,7 +721,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         publishToKafka(topic, produced1)
 
         // all messages from a single poll batch should land into one chunk
-        val settings = consumerSettings[IO](config).withMaxPollRecords(messages)
+        val settings = consumerSettings[IO].withMaxPollRecords(messages)
 
         val run = for {
           consumedRef <- Ref[IO].of(Vector.empty[(String, String)])
@@ -776,9 +753,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should stop running stream even when there is no data in it") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic)
-        val settings = consumerSettings[IO](config)
+        val settings = consumerSettings[IO]
 
         val run = KafkaConsumer.resource(settings).use { consumer =>
           for {
@@ -794,14 +771,13 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should not start new streams after 'stopConsuming' call") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         createCustomTopic(topic, partitions = 1)
         val produced = (0 until 10).map(n => n.toString -> n.toString).toVector
         publishToKafka(topic, produced)
 
         val run = KafkaConsumer
-          .stream[IO]
-          .using(consumerSettings[IO](config))
+          .stream(consumerSettings[IO])
           .evalTap(_.subscribeTo(topic))
           .evalTap(_.stopConsuming)
           .evalTap(_ => IO(publishToKafka(topic, produced)))
@@ -818,15 +794,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#partitionsFor") {
     it("should correctly return partitions for topic") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         val partitions = List(0, 1, 2)
 
         createCustomTopic(topic, partitions = partitions.size)
 
         val info =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings[IO](config))
+            .stream(consumerSettings[IO])
             .evalMap(_.partitionsFor(topic))
 
         val res =
@@ -839,15 +814,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should fail when timeout is too small") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         val partitions = List(0, 1, 2)
 
         createCustomTopic(topic, partitions = partitions.size)
 
         val info =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings[IO](config))
+            .stream(consumerSettings[IO])
             .evalTap(_.partitionsFor(topic, 1.nanos))
 
         val res =
@@ -882,15 +856,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#metrics") {
     it("should return metrics") {
-      withKafka { (config, topic) =>
+      withTopic { topic =>
         val partitions = List(0, 1, 2)
 
         createCustomTopic(topic, partitions = partitions.size)
 
         val info =
           KafkaConsumer
-            .stream[IO]
-            .using(consumerSettings[IO](config))
+            .stream(consumerSettings[IO])
             .evalMap(_.metrics)
 
         val res =
@@ -908,7 +881,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
   private def commitTest(
     commit: (KafkaConsumer[IO, String, String], CommittableOffsetBatch[IO]) => IO[Unit]
   ): Assertion = {
-    withKafka { (config, topic) =>
+    withTopic { topic =>
       val partitionsAmount = 3
       createCustomTopic(topic, partitions = partitionsAmount)
       val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
@@ -917,8 +890,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       val partitions = (0 until partitionsAmount).toSet
 
       val createConsumer = KafkaConsumer
-        .stream[IO]
-        .using(consumerSettings[IO](config))
+        .stream(consumerSettings[IO])
         .evalTap(_.subscribeTo(topic))
 
       val committed = (for {
@@ -930,7 +902,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         _ <- Stream.eval(commit(consumer, consumed))
       } yield consumed.offsets).compile.lastOrError.unsafeRunSync()
 
-      val actuallyCommitted = withKafkaConsumer(consumerProperties(config)) { consumer =>
+      val actuallyCommitted = withKafkaConsumer(defaultConsumerProperties) { consumer =>
         consumer
           .committed(partitions.map { partition =>
             new TopicPartition(topic, partition)

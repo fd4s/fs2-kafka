@@ -8,6 +8,8 @@ val fs2Version = "2.5.0"
 
 val kafkaVersion = "2.7.0"
 
+val testcontainersScalaVersion = "0.38.8"
+
 val vulcanVersion = "1.3.0"
 
 /*
@@ -84,7 +86,9 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    ("io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion)
+    ("com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion)
+      .withDottyCompat(scalaVersion.value),
+    ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
       .withDottyCompat(scalaVersion.value),
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
@@ -177,6 +181,31 @@ lazy val metadataSettings = Seq(
   organization := "com.github.fd4s"
 )
 
+ThisBuild / githubWorkflowTargetBranches := Seq("master", "series/*")
+
+ThisBuild / githubWorkflowBuild := Seq(
+  WorkflowStep.Sbt(List("ci")),
+  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
+)
+
+ThisBuild / githubWorkflowArtifactUpload := false
+
+ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
+ThisBuild / githubWorkflowPublishTargetBranches :=
+  Seq(RefPredicate.StartsWith(Ref.Tag("v")))
+
+ThisBuild / githubWorkflowPublish := Seq(
+  WorkflowStep.Sbt(
+    List("ci-release", "docs/docusaurusPublishGhpages"),
+    env = Map(
+      "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
+      "PGP_SECRET" -> "${{ secrets.PGP_SECRET }}",
+      "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
+      "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
+    )
+  )
+)
+
 lazy val publishSettings =
   metadataSettings ++ Seq(
     publishArtifact in Test := false,
@@ -231,9 +260,10 @@ lazy val noPublishSettings =
     publishArtifact := false
   )
 
+ThisBuild / scalaVersion := scala213
+ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
+
 lazy val scalaSettings = Seq(
-  scalaVersion := scala213,
-  crossScalaVersions := Seq(scala212, scala213, scala3),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
@@ -278,7 +308,8 @@ lazy val scalaSettings = Seq(
       baseDirectory.value / "src" / "main" / (if (scalaVersion.value.startsWith("2.12"))
                                                 "scala-2.12"
                                               else "scala-2.13+")
-    )
+    ),
+  Test / fork := true
 )
 
 lazy val testSettings = Seq(
@@ -348,5 +379,18 @@ addCommandsAlias(
     "+headerCheck",
     "+doc",
     "docs/run"
+  )
+)
+
+addCommandsAlias(
+  "ci",
+  List(
+    "clean",
+    "test",
+    "mimaReportBinaryIssues",
+    "scalafmtCheck",
+    "scalafmtSbtCheck",
+    "headerCheck",
+    "doc"
   )
 )

@@ -7,10 +7,9 @@ import cats.effect.IO
 import cats.implicits._
 import fs2.{Chunk, Stream}
 import fs2.kafka.internal.converters.collection._
-import net.manub.embeddedkafka.EmbeddedKafkaConfig
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.errors.ProducerFencedException
+import org.apache.kafka.common.errors.InvalidProducerEpochException
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.scalatest.EitherValues
 
@@ -37,7 +36,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 
   it("should be able to produce single records in a transaction") {
-    withKafka { (config, topic) =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 to 10).map(n => s"key-$n" -> s"value-$n")
 
@@ -46,7 +45,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
               "id",
-              producerSettings[IO](config)
+              producerSettings[IO]
                 .withRetries(Int.MaxValue)
             )
           )
@@ -78,12 +77,11 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       produced should contain theSameElementsAs toProduce
 
       val consumed = {
-        implicit val transactionalConfig: EmbeddedKafkaConfig = EmbeddedKafkaConfig(
-          kafkaPort = config.kafkaPort,
-          zooKeeperPort = config.zooKeeperPort,
-          customConsumerProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+        consumeNumberKeyedMessagesFrom[String, String](
+          topic,
+          produced.size,
+          customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
         )
-        consumeNumberKeyedMessagesFrom[String, String](topic, produced.size)
       }
 
       consumed should contain theSameElementsAs produced.toList
@@ -91,7 +89,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 
   it("should be able to produce multiple records in a transaction") {
-    withKafka { (config, topic) =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce =
         Chunk.seq((0 to 100).toList.map(n => s"key-$n" -> s"value-$n"))
@@ -103,7 +101,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
               "id",
-              producerSettings[IO](config)
+              producerSettings[IO]
                 .withRetries(Int.MaxValue)
             )
           )
@@ -141,12 +139,13 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       assert(records == toProduce && produced.passthrough == toPassthrough)
 
       val consumed = {
-        implicit val transactionalConfig: EmbeddedKafkaConfig = EmbeddedKafkaConfig(
-          kafkaPort = config.kafkaPort,
-          zooKeeperPort = config.zooKeeperPort,
-          customConsumerProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+        val customConsumerProperties =
+          Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+        consumeNumberKeyedMessagesFrom[String, String](
+          topic,
+          records.size,
+          customProperties = customConsumerProperties
         )
-        consumeNumberKeyedMessagesFrom[String, String](topic, records.size)
       }
 
       consumed should contain theSameElementsAs records.toList
@@ -154,7 +153,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 
   it("should abort transactions if committing offsets fails") {
-    withKafka { (config, topic) =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n").toList
       val toPassthrough = "passthrough"
@@ -166,7 +165,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
               "id",
-              producerSettings[IO](config)
+              producerSettings[IO]
                 .withRetries(Int.MaxValue)
                 .withCreateProducer { properties =>
                   IO.delay {
@@ -217,12 +216,12 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       produced shouldBe Left(error)
 
       val consumedOrError = {
-        implicit val transactionalConfig: EmbeddedKafkaConfig = EmbeddedKafkaConfig(
-          kafkaPort = config.kafkaPort,
-          zooKeeperPort = config.zooKeeperPort,
-          customConsumerProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+        Either.catchNonFatal(
+          consumeFirstKeyedMessageFrom[String, String](
+            topic,
+            customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+          )
         )
-        Either.catchNonFatal(consumeFirstKeyedMessageFrom[String, String](topic))
       }
 
       consumedOrError.isLeft shouldBe true
@@ -230,7 +229,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 
   it("should use user-specified transaction timeouts") {
-    withKafka { (config, topic) =>
+    withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n")
 
@@ -239,7 +238,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
               "id",
-              producerSettings[IO](config)
+              producerSettings[IO]
                 .withRetries(Int.MaxValue)
                 .withCreateProducer { properties =>
                   IO.delay {
@@ -272,15 +271,15 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           result <- Stream.eval(producer.produce(records).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 
-      produced.left.value shouldBe a[ProducerFencedException]
+      produced.left.value shouldBe an[InvalidProducerEpochException]
 
       val consumedOrError = {
-        implicit val transactionalConfig: EmbeddedKafkaConfig = EmbeddedKafkaConfig(
-          kafkaPort = config.kafkaPort,
-          zooKeeperPort = config.zooKeeperPort,
-          customConsumerProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+        Either.catchNonFatal(
+          consumeFirstKeyedMessageFrom[String, String](
+            topic,
+            customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+          )
         )
-        Either.catchNonFatal(consumeFirstKeyedMessageFrom[String, String](topic))
       }
 
       consumedOrError.isLeft shouldBe true
