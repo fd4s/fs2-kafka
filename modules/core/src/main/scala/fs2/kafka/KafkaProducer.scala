@@ -94,7 +94,7 @@ object KafkaProducer {
   private[kafka] def from[F[_]: Async, K, V](
     withProducer: WithProducer[F],
     keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
+    valueSerializer: Serializer[F, V]
   )(implicit dispatcher: Dispatcher[F]): KafkaProducer.Metrics[F, K, V] =
     new KafkaProducer.Metrics[F, K, V] {
       override def produce[P](
@@ -168,8 +168,7 @@ object KafkaProducer {
       asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
         F.async_ { (cb: Either[Throwable, (ProducerRecord[K, V], RecordMetadata)] => Unit) =>
             producer.send(
-              javaRecord,
-              { (metadata, exception) =>
+              javaRecord, { (metadata, exception) =>
                 cb {
                   if (exception == null)
                     Right((record, metadata))

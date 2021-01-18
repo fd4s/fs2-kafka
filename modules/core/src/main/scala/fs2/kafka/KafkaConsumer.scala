@@ -115,12 +115,12 @@ object KafkaConsumer {
           .enqueue1(Request.poll)
           .flatMap(_ => F.sleep(pollInterval))
           .foreverM[Unit]
-          .guaranteeCase {outcome: Outcome[F, Throwable, Unit] =>
+          .guaranteeCase { outcome: Outcome[F, Throwable, Unit] =>
             outcome match {
-            case Outcome.Errored(e) => deferred.complete(Left(e)).void
-            case _                  => deferred.complete(Right(())).void
+              case Outcome.Errored(e) => deferred.complete(Left(e)).void
+              case _                  => deferred.complete(Right(())).void
+            }
           }
-        }
           .start
       // .map(fiber => Fiber[F, Throwable, Unit](deferred.get.rethrow, fiber.cancel.start.void))
       }
@@ -186,7 +186,12 @@ object KafkaConsumer {
             stopReqs <- Deferred[F, Unit]
           } yield Stream.eval {
             def fetchPartition(deferred: Deferred[F, PartitionRequest]): F[Unit] = {
-              val request = Request.Fetch(partition, streamId, partitionStreamId, deferred.complete(_: PartitionRequest).void)
+              val request = Request.Fetch(
+                partition,
+                streamId,
+                partitionStreamId,
+                deferred.complete(_: PartitionRequest).void
+              )
               val fetch = requests.enqueue1(request) >> deferred.get
               F.race(shutdown, fetch).flatMap {
                 case Left(()) =>
@@ -587,7 +592,7 @@ object KafkaConsumer {
       polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, StreamId](0))
-      dispatcher  <- Dispatcher[F]
+      dispatcher <- Dispatcher[F]
       stopConsumingDeferred <- Resource.liftF(Deferred[F, Unit])
       withConsumer <- WithConsumer(settings)
       actor = {
@@ -641,7 +646,7 @@ object KafkaConsumer {
     * }}}
     */
   def stream[F[_], K, V](settings: ConsumerSettings[F, K, V])(
-    implicit F: Async[F],
+    implicit F: Async[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =
     Stream.resource(resource(settings))
 

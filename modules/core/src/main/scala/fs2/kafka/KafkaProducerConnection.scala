@@ -75,19 +75,19 @@ object KafkaProducerConnection {
     implicit F: Async[F]
   ): Resource[F, KafkaProducerConnection[F]] =
     Dispatcher[F].flatMap { implicit dispatcher =>
-    WithProducer(settings).map { withProducer =>
-      new KafkaProducerConnection[F] {
-        override def withSerializers[K, V](
-          keySerializer: Serializer[F, K],
-          valueSerializer: Serializer[F, V]
-        ): KafkaProducer.Metrics[F, K, V] =
-          KafkaProducer.from(withProducer, keySerializer, valueSerializer)
+      WithProducer(settings).map { withProducer =>
+        new KafkaProducerConnection[F] {
+          override def withSerializers[K, V](
+            keySerializer: Serializer[F, K],
+            valueSerializer: Serializer[F, V]
+          ): KafkaProducer.Metrics[F, K, V] =
+            KafkaProducer.from(withProducer, keySerializer, valueSerializer)
 
-        override def withSerializersFrom[K, V](
-          settings: ProducerSettings[F, K, V]
-        ): F[KafkaProducer.Metrics[F, K, V]] =
-          (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
+          override def withSerializersFrom[K, V](
+            settings: ProducerSettings[F, K, V]
+          ): F[KafkaProducer.Metrics[F, K, V]] =
+            (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
+        }
       }
     }
-  }
 }
