@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Concurrent, ContextShift}
+import cats.effect.{ConcurrentEffect, ContextShift}
 import fs2.Stream
 
 /**
@@ -19,7 +19,7 @@ import fs2.Stream
   * }}}
   */
 final class TransactionalProducerStream[F[_]] private[kafka] (
-  private val F: Concurrent[F]
+  private val F: ConcurrentEffect[F]
 ) extends AnyVal {
 
   /**

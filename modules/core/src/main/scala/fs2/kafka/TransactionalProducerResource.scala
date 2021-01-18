@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Concurrent, ContextShift, Resource}
+import cats.effect.{ConcurrentEffect, ContextShift, Resource}
 
 /**
   * [[TransactionalProducerResource]] provides support for inferring
@@ -18,7 +18,7 @@ import cats.effect.{Concurrent, ContextShift, Resource}
   * }}}
   */
 final class TransactionalProducerResource[F[_]] private[kafka] (
-  private val F: Concurrent[F]
+  private val F: ConcurrentEffect[F]
 ) extends AnyVal {
 
   /**

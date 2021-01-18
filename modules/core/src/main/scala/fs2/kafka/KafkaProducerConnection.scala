@@ -57,7 +57,7 @@ object KafkaProducerConnection {
   def stream[F[_]](
     settings: ProducerSettings[F, _, _]
   )(
-    implicit F: Concurrent[F],
+    implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Stream[F, KafkaProducerConnection[F]] = Stream.resource(resource(settings))
 
@@ -72,7 +72,7 @@ object KafkaProducerConnection {
   def resource[F[_]](
     settings: ProducerSettings[F, _, _]
   )(
-    implicit F: Concurrent[F],
+    implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Resource[F, KafkaProducerConnection[F]] =
     WithProducer(settings).map { withProducer =>
