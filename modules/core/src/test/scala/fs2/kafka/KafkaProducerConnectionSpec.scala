@@ -7,7 +7,7 @@ import org.scalactic.TypeCheckedTripleEquals
 
 final class KafkaProducerConnectionSpec extends BaseKafkaSpec with TypeCheckedTripleEquals {
   it("should allow instantiating multiple producers with different serializers") {
-    withKafka { (config, topic) =>
+    withTopic { (topic) =>
       createCustomTopic(topic, partitions = 3)
 
       val producerRecordString = ProducerRecord(topic, "key", "value")
@@ -15,7 +15,7 @@ final class KafkaProducerConnectionSpec extends BaseKafkaSpec with TypeCheckedTr
 
       val (result1, result2) =
         (for {
-          settings <- Stream(producerSettings[IO](config))
+          settings <- Stream(producerSettings[IO])
           producerConnection <- KafkaProducerConnection.stream(settings)
           producer1 <- Stream.eval(producerConnection.withSerializersFrom(settings))
           serializer2 = Serializer.string[IO].contramap[Int](_.toString)

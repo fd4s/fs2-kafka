@@ -4,11 +4,11 @@ val catsVersion = "2.3.1"
 
 val confluentVersion = "6.0.1"
 
-val embeddedKafkaVersion = "2.6.0"
-
 val fs2Version = "2.5.0"
 
-val kafkaVersion = "2.6.0"
+val kafkaVersion = "2.7.0"
+
+val testcontainersScalaVersion = "0.38.8"
 
 val vulcanVersion = "1.3.0"
 
@@ -79,7 +79,8 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
+    "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
+    "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3"
@@ -266,7 +267,8 @@ lazy val scalaSettings = Seq(
     case _ => true
   },
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
-  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value
+  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
+  Test / fork := true
 )
 
 lazy val testSettings = Seq(
