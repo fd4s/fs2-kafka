@@ -30,8 +30,7 @@ object Main extends IOApp {
         .withBootstrapServers("localhost:9092")
 
     val stream =
-      KafkaConsumer.stream[IO]
-        .using(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
         .mapAsync(25) { committable =>

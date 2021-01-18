@@ -169,8 +169,7 @@ val consumerSettings =
 object ProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaConsumer.stream[IO]
-        .using(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
         .map { committable =>
@@ -196,11 +195,9 @@ If we're producing in multiple places in our stream, we can create the `KafkaPro
 object PartitionedProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream[IO]
-        .using(producerSettings)
+      KafkaProducer.stream(producerSettings)
         .flatMap { producer =>
-          KafkaConsumer.stream[IO]
-            .using(consumerSettings)
+          KafkaConsumer.stream(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.partitionedStream)
             .map { partition =>
@@ -227,11 +224,9 @@ If we need more control of how records are produced, we can use `KafkaProducer#p
 object KafkaProducerProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream[IO]
-        .using(producerSettings)
+      KafkaProducer.stream(producerSettings)
         .flatMap { producer =>
-          KafkaConsumer.stream[IO]
-            .using(consumerSettings)
+          KafkaConsumer.stream(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)
             .map { committable =>
@@ -259,11 +254,9 @@ Sometimes there is a need to wait for individual `ProducerRecords` to send. In t
 object KafkaProducerProduceFlattenExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream[IO]
-        .using(producerSettings)
+      KafkaProducer.stream(producerSettings)
         .flatMap { producer =>
-          KafkaConsumer.stream[IO]
-            .using(consumerSettings)
+          KafkaConsumer.stream(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)
             .map { committable =>
