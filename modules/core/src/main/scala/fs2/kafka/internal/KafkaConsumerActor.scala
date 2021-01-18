@@ -456,7 +456,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         } else {
           val allRecords = state.records combine newRecords
 
-          F.whenA(allRecords.nonEmpty) {
+          if (allRecords.nonEmpty) {
             val requested = state.fetches.keySetStrict
 
             val canBeCompleted = allRecords.keySetStrict intersect requested
@@ -513,6 +513,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
               case (false, false) =>
                 (state, HandlePollResult.StateNotChanged(pendingCommits))
             }
+          } else {
+            (state, HandlePollResult.StateNotChanged(pendingCommits))
           }
         }
 
@@ -551,12 +553,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           }) >> result.pendingCommits.traverse_(_.commit)
 
         }
-      ref.get.flatMap { state =>
-        if (state.subscribed && state.streaming) {
-          val initialRebalancing = state.rebalancing
-          pollConsumer(state).flatMap(handlePoll(_, initialRebalancing))
-        } else F.unit
-      }
+    }
+    ref.get.flatMap { state =>
+      if (state.subscribed && state.streaming) {
+        val initialRebalancing = state.rebalancing
+        pollConsumer(state).flatMap(handlePoll(_, initialRebalancing))
+      } else F.unit
     }
   }
 
