@@ -29,7 +29,7 @@ final class ConsumerResource[F[_]] private[kafka] (
   def using[K, V](
     settings: ConsumerSettings[F, K, V]
   ): Resource[F, KafkaConsumer[F, K, V]] =
-    KafkaConsumer.resource(settings)(F)
+    KafkaConsumer.resource[F, K, V](settings)(F)
 
   override def toString: String =
     "ConsumerResource$" + System.identityHashCode(this)

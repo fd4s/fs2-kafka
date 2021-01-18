@@ -25,37 +25,28 @@ private[kafka] object WithProducer {
   )(
     implicit F: Sync[F]
   ): Resource[F, WithProducer[F]] =
-    blockingResource(settings).flatMap { blocking =>
-      Resource.make(
-        settings.createProducer.map(create(_, blocking))
-      )(_.blocking { _.close(settings.closeTimeout.asJava) })
-    }
+    Resource.make(
+      settings.createProducer.map(create(_, Blocking[F]))
+    )(_.blocking { _.close(settings.closeTimeout.asJava) })
 
   def apply[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
     implicit F: Sync[F]
   ): Resource[F, WithProducer[F]] =
-    blockingResource(settings.producerSettings).flatMap { blocking =>
-      Resource[F, WithProducer[F]] {
-        settings.producerSettings.createProducer.flatMap { producer =>
-          val withProducer = create(producer, blocking)
+    Resource[F, WithProducer[F]] {
+      settings.producerSettings.createProducer.flatMap { producer =>
+        val withProducer = create(producer, Blocking[F])
 
-          val initTransactions = withProducer.blocking { _.initTransactions() }
+        val initTransactions = withProducer.blocking { _.initTransactions() }
 
-          val close = withProducer.blocking {
-            _.close(settings.producerSettings.closeTimeout.asJava)
-          }
-
-          initTransactions.as((withProducer, close))
+        val close = withProducer.blocking {
+          _.close(settings.producerSettings.closeTimeout.asJava)
         }
+
+        initTransactions.as((withProducer, close))
       }
     }
-
-  private def blockingResource[F[_]: Sync](
-    settings: ProducerSettings[F, _, _]
-  ): Resource[F, Blocking[F]] =
-      Resource.pure(Blocking[F])
 
   private def create[F[_]](
     producer: JavaByteProducer,

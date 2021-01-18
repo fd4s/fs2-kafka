@@ -28,7 +28,7 @@ final class ConsumerStream[F[_]] private[kafka] (
     * except we're able to infer the key and value type.
     */
   def using[K, V](settings: ConsumerSettings[F, K, V]): Stream[F, KafkaConsumer[F, K, V]] =
-    KafkaConsumer.stream(settings)(F)
+    KafkaConsumer.stream[F, K, V](settings)(F)
 
   override def toString: String =
     "ConsumerStream$" + System.identityHashCode(this)

@@ -574,8 +574,7 @@ object KafkaAdminClient {
     * use the [[KafkaAdminClient.resource]].
     */
   def stream[F[_]](settings: AdminClientSettings[F])(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Stream[F, KafkaAdminClient[F]] =
     Stream.resource(KafkaAdminClient.resource(settings))
 }

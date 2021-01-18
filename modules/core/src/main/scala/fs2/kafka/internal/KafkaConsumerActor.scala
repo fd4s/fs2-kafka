@@ -234,16 +234,16 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     offsets: Map[TopicPartition, OffsetAndMetadata]
   )(
     k: (Either[Throwable, Unit] => Unit) => F[Unit]
-  ): F[Unit] = 
-  F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
-            k(cb)
-          }
-          .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
-            CommitTimeoutException(
-              settings.commitTimeout,
-              offsets
-            )
-          })
+  ): F[Unit] =
+    F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
+        k(cb).as(None)
+      }
+      .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
+        CommitTimeoutException(
+          settings.commitTimeout,
+          offsets
+        )
+      })
 
   private[this] def manualCommitAsync(request: Request.ManualCommitAsync[F, K, V]): F[Unit] = {
     val commit = runCommitAsync(request.offsets) { cb =>

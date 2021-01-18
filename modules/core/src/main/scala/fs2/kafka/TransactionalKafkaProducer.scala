@@ -9,7 +9,7 @@ package fs2.kafka
 import cats.effect.{Resource, Async, Outcome}
 import cats.effect.syntax.all._
 import cats.syntax.all._
-import fs2.Chunk
+import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
@@ -61,13 +61,13 @@ object TransactionalKafkaProducer {
           WithProducer(settings).map { withProducer =>
             new TransactionalKafkaProducer[F, K, V] {
               override def produce[P](
-                records: TransactionalProducerRecords[F, K, V, P]
-              ): F[ProducerResult[K, V, P]] =
+                records: TransactionalProducerRecords[F, P, K, V]
+              ): F[ProducerResult[P, K, V]] =
                 produceTransaction(records)
                   .map(ProducerResult(_, records.passthrough))
 
               private[this] def produceTransaction[P](
-                records: TransactionalProducerRecords[F, K, V, P]
+                records: TransactionalProducerRecords[F, P, K, V]
               ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
                 if (records.records.isEmpty) F.pure(Chunk.empty)
                 else {
@@ -129,7 +129,7 @@ object TransactionalKafkaProducer {
     * }}}
     */
   def resource[F[_]](
-    implicit F: ConcurrentEffect[F]
+    implicit F: Async[F]
   ): TransactionalProducerResource[F] =
     new TransactionalProducerResource(F)
 
@@ -146,8 +146,7 @@ object TransactionalKafkaProducer {
   def stream[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
     Stream.resource(resource(settings))
 
@@ -162,7 +161,7 @@ object TransactionalKafkaProducer {
     * }}}
     */
   def stream[F[_]](
-    implicit F: ConcurrentEffect[F]
+    implicit F: Async[F]
   ): TransactionalProducerStream[F] =
     new TransactionalProducerStream(F)
 }

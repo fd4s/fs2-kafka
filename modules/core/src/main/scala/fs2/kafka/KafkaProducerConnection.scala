@@ -10,6 +10,7 @@ import cats.effect._
 import cats.implicits._
 import fs2.Stream
 import fs2.kafka.internal._
+import cats.effect.std.Dispatcher
 
 /**
   * [[KafkaProducerConnection]] represents a connection to a Kafka broker
@@ -57,8 +58,7 @@ object KafkaProducerConnection {
   def stream[F[_]](
     settings: ProducerSettings[F, _, _]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Stream[F, KafkaProducerConnection[F]] = Stream.resource(resource(settings))
 
   /**
@@ -72,9 +72,9 @@ object KafkaProducerConnection {
   def resource[F[_]](
     settings: ProducerSettings[F, _, _]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Resource[F, KafkaProducerConnection[F]] =
+    Dispatcher[F].flatMap { implicit dispatcher =>
     WithProducer(settings).map { withProducer =>
       new KafkaProducerConnection[F] {
         override def withSerializers[K, V](
@@ -89,4 +89,5 @@ object KafkaProducerConnection {
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
       }
     }
+  }
 }

@@ -26,22 +26,16 @@ private[kafka] object WithConsumer {
   )(
     implicit F: Async[F]
   ): Resource[F, WithConsumer[F]] = {
-    val blockingResource =
-      settings.blocker
-        .map(Resource.pure[F, Blocker])
-        .getOrElse(Blockers.consumer)
-        .map(Blocking.fromBlocker[F])
-
-    blockingResource.flatMap { blocking_ =>
-      Resource.make {
-        (settings.createConsumer, Semaphore[F](1L))
-          .mapN { (consumer, semaphore) =>
-            new WithConsumer[F] {
-              override def apply[A](f: (JavaByteConsumer, Blocking[F]) => F[A]): F[A] =
-                semaphore.withPermit { f(consumer, blocking_) }
-            }
+    Resource.make {
+      (settings.createConsumer, Semaphore[F](1L))
+        .mapN { (consumer, semaphore) =>
+          new WithConsumer[F] {
+            override def apply[A](f: (JavaByteConsumer, Blocking[F]) => F[A]): F[A] =
+              semaphore.permit.use { _ =>
+                f(consumer, Blocking[F])
+              }
           }
-      }(_.blocking { _.close(settings.closeTimeout.asJava) })
-    }
+        }
+    }(_.blocking { _.close(settings.closeTimeout.asJava) })
   }
 }

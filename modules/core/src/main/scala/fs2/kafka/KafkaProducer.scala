@@ -8,9 +8,11 @@ package fs2.kafka
 
 import cats.Apply
 import cats.effect._
-import cats.effect.concurrent.Deferred
+import cats.effect.std._
+import cats.effect.syntax.all._
 import cats.implicits._
 import fs2._
+import fs2.kafka.JavaByteProducer
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
@@ -93,25 +95,24 @@ object KafkaProducer {
     withProducer: WithProducer[F],
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V],
-    dispatcher: Dispatcher[F]
-  ): KafkaProducer.Metrics[F, K, V] =
+  )(implicit dispatcher: Dispatcher[F]): KafkaProducer.Metrics[F, K, V] =
     new KafkaProducer.Metrics[F, K, V] {
-              override def produce[P](
-                records: ProducerRecords[K, V, P]
-              ): F[F[ProducerResult[K, V, P]]] = {
-                withProducer { (producer, _) =>
-                  records.records
-                    .traverse(produceRecord(keySerializer, valueSerializer, producer))
-                    .map(_.sequence.map(ProducerResult(_, records.passthrough)))
-                }
-              }
+      override def produce[P](
+        records: ProducerRecords[P, K, V]
+      ): F[F[ProducerResult[P, K, V]]] = {
+        withProducer { (producer, _) =>
+          records.records
+            .traverse(produceRecord(keySerializer, valueSerializer, producer))
+            .map(_.sequence.map(ProducerResult(_, records.passthrough)))
+        }
+      }
 
-              override def metrics: F[Map[MetricName, Metric]] =
-                withProducer.blocking { _.metrics().asScala.toMap }
+      override def metrics: F[Map[MetricName, Metric]] =
+        withProducer.blocking { _.metrics().asScala.toMap }
 
-              override def toString: String =
-                "KafkaProducer$" + System.identityHashCode(this)
-            }
+      override def toString: String =
+        "KafkaProducer$" + System.identityHashCode(this)
+    }
 
   /**
     * Alternative version of `resource` where the `F[_]` is
@@ -123,7 +124,7 @@ object KafkaProducer {
     * KafkaProducer.resource[F].using(settings)
     * }}}
     */
-  def resource[F[_]](implicit F: ConcurrentEffect[F]): ProducerResource[F] =
+  def resource[F[_]](implicit F: Async[F]): ProducerResource[F] =
     new ProducerResource(F)
 
   /**
@@ -138,8 +139,7 @@ object KafkaProducer {
     * }}}
     */
   def stream[F[_], K, V](settings: ProducerSettings[F, K, V])(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     Stream.resource(KafkaProducer.resource(settings))
 
@@ -153,7 +153,7 @@ object KafkaProducer {
     * KafkaProducer.stream[F].using(settings)
     * }}}
     */
-  def stream[F[_]](implicit F: ConcurrentEffect[F]): ProducerStream[F] =
+  def stream[F[_]](implicit F: Async[F]): ProducerStream[F] =
     new ProducerStream[F](F)
 
   private[kafka] def produceRecord[F[_], K, V](
@@ -169,7 +169,7 @@ object KafkaProducer {
         F.async_ { (cb: Either[Throwable, (ProducerRecord[K, V], RecordMetadata)] => Unit) =>
             producer.send(
               javaRecord,
-              callback { (metadata, exception) =>
+              { (metadata, exception) =>
                 cb {
                   if (exception == null)
                     Right((record, metadata))
@@ -188,7 +188,7 @@ object KafkaProducer {
     * produces record in batches, limiting the number of records
     * in the same batch using [[ProducerSettings#parallelism]].
     */
-  def pipe[F[_]: ConcurrentEffect: ContextShift, K, V, P](
+  def pipe[F[_]: Async, K, V, P](
     settings: ProducerSettings[F, K, V]
   ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
     records => stream(settings).flatMap(pipe(settings, _).apply(records))
@@ -233,11 +233,5 @@ object KafkaProducer {
           valueBytes,
           record.headers.asJava
         )
-    }
-
-  private[this] def callback(f: (RecordMetadata, Exception) => Unit): Callback =
-    new Callback {
-      override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
-        f(metadata, exception)
     }
 }

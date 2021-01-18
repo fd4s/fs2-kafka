@@ -588,7 +588,7 @@ object KafkaConsumer {
       ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.liftF(Ref.of[F, StreamId](0))
       dispatcher  <- Dispatcher[F]
-      stopConsumingDeferred <- Resource.liftF(Deferred.tryable[F, Unit])
+      stopConsumingDeferred <- Resource.liftF(Deferred[F, Unit])
       withConsumer <- WithConsumer(settings)
       actor = {
         implicit val jitter0: Jitter[F] = jitter
@@ -627,7 +627,7 @@ object KafkaConsumer {
     * KafkaConsumer.resource[F].using(settings)
     * }}}
     */
-  def resource[F[_]](implicit F: ConcurrentEffect[F]): ConsumerResource[F] = new ConsumerResource(F)
+  def resource[F[_]](implicit F: Async[F]): ConsumerResource[F] = new ConsumerResource(F)
 
   /**
     * Creates a new [[KafkaConsumer]] in the `Stream` context,
@@ -641,9 +641,7 @@ object KafkaConsumer {
     * }}}
     */
   def stream[F[_], K, V](settings: ConsumerSettings[F, K, V])(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F],
-    timer: Timer[F]
+    implicit F: Async[F],
   ): Stream[F, KafkaConsumer[F, K, V]] =
     Stream.resource(resource(settings))
 
@@ -657,6 +655,6 @@ object KafkaConsumer {
     * KafkaConsumer.stream[F].using(settings)
     * }}}
     */
-  def stream[F[_]](implicit F: ConcurrentEffect[F]): ConsumerStream[F] =
+  def stream[F[_]](implicit F: Async[F]): ConsumerStream[F] =
     new ConsumerStream[F](F)
 }
