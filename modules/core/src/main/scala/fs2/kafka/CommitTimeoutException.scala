@@ -9,7 +9,7 @@ package fs2.kafka
 import cats.instances.list._
 import cats.instances.string._
 import cats.syntax.show._
-import fs2.kafka.internal.instances._
+import fs2.kafka.instances._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{KafkaException, TopicPartition}
