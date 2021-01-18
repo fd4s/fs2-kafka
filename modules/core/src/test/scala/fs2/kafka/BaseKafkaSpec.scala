@@ -78,9 +78,9 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
       ()
     }
 
-  implicit final val stringSerializer: KafkaSerializer[String] = new StringSerializer
+  implicit final val stringSerializer: JavaSerializer[String] = new StringSerializer
 
-  implicit final val stringDeserializer: KafkaDeserializer[String] = new StringDeserializer
+  implicit final val stringDeserializer: JavaDeserializer[String] = new StringDeserializer
 
   def createCustomTopic(
     topic: String,
@@ -172,8 +172,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
     customProperties: Map[String, Object] = Map.empty
   )(
     implicit
-    keyDeserializer: KafkaDeserializer[K],
-    valueDeserializer: KafkaDeserializer[V]
+    keyDeserializer: JavaDeserializer[K],
+    valueDeserializer: JavaDeserializer[V]
   ): (K, V) =
     consumeNumberKeyedMessagesFrom[K, V](topic, 1, customProperties = customProperties)(
       keyDeserializer,
@@ -186,8 +186,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
     customProperties: Map[String, Object] = Map.empty
   )(
     implicit
-    keyDeserializer: KafkaDeserializer[K],
-    valueDeserializer: KafkaDeserializer[V]
+    keyDeserializer: JavaDeserializer[K],
+    valueDeserializer: JavaDeserializer[V]
   ): List[(K, V)] =
     consumeNumberKeyedMessagesFromTopics(
       Set(topic),
@@ -206,8 +206,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
     customProperties: Map[String, Object] = Map.empty
   )(
     implicit
-    keyDeserializer: KafkaDeserializer[K],
-    valueDeserializer: KafkaDeserializer[V]
+    keyDeserializer: JavaDeserializer[K],
+    valueDeserializer: JavaDeserializer[V]
   ): Map[String, List[(K, V)]] = {
     val consumerProperties = defaultConsumerProperties ++ customProperties
 
@@ -263,7 +263,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
   def publishToKafka[T](
     topic: String,
     message: T
-  )(implicit serializer: KafkaSerializer[T]): Unit =
+  )(implicit serializer: JavaSerializer[T]): Unit =
     publishToKafka(
       new KProducer(
         (defaultProducerConfig: Map[String, Object]).asJava,
@@ -291,8 +291,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
   }
 
   def publishToKafka[K, T](topic: String, messages: Seq[(K, T)])(
-    implicit keySerializer: KafkaSerializer[K],
-    serializer: KafkaSerializer[T]
+    implicit keySerializer: JavaSerializer[K],
+    serializer: JavaSerializer[T]
   ): Unit = {
     val producer =
       new KProducer(

@@ -28,23 +28,23 @@ final class SyntaxSpec extends BaseSpec {
     }
   }
 
-  describe("KafkaHeaders#asScala") {
+  describe("JavaHeaders#asScala") {
     it("should convert empty") {
-      val kafkaHeaders: KafkaHeaders =
+      val JavaHeaders: JavaHeaders =
         new RecordHeaders()
 
-      assert(kafkaHeaders.asScala == Headers.empty)
+      assert(JavaHeaders.asScala == Headers.empty)
     }
 
     it("should convert non-empty") {
-      val kafkaHeaders: KafkaHeaders = {
+      val JavaHeaders: JavaHeaders = {
         val recordHeaders = new RecordHeaders()
         recordHeaders.add("key", Array())
         recordHeaders
       }
 
       assert {
-        val headers = kafkaHeaders.asScala
+        val headers = JavaHeaders.asScala
         headers.toChain.size == 1 &&
         headers("key").map(_.value.size) == Some(0)
       }

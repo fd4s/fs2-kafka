@@ -66,7 +66,7 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
     val serializer =
       Serializer
         .delegate[IO, Int](
-          new KafkaSerializer[Int] {
+          new JavaSerializer[Int] {
             override def close(): Unit = ()
             override def configure(props: java.util.Map[String, _], isKey: Boolean): Unit = ()
             override def serialize(topic: String, int: Int): Array[Byte] =
@@ -105,7 +105,7 @@ final class SerializerSpec extends BaseCatsSpec with TestInstances {
     val serializer =
       Serializer
         .delegate[IO, Int](
-          new KafkaSerializer[Int] {
+          new JavaSerializer[Int] {
             override def close(): Unit = ()
             override def configure(props: java.util.Map[String, _], isKey: Boolean): Unit = ()
             override def serialize(topic: String, int: Int): Array[Byte] =

@@ -158,7 +158,7 @@ object KafkaProducer {
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V],
-    producer: KafkaByteProducer
+    producer: JavaByteProducer
   )(
     implicit F: ConcurrentEffect[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
@@ -223,10 +223,10 @@ object KafkaProducer {
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V],
     record: ProducerRecord[K, V]
-  )(implicit F: Apply[F]): F[KafkaByteProducerRecord] =
+  )(implicit F: Apply[F]): F[JavaByteProducerRecord] =
     serializeToBytes(keySerializer, valueSerializer, record).map {
       case (keyBytes, valueBytes) =>
-        new KafkaByteProducerRecord(
+        new JavaByteProducerRecord(
           record.topic,
           record.partition.fold[java.lang.Integer](null)(identity),
           record.timestamp.fold[java.lang.Long](null)(identity),

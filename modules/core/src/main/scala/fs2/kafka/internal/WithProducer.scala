@@ -8,13 +8,13 @@ package fs2.kafka.internal
 
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 import cats.implicits._
-import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
+import fs2.kafka.{JavaByteProducer, ProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
-  def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A]
+  def apply[A](f: (JavaByteProducer, Blocking[F]) => F[A]): F[A]
 
-  def blocking[A](f: KafkaByteProducer => A): F[A] = apply {
+  def blocking[A](f: JavaByteProducer => A): F[A] = apply {
     case (producer, blocking) => blocking(f(producer))
   }
 }
@@ -64,10 +64,10 @@ private[kafka] object WithProducer {
       .map(Blocking.fromBlocker[F])
 
   private def create[F[_]](
-    producer: KafkaByteProducer,
+    producer: JavaByteProducer,
     _blocking: Blocking[F]
   ): WithProducer[F] = new WithProducer[F] {
-    override def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A] =
+    override def apply[A](f: (JavaByteProducer, Blocking[F]) => F[A]): F[A] =
       f(producer, _blocking)
   }
 }
