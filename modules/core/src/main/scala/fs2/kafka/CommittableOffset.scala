@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,7 +10,7 @@ import cats.ApplicativeError
 import cats.instances.string._
 import cats.Show
 import cats.syntax.show._
-import fs2.kafka.internal.instances._
+import fs2.kafka.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 

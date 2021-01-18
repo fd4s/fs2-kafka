@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -158,7 +158,7 @@ object ConsumerRecord {
     )
 
   private[this] def deserializeFromBytes[F[_], K, V](
-    record: KafkaByteConsumerRecord,
+    record: JavaByteConsumerRecord,
     headers: Headers,
     keyDeserializer: Deserializer[F, K],
     valueDeserializer: Deserializer[F, V]
@@ -169,7 +169,7 @@ object ConsumerRecord {
   }
 
   private[kafka] def fromJava[F[_], K, V](
-    record: KafkaByteConsumerRecord,
+    record: JavaByteConsumerRecord,
     keyDeserializer: Deserializer[F, K],
     valueDeserializer: Deserializer[F, V]
   )(implicit F: Apply[F]): F[ConsumerRecord[K, V]] = {

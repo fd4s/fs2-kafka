@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,7 +11,7 @@ import cats.effect.Deferred
 import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.CommittableConsumerRecord
-import fs2.kafka.internal.instances._
+import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogLevel._
 import fs2.kafka.internal.syntax._

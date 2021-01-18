@@ -36,7 +36,7 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
     }
 
     it("should provide withAuth(Auth.Bearer)") {
-      forAll { token: String =>
+      forAll { (token: String) =>
         val settingsWithAuth =
           settings.withAuth(Auth.Bearer(token))
 

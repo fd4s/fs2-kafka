@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,7 +10,7 @@ import cats.{FlatMap, Foldable, Show}
 import cats.effect.{Ref, Async}
 import cats.effect.syntax.all._
 import cats.implicits._
-import fs2.kafka.{Header, Headers, KafkaHeaders}
+import fs2.kafka.{Header, Headers, JavaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
 import fs2.kafka.internal.converters.collection._
 import java.time.Duration
@@ -218,8 +218,8 @@ private[kafka] object syntax {
       }
   }
 
-  implicit final class KafkaHeadersSyntax(
-    private val headers: KafkaHeaders
+  implicit final class JavaHeadersSyntax(
+    private val headers: JavaHeaders
   ) extends AnyVal {
     def asScala: Headers =
       Headers.fromSeq {

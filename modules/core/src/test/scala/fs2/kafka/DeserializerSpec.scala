@@ -7,9 +7,9 @@ import cats.effect.laws._
 
 final class DeserializerSpec extends BaseCatsSpec with TestInstances {
   checkAll(
-    "Deserializer[IO, ?]", {
+    "Deserializer[IO, *]", {
       implicit val testContext: TestContext = TestContext()
-      MonadErrorTests[Deserializer[IO, ?], Throwable].monadError[String, String, String]
+      MonadErrorTests[Deserializer[IO, *], Throwable].monadError[String, String, String]
     }
   )
 
@@ -122,7 +122,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
         case _       => Deserializer[IO, String].map(_.toInt).suspend
       }
 
-    forAll { i: Int =>
+    forAll { (i: Int) =>
       val serialized = Serializer[IO, Int].serialize("topic", Headers.empty, i).unsafeRunSync()
       val deserialized = deserializer.deserialize("topic", Headers.empty, serialized)
       deserialized.attempt.unsafeRunSync() shouldBe Right(i)
@@ -168,7 +168,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
 
     deserializer.deserialize("topic", Headers.empty, null).unsafeRunSync() shouldBe None
 
-    forAll { s: String =>
+    forAll { (s: String) =>
       val serialized = Serializer[IO, String].serialize("topic", Headers.empty, s).unsafeRunSync()
       deserializer.deserialize("topic", Headers.empty, serialized).unsafeRunSync() shouldBe Some(s)
     }

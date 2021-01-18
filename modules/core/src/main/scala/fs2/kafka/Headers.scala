@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -69,7 +69,7 @@ sealed abstract class Headers {
   def isEmpty: Boolean
 
   /** The [[Headers]] as an immutable Java Kafka `Headers` instance. */
-  def asJava: KafkaHeaders
+  def asJava: JavaHeaders
 }
 
 object Headers {
@@ -100,35 +100,35 @@ object Headers {
     override val isEmpty: Boolean =
       false
 
-    override def asJava: KafkaHeaders = {
-      val array: Array[KafkaHeader] =
+    override def asJava: JavaHeaders = {
+      val array: Array[JavaHeader] =
         toChain.iterator.toArray
 
-      new KafkaHeaders {
-        override def add(header: KafkaHeader): KafkaHeaders =
+      new JavaHeaders {
+        override def add(header: JavaHeader): JavaHeaders =
           throw new IllegalStateException("Headers#asJava is immutable")
 
-        override def add(key: String, value: Array[Byte]): KafkaHeaders =
+        override def add(key: String, value: Array[Byte]): JavaHeaders =
           throw new IllegalStateException("Headers#asJava is immutable")
 
-        override def remove(key: String): KafkaHeaders =
+        override def remove(key: String): JavaHeaders =
           throw new IllegalStateException("Headers#asJava is immutable")
 
-        override def lastHeader(key: String): KafkaHeader = {
+        override def lastHeader(key: String): JavaHeader = {
           val index = array.lastIndexWhere(_.key == key)
           if (index != -1) array(index) else null
         }
 
-        override def headers(key: String): java.lang.Iterable[KafkaHeader] =
-          new java.lang.Iterable[KafkaHeader] {
-            override def iterator(): java.util.Iterator[KafkaHeader] =
+        override def headers(key: String): java.lang.Iterable[JavaHeader] =
+          new java.lang.Iterable[JavaHeader] {
+            override def iterator(): java.util.Iterator[JavaHeader] =
               array.iterator.filter(_.key == key).asJava
           }
 
-        override val toArray: Array[KafkaHeader] =
+        override val toArray: Array[JavaHeader] =
           array
 
-        override def iterator(): java.util.Iterator[KafkaHeader] =
+        override def iterator(): java.util.Iterator[JavaHeader] =
           array.iterator.asJava
       }
     }
@@ -200,42 +200,42 @@ object Headers {
       override val isEmpty: Boolean =
         true
 
-      override val asJava: KafkaHeaders =
-        new KafkaHeaders {
-          override def add(header: KafkaHeader): KafkaHeaders =
+      override val asJava: JavaHeaders =
+        new JavaHeaders {
+          override def add(header: JavaHeader): JavaHeaders =
             throw new IllegalStateException("Headers#asJava is immutable")
 
-          override def add(key: String, value: Array[Byte]): KafkaHeaders =
+          override def add(key: String, value: Array[Byte]): JavaHeaders =
             throw new IllegalStateException("Headers#asJava is immutable")
 
-          override def remove(key: String): KafkaHeaders =
+          override def remove(key: String): JavaHeaders =
             throw new IllegalStateException("Headers#asJava is immutable")
 
-          override def lastHeader(key: String): KafkaHeader =
+          override def lastHeader(key: String): JavaHeader =
             null
 
-          private[this] val emptyIterator: java.util.Iterator[KafkaHeader] =
-            new java.util.Iterator[KafkaHeader] {
+          private[this] val emptyIterator: java.util.Iterator[JavaHeader] =
+            new java.util.Iterator[JavaHeader] {
               override val hasNext: Boolean =
                 false
 
-              override def next(): KafkaHeader =
+              override def next(): JavaHeader =
                 throw new NoSuchElementException()
             }
 
-          private[this] val emptyIterable: java.lang.Iterable[KafkaHeader] =
-            new java.lang.Iterable[KafkaHeader] {
-              override val iterator: java.util.Iterator[KafkaHeader] =
+          private[this] val emptyIterable: java.lang.Iterable[JavaHeader] =
+            new java.lang.Iterable[JavaHeader] {
+              override val iterator: java.util.Iterator[JavaHeader] =
                 emptyIterator
             }
 
-          override def headers(key: String): java.lang.Iterable[KafkaHeader] =
+          override def headers(key: String): java.lang.Iterable[JavaHeader] =
             emptyIterable
 
-          override val toArray: Array[KafkaHeader] =
+          override val toArray: Array[JavaHeader] =
             Array.empty
 
-          override val iterator: java.util.Iterator[KafkaHeader] =
+          override val iterator: java.util.Iterator[JavaHeader] =
             emptyIterator
         }
 

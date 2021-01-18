@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,8 +8,9 @@ package fs2.kafka
 
 import cats.Apply
 import cats.effect._
-import cats.effect.syntax.all._
+import cats.effect.concurrent.Deferred
 import cats.implicits._
+import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
@@ -50,8 +51,8 @@ abstract class KafkaProducer[F[_], K, V] {
     *   but losing the order of produced records.
     */
   def produce[P](
-    records: ProducerRecords[K, V, P]
-  ): F[F[ProducerResult[K, V, P]]]
+    records: ProducerRecords[P, K, V]
+  ): F[F[ProducerResult[P, K, V]]]
 }
 
 object KafkaProducer {
@@ -70,16 +71,31 @@ object KafkaProducer {
     def metrics: F[Map[MetricName, Metric]]
   }
 
-  private[kafka] def resource[F[_], K, V](
+  /**
+    * Creates a new [[KafkaProducer]] in the `Resource` context,
+    * using the specified [[ProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaProducer.resource[F].using(settings)
+    * }}}
+    */
+  def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: Async[F]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
-    Resource.liftF(settings.keySerializer).flatMap { keySerializer =>
-      Resource.liftF(settings.valueSerializer).flatMap { valueSerializer =>
-        Dispatcher[F].flatMap { implicit dispatcher =>
-          WithProducer(settings).map { withProducer =>
-            new KafkaProducer.Metrics[F, K, V] {
+    KafkaProducerConnection.resource(settings).evalMap(_.withSerializersFrom(settings))
+
+  private[kafka] def from[F[_]: Async, K, V](
+    withProducer: WithProducer[F],
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V],
+    dispatcher: Dispatcher[F]
+  ): KafkaProducer.Metrics[F, K, V] =
+    new KafkaProducer.Metrics[F, K, V] {
               override def produce[P](
                 records: ProducerRecords[K, V, P]
               ): F[F[ProducerResult[K, V, P]]] = {
@@ -96,15 +112,54 @@ object KafkaProducer {
               override def toString: String =
                 "KafkaProducer$" + System.identityHashCode(this)
             }
-          }
-        }
-      }
-    }
+
+  /**
+    * Alternative version of `resource` where the `F[_]` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ProducerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaProducer.resource[F].using(settings)
+    * }}}
+    */
+  def resource[F[_]](implicit F: ConcurrentEffect[F]): ProducerResource[F] =
+    new ProducerResource(F)
+
+  /**
+    * Creates a new [[KafkaProducer]] in the `Stream` context,
+    * using the specified [[ProducerSettings]]. Note that there
+    * is another version where `F[_]` is specified explicitly and
+    * the key and value type can be inferred, which allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaProducer.stream[F].using(settings)
+    * }}}
+    */
+  def stream[F[_], K, V](settings: ProducerSettings[F, K, V])(
+    implicit F: ConcurrentEffect[F],
+    context: ContextShift[F]
+  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
+    Stream.resource(KafkaProducer.resource(settings))
+
+  /**
+    * Alternative version of `stream` where the `F[_]` is
+    * specified explicitly, and where the key and value type can
+    * be inferred from the [[ProducerSettings]]. This allows you
+    * to use the following syntax.
+    *
+    * {{{
+    * KafkaProducer.stream[F].using(settings)
+    * }}}
+    */
+  def stream[F[_]](implicit F: ConcurrentEffect[F]): ProducerStream[F] =
+    new ProducerStream[F](F)
 
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V],
-    producer: KafkaByteProducer
+    producer: JavaByteProducer
   )(
     implicit F: Async[F],
     dispatcher: Dispatcher[F]
@@ -128,6 +183,27 @@ object KafkaProducer {
           .map(_.joinAndEmbedNever)
       }
 
+  /**
+    * Creates a [[KafkaProducer]] using the provided settings and
+    * produces record in batches, limiting the number of records
+    * in the same batch using [[ProducerSettings#parallelism]].
+    */
+  def pipe[F[_]: ConcurrentEffect: ContextShift, K, V, P](
+    settings: ProducerSettings[F, K, V]
+  ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
+    records => stream(settings).flatMap(pipe(settings, _).apply(records))
+
+  /**
+    * Produces records in batches using the provided [[KafkaProducer]].
+    * The number of records in the same batch is limited using the
+    * [[ProducerSettings#parallelism]] setting.
+    */
+  def pipe[F[_]: Concurrent, K, V, P](
+    settings: ProducerSettings[F, K, V],
+    producer: KafkaProducer[F, K, V]
+  ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
+    _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
+
   private[this] def serializeToBytes[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V],
@@ -146,10 +222,10 @@ object KafkaProducer {
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V],
     record: ProducerRecord[K, V]
-  )(implicit F: Apply[F]): F[KafkaByteProducerRecord] =
+  )(implicit F: Apply[F]): F[JavaByteProducerRecord] =
     serializeToBytes(keySerializer, valueSerializer, record).map {
       case (keyBytes, valueBytes) =>
-        new KafkaByteProducerRecord(
+        new JavaByteProducerRecord(
           record.topic,
           record.partition.fold[java.lang.Integer](null)(identity),
           record.timestamp.fold[java.lang.Long](null)(identity),

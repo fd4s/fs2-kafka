@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,7 +9,7 @@ package fs2.kafka
 import cats.syntax.show._
 import cats.Show
 import fs2.Chunk
-import fs2.kafka.internal.instances._
+import fs2.kafka.instances._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.producer.RecordMetadata
 
@@ -24,7 +24,7 @@ import org.apache.kafka.clients.producer.RecordMetadata
   * <br>
   * Use [[ProducerResult#apply]] to create a new [[ProducerResult]].
   */
-sealed abstract class ProducerResult[+K, +V, +P] {
+sealed abstract class ProducerResult[+P, +K, +V] {
 
   /**
     * The records produced along with respective metadata.
@@ -37,10 +37,10 @@ sealed abstract class ProducerResult[+K, +V, +P] {
 }
 
 object ProducerResult {
-  private[this] final class ProducerResultImpl[+K, +V, +P](
+  private[this] final class ProducerResultImpl[+P, +K, +V](
     override val records: Chunk[(ProducerRecord[K, V], RecordMetadata)],
     override val passthrough: P
-  ) extends ProducerResult[K, V, P] {
+  ) extends ProducerResult[P, K, V] {
 
     override def toString: String = {
       if (records.isEmpty)
@@ -64,18 +64,18 @@ object ProducerResult {
     * or more `ProducerRecord`s, finally emitting a passthrough
     * value and the `ProducerRecord`s with `RecordMetadata`.
     */
-  def apply[K, V, P](
+  def apply[P, K, V](
     records: Chunk[(ProducerRecord[K, V], RecordMetadata)],
     passthrough: P
-  ): ProducerResult[K, V, P] =
+  ): ProducerResult[P, K, V] =
     new ProducerResultImpl(records, passthrough)
 
-  implicit def producerResultShow[K, V, P](
+  implicit def producerResultShow[P, K, V](
     implicit
     K: Show[K],
     V: Show[V],
     P: Show[P]
-  ): Show[ProducerResult[K, V, P]] = Show.show { result =>
+  ): Show[ProducerResult[P, K, V]] = Show.show { result =>
     if (result.records.isEmpty)
       show"ProducerResult(<empty>, ${result.passthrough})"
     else

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -29,7 +29,7 @@ import scala.collection.mutable
   * The [[passthrough]] and [[records]] can be retrieved from an
   * existing [[ProducerRecords]] instance.<br>
   */
-sealed abstract class ProducerRecords[+K, +V, +P] {
+sealed abstract class ProducerRecords[+P, +K, +V] {
 
   /** The records to produce. Can be empty for passthrough-only. */
   def records: Chunk[ProducerRecord[K, V]]
@@ -39,10 +39,10 @@ sealed abstract class ProducerRecords[+K, +V, +P] {
 }
 
 object ProducerRecords {
-  private[this] final class ProducerRecordsImpl[+K, +V, +P](
+  private[this] final class ProducerRecordsImpl[+P, +K, +V](
     override val records: Chunk[ProducerRecord[K, V]],
     override val passthrough: P
-  ) extends ProducerRecords[K, V, P] {
+  ) extends ProducerRecords[P, K, V] {
     override def toString: String = {
       if (records.isEmpty) s"ProducerRecords(<empty>, $passthrough)"
       else records.mkString("ProducerRecords(", ", ", s", $passthrough)")
@@ -58,7 +58,7 @@ object ProducerRecords {
     records: F[ProducerRecord[K, V]]
   )(
     implicit F: Traverse[F]
-  ): ProducerRecords[K, V, Unit] =
+  ): ProducerRecords[Unit, K, V] =
     apply(records, ())
 
   /**
@@ -66,12 +66,12 @@ object ProducerRecords {
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
     */
-  def apply[F[+_], K, V, P](
+  def apply[F[+_], P, K, V](
     records: F[ProducerRecord[K, V]],
     passthrough: P
   )(
     implicit F: Traverse[F]
-  ): ProducerRecords[K, V, P] = {
+  ): ProducerRecords[P, K, V] = {
     val numRecords = F.size(records).toInt
     val chunk = if (numRecords <= 1) {
       F.get(records)(0) match {
@@ -97,7 +97,7 @@ object ProducerRecords {
     */
   def one[K, V](
     record: ProducerRecord[K, V]
-  ): ProducerRecords[K, V, Unit] =
+  ): ProducerRecords[Unit, K, V] =
     one(record, ())
 
   /**
@@ -105,18 +105,18 @@ object ProducerRecords {
     * `ProducerRecord`, then emitting a [[ProducerResult]] with
     * the result and specified passthrough value.
     */
-  def one[K, V, P](
+  def one[P, K, V](
     record: ProducerRecord[K, V],
     passthrough: P
-  ): ProducerRecords[K, V, P] =
+  ): ProducerRecords[P, K, V] =
     new ProducerRecordsImpl(Chunk.singleton(record), passthrough)
 
-  implicit def producerRecordsShow[K, V, P](
+  implicit def producerRecordsShow[P, K, V](
     implicit
     K: Show[K],
     V: Show[V],
     P: Show[P]
-  ): Show[ProducerRecords[K, V, P]] = Show.show { records =>
+  ): Show[ProducerRecords[P, K, V]] = Show.show { records =>
     if (records.records.isEmpty) show"ProducerRecords(<empty>, ${records.passthrough})"
     else records.records.mkStringShow("ProducerRecords(", ", ", s", ${records.passthrough})")
   }

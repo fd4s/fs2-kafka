@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,11 +11,11 @@ import cats.effect.Async
 
 /**
   * [[ProducerResource]] provides support for inferring the key and value
-  * type from [[ProducerSettings]] when using `producerResource` with the
+  * type from [[ProducerSettings]] when using `KafkaProducer.resource` with the
   * following syntax.
   *
   * {{{
-  * producerResource[F].using(settings)
+  * KafkaProducer.resource[F].using(settings)
   * }}}
   */
 final class ProducerResource[F[_]] private[kafka] (
@@ -24,13 +24,13 @@ final class ProducerResource[F[_]] private[kafka] (
 
   /**
     * Creates a new [[KafkaProducer]] in the `Resource` context.
-    * This is equivalent to using `producerResource` directly,
+    * This is equivalent to using `KafkaProducer.resource` directly,
     * except we're able to infer the key and value type.
     */
   def using[K, V](
     settings: ProducerSettings[F, K, V]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
-    producerResource(settings)(F)
+    KafkaProducer.resource(settings)(F)
 
   override def toString: String =
     "ProducerResource$" + System.identityHashCode(this)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -80,7 +80,7 @@ object Serializer {
     * If it's not pure, then use `suspend` after `delegate`,
     * so the impure behaviours can be captured properly.
     */
-  def delegate[F[_], A](serializer: KafkaSerializer[A])(
+  def delegate[F[_], A](serializer: JavaSerializer[A])(
     implicit F: Sync[F]
   ): Serializer[F, A] =
     Serializer.instance[F, A] { (topic, headers, a) =>
@@ -213,8 +213,8 @@ object Serializer {
   ): Serializer[F, Option[A]] =
     serializer.option
 
-  implicit def contravariant[F[_]]: Contravariant[Serializer[F, ?]] =
-    new Contravariant[Serializer[F, ?]] {
+  implicit def contravariant[F[_]]: Contravariant[Serializer[F, *]] =
+    new Contravariant[Serializer[F, *]] {
       override def contramap[A, B](serializer: Serializer[F, A])(f: B => A): Serializer[F, B] =
         serializer.contramap(f)
     }

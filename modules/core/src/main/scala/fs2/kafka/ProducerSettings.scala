@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -216,7 +216,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * operation should be bracketed, using e.g. `Resource`, to ensure
     * the `close` function on the producer is called.
     */
-  def createProducer: F[KafkaByteProducer]
+  def createProducer: F[JavaByteProducer]
 
   /**
     * Creates a new [[ProducerSettings]] with the specified function for
@@ -224,7 +224,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * is the [[properties]] of the settings instance.
     */
   def withCreateProducer(
-    createProducer: Map[String, String] => F[KafkaByteProducer]
+    createProducer: Map[String, String] => F[JavaByteProducer]
   ): ProducerSettings[F, K, V]
 }
 
@@ -235,7 +235,7 @@ object ProducerSettings {
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val parallelism: Int,
-    val createProducerWith: Map[String, String] => F[KafkaByteProducer]
+    val createProducerWith: Map[String, String] => F[JavaByteProducer]
   ) extends ProducerSettings[F, K, V] {
 
     override def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V] =
@@ -292,11 +292,11 @@ object ProducerSettings {
     override def withParallelism(parallelism: Int): ProducerSettings[F, K, V] =
       copy(parallelism = parallelism)
 
-    override def createProducer: F[KafkaByteProducer] =
+    override def createProducer: F[JavaByteProducer] =
       createProducerWith(properties)
 
     override def withCreateProducer(
-      createProducerWith: Map[String, String] => F[KafkaByteProducer]
+      createProducerWith: Map[String, String] => F[JavaByteProducer]
     ): ProducerSettings[F, K, V] =
       copy(createProducerWith = createProducerWith)
 

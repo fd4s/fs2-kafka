@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,11 +11,11 @@ import fs2.Stream
 
 /**
   * [[ProducerStream]] provides support for inferring the key and value
-  * type from [[ProducerSettings]] when using `producerStream` with the
+  * type from [[ProducerSettings]] when using `KafkaProducer.stream` with the
   * following syntax.
   *
   * {{{
-  * producerStream[F].using(settings)
+  * KafkaProducer.stream[F].using(settings)
   * }}}
   */
 final class ProducerStream[F[_]] private[kafka] (
@@ -24,11 +24,11 @@ final class ProducerStream[F[_]] private[kafka] (
 
   /**
     * Creates a new [[KafkaProducer]] in the `Stream` context.
-    * This is equivalent to using `producerStream` directly,
+    * This is equivalent to using `KafkaProducer.stream` directly,
     * except we're able to infer the key and value type.
     */
   def using[K, V](settings: ProducerSettings[F, K, V]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
-    producerStream(settings)(F)
+    KafkaProducer.stream(settings)(F)
 
   override def toString: String =
     "ProducerStream$" + System.identityHashCode(this)

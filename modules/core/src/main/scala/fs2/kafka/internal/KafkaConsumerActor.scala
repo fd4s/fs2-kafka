@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -15,7 +15,7 @@ import fs2.Chunk
 import fs2.concurrent.Queue
 import fs2.kafka._
 import fs2.kafka.internal.converters.collection._
-import fs2.kafka.internal.instances._
+import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogEntry._
 import fs2.kafka.internal.syntax._
@@ -198,15 +198,18 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     assigned.ifM(storeFetch, completeRevoked)
   }
 
-  private[this] def commitAsync(request: Request.Commit[F, K, V]): F[Unit] =
+  private[this] def commitAsync(
+    offsets: Map[TopicPartition, OffsetAndMetadata],
+    callback: Either[Throwable, Unit] => Unit
+  ): F[Unit] =
     withConsumer { (consumer, _) =>
       F.delay {
           consumer.commitAsync(
-            request.offsets.asJava,
-            (_, exception) => request.callback(Option(exception).toLeft(()))
+            offsets.asJava,
+            (_, exception) => callback(Option(exception).toLeft(()))
           )
         }
-        .handleErrorWith(e => F.delay(request.callback(Left(e))))
+        .handleErrorWith(e => F.delay(callback(Left(e))))
     }
 
   private[this] def commit(request: Request.Commit[F, K, V]): F[Unit] =
@@ -219,8 +222,41 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
       .flatMap {
         case Some(log) => logging.log(log)
-        case None      => commitAsync(request)
+        case None      => commitAsync(request.offsets, request.callback)
       }
+
+  private[this] def manualCommitSync(request: Request.ManualCommitSync[F, K, V]): F[Unit] = {
+    val commit = withConsumer.blocking(_.commitSync(request.offsets.asJava))
+    commit.attempt >>= request.callback
+  }
+
+  private[this] def runCommitAsync(
+    offsets: Map[TopicPartition, OffsetAndMetadata]
+  )(
+    k: (Either[Throwable, Unit] => Unit) => F[Unit]
+  ): F[Unit] = 
+  F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
+            k(cb)
+          }
+          .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
+            CommitTimeoutException(
+              settings.commitTimeout,
+              offsets
+            )
+          })
+
+  private[this] def manualCommitAsync(request: Request.ManualCommitAsync[F, K, V]): F[Unit] = {
+    val commit = runCommitAsync(request.offsets) { cb =>
+      commitAsync(request.offsets, cb)
+    }
+
+    val res = commit.attempt >>= request.callback
+
+    // We need to start this action in a separate fiber without waiting for the result,
+    // because commitAsync could be resolved only with the poll consumer call.
+    // Which could be done only when the current request is processed.
+    res.start.void
+  }
 
   private[this] def assigned(assigned: SortedSet[TopicPartition]): F[Unit] =
     ref
@@ -340,16 +376,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private[this] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
-      val commit =
-        F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
-            requests.enqueue1(Request.Commit(offsets, cb)).as(None)
-          }
-          .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
-            CommitTimeoutException(
-              settings.commitTimeout,
-              offsets
-            )
-          })
+      val commit = runCommitAsync(offsets) { cb =>
+        requests.enqueue1(Request.Commit(offsets, cb))
+      }
 
       commit.handleErrorWith {
         settings.commitRecovery
@@ -374,7 +403,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       )
     )
 
-  private[this] def records(batch: KafkaByteConsumerRecords): F[ConsumerRecords] =
+  private[this] def records(batch: JavaByteConsumerRecords): F[ConsumerRecords] =
     batch.partitions.toVector
       .traverse { partition =>
         NonEmptyVector
@@ -541,7 +570,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Request.Unsubscribe(callback)               => unsubscribe(callback)
       case Request.Fetch(partition, streamId, partitionStreamId, callback) =>
         fetch(partition, streamId, partitionStreamId, callback)
-      case request @ Request.Commit(_, _) => commit(request)
+      case request @ Request.Commit(_, _)            => commit(request)
+      case request @ Request.ManualCommitAsync(_, _) => manualCommitAsync(request)
+      case request @ Request.ManualCommitSync(_, _)  => manualCommitSync(request)
     }
 
   private[this] case class RevokedResult(
@@ -561,7 +592,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       log: CommittedPendingCommits[F, K, V]
     ) {
       def commit: F[Unit] = {
-        commits.foldLeft(F.unit)(_ >> commitAsync(_)) >> logging.log(log)
+        commits.foldLeft(F.unit) {
+          case (acc, commitRequest) =>
+            acc >> commitAsync(commitRequest.offsets, commitRequest.callback)
+        } >> logging.log(log)
       }
     }
 
@@ -805,6 +839,16 @@ private[kafka] object KafkaConsumerActor {
     final case class Commit[F[_], K, V](
       offsets: Map[TopicPartition, OffsetAndMetadata],
       callback: Either[Throwable, Unit] => Unit
+    ) extends Request[F, K, V]
+
+    final case class ManualCommitAsync[F[_], K, V](
+      offsets: Map[TopicPartition, OffsetAndMetadata],
+      callback: Either[Throwable, Unit] => F[Unit]
+    ) extends Request[F, K, V]
+
+    final case class ManualCommitSync[F[_], K, V](
+      offsets: Map[TopicPartition, OffsetAndMetadata],
+      callback: Either[Throwable, Unit] => F[Unit]
     ) extends Request[F, K, V]
   }
 }

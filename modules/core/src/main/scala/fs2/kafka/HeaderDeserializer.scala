@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 OVO Energy Limited
+ * Copyright 2018-2021 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -115,7 +115,7 @@ object HeaderDeserializer {
     * and `configure` functions won't be called for the delegate. Also,
     * the topic is an empty `String` and no headers are provided.
     */
-  def delegate[A](deserializer: KafkaDeserializer[A]): HeaderDeserializer[A] =
+  def delegate[A](deserializer: JavaDeserializer[A]): HeaderDeserializer[A] =
     HeaderDeserializer.instance { bytes =>
       deserializer.deserialize("", bytes)
     }
