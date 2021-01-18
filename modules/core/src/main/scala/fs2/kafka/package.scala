@@ -61,13 +61,13 @@ package object kafka {
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 
   @deprecated("use KafkaProducer.pipe", "1.2.0")
-  def produce[F[_]: Concurrent: ContextShift, K, V, P](
+  def produce[F[_]: ConcurrentEffect: ContextShift, K, V, P](
     settings: ProducerSettings[F, K, V]
   ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
     KafkaProducer.pipe(settings)
 
   @deprecated("use KafkaProducer.pipe", "1.2.0")
-  def produce[F[_]: Concurrent, K, V, P](
+  def produce[F[_]: ConcurrentEffect, K, V, P](
     settings: ProducerSettings[F, K, V],
     producer: KafkaProducer[F, K, V]
   ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
@@ -112,35 +112,35 @@ package object kafka {
     KafkaConsumer.stream(F)
 
   @deprecated("use KafkaProducer.resource", "1.2.0")
-  def producerResource[F[_]: Concurrent: ContextShift, K, V](
+  def producerResource[F[_]: ConcurrentEffect: ContextShift, K, V](
     settings: ProducerSettings[F, K, V]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducer.resource(settings)
 
   @deprecated("use KafkaProducer.resource", "1.2.0")
-  def producerResource[F[_]: Concurrent]: ProducerResource[F] = KafkaProducer.resource
+  def producerResource[F[_]: ConcurrentEffect]: ProducerResource[F] = KafkaProducer.resource
 
   @deprecated("use KafkaProducer.stream", "1.2.0")
-  def producerStream[F[_]: Concurrent: ContextShift, K, V](
+  def producerStream[F[_]: ConcurrentEffect: ContextShift, K, V](
     settings: ProducerSettings[F, K, V]
   ): Stream[F, KafkaProducer.Metrics[F, K, V]] = KafkaProducer.stream(settings)
 
   @deprecated("use KafkaProducer.stream", "1.2.0")
-  def producerStream[F[_]: Concurrent]: ProducerStream[F] =
+  def producerStream[F[_]: ConcurrentEffect]: ProducerStream[F] =
     KafkaProducer.stream[F]
 
   @deprecated("use TransactionalKafkaProducer.resource", "1.2.0")
   def transactionalProducerResource[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: Concurrent[F],
+    implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     TransactionalKafkaProducer.resource(settings)
 
   @deprecated("use TransactionalKafkaProducer.resource", "1.2.0")
   def transactionalProducerResource[F[_]](
-    implicit F: Concurrent[F]
+    implicit F: ConcurrentEffect[F]
   ): TransactionalProducerResource[F] =
     new TransactionalProducerResource(F)
 
@@ -148,14 +148,14 @@ package object kafka {
   def transactionalProducerStream[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: Concurrent[F],
+    implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
     Stream.resource(transactionalProducerResource(settings))
 
   @deprecated("use TransactionalKafkaProducer.stream", "1.2.0")
   def transactionalProducerStream[F[_]](
-    implicit F: Concurrent[F]
+    implicit F: ConcurrentEffect[F]
   ): TransactionalProducerStream[F] =
     new TransactionalProducerStream(F)
 }

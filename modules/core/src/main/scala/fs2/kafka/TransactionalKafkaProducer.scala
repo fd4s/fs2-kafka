@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Concurrent, ContextShift, ExitCase, Resource}
+import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, Resource}
 import cats.effect.syntax.all._
 import cats.implicits._
 import fs2.{Chunk, Stream}
@@ -52,7 +52,7 @@ object TransactionalKafkaProducer {
   def resource[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: Concurrent[F],
+    implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     Resource.liftF(settings.producerSettings.keySerializer).flatMap { keySerializer =>
@@ -125,7 +125,7 @@ object TransactionalKafkaProducer {
     * }}}
     */
   def resource[F[_]](
-    implicit F: Concurrent[F]
+    implicit F: ConcurrentEffect[F]
   ): TransactionalProducerResource[F] =
     new TransactionalProducerResource(F)
 
@@ -142,7 +142,7 @@ object TransactionalKafkaProducer {
   def stream[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: Concurrent[F],
+    implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
     Stream.resource(resource(settings))
@@ -158,7 +158,7 @@ object TransactionalKafkaProducer {
     * }}}
     */
   def stream[F[_]](
-    implicit F: Concurrent[F]
+    implicit F: ConcurrentEffect[F]
   ): TransactionalProducerStream[F] =
     new TransactionalProducerStream(F)
 }
