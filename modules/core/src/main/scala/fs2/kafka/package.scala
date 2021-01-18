@@ -63,14 +63,14 @@ package object kafka {
   @deprecated("use KafkaProducer.pipe", "1.2.0")
   def produce[F[_]: ConcurrentEffect: ContextShift, K, V, P](
     settings: ProducerSettings[F, K, V]
-  ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
+  ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
     KafkaProducer.pipe(settings)
 
   @deprecated("use KafkaProducer.pipe", "1.2.0")
   def produce[F[_]: ConcurrentEffect, K, V, P](
     settings: ProducerSettings[F, K, V],
     producer: KafkaProducer[F, K, V]
-  ): Pipe[F, ProducerRecords[K, V, P], ProducerResult[K, V, P]] =
+  ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
     KafkaProducer.pipe(settings, producer)
 
   @deprecated("use KafkaAdminClient.resource", "1.2.0")

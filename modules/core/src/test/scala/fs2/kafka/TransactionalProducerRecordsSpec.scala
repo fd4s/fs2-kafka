@@ -54,7 +54,7 @@ class TransactionalProducerRecordsSpec extends BaseSpec {
 
     it("should be able to create with zero records") {
       assert {
-        TransactionalProducerRecords[IO, String, String, Int](Chunk.empty, 123).toString == "TransactionalProducerRecords(<empty>, 123)" &&
+        TransactionalProducerRecords[IO, Int, String, String](Chunk.empty, 123).toString == "TransactionalProducerRecords(<empty>, 123)" &&
         TransactionalProducerRecords[IO, String, String](Chunk.empty).toString == "TransactionalProducerRecords(<empty>, ())"
       }
     }
