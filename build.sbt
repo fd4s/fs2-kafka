@@ -161,6 +161,31 @@ lazy val metadataSettings = Seq(
   organization := "com.github.fd4s"
 )
 
+ThisBuild / githubWorkflowTargetBranches := Seq("master", "series/*")
+
+ThisBuild / githubWorkflowBuild := Seq(
+  WorkflowStep.Sbt(List("ci")),
+  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
+)
+
+ThisBuild / githubWorkflowArtifactUpload := false
+
+ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
+ThisBuild / githubWorkflowPublishTargetBranches :=
+  Seq(RefPredicate.StartsWith(Ref.Tag("v")))
+
+ThisBuild / githubWorkflowPublish := Seq(
+  WorkflowStep.Sbt(
+    List("ci-release", "docs/docusaurusPublishGhpages"),
+    env = Map(
+      "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
+      "PGP_SECRET" -> "${{ secrets.PGP_SECRET }}",
+      "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
+      "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
+    )
+  )
+)
+
 lazy val publishSettings =
   metadataSettings ++ Seq(
     publishArtifact in Test := false,
@@ -189,9 +214,7 @@ lazy val publishSettings =
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
     if (publishArtifact.value) {
-      // Temporary change because v1.2.0 is a cursed release
-      // Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
-      Set(organization.value %% moduleName.value % "1.1.0")
+      Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
     } else Set()
   },
   mimaBinaryIssueFilters ++= {
@@ -217,9 +240,10 @@ lazy val noPublishSettings =
     publishArtifact := false
   )
 
+ThisBuild / scalaVersion := scala213
+ThisBuild / crossScalaVersions := Seq(scala212, scala213)
+
 lazy val scalaSettings = Seq(
-  scalaVersion := scala213,
-  crossScalaVersions := Seq(scala212, scala213),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
@@ -305,14 +329,25 @@ addCommandsAlias(
   "validate",
   List(
     "+clean",
-    "+coverage",
     "+test",
-    "+coverageReport",
     "+mimaReportBinaryIssues",
     "+scalafmtCheck",
     "scalafmtSbtCheck",
     "+headerCheck",
     "+doc",
     "docs/run"
+  )
+)
+
+addCommandsAlias(
+  "ci",
+  List(
+    "clean",
+    "test",
+    "mimaReportBinaryIssues",
+    "scalafmtCheck",
+    "scalafmtSbtCheck",
+    "headerCheck",
+    "doc"
   )
 )

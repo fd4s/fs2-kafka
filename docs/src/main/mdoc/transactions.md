@@ -40,11 +40,9 @@ object Main extends IOApp {
       )
 
     val stream =
-      TransactionalKafkaProducer.stream[IO]
-        .using(producerSettings)
+      TransactionalKafkaProducer.stream(producerSettings)
         .flatMap { producer =>
-          KafkaConsumer.stream[IO]
-            .using(consumerSettings)
+          KafkaConsumer.stream(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)
             .mapAsync(25) { committable =>

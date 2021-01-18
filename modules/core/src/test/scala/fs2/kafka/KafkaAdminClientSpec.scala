@@ -323,8 +323,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     publishToKafka(topic, produced)
 
     KafkaConsumer
-      .stream[IO]
-      .using(consumerSettings(config))
+      .stream(consumerSettings[IO](config))
       .evalTap(_.subscribe(topic.r))
       .flatMap(_.stream)
       .take(produced.size.toLong)
