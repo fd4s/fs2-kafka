@@ -4,17 +4,19 @@ val catsVersion = "2.3.1"
 
 val confluentVersion = "6.0.1"
 
-val embeddedKafkaVersion = "2.6.0"
-
 val fs2Version = "2.5.0"
 
-val kafkaVersion = "2.6.0"
+val kafkaVersion = "2.7.0"
 
-val vulcanVersion = "1.2.0"
+val testcontainersScalaVersion = "0.38.8"
 
-val scala212 = "2.12.10"
+val vulcanVersion = "1.3.0"
+
+val scala212 = "2.12.12"
 
 val scala213 = "2.13.3"
+
+val scala3 = "3.0.0-M3"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -79,13 +81,23 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    "io.github.embeddedkafka" %% "embedded-kafka" % embeddedKafkaVersion,
+    ("com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion)
+      .withDottyCompat(scalaVersion.value),
+    ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
+      .withDottyCompat(scalaVersion.value),
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-testkit-scalatest" % "2.0.0",
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.1" cross CrossVersion.full),
+  libraryDependencies ++= (if (isDotty.value) Nil
+                           else
+                             Seq(
+                               compilerPlugin(
+                                 ("org.typelevel" %% "kind-projector" % "0.11.3")
+                                   .cross(CrossVersion.full)
+                               )
+                             )),
   pomPostProcess := { (node: xml.Node) =>
     new xml.transform.RuleTransformer(new xml.transform.RewriteRule {
       def scopedDependency(e: xml.Elem): Boolean =
@@ -162,6 +174,32 @@ lazy val metadataSettings = Seq(
   organization := "com.github.fd4s"
 )
 
+ThisBuild / githubWorkflowTargetBranches := Seq("master", "series/*")
+
+ThisBuild / githubWorkflowBuild := Seq(
+  WorkflowStep.Sbt(List("ci")),
+  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
+)
+
+ThisBuild / githubWorkflowArtifactUpload := false
+
+ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
+ThisBuild / githubWorkflowPublishTargetBranches :=
+  Seq(RefPredicate.StartsWith(Ref.Tag("v")))
+
+ThisBuild / githubWorkflowPublish := Seq(
+  WorkflowStep.Sbt(
+    List("ci-release", "docs/docusaurusPublishGhpages"),
+    env = Map(
+      "GIT_DEPLOY_KEY" -> "${{ secrets.GIT_DEPLOY_KEY }}",
+      "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
+      "PGP_SECRET" -> "${{ secrets.PGP_SECRET }}",
+      "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
+      "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
+    )
+  )
+)
+
 lazy val publishSettings =
   metadataSettings ++ Seq(
     publishArtifact in Test := false,
@@ -189,7 +227,7 @@ lazy val publishSettings =
 
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
-    if (publishArtifact.value) {
+    if (publishArtifact.value && !isDotty.value) {
       Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
     } else Set()
   },
@@ -199,15 +237,7 @@ lazy val mimaSettings = Seq(
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
       ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.resource"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.produceRecord"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.package.*"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.ProducerResource.*"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalProducerResource.*"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.ProducerStream.*"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalProducerStream.*"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.KafkaProducer.resource"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.TransactionalKafkaProducer.resource"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withValue"),
@@ -228,32 +258,56 @@ lazy val noPublishSettings =
     publishArtifact := false
   )
 
+ThisBuild / scalaVersion := scala213
+ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
+
 lazy val scalaSettings = Seq(
-  scalaVersion := scala213,
-  crossScalaVersions := Seq(scala212, scala213),
   scalacOptions ++= Seq(
     "-deprecation",
     "-encoding",
     "UTF-8",
     "-feature",
-    "-language:higherKinds",
     "-language:implicitConversions",
-    "-unchecked",
-    "-Xfatal-warnings",
-    "-Xlint",
-    "-Yno-adapted-args",
-    "-Ywarn-dead-code",
-    "-Ywarn-numeric-widen",
-    "-Ywarn-value-discard",
-    "-Ywarn-unused",
-    "-Ypartial-unification"
-  ).filter {
-    case ("-Yno-adapted-args" | "-Ypartial-unification") if scalaVersion.value.startsWith("2.13") =>
-      false
-    case _ => true
-  },
+    "-unchecked"
+  ) ++ (
+    if (scalaVersion.value.startsWith("2.13"))
+      Seq(
+        "-language:higherKinds",
+        "-Xlint",
+        "-Ywarn-dead-code",
+        "-Ywarn-numeric-widen",
+        "-Ywarn-value-discard",
+        "-Ywarn-unused",
+        "-Xfatal-warnings"
+      )
+    else if (scalaVersion.value.startsWith("2.12"))
+      Seq(
+        "-language:higherKinds",
+        "-Xlint",
+        "-Yno-adapted-args",
+        "-Ywarn-dead-code",
+        "-Ywarn-numeric-widen",
+        "-Ywarn-value-discard",
+        "-Ywarn-unused",
+        "-Ypartial-unification",
+        "-Xfatal-warnings"
+      )
+    else
+      Seq(
+        "-Ykind-projector",
+        "-source:3.0-migration",
+        "-Xignore-scala2-macros"
+      )
+  ),
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
-  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value
+  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
+  Compile / unmanagedSourceDirectories ++=
+    Seq(
+      baseDirectory.value / "src" / "main" / (if (scalaVersion.value.startsWith("2.12"))
+                                                "scala-2.12"
+                                              else "scala-2.13+")
+    ),
+  Test / fork := true
 )
 
 lazy val testSettings = Seq(
@@ -316,14 +370,25 @@ addCommandsAlias(
   "validate",
   List(
     "+clean",
-    "+coverage",
     "+test",
-    "+coverageReport",
     "+mimaReportBinaryIssues",
     "+scalafmtCheck",
     "scalafmtSbtCheck",
     "+headerCheck",
     "+doc",
     "docs/run"
+  )
+)
+
+addCommandsAlias(
+  "ci",
+  List(
+    "clean",
+    "test",
+    "mimaReportBinaryIssues",
+    "scalafmtCheck",
+    "scalafmtSbtCheck",
+    "headerCheck",
+    "doc"
   )
 )

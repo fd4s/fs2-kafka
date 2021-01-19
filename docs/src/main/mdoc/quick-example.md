@@ -5,7 +5,7 @@ title: Quick Example
 
 Following is an example showing how to:
 
-- use `consumerStream` in order to stream records from Kafka,
+- use `KafkaConsumer.stream` in order to stream records from Kafka,
 - use `produce` to produce newly created records to Kafka,
 - use `commitBatchWithin` to commit consumed offsets in batches.
 
@@ -30,8 +30,7 @@ object Main extends IOApp {
         .withBootstrapServers("localhost:9092")
 
     val stream =
-      consumerStream[IO]
-        .using(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
         .mapAsync(25) { committable =>
@@ -41,7 +40,7 @@ object Main extends IOApp {
               ProducerRecords.one(record, committable.offset)
             }
         }
-        .through(produce(producerSettings))
+        .through(KafkaProducer.pipe(producerSettings))
         .map(_.passthrough)
         .through(commitBatchWithin(500, 15.seconds))
 

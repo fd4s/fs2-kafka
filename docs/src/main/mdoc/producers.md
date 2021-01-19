@@ -77,7 +77,7 @@ If we have a Java Kafka serializer, use `delegate` to create a `Serializer`.
 
 ```scala mdoc:silent
 Serializer.delegate[IO, String] {
-  new KafkaSerializer[String] {
+  new JavaSerializer[String] {
     def serialize(topic: String, value: String): Array[Byte] =
       value.getBytes("UTF-8")
   }
@@ -88,7 +88,7 @@ If the serializer performs _side effects_, follow with `suspend` to capture them
 
 ```scala mdoc:silent
 Serializer.delegate[IO, String] {
-   new KafkaSerializer[String] {
+   new JavaSerializer[String] {
     def serialize(topic: String, value: String): Array[Byte] = {
       println(s"serializing record on topic $topic")
       value.getBytes("UTF-8")
@@ -169,8 +169,7 @@ val consumerSettings =
 object ProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      consumerStream[IO]
-        .using(consumerSettings)
+      KafkaConsumer.stream(consumerSettings)
         .evalTap(_.subscribeTo("topic"))
         .flatMap(_.stream)
         .map { committable =>
@@ -179,7 +178,7 @@ object ProduceExample extends IOApp {
           val record = ProducerRecord("topic", key, value)
           ProducerRecords.one(record, committable.offset)
         }
-        .through(produce(producerSettings))
+        .through(KafkaProducer.pipe(producerSettings))
 
     stream.compile.drain.as(ExitCode.Success)
   }
@@ -196,11 +195,9 @@ If we're producing in multiple places in our stream, we can create the `KafkaPro
 object PartitionedProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream[IO]
-        .using(producerSettings)
+      KafkaProducer.stream(producerSettings)
         .flatMap { producer =>
-          consumerStream[IO]
-            .using(consumerSettings)
+          KafkaConsumer.stream(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.partitionedStream)
             .map { partition =>
@@ -211,7 +208,7 @@ object PartitionedProduceExample extends IOApp {
                   val record = ProducerRecord("topic", key, value)
                   ProducerRecords.one(record, committable.offset)
                 }
-                .through(produce(producerSettings, producer))
+                .through(KafkaProducer.pipe(producerSettings, producer))
             }
             .parJoinUnbounded
         }
@@ -227,11 +224,9 @@ If we need more control of how records are produced, we can use `KafkaProducer#p
 object KafkaProducerProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream[IO]
-        .using(producerSettings)
+      KafkaProducer.stream(producerSettings)
         .flatMap { producer =>
-          consumerStream[IO]
-            .using(consumerSettings)
+          KafkaConsumer.stream(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)
             .map { committable =>
@@ -259,11 +254,9 @@ Sometimes there is a need to wait for individual `ProducerRecords` to send. In t
 object KafkaProducerProduceFlattenExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream[IO]
-        .using(producerSettings)
+      KafkaProducer.stream(producerSettings)
         .flatMap { producer =>
-          consumerStream[IO]
-            .using(consumerSettings)
+          KafkaConsumer.stream(consumerSettings)
             .evalTap(_.subscribeTo("topic"))
             .flatMap(_.stream)
             .map { committable =>
