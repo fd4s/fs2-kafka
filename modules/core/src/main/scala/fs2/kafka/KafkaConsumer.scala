@@ -253,7 +253,7 @@ object KafkaConsumer {
                 val (_, lastId) = result.last
                 (lastId + 1, result)
               }
-              .flatMap { partitions: Vector[(TopicPartition, PartitionStreamId)] =>
+              .flatMap { (partitions: Vector[(TopicPartition, PartitionStreamId)]) =>
                 partitions
                   .traverse {
                     case (partition, partitionStreamId) =>
@@ -412,7 +412,7 @@ object KafkaConsumer {
             Queue.unbounded[F, SortedSet[TopicPartition]],
             Ref[F].of(SortedSet.empty[TopicPartition]),
             Deferred[F, Unit]
-          ).tupled.flatMap {
+          ).tupled.flatMap[Stream[F, SortedSet[TopicPartition]]] {
             case (updateQueue, assignmentRef, initialAssignmentDeferred) =>
               val onRebalance =
                 onRebalanceWith(
