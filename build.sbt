@@ -90,7 +90,7 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "cats-laws" % catsVersion,
     "org.typelevel" %% "cats-kernel-laws" % catsVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "jline" % "jline" % "2.14.2"
+    "jline" % "jline" % "2.14.6"
   ).map(_ % Test),
   libraryDependencies ++= (if (isDotty.value) Nil
                            else
