@@ -12,9 +12,11 @@ val testcontainersScalaVersion = "0.38.8"
 
 val vulcanVersion = "1.3.0"
 
-val scala212 = "2.12.10"
+val scala212 = "2.12.12"
 
 val scala213 = "2.13.3"
+
+val scala3 = "3.0.0-M3"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -79,13 +81,25 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
-    "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
+    ("com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion)
+      .withDottyCompat(scalaVersion.value),
+    ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
+      .withDottyCompat(scalaVersion.value),
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.3"
+    "org.typelevel" %% "cats-laws" % catsVersion,
+    "org.typelevel" %% "cats-kernel-laws" % catsVersion,
+    "ch.qos.logback" % "logback-classic" % "1.2.3",
+    "jline" % "jline" % "2.14.6"
   ).map(_ % Test),
-  addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full),
+  libraryDependencies ++= (if (isDotty.value) Nil
+                           else
+                             Seq(
+                               compilerPlugin(
+                                 ("org.typelevel" %% "kind-projector" % "0.11.3")
+                                   .cross(CrossVersion.full)
+                               )
+                             )),
   pomPostProcess := { (node: xml.Node) =>
     new xml.transform.RuleTransformer(new xml.transform.RewriteRule {
       def scopedDependency(e: xml.Elem): Boolean =
@@ -239,7 +253,7 @@ lazy val noPublishSettings =
   )
 
 ThisBuild / scalaVersion := scala213
-ThisBuild / crossScalaVersions := Seq(scala212, scala213)
+ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
 
 lazy val scalaSettings = Seq(
   scalacOptions ++= Seq(
@@ -247,24 +261,46 @@ lazy val scalaSettings = Seq(
     "-encoding",
     "UTF-8",
     "-feature",
-    "-language:higherKinds",
     "-language:implicitConversions",
-    "-unchecked",
-    "-Xfatal-warnings",
-    "-Xlint",
-    "-Yno-adapted-args",
-    "-Ywarn-dead-code",
-    "-Ywarn-numeric-widen",
-    "-Ywarn-value-discard",
-    "-Ywarn-unused",
-    "-Ypartial-unification"
-  ).filter {
-    case ("-Yno-adapted-args" | "-Ypartial-unification") if scalaVersion.value.startsWith("2.13") =>
-      false
-    case _ => true
-  },
+    "-unchecked"
+  ) ++ (
+    if (scalaVersion.value.startsWith("2.13"))
+      Seq(
+        "-language:higherKinds",
+        "-Xlint",
+        "-Ywarn-dead-code",
+        "-Ywarn-numeric-widen",
+        "-Ywarn-value-discard",
+        "-Ywarn-unused",
+        "-Xfatal-warnings"
+      )
+    else if (scalaVersion.value.startsWith("2.12"))
+      Seq(
+        "-language:higherKinds",
+        "-Xlint",
+        "-Yno-adapted-args",
+        "-Ywarn-dead-code",
+        "-Ywarn-numeric-widen",
+        "-Ywarn-value-discard",
+        "-Ywarn-unused",
+        "-Ypartial-unification",
+        "-Xfatal-warnings"
+      )
+    else
+      Seq(
+        "-Ykind-projector",
+        "-source:3.0-migration",
+        "-Xignore-scala2-macros"
+      )
+  ),
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
   scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
+  Compile / unmanagedSourceDirectories ++=
+    Seq(
+      baseDirectory.value / "src" / "main" / (if (scalaVersion.value.startsWith("2.12"))
+                                                "scala-2.12"
+                                              else "scala-2.13+")
+    ),
   Test / fork := true
 )
 

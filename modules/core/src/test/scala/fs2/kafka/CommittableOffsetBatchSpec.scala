@@ -16,7 +16,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
     }
 
     it("should return updated offset as batch") {
-      forAll { offset: CommittableOffset[IO] =>
+      forAll { (offset: CommittableOffset[IO]) =>
         val updated = empty.updated(offset)
         assert(updated.offsets == offset.offsets)
       }
@@ -36,7 +36,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
     }
 
     it("should override using the provided offset") {
-      forAll { batch: CommittableOffsetBatch[IO] =>
+      forAll { (batch: CommittableOffsetBatch[IO]) =>
         whenever(batch.offsets.nonEmpty) {
           Gen.oneOf(batch.offsets.toList).sample.foreach { offset =>
             val (topicPartition, offsetAndMetadata) = offset
