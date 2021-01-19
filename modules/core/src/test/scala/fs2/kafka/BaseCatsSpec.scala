@@ -55,7 +55,7 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators {
   implicit def headerDeserializerEq[A](implicit A: Eq[A]): Eq[HeaderDeserializer[A]] =
     Eq.instance { (d1, d2) =>
       Try {
-        forAll { bytes: Array[Byte] =>
+        forAll { (bytes: Array[Byte]) =>
           val r1 = d1.deserialize(bytes)
           val r2 = d2.deserialize(bytes)
           (r1 === r2) shouldBe true
