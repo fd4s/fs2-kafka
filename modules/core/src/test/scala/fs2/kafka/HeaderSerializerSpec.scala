@@ -17,7 +17,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
       HeaderSerializer.identity
         .mapBytes(Array(0.toByte) ++ _)
 
-    forAll { bytes: Array[Byte] =>
+    forAll { (bytes: Array[Byte]) =>
       serializer.serialize(bytes) shouldBe (Array(0.toByte) ++ bytes)
     }
   }

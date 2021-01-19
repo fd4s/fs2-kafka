@@ -174,7 +174,7 @@ final class DeserializerSpec extends BaseCatsSpec with TestInstances {
   }
 
   test("Deserializer#unit") {
-    forAll { bytes: Array[Byte] =>
+    forAll { (bytes: Array[Byte]) =>
       Deserializer[IO, Unit]
         .deserialize("topic", Headers.empty, bytes)
         .unsafeRunSync() shouldBe (())
