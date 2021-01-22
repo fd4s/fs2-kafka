@@ -151,7 +151,7 @@ package object kafka {
     implicit F: ConcurrentEffect[F],
     context: ContextShift[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
-    Stream.resource(transactionalProducerResource(settings))
+    Stream.resource(TransactionalKafkaProducer.resource(settings))
 
   @deprecated("use TransactionalKafkaProducer.stream", "1.2.0")
   def transactionalProducerStream[F[_]](
