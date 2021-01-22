@@ -2,7 +2,7 @@ name: notes
 on:
   push:
     branches:
-      - master
+      - series/1.x
 jobs:
   update:
     runs-on: ubuntu-latest
