@@ -39,7 +39,8 @@ lazy val core = project
     mimaSettings,
     scalaSettings,
     testSettings
-  ).dependsOn(common, adminClient, consumer, producer)
+  )
+  .dependsOn(common, adminClient, consumer, producer)
 
 lazy val common = project
   .in(file("modules/common"))
@@ -58,7 +59,7 @@ lazy val common = project
     testSettings
   )
 
-  lazy val consumer = project
+lazy val consumer = project
   .in(file("modules/consumer"))
   .settings(
     moduleName := "fs2-kafka-consumer",
@@ -68,9 +69,10 @@ lazy val common = project
     mimaSettings,
     scalaSettings,
     testSettings
-  ).dependsOn(common)
+  )
+  .dependsOn(common)
 
-    lazy val producer = project
+lazy val producer = project
   .in(file("modules/producer"))
   .settings(
     moduleName := "fs2-kafka-producer",
@@ -80,9 +82,10 @@ lazy val common = project
     mimaSettings,
     scalaSettings,
     testSettings
-  ).dependsOn(common)
+  )
+  .dependsOn(common)
 
-  lazy val adminClient = project
+lazy val adminClient = project
   .in(file("modules/admin-client"))
   .settings(
     moduleName := "fs2-kafka-admin-client",
@@ -92,7 +95,8 @@ lazy val common = project
     mimaSettings,
     scalaSettings,
     testSettings
-  ).dependsOn(common)
+  )
+  .dependsOn(common)
 
 lazy val vulcan = project
   .in(file("modules/vulcan"))
@@ -323,7 +327,7 @@ lazy val scalaSettings = Seq(
         "-Ywarn-dead-code",
         "-Ywarn-numeric-widen",
         "-Ywarn-value-discard",
-        "-Ywarn-unused",
+        "-Ywarn-unused"
         //"-Xfatal-warnings"
       )
     else if (scalaVersion.value.startsWith("2.12"))
