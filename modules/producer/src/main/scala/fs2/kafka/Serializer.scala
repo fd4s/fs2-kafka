@@ -80,7 +80,7 @@ object Serializer {
     * If it's not pure, then use `suspend` after `delegate`,
     * so the impure behaviours can be captured properly.
     */
-  def delegate[F[_], A](serializer: JavaSerializer[A])(
+  def delegate[F[_], A](serializer: org.apache.kafka.common.serialization.Serializer[A])(
     implicit F: Sync[F]
   ): Serializer[F, A] =
     Serializer.instance[F, A] { (topic, headers, a) =>
