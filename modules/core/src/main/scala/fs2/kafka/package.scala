@@ -10,6 +10,7 @@ import cats.effect._
 import scala.concurrent.duration.FiniteDuration
 
 package object kafka {
+  @deprecated("Use cats.Id, or define your own version if you need contravariance","1.4.0")
   type Id[+A] = A
 
   /** Alias for Java Kafka `Consumer[Array[Byte], Array[Byte]]`. */
