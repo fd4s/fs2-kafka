@@ -64,6 +64,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 ) {
   import logging._
 
+  private[this] type Id[+A] = A
+
   private[this] type ConsumerRecords =
     Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]]
 

@@ -88,7 +88,7 @@ object Deserializer {
     * so the impure behaviours can be captured properly.
     */
   def delegate[F[_], A](
-    deserializer: JavaDeserializer[A]
+    deserializer: org.apache.kafka.common.serialization.Deserializer[A]
   )(implicit F: Sync[F]): Deserializer[F, A] =
     Deserializer.instance { (topic, headers, bytes) =>
       F.pure(deserializer.deserialize(topic, headers.asJava, bytes))

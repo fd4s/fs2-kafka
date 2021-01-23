@@ -347,7 +347,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * operation should be bracketed, using e.g. `Resource`, to ensure
     * the `close` function on the consumer is called.
     */
-  def createConsumer: F[JavaByteConsumer]
+  def createConsumer: F[org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]]
 
   /**
     * Creates a new [[ConsumerSettings]] with the specified function for
@@ -355,7 +355,9 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * is the [[properties]] of the settings instance.
     */
   def withCreateConsumer(
-    createConsumer: Map[String, String] => F[JavaByteConsumer]
+    createConsumer: Map[String, String] => F[
+      org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
+    ]
   ): ConsumerSettings[F, K, V]
 
   /**
@@ -412,7 +414,9 @@ object ConsumerSettings {
     override val commitRecovery: CommitRecovery,
     override val recordMetadata: ConsumerRecord[K, V] => String,
     override val maxPrefetchBatches: Int,
-    val createConsumerWith: Map[String, String] => F[JavaByteConsumer]
+    val createConsumerWith: Map[String, String] => F[
+      org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
+    ]
   ) extends ConsumerSettings[F, K, V] {
     override def withBlocker(blocker: Blocker): ConsumerSettings[F, K, V] =
       copy(blocker = Some(blocker))
@@ -519,11 +523,14 @@ object ConsumerSettings {
     override def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[F, K, V] =
       copy(commitRecovery = commitRecovery)
 
-    override def createConsumer: F[JavaByteConsumer] =
+    override def createConsumer
+      : F[org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]] =
       createConsumerWith(properties)
 
     override def withCreateConsumer(
-      createConsumerWith: Map[String, String] => F[JavaByteConsumer]
+      createConsumerWith: Map[String, String] => F[
+        org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
+      ]
     ): ConsumerSettings[F, K, V] =
       copy(createConsumerWith = createConsumerWith)
 
