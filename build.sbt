@@ -116,6 +116,19 @@ lazy val vulcan = project
   .settings(
     moduleName := "fs2-kafka-vulcan",
     name := moduleName.value,
+    dependencySettings,
+    publishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(consumer, producer, vulcanCommon)
+
+lazy val vulcanCommon = project
+  .in(file("modules/vulcan-common"))
+  .settings(
+    moduleName := "fs2-kafka-vulcan-common",
+    name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
         "com.github.fd4s" %% "vulcan" % vulcanVersion,
@@ -126,8 +139,7 @@ lazy val vulcan = project
     mimaSettings,
     scalaSettings,
     testSettings
-  )
-  .dependsOn(consumer, producer)
+  ).dependsOn(common)
 
 lazy val docs = project
   .in(file("docs"))

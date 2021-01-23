@@ -27,8 +27,8 @@ package object vulcan {
     io.confluent.kafka.serializers.KafkaAvroSerializer
 
   def avroDeserializer[A](implicit codec: Codec[A]): AvroDeserializer[A] =
-    new AvroDeserializer(codec)
+    AvroDeserializer(codec)
 
   def avroSerializer[A](implicit codec: Codec[A]): AvroSerializer[A] =
-    new AvroSerializer(codec)
+    AvroSerializer(codec)
 }
