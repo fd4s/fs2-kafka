@@ -6,10 +6,10 @@
 
 package fs2.kafka.internal
 
-import cats.{FlatMap, Foldable, Show}
+import cats.{Foldable, Show}
 import cats.effect.{CancelToken, Concurrent, Sync}
 import cats.implicits._
-import fs2.kafka.{Header, Headers, JavaHeaders}
+import fs2.kafka.{Header, Headers}
 import fs2.kafka.internal.converters.unsafeWrapArray
 import fs2.kafka.internal.converters.collection._
 import java.time.Duration
@@ -22,15 +22,33 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
 private[kafka] object syntax {
-  implicit final class LoggingSyntax[F[_], A](
-    private val fa: F[A]
-  ) extends AnyVal {
-    def log(f: A => LogEntry)(
-      implicit F: FlatMap[F],
-      logging: Logging[F]
-    ): F[Unit] =
-      fa.flatMap(a => logging.log(f(a)))
-  }
+
+  type JavaByteConsumer =
+    org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
+
+  type JavaByteProducer =
+    org.apache.kafka.clients.producer.Producer[Array[Byte], Array[Byte]]
+
+  type JavaDeserializer[A] =
+    org.apache.kafka.common.serialization.Deserializer[A]
+
+  type JavaSerializer[A] =
+    org.apache.kafka.common.serialization.Serializer[A]
+
+  type JavaHeader =
+    org.apache.kafka.common.header.Header
+
+  type JavaHeaders =
+    org.apache.kafka.common.header.Headers
+
+  type JavaByteConsumerRecords =
+    org.apache.kafka.clients.consumer.ConsumerRecords[Array[Byte], Array[Byte]]
+
+  type JavaByteConsumerRecord =
+    org.apache.kafka.clients.consumer.ConsumerRecord[Array[Byte], Array[Byte]]
+
+  type JavaByteProducerRecord =
+    org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
   implicit final class FiniteDurationSyntax(
     private val duration: FiniteDuration

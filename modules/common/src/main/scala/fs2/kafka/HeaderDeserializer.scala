@@ -88,6 +88,8 @@ sealed abstract class HeaderDeserializer[A] {
 }
 
 object HeaderDeserializer {
+  private type JavaDeserializer[A] =
+    org.apache.kafka.common.serialization.Deserializer[A]
 
   /** Alias for `HeaderDeserializer[Either[Throwable, A]]`. */
   type Attempt[A] = HeaderDeserializer[Either[Throwable, A]]

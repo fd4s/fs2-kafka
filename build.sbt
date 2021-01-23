@@ -27,12 +27,24 @@ lazy val `fs2-kafka` = project
     console := (console in (core, Compile)).value,
     console in Test := (console in (core, Test)).value
   )
-  .aggregate(core, vulcan)
+  .aggregate(core, common, vulcan)
 
 lazy val core = project
   .in(file("modules/core"))
   .settings(
     moduleName := "fs2-kafka",
+    name := moduleName.value,
+    dependencySettings,
+    publishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings
+  ).dependsOn(common)
+
+lazy val common = project
+  .in(file("modules/common"))
+  .settings(
+    moduleName := "fs2-kafka-common",
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(

@@ -55,6 +55,12 @@ sealed abstract class HeaderSerializer[A] {
 }
 
 object HeaderSerializer {
+  private[kafka] type JavaSerializer[A] =
+    org.apache.kafka.common.serialization.Serializer[A]
+
+  type JavaDeserializer[A] =
+    org.apache.kafka.common.serialization.Deserializer[A]
+
   def apply[A](implicit serializer: HeaderSerializer[A]): HeaderSerializer[A] = serializer
 
   /**

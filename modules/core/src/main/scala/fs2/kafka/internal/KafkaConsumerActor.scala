@@ -19,6 +19,7 @@ import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogEntry._
 import fs2.kafka.internal.syntax._
+import fs2.kafka.internal.loggingSyntax._
 import java.time.Duration
 import java.util
 import java.util.regex.Pattern
