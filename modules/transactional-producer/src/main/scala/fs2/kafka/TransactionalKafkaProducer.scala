@@ -57,7 +57,7 @@ object TransactionalKafkaProducer {
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     Resource.liftF(settings.producerSettings.keySerializer).flatMap { keySerializer =>
       Resource.liftF(settings.producerSettings.valueSerializer).flatMap { valueSerializer =>
-        WithProducer(settings).map { withProducer =>
+        WithTransactionalProducer(settings).map { withProducer =>
           new TransactionalKafkaProducer[F, K, V] {
             override def produce[P](
               records: TransactionalProducerRecords[F, K, V, P]

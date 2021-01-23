@@ -27,7 +27,7 @@ lazy val `fs2-kafka` = project
     console := (console in (core, Compile)).value,
     console in Test := (console in (core, Test)).value
   )
-  .aggregate(core, common, adminClient, consumer, producer, vulcan)
+  .aggregate(core, common, adminClient, consumer, producer, transactionalProducer, vulcan)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -40,7 +40,7 @@ lazy val core = project
     scalaSettings,
     testSettings
   )
-  .dependsOn(common, adminClient, consumer, producer)
+  .dependsOn(common, adminClient, consumer, producer, transactionalProducer)
 
 lazy val common = project
   .in(file("modules/common"))
@@ -84,6 +84,19 @@ lazy val producer = project
     testSettings
   )
   .dependsOn(common)
+
+lazy val transactionalProducer = project
+  .in(file("modules/transactional-producer"))
+  .settings(
+    moduleName := "fs2-kafka-transactional-producer",
+    name := moduleName.value,
+    dependencySettings,
+    publishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(producer)
 
 lazy val adminClient = project
   .in(file("modules/admin-client"))

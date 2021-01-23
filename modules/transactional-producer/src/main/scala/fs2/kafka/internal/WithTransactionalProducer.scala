@@ -8,10 +8,10 @@ package fs2.kafka.internal
 
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 import cats.implicits._
-import fs2.kafka.ProducerSettings
+import fs2.kafka.{ProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
 
-private[kafka] sealed abstract class WithProducer[F[_]] {
+private[kafka] sealed abstract class WithTransactionalProducer[F[_]] {
   def apply[A](f: (JavaByteProducer, Blocking[F]) => F[A]): F[A]
 
   def blocking[A](f: JavaByteProducer => A): F[A] = apply {
@@ -19,17 +19,29 @@ private[kafka] sealed abstract class WithProducer[F[_]] {
   }
 }
 
-private[kafka] object WithProducer {
+private[kafka] object WithTransactionalProducer {
+
   def apply[F[_], K, V](
-    settings: ProducerSettings[F, K, V]
+    settings: TransactionalProducerSettings[F, K, V]
   )(
     implicit F: Sync[F],
     context: ContextShift[F]
-  ): Resource[F, WithProducer[F]] =
-    blockingResource(settings).flatMap { blocking =>
-      Resource.make(
-        settings.createProducer.map(create(_, blocking))
-      )(_.blocking { _.close(settings.closeTimeout.asJava) })
+  ): Resource[F, WithTransactionalProducer[F]] =
+    blockingResource(settings.producerSettings).flatMap { blocking =>
+      Resource[F, WithTransactionalProducer[F]] {
+        settings.producerSettings.createProducer.flatMap { producer =>
+          val withProducer = create(producer, blocking)
+
+          val initTransactions = withProducer.blocking { _.initTransactions() }
+
+          val close = withProducer.blocking {
+            _.close(settings.producerSettings.closeTimeout.asJava)
+          }
+
+          initTransactions.as((withProducer, close))
+        }
+
+      }
     }
 
   private def blockingResource[F[_]: Sync: ContextShift](
@@ -43,7 +55,7 @@ private[kafka] object WithProducer {
   private def create[F[_]](
     producer: JavaByteProducer,
     _blocking: Blocking[F]
-  ): WithProducer[F] = new WithProducer[F] {
+  ): WithTransactionalProducer[F] = new WithTransactionalProducer[F] {
     override def apply[A](f: (JavaByteProducer, Blocking[F]) => F[A]): F[A] =
       f(producer, _blocking)
   }
