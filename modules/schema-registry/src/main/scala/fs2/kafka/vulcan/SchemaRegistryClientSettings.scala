@@ -9,6 +9,7 @@ package fs2.kafka.vulcan
 import cats.effect.Sync
 import cats.Show
 import fs2.kafka.internal.converters.collection._
+import io.confluent.kafka.schemaregistry.client.{SchemaRegistryClient, CachedSchemaRegistryClient}
 
 /**
   * Describes how to create a `SchemaRegistryClient` and which
@@ -72,7 +73,7 @@ sealed abstract class SchemaRegistryClientSettings[F[_]] {
     * Creates a new `SchemaRegistryClient` using the settings
     * contained within this [[SchemaRegistryClientSettings]].
     */
-  def createSchemaRegistryClient: F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient]
+  def createSchemaRegistryClient: F[SchemaRegistryClient]
 
   /**
     * Creates a new [[SchemaRegistryClientSettings]] instance
@@ -95,7 +96,7 @@ object SchemaRegistryClientSettings {
     override val maxCacheSize: Int,
     override val properties: Map[String, String],
     // format: off
-    val createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient]
+    val createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[SchemaRegistryClient]
     // format: on
   ) extends SchemaRegistryClientSettings[F] {
     override def withMaxCacheSize(maxCacheSize: Int): SchemaRegistryClientSettings[F] =
@@ -128,8 +129,7 @@ object SchemaRegistryClientSettings {
     override def withProperties(properties: Map[String, String]): SchemaRegistryClientSettings[F] =
       copy(properties = this.properties ++ properties)
 
-    override def createSchemaRegistryClient
-      : F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient] =
+    override def createSchemaRegistryClient: F[SchemaRegistryClient] =
       createSchemaRegistryClientWith(baseUrl, maxCacheSize, properties)
 
     override def withCreateSchemaRegistryClient(
@@ -137,7 +137,7 @@ object SchemaRegistryClientSettings {
         String,
         Int,
         Map[String, String]
-      ) => F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient]
+      ) => F[SchemaRegistryClient]
     ): SchemaRegistryClientSettings[F] =
       copy(createSchemaRegistryClientWith = createSchemaRegistryClientWith)
 
@@ -156,7 +156,7 @@ object SchemaRegistryClientSettings {
       properties = Map.empty,
       createSchemaRegistryClientWith = (baseUrl, maxCacheSize, properties) =>
         F.delay(
-          new io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient(
+          new CachedSchemaRegistryClient(
             baseUrl,
             maxCacheSize,
             properties.asJava

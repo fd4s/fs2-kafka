@@ -9,6 +9,7 @@ package fs2.kafka
 import cats.MonadError
 import cats.effect.Sync
 import cats.implicits._
+import fs2.kafka.common._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
@@ -88,7 +89,7 @@ object Deserializer {
     * so the impure behaviours can be captured properly.
     */
   def delegate[F[_], A](
-    deserializer: org.apache.kafka.common.serialization.Deserializer[A]
+    deserializer: JavaDeserializer[A]
   )(implicit F: Sync[F]): Deserializer[F, A] =
     Deserializer.instance { (topic, headers, bytes) =>
       F.pure(deserializer.deserialize(topic, headers.asJava, bytes))
