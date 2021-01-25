@@ -10,6 +10,7 @@ import cats.effect.Sync
 import cats.implicits._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
+import AvroSettings._
 
 /**
   * Describes how to create a `KafkaAvroDeserializer` and a
@@ -121,6 +122,22 @@ sealed abstract class AvroSettings[F[_]] {
 }
 
 object AvroSettings {
+
+  /** Alias for `io.confluent.kafka.schemaregistry.client.SchemaRegistryClient`. */
+  private[kafka] type SchemaRegistryClient =
+    io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
+
+  /** Alias for `io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient`. */
+  private[kafka] type CachedSchemaRegistryClient =
+    io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient
+
+  private[kafka] type KafkaAvroDeserializer =
+    io.confluent.kafka.serializers.KafkaAvroDeserializer
+
+  /** Alias for `io.confluent.kafka.serializers.KafkaAvroSerializer`. */
+  private[kafka] type KafkaAvroSerializer =
+    io.confluent.kafka.serializers.KafkaAvroSerializer
+
   private[this] final case class AvroSettingsImpl[F[_]](
     override val schemaRegistryClient: F[SchemaRegistryClient],
     override val properties: Map[String, String],

@@ -27,7 +27,18 @@ lazy val `fs2-kafka` = project
     console := (console in (core, Compile)).value,
     console in Test := (console in (core, Test)).value
   )
-  .aggregate(core, common, adminClient, consumer, producer, transactionalProducer, vulcan)
+  .aggregate(
+    core,
+    common,
+    adminClient,
+    consumer,
+    producer,
+    transactionalProducer,
+    vulcan,
+    schemaRegistry,
+    vulcanSerializers,
+    vulcanDeserializers
+  )
 
 lazy val core = project
   .in(file("modules/core"))
@@ -122,24 +133,56 @@ lazy val vulcan = project
     scalaSettings,
     testSettings
   )
-  .dependsOn(consumer, producer, vulcanCommon)
+  .dependsOn(vulcanDeserializers, vulcanSerializers, schemaRegistry)
 
-lazy val vulcanCommon = project
-  .in(file("modules/vulcan-common"))
+lazy val vulcanSerializers = project
+  .in(file("modules/vulcan-serializers"))
   .settings(
-    moduleName := "fs2-kafka-vulcan-common",
+    moduleName := "fs2-kafka-vulcan-serializers",
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
-        "com.github.fd4s" %% "vulcan" % vulcanVersion,
-        "io.confluent" % "kafka-avro-serializer" % confluentVersion
+        "com.github.fd4s" %% "vulcan" % vulcanVersion
       )
     ),
     publishSettings,
     mimaSettings,
     scalaSettings,
     testSettings
-  ).dependsOn(common)
+  )
+  .dependsOn(producer, schemaRegistry)
+
+lazy val vulcanDeserializers = project
+  .in(file("modules/vulcan-deserializers"))
+  .settings(
+    moduleName := "fs2-kafka-vulcan-deserializers",
+    name := moduleName.value,
+    dependencySettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "com.github.fd4s" %% "vulcan" % vulcanVersion
+      )
+    ),
+    publishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(consumer, schemaRegistry)
+
+lazy val schemaRegistry = project
+  .in(file("modules/schema-registry"))
+  .settings(
+    moduleName := "fs2-kafka-schema-registry",
+    name := moduleName.value,
+    dependencySettings ++ Seq(
+      libraryDependencies += "io.confluent" % "kafka-avro-serializer" % confluentVersion
+    ),
+    publishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(common)
 
 lazy val docs = project
   .in(file("docs"))

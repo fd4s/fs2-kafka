@@ -81,7 +81,11 @@ sealed abstract class SchemaRegistryClientSettings[F[_]] {
     * are [[baseUrl]], [[maxCacheSize]], and [[properties]].
     */
   def withCreateSchemaRegistryClient(
-    createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient]
+    createSchemaRegistryClientWith: (
+      String,
+      Int,
+      Map[String, String]
+    ) => F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient]
   ): SchemaRegistryClientSettings[F]
 }
 
@@ -124,11 +128,16 @@ object SchemaRegistryClientSettings {
     override def withProperties(properties: Map[String, String]): SchemaRegistryClientSettings[F] =
       copy(properties = this.properties ++ properties)
 
-    override def createSchemaRegistryClient: F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient] =
+    override def createSchemaRegistryClient
+      : F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient] =
       createSchemaRegistryClientWith(baseUrl, maxCacheSize, properties)
 
     override def withCreateSchemaRegistryClient(
-      createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient]
+      createSchemaRegistryClientWith: (
+        String,
+        Int,
+        Map[String, String]
+      ) => F[io.confluent.kafka.schemaregistry.client.SchemaRegistryClient]
     ): SchemaRegistryClientSettings[F] =
       copy(createSchemaRegistryClientWith = createSchemaRegistryClientWith)
 
@@ -146,7 +155,13 @@ object SchemaRegistryClientSettings {
       maxCacheSize = 1000,
       properties = Map.empty,
       createSchemaRegistryClientWith = (baseUrl, maxCacheSize, properties) =>
-        F.delay(new io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient(baseUrl, maxCacheSize, properties.asJava))
+        F.delay(
+          new io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient(
+            baseUrl,
+            maxCacheSize,
+            properties.asJava
+          )
+        )
     )
 
   implicit def schemaRegistryClientSettingsShow[F[_]]: Show[SchemaRegistryClientSettings[F]] =
