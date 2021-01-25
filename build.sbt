@@ -30,7 +30,7 @@ lazy val `fs2-kafka` = project
   .aggregate(
     core,
     common,
-    adminClient,
+    admin,
     consumer,
     producer,
     transactionalProducer,
@@ -51,7 +51,7 @@ lazy val core = project
     scalaSettings,
     testSettings
   )
-  .dependsOn(common, adminClient, consumer, producer, transactionalProducer)
+  .dependsOn(common, admin, consumer, producer, transactionalProducer)
 
 lazy val common = project
   .in(file("modules/common"))
@@ -109,10 +109,10 @@ lazy val transactionalProducer = project
   )
   .dependsOn(producer)
 
-lazy val adminClient = project
-  .in(file("modules/admin-client"))
+lazy val admin = project
+  .in(file("modules/admin"))
   .settings(
-    moduleName := "fs2-kafka-admin-client",
+    moduleName := "fs2-kafka-admin",
     name := moduleName.value,
     dependencySettings,
     publishSettings,
@@ -364,7 +364,7 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.stopConsuming"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Kafkaadmin.*")
     )
     // format: on
   }
