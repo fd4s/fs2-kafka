@@ -8,6 +8,7 @@ package fs2.kafka
 
 import cats.{Apply, Show}
 import cats.implicits._
+import fs2.kafka.common._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.ConsumerRecord.{NULL_SIZE, NO_TIMESTAMP}
 import org.apache.kafka.common.record.TimestampType.{CREATE_TIME, LOG_APPEND_TIME}

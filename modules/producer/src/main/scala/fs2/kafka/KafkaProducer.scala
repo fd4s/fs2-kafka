@@ -11,6 +11,7 @@ import cats.effect._
 import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2._
+import fs2.kafka.common._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
@@ -225,7 +226,7 @@ object KafkaProducer {
     record: ProducerRecord[K, V]
   )(
     implicit F: Apply[F]
-  ): F[org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]] =
+  ): F[JavaByteProducerRecord] =
     serializeToBytes(keySerializer, valueSerializer, record).map {
       case (keyBytes, valueBytes) =>
         new org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]](

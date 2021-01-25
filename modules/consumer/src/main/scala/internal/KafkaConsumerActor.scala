@@ -14,6 +14,7 @@ import cats.implicits._
 import fs2.Chunk
 import fs2.concurrent.Queue
 import fs2.kafka._
+import fs2.kafka.common._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._

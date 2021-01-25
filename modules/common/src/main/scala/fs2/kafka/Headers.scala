@@ -8,6 +8,7 @@ package fs2.kafka
 
 import cats.data.{Chain, NonEmptyChain}
 import cats.Show
+import fs2.kafka.common._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 

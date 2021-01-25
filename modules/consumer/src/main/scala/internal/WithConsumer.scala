@@ -9,6 +9,7 @@ package fs2.kafka.internal
 import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
 import cats.effect.concurrent.Semaphore
 import cats.implicits._
+import fs2.kafka.common._
 import fs2.kafka.ConsumerSettings
 import fs2.kafka.internal.syntax._
 

@@ -8,6 +8,7 @@ package fs2.kafka
 
 import cats.effect.{Blocker, Sync}
 import cats.Show
+import fs2.kafka.common._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
@@ -347,7 +348,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * operation should be bracketed, using e.g. `Resource`, to ensure
     * the `close` function on the consumer is called.
     */
-  def createConsumer: F[org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]]
+  def createConsumer: F[JavaByteConsumer]
 
   /**
     * Creates a new [[ConsumerSettings]] with the specified function for
@@ -356,7 +357,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     */
   def withCreateConsumer(
     createConsumer: Map[String, String] => F[
-      org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
+      JavaByteConsumer
     ]
   ): ConsumerSettings[F, K, V]
 
@@ -415,7 +416,7 @@ object ConsumerSettings {
     override val recordMetadata: ConsumerRecord[K, V] => String,
     override val maxPrefetchBatches: Int,
     val createConsumerWith: Map[String, String] => F[
-      org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
+      JavaByteConsumer
     ]
   ) extends ConsumerSettings[F, K, V] {
     override def withBlocker(blocker: Blocker): ConsumerSettings[F, K, V] =
@@ -523,13 +524,12 @@ object ConsumerSettings {
     override def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[F, K, V] =
       copy(commitRecovery = commitRecovery)
 
-    override def createConsumer
-      : F[org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]] =
+    override def createConsumer: F[JavaByteConsumer] =
       createConsumerWith(properties)
 
     override def withCreateConsumer(
       createConsumerWith: Map[String, String] => F[
-        org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
+        JavaByteConsumer
       ]
     ): ConsumerSettings[F, K, V] =
       copy(createConsumerWith = createConsumerWith)

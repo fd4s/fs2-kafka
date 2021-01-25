@@ -9,6 +9,7 @@ package fs2.kafka.internal
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 import cats.implicits._
 import fs2.kafka.{ProducerSettings, TransactionalProducerSettings}
+import fs2.kafka.common._
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithTransactionalProducer[F[_]] {

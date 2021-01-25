@@ -8,6 +8,7 @@ package fs2.kafka
 
 import cats.effect.{Blocker, Sync}
 import cats.Show
+import fs2.kafka.common._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
@@ -229,7 +230,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * operation should be bracketed, using e.g. `Resource`, to ensure
     * the `close` function on the producer is called.
     */
-  def createProducer: F[org.apache.kafka.clients.producer.Producer[Array[Byte], Array[Byte]]]
+  def createProducer: F[JavaByteProducer]
 
   /**
     * Creates a new [[ProducerSettings]] with the specified function for
@@ -312,8 +313,7 @@ object ProducerSettings {
     override def withParallelism(parallelism: Int): ProducerSettings[F, K, V] =
       copy(parallelism = parallelism)
 
-    override def createProducer
-      : F[org.apache.kafka.clients.producer.Producer[Array[Byte], Array[Byte]]] =
+    override def createProducer: F[JavaByteProducer] =
       createProducerWith(properties)
 
     override def withCreateProducer(
