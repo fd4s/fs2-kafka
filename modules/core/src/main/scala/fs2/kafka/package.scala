@@ -46,6 +46,7 @@ package object kafka {
     * to commit within a time window, no attempt will be made to commit
     * offsets for that time window.
     */
+  @deprecated("use fs2.kafka.consumer.commitBatchWithin", "1.4.0")
   def commitBatchWithin[F[_]](n: Int, d: FiniteDuration)(
     implicit F: Concurrent[F],
     timer: Timer[F]
