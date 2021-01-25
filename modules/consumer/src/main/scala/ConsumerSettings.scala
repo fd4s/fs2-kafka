@@ -356,9 +356,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * is the [[properties]] of the settings instance.
     */
   def withCreateConsumer(
-    createConsumer: Map[String, String] => F[
-      JavaByteConsumer
-    ]
+    createConsumer: Map[String, String] => F[JavaByteConsumer]
   ): ConsumerSettings[F, K, V]
 
   /**
@@ -415,9 +413,7 @@ object ConsumerSettings {
     override val commitRecovery: CommitRecovery,
     override val recordMetadata: ConsumerRecord[K, V] => String,
     override val maxPrefetchBatches: Int,
-    val createConsumerWith: Map[String, String] => F[
-      JavaByteConsumer
-    ]
+    val createConsumerWith: Map[String, String] => F[JavaByteConsumer]
   ) extends ConsumerSettings[F, K, V] {
     override def withBlocker(blocker: Blocker): ConsumerSettings[F, K, V] =
       copy(blocker = Some(blocker))
@@ -528,9 +524,7 @@ object ConsumerSettings {
       createConsumerWith(properties)
 
     override def withCreateConsumer(
-      createConsumerWith: Map[String, String] => F[
-        JavaByteConsumer
-      ]
+      createConsumerWith: Map[String, String] => F[JavaByteConsumer]
     ): ConsumerSettings[F, K, V] =
       copy(createConsumerWith = createConsumerWith)
 

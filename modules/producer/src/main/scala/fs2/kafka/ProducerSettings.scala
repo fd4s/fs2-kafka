@@ -317,9 +317,7 @@ object ProducerSettings {
       createProducerWith(properties)
 
     override def withCreateProducer(
-      createProducerWith: Map[String, String] => F[
-        org.apache.kafka.clients.producer.Producer[Array[Byte], Array[Byte]]
-      ]
+      createProducerWith: Map[String, String] => F[JavaByteProducer]
     ): ProducerSettings[F, K, V] =
       copy(createProducerWith = createProducerWith)
 
