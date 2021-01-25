@@ -364,7 +364,7 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.stopConsuming"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.Kafkaadmin.*")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
     )
     // format: on
   }
