@@ -17,6 +17,7 @@ import fs2.kafka._
 import fs2.kafka.common._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
+import fs2.kafka.internal.Id
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogEntry._
 import fs2.kafka.internal.syntax._
@@ -64,8 +65,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   timer: Timer[F]
 ) {
   import logging._
-
-  private[this] type Id[+A] = A
 
   private[this] type ConsumerRecords =
     Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]]
