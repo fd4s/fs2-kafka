@@ -200,23 +200,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
-    it("should interrupt the stream when cancelled") {
-      withTopic { topic =>
-        val consumed =
-          KafkaConsumer
-            .stream(consumerSettings[IO])
-            .evalTap(_.subscribeTo(topic))
-            .evalTap(_.fiber.cancel)
-            .flatTap(_.stream)
-            .evalTap(_.fiber.join)
-            .compile
-            .toVector
-            .unsafeRunSync()
-
-        assert(consumed.isEmpty)
-      }
-    }
-
     it("should interrupt the stream when terminated") {
       withTopic { topic =>
         val consumed =
