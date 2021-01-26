@@ -17,7 +17,6 @@ import fs2.kafka._
 import fs2.kafka.common._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
-import fs2.kafka.internal.Id
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogEntry._
 import fs2.kafka.internal.syntax._
