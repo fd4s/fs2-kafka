@@ -30,7 +30,7 @@ trait KafkaConsumerLifecycle[F[_]] {
     * shut down. Most of the time, when you're only using the streams
     * provided by [[KafkaConsumer]], there is no need to use this.
     */
-//  @deprecated("Use terminate/awaitTermination instead", since = "1.4.0")
+  @deprecated("Use terminate/awaitTermination instead", since = "1.4.0")
   def fiber: Fiber[F, Unit]
 
   /**
