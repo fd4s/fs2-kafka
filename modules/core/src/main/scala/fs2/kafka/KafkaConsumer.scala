@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.{Foldable, Reducible}
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref, TryableDeferred}
 import cats.effect.implicits._
@@ -78,6 +78,9 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaConsumerLifecycle[F]
 
 object KafkaConsumer {
+  private def startStream[F[_]: Concurrent](stream: Stream[F, Unit]): Resource[F, Fiber[F, Unit]] =
+    Resource.make(stream.compile.drain.start)(_.cancel)
+
   private def startConsumerActor[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     polls: Queue[F, Request[F, K, V]],
@@ -86,20 +89,11 @@ object KafkaConsumer {
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, Fiber[F, Unit]] =
-    Resource.make {
-      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        requests.tryDequeue1
-          .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
-          .flatMap(actor.handle(_) >> context.shift)
-          .foreverM[Unit]
-          .guaranteeCase {
-            case ExitCase.Error(e) => deferred.complete(Left(e))
-            case _                 => deferred.complete(Right(()))
-          }
-          .start
-          .map(fiber => Fiber[F, Unit](deferred.get.rethrow, fiber.cancel.start.void))
-      }
-    }(_.cancel)
+    startStream(Stream.repeatEval {
+      OptionT(requests.tryDequeue1)
+        .getOrElseF(polls.dequeue1)
+        .flatMap(actor.handle(_) >> context.shift)
+    })
 
   private def startPollScheduler[F[_], K, V](
     polls: Queue[F, Request[F, K, V]],
@@ -108,20 +102,11 @@ object KafkaConsumer {
     implicit F: Concurrent[F],
     timer: Timer[F]
   ): Resource[F, Fiber[F, Unit]] =
-    Resource.make {
-      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        polls
-          .enqueue1(Request.poll)
-          .flatMap(_ => timer.sleep(pollInterval))
-          .foreverM[Unit]
-          .guaranteeCase {
-            case ExitCase.Error(e) => deferred.complete(Left(e))
-            case _                 => deferred.complete(Right(()))
-          }
-          .start
-          .map(fiber => Fiber[F, Unit](deferred.get.rethrow, fiber.cancel.start.void))
+    startStream(
+      Stream.fixedDelay(pollInterval).evalTap { _ =>
+        polls.enqueue1(Request.poll)
       }
-    }(_.cancel)
+    )
 
   private def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
