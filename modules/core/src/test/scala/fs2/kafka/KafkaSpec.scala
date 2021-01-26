@@ -20,7 +20,7 @@ final class KafkaSpec extends BaseAsyncSpec {
           _ <- Stream
             .chunk(offsets)
             .covary[IO]
-            .through(commitBatchWithin(offsets.size, 10.seconds))
+            .through(consumer.commitBatchWithin(offsets.size, 10.seconds))
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync()
 

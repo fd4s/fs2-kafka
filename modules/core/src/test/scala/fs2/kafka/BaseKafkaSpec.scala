@@ -28,6 +28,7 @@ package fs2.kafka
 
 import cats.effect.{IO, Sync}
 import fs2.kafka.internal.converters.collection._
+import fs2.kafka.common._
 import java.util.UUID
 
 import scala.util.Failure

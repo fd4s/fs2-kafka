@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets
 import java.util.UUID
 import org.scalacheck.Arbitrary
 import org.scalatest._
+import fs2.kafka.common._
 import cats.effect.laws.util.TestContext
 import cats.effect.laws.util.TestInstances
 

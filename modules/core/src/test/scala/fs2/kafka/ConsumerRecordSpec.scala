@@ -2,6 +2,7 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.implicits._
+import fs2.kafka.common._
 import org.apache.kafka.clients.consumer.ConsumerRecord.{NULL_SIZE, NO_TIMESTAMP}
 import org.apache.kafka.common.record.TimestampType
 import org.apache.kafka.common.record.TimestampType._

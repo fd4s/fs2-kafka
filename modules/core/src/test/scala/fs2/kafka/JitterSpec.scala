@@ -21,7 +21,7 @@ final class JitterSpec extends BaseSpec {
 
   describe("Jitter#none") {
     it("should never apply jitter on values") {
-      val jitter: Jitter[Id] = Jitter.none
+      val jitter: Jitter[cats.Id] = Jitter.none
 
       forAll { (n: Double) =>
         whenever(!n.isNaN) {

@@ -80,8 +80,8 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
   describe("CommittableOffsetBatch#toString") {
     it("should provide a Show instance and matching toString") {
       assert {
-        CommittableOffsetBatch.empty[Id].toString == "CommittableOffsetBatch(<empty>)" &&
-        CommittableOffsetBatch.empty[Id].show == CommittableOffsetBatch.empty[Id].show
+        CommittableOffsetBatch.empty[cats.Id].toString == "CommittableOffsetBatch(<empty>)" &&
+        CommittableOffsetBatch.empty[cats.Id].show == CommittableOffsetBatch.empty[cats.Id].show
       }
 
       val one = CommittableOffset[IO](
