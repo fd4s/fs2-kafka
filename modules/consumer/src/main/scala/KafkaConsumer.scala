@@ -48,12 +48,12 @@ import scala.util.matching.Regex
   *   particular `TopicPartition`.
   * <br>
   * For the streams, records are wrapped in [[CommittableConsumerRecord]]s
-  * which provide [[CommittableOffset]]s with the ability to commit
+  * which provide `CommittableOffset`s with the ability to commit
   * record offsets to Kafka. For performance reasons, offsets are
-  * usually committed in batches using [[CommittableOffsetBatch]].
-  * Provided `Pipe`s, like [[commitBatchWithin]] are available for
+  * usually committed in batches using `CommittableOffsetBatch`.
+  * Provided `Pipe`s, like [[consumer.commitBatchWithin]] are available for
   * batch committing offsets. If you are not committing offsets to
-  * Kafka, you can simply discard the [[CommittableOffset]], and
+  * Kafka, you can simply discard the `CommittableOffset`, and
   * only make use of the record.<br>
   * <br>
   * While it's technically possible to start more than one stream from a

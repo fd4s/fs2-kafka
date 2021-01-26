@@ -12,7 +12,7 @@ import fs2.Chunk
 import fs2.kafka.internal.syntax._
 
 /**
-  * Represents zero or more [[CommittableProducerRecords]], together with
+  * Represents zero or more `CommittableProducerRecords`, together with
   * arbitrary passthrough value, all of which can be used together with a
   * [[TransactionalKafkaProducer]] to produce records and commit offsets
   * within a single transaction.<br>
@@ -21,10 +21,10 @@ import fs2.kafka.internal.syntax._
   * following options.<br>
   * <br>
   * - `TransactionalProducerRecords#apply` to produce zero or more records,
-  * commit the offsets, and then emit a [[ProducerResult]] with the results
+  * commit the offsets, and then emit a `ProducerResult` with the results
   * and specified passthrough value.<br>
   * - `TransactionalProducerRecords#one` to produce zero or more records,
-  * commit exactly one offset, then emit a [[ProducerResult]] with the
+  * commit exactly one offset, then emit a `ProducerResult` with the
   * results and specified passthrough value.
   */
 sealed abstract class TransactionalProducerRecords[F[_], +K, +V, +P] {
@@ -48,7 +48,7 @@ object TransactionalProducerRecords {
 
   /**
     * Creates a new [[TransactionalProducerRecords]] for producing zero or
-    * more [[CommittableProducerRecords]], emitting a [[ProducerResult]]
+    * more `CommittableProducerRecords`, emitting a `ProducerResult`
     * with the results and `Unit` passthrough value.
     */
   def apply[F[_], K, V](
@@ -58,7 +58,7 @@ object TransactionalProducerRecords {
 
   /**
     * Creates a new [[TransactionalProducerRecords]] for producing zero or
-    * more [[CommittableProducerRecords]], emitting a [[ProducerResult]]
+    * more `CommittableProducerRecords`, emitting a `ProducerResult`
     * with the results and specified passthrough value.
     */
   def apply[F[_], K, V, P](
@@ -69,7 +69,7 @@ object TransactionalProducerRecords {
 
   /**
     * Creates a new [[TransactionalProducerRecords]] for producing exactly
-    * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
+    * one `CommittableProducerRecords`, emitting a `ProducerResult`
     * with the result and `Unit` passthrough value.
     */
   def one[F[_], K, V](
@@ -79,7 +79,7 @@ object TransactionalProducerRecords {
 
   /**
     * Creates a new [[TransactionalProducerRecords]] for producing exactly
-    * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
+    * one `CommittableProducerRecords`, emitting a `ProducerResult`
     * with the result and specified passthrough value.
     */
   def one[F[_], K, V, P](

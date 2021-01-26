@@ -14,8 +14,8 @@ import fs2.kafka.internal.syntax._
 import scala.collection.mutable
 
 /**
-  * [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
-  * and a [[CommittableOffset]], used by [[TransactionalKafkaProducer]] to
+  * [[CommittableProducerRecords]] represents zero or more `ProducerRecord`s
+  * and a `CommittableOffset`, used by [[TransactionalKafkaProducer]] to
   * produce the records and commit the offset atomically.<br>
   * <br>
   * [[CommittableProducerRecords]]s can be created using one of the following options.<br>
@@ -47,7 +47,7 @@ object CommittableProducerRecords {
 
   /**
     * Creates a new [[CommittableProducerRecords]] for producing zero or
-    * more [[ProducerRecord]]s and committing an offset atomically within
+    * more `ProducerRecord`s and committing an offset atomically within
     * a transaction.
     */
   def apply[F[_], G[+_], K, V](
@@ -75,7 +75,7 @@ object CommittableProducerRecords {
 
   /**
     * Creates a new [[CommittableProducerRecords]] for producing exactly
-    * one [[ProducerRecord]] and committing an offset atomically within
+    * one `ProducerRecord` and committing an offset atomically within
     * a transaction.
     */
   def one[F[_], K, V](

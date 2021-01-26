@@ -14,7 +14,7 @@ import scala.annotation.tailrec
 
 /**
   * [[HeaderDeserializer]] is a functional deserializer for Kafka record
-  * header values. It's similar to [[Deserializer]], except it only has
+  * header values. It's similar to `Deserializer`, except it only has
   * access to the header bytes, and it does not interoperate with the
   * Kafka `Deserializer` interface.
   */

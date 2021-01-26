@@ -11,7 +11,7 @@ import cats.Show
 /**
   * [[Header]] represents a `String` key and `Array[Byte]` value
   * which can be included as part of [[Headers]] when creating a
-  * [[ProducerRecord]]. [[Headers]] are included together with a
+  * `ProducerRecord`. [[Headers]] are included together with a
   * record once produced, and can be used by consumers.<br>
   * <br>
   * To create a new [[Header]], use [[Header#apply]].

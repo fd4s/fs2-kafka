@@ -12,7 +12,7 @@ import java.util.UUID
 
 /**
   * [[HeaderSerializer]] is a functional serializer for Kafka record
-  * header values. It's similar to [[Serializer]], except it only
+  * header values. It's similar to `Serializer`, except it only
   * has access to the value, and it does not interoperate with
   * the Kafka `Serializer` interface.
   */

@@ -362,7 +362,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   /**
     * The function used to specify metadata for records. This
     * metadata will be included in `OffsetAndMetadata` in the
-    * [[CommittableOffset]]s, and can then be committed with
+    * `CommittableOffset`s, and can then be committed with
     * the offsets.<br>
     * <br>
     * By default, there will be no metadata, as determined by

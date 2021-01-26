@@ -13,7 +13,7 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * [[TransactionalProducerSettings]] contain settings necessary to create a
   * [[TransactionalKafkaProducer]]. This includes a transactional ID and any
-  * other [[ProducerSettings]].
+  * other `ProducerSettings`.
   *
   * [[TransactionalProducerSettings]] instances are immutable and modification
   * functions return a new [[TransactionalProducerSettings]] instance.

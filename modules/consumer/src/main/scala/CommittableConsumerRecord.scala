@@ -11,10 +11,10 @@ import cats.syntax.show._
 
 /**
   * [[CommittableConsumerRecord]] is a Kafka record along with an
-  * instance of [[CommittableOffset]], which can be used commit
+  * instance of `CommittableOffset`, which can be used commit
   * the record offset to Kafka. Offsets are normally committed in
-  * batches, either using [[CommittableOffsetBatch]] or via pipes,
-  * like [[commitBatchWithin]]. If you are not committing offsets
+  * batches, either using `CommittableOffsetBatch` or via pipes,
+  * like `consumer.commitBatchWithin`. If you are not committing offsets
   * to Kafka then you can use [[record]] to get the underlying
   * record and also discard the [[offset]].<br>
   * <br>
@@ -31,10 +31,10 @@ sealed abstract class CommittableConsumerRecord[F[_], +K, +V] {
   def record: ConsumerRecord[K, V]
 
   /**
-    * A [[CommittableOffset]] instance, providing a way to commit the
+    * A `CommittableOffset` instance, providing a way to commit the
     * [[record]] offset to Kafka. This is normally done in batches as
-    * it achieves better performance. Pipes like [[commitBatchWithin]]
-    * use [[CommittableOffsetBatch]] to batch and commit offsets.
+    * it achieves better performance. Pipes like `consumer.commitBatchWithin`
+    * use `CommittableOffsetBatch` to batch and commit offsets.
     */
   def offset: CommittableOffset[F]
 }
@@ -50,7 +50,7 @@ object CommittableConsumerRecord {
 
   /**
     * Creates a new [[CommittableConsumerRecord]] using the specified
-    * Kafka [[ConsumerRecord]] and [[CommittableOffset]], which can
+    * Kafka [[ConsumerRecord]] and `CommittableOffset`, which can
     * be used to commit the record offset to Kafka.
     */
   def apply[F[_], K, V](

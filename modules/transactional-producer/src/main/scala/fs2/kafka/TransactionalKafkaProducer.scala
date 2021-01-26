@@ -17,7 +17,7 @@ import org.apache.kafka.clients.producer.RecordMetadata
 /**
   * Represents a producer of Kafka records specialized for 'read-process-write'
   * streams, with the ability to atomically produce `ProducerRecord`s and commit
-  * corresponding [[CommittableOffset]]s using [[produce]].<br>
+  * corresponding `CommittableOffset`s using [[produce]].<br>
   * <br>
   * Records are wrapped in [[TransactionalProducerRecords]] which allow an
   * arbitrary passthrough value to be included in the result.

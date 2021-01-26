@@ -22,7 +22,7 @@ import org.apache.kafka.common.{Metric, MetricName}
   * ability to produce `ProducerRecord`s using [[produce]]. Records are
   * wrapped in [[ProducerRecords]] which allow an arbitrary value, that
   * is a passthrough, to be included in the result. Most often this is
-  * used for keeping the [[CommittableOffset]]s, in order to commit
+  * used for keeping the `CommittableOffset`s, in order to commit
   * offsets, but any value can be used as passthrough value.
   */
 abstract class KafkaProducer[F[_], K, V] {

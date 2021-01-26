@@ -26,7 +26,7 @@ trait KafkaCommit[F[_]] {
     * (and variants) returns.<br>
     * <br>
     * Note, that the recommended way for committing offsets in fs2-kafka is to use `commit` on
-    * [[CommittableConsumerRecord]], [[CommittableOffset]] or [[CommittableOffsetBatch]].
+    * [[CommittableConsumerRecord]], `CommittableOffset` or `CommittableOffsetBatch`.
     * [[commitAsync]] and [[commitSync]] usually needs only for some custom scenarios.
     *
     * @param offsets A map of offsets by partition with associate metadata.
@@ -47,7 +47,7 @@ trait KafkaCommit[F[_]] {
     * org.apache.kafka.clients.consumer.KafkaConsumer#commitSync method.<br>
     * <br>
     * Note, that the recommended way for committing offsets in fs2-kafka is to use `commit` on
-    * [[CommittableConsumerRecord]], [[CommittableOffset]] or [[CommittableOffsetBatch]].
+    * [[CommittableConsumerRecord]], `CommittableOffset` or `CommittableOffsetBatch`.
     * [[commitAsync]] and [[commitSync]] usually needs only for some custom scenarios.
     *
     * @param offsets A map of offsets by partition with associated metadata

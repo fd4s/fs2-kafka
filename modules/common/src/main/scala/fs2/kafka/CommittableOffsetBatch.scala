@@ -31,7 +31,7 @@ import org.apache.kafka.common.TopicPartition
   * them together using [[CommittableOffsetBatch#empty]] and `updated`,
   * or you can use [[CommittableOffsetBatch#fromFoldable]]. Generally,
   * prefer to use `fromFoldable`, as it has better performance. Provided
-  * pipes like [[commitBatchWithin]] are also to be preferred, as they
+  * pipes like `consumer.commitBatchWithin` are also to be preferred, as they
   * also achieve better performance.
   */
 sealed abstract class CommittableOffsetBatch[F[_]] {
