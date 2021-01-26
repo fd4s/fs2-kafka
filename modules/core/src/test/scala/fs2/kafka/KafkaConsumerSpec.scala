@@ -217,6 +217,23 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
+    it("should interrupt the stream when terminated") {
+      withTopic { topic =>
+        val consumed =
+          KafkaConsumer
+            .stream(consumerSettings[IO])
+            .evalTap(_.subscribeTo(topic))
+            .evalTap(_.terminate)
+            .flatTap(_.stream)
+            .evalTap(_.awaitTermination)
+            .compile
+            .toVector
+            .unsafeRunSync()
+
+        assert(consumed.isEmpty)
+      }
+    }
+
     it("should fail with an error if not subscribed or assigned") {
       withTopic { topic =>
         createCustomTopic(topic, partitions = 3)

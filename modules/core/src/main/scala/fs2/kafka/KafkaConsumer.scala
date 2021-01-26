@@ -549,6 +549,16 @@ object KafkaConsumer {
 
       override def toString: String =
         "KafkaConsumer$" + id
+
+      // Stop polling, then stop consuming, then stop handling messages
+      private def shutdown(graceful: Boolean): F[Unit] = {
+        val shutdownOp: Fiber[F, Unit] => F[Unit] = if (graceful) _.join else _.cancel
+        shutdownOp(polls).attempt.void *> stopConsuming *> shutdownOp(actor).attempt.void
+      }
+
+      override def terminate: F[Unit] = shutdown(graceful = false)
+
+      override def awaitTermination: F[Unit] = shutdown(graceful = true)
     }
 
   @deprecated("use KafkaConsumer.resource", "1.2.0")
