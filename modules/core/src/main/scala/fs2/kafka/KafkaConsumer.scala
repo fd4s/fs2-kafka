@@ -11,6 +11,7 @@ import cats.data.{NonEmptyList, NonEmptySet}
 import cats.effect._
 import cats.effect.std._
 import cats.effect.implicits._
+import cats.effect.kernel.Resource.ExitCase
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
 import fs2.concurrent.{NoneTerminatedQueue, Queue}
@@ -20,8 +21,8 @@ import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.consumer._
-import java.util
 
+import java.util
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
 
@@ -137,22 +138,37 @@ object KafkaConsumer {
     stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-      override val fiber: Fiber[F, Throwable, Unit] = {
-//        val actorFiber =
-//          Fiber[F, Unit](actor.join.guaranteeCase {
-//            case ExitCase.Completed => polls.cancel
-//            case _                  => F.unit
-//          }, actor.cancel)
-//
-//        val pollsFiber =
-//          Fiber[F, Unit](polls.join.guaranteeCase {
-//            case ExitCase.Completed => actor.cancel
-//            case _                  => F.unit
-//          }, polls.cancel)
-//
-//        actorFiber combine pollsFiber
-        ???
-      }
+//      override val fiber: Fiber[F, Throwable, Unit] = {
+////        val actorFiber =
+////          Fiber[F, Unit](actor.join.guaranteeCase {
+////            case ExitCase.Completed => polls.cancel
+////            case _                  => F.unit
+////          }, actor.cancel)
+////
+////        val pollsFiber =
+////          Fiber[F, Unit](polls.join.guaranteeCase {
+////            case ExitCase.Completed => actor.cancel
+////            case _                  => F.unit
+////          }, polls.cancel)
+////
+////        actorFiber combine pollsFiber
+//        ???
+//      }
+
+      override def terminate: F[Unit] = actor.cancel *> polls.cancel
+
+      override def awaitTermination: F[Unit] =
+        actor.joinAndEmbedNever.guaranteeCase { oc: Outcome[F, Throwable, Unit] =>
+          oc match {
+            case Outcome.Succeeded(_) => polls.cancel
+            case _                    => F.unit
+          }
+        } *> polls.joinAndEmbedNever.guaranteeCase { oc: Outcome[F, Throwable, Unit] =>
+          oc match {
+            case Outcome.Succeeded(_) => actor.cancel
+            case _                    => F.unit
+          }
+        }
 
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
@@ -177,7 +193,7 @@ object KafkaConsumer {
             shutdown = F
               .race(
                 F.race(
-                  fiber.join.attempt,
+                  awaitTermination.attempt,
                   dequeueDone.get
                 ),
                 stopConsumingDeferred.get
@@ -297,7 +313,7 @@ object KafkaConsumer {
                 Some(onRebalance(streamId, partitionStreamIdRef, partitionsMapQueue))
               )
             val assignment = requests.enqueue1(request) >> deferred.get.rethrow
-            F.race(fiber.join.attempt, assignment).map {
+            F.race(awaitTermination.attempt, assignment).map {
               case Left(_)         => SortedSet.empty[TopicPartition]
               case Right(assigned) => assigned
             }
@@ -322,7 +338,7 @@ object KafkaConsumer {
               partitionStreamIdRef <- Stream.eval(Ref.of[F, PartitionStreamId](0))
               _ <- Stream.eval(initialEnqueue(streamId, partitionsMapQueue, partitionStreamIdRef))
               out <- partitionsMapQueue.dequeue
-                .interruptWhen(fiber.joinAndEmbedNever.attempt)
+                .interruptWhen(awaitTermination.attempt)
                 .concurrently(
                   Stream.eval(stopConsumingDeferred.get >> partitionsMapQueue.enqueue1(None))
                 )
@@ -368,7 +384,7 @@ object KafkaConsumer {
       ): F[A] =
         Deferred[F, Either[Throwable, A]].flatMap { deferred =>
           requests.enqueue1(request(deferred.complete(_).void)) >>
-            F.race(fiber.join.as(ConsumerShutdownException()), deferred.get.rethrow)
+            F.race(awaitTermination.as(ConsumerShutdownException()), deferred.get.rethrow)
         }.rethrow
 
       override def assignment: F[SortedSet[TopicPartition]] =

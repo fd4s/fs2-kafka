@@ -207,9 +207,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           KafkaConsumer
             .stream(consumerSettings[IO])
             .evalTap(_.subscribeTo(topic))
-            .evalTap(_.fiber.cancel)
+            .evalTap(_.terminate)
             .flatTap(_.stream)
-            .evalTap(_.fiber.join)
+            .evalTap(_.awaitTermination)
             .compile
             .toVector
             .unsafeRunSync()
