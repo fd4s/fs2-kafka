@@ -273,7 +273,7 @@ lazy val scalaSettings = Seq(
         "-Ywarn-dead-code",
         "-Ywarn-numeric-widen",
         "-Ywarn-value-discard",
-        "-Ywarn-unused",
+        "-Ywarn-unused"
         //"-Xfatal-warnings"
       )
     else if (scalaVersion.value.startsWith("2.12"))
@@ -285,7 +285,7 @@ lazy val scalaSettings = Seq(
         "-Ywarn-numeric-widen",
         "-Ywarn-value-discard",
         "-Ywarn-unused",
-        "-Ypartial-unification",
+        "-Ypartial-unification"
         //"-Xfatal-warnings"
       )
     else
