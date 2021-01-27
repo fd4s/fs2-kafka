@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.{Foldable, Reducible}
+import cats.{Foldable, Reducible, Applicative, Monoid}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.effect._
 import cats.effect.std._
@@ -78,6 +78,47 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaMetrics[F]
     with KafkaConsumerLifecycle[F]
 
+case class FakeFiber[F[_], A](join: F[A], cancel: F[Unit])
+
+object FakeFiber {
+  implicit def fiberApplicative[F[_]](implicit F: Concurrent[F]): Applicative[FakeFiber[F, *]] =
+    new Applicative[FakeFiber[F, *]] {
+      final override def pure[A](x: A): FakeFiber[F, A] =
+        FakeFiber(F.pure(x), F.unit)
+      final override def ap[A, B](ff: FakeFiber[F, A => B])(fa: FakeFiber[F, A]): FakeFiber[F, B] =
+        map2(ff, fa)(_(_))
+      final override def map2[A, B, Z](fa: FakeFiber[F, A], fb: FakeFiber[F, B])(
+        f: (A, B) => Z
+      ): FakeFiber[F, Z] = {
+        val fa2 = F.guaranteeCase(fa.join) {
+          case Outcome.Errored(_) => fb.cancel; case _ => F.unit
+        }
+        val fb2 = F.guaranteeCase(fb.join) {
+          case Outcome.Errored(_) => fa.cancel; case _ => F.unit
+        }
+        FakeFiber(
+          F.racePair(fa2, fb2).flatMap {
+            case Left((a, fiberB))  => (a.embedNever, fiberB.joinAndEmbedNever).mapN(f)
+            case Right((fiberA, b)) => (fiberA.joinAndEmbedNever, b.embedNever).mapN(f)
+          },
+          F.map2(fa.cancel, fb.cancel)((_, _) => ())
+        )
+      }
+      final override def product[A, B](
+        fa: FakeFiber[F, A],
+        fb: FakeFiber[F, B]
+      ): FakeFiber[F, (A, B)] =
+        map2(fa, fb)((_, _))
+      final override def map[A, B](fa: FakeFiber[F, A])(f: A => B): FakeFiber[F, B] =
+        FakeFiber(F.map(fa.join)(f), fa.cancel)
+      final override val unit: FakeFiber[F, Unit] =
+        FakeFiber(F.unit, F.unit)
+    }
+
+  implicit def fiberMonoid[F[_]: Concurrent, M[_], A: Monoid]: Monoid[FakeFiber[F, A]] =
+    Applicative.monoid[FakeFiber[F, *], A]
+}
+
 object KafkaConsumer {
   private def startConsumerActor[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
@@ -85,7 +126,7 @@ object KafkaConsumer {
     actor: KafkaConsumerActor[F, K, V]
   )(
     implicit F: Async[F]
-  ): Resource[F, Fiber[F, Throwable, Unit]] =
+  ): Resource[F, FakeFiber[F, Unit]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
         requests.tryDequeue1
@@ -100,7 +141,7 @@ object KafkaConsumer {
             }
           }
           .start
-          .flatMap(fiber => deferred.get.rethrow.onCancel(fiber.cancel.start.void).start)
+          .map(fiber => FakeFiber(deferred.get.rethrow, fiber.cancel.start.void))
       }
     }(_.cancel)
 
@@ -109,7 +150,7 @@ object KafkaConsumer {
     pollInterval: FiniteDuration
   )(
     implicit F: Temporal[F]
-  ): Resource[F, Fiber[F, Throwable, Unit]] =
+  ): Resource[F, FakeFiber[F, Unit]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
         polls
@@ -123,35 +164,37 @@ object KafkaConsumer {
             }
           }
           .start
-          .flatMap(fiber => deferred.get.rethrow.onCancel(fiber.cancel.start.void).start)
+          .map(fiber => FakeFiber(deferred.get.rethrow, fiber.cancel.start.void))
       }
     }(_.cancel)
 
   private def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     settings: ConsumerSettings[F, K, V],
-    actor: Fiber[F, Throwable, Unit],
-    polls: Fiber[F, Throwable, Unit],
+    actor: FakeFiber[F, Unit],
+    polls: FakeFiber[F, Unit],
     streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F],
     stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-      override def terminate: F[Unit] = actor.cancel *> polls.cancel
+      def terminate: F[Unit] = actor.cancel *> polls.cancel
 
-      override def awaitTermination: F[Unit] =
-        actor.joinAndEmbedNever.guaranteeCase { oc: Outcome[F, Throwable, Unit] =>
+      def awaitTermination: F[Unit] =
+        actor.join.guaranteeCase { oc: Outcome[F, Throwable, Unit] =>
           oc match {
             case Outcome.Succeeded(_) => polls.cancel
             case _                    => F.unit
           }
-        } *> polls.joinAndEmbedNever.guaranteeCase { oc: Outcome[F, Throwable, Unit] =>
+        } *> polls.join.guaranteeCase { oc: Outcome[F, Throwable, Unit] =>
           oc match {
             case Outcome.Succeeded(_) => actor.cancel
             case _                    => F.unit
           }
         }
+
+      def fiber: FakeFiber[F, Unit] = FakeFiber(awaitTermination, terminate)
 
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
