@@ -78,7 +78,7 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaConsumerLifecycle[F]
 
 object KafkaConsumer {
-  private def spawn[F[_]: Concurrent, A](fa: F[A]): Resource[F, Fiber[F, Unit]] =
+  private def spawnRepeating[F[_]: Concurrent, A](fa: F[A]): Resource[F, Fiber[F, Unit]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
         fa.foreverM[Unit]
@@ -99,7 +99,7 @@ object KafkaConsumer {
     implicit F: Concurrent[F],
     context: ContextShift[F]
   ): Resource[F, Fiber[F, Unit]] =
-    spawn {
+    spawnRepeating {
       OptionT(requests.tryDequeue1)
         .getOrElseF(polls.dequeue1)
         .flatMap(actor.handle(_) >> context.shift)
@@ -112,7 +112,7 @@ object KafkaConsumer {
     implicit F: Concurrent[F],
     timer: Timer[F]
   ): Resource[F, Fiber[F, Unit]] =
-    spawn {
+    spawnRepeating {
       polls.enqueue1(Request.poll) >> timer.sleep(pollInterval)
     }
 
