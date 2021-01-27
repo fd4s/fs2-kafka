@@ -31,7 +31,6 @@ import org.apache.kafka.clients.consumer.{
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.immutable.SortedSet
-import cats.Functor
 
 /**
   * [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to
@@ -620,7 +619,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 }
 
 private[kafka] object KafkaConsumerActor {
-  final case class FetchRequest[F[_]: Functor, K, V](
+  final case class FetchRequest[F[_], K, V](
     callback: ((Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)) => F[Unit]
   ) {
     def completeRevoked(chunk: Chunk[CommittableConsumerRecord[F, K, V]]): F[Unit] =
@@ -657,7 +656,7 @@ private[kafka] object KafkaConsumerActor {
       streamId: StreamId,
       partitionStreamId: PartitionStreamId,
       callback: ((Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)) => F[Unit]
-    )(implicit F: Functor[F]): (State[F, K, V], List[FetchRequest[F, K, V]]) = {
+    ): (State[F, K, V], List[FetchRequest[F, K, V]]) = {
       val newFetchRequest =
         FetchRequest(callback)
 
