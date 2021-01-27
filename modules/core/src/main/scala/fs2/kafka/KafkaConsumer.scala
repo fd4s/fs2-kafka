@@ -100,9 +100,9 @@ object KafkaConsumer {
             }
           }
           .start
-      //.map(fiber => Fiber[F, Throwable, Unit](deferred.get.rethrow, fiber.cancel.start.void))
-      }
-    }(_.cancel)
+        .flatMap(fiber => 
+          deferred.get.rethrow.onCancel(fiber.cancel.start.void).start)
+    }}(_.cancel)
 
   private def startPollScheduler[F[_], K, V](
     polls: Queue[F, Request[F, K, V]],
@@ -123,7 +123,8 @@ object KafkaConsumer {
             }
           }
           .start
-      // .map(fiber => Fiber[F, Throwable, Unit](deferred.get.rethrow, fiber.cancel.start.void))
+          .flatMap(fiber => 
+          deferred.get.rethrow.onCancel(fiber.cancel.start.void).start)
       }
     }(_.cancel)
 
