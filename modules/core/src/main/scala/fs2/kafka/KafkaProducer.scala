@@ -8,14 +8,12 @@ package fs2.kafka
 
 import cats.Apply
 import cats.effect._
-import cats.effect.std._
-import cats.effect.syntax.all._
 import cats.implicits._
 import fs2._
 import fs2.kafka.JavaByteProducer
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
+import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 import cats.effect.std.Dispatcher
 

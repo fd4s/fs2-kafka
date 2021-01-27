@@ -11,7 +11,6 @@ import cats.data.{NonEmptyList, NonEmptySet}
 import cats.effect._
 import cats.effect.std._
 import cats.effect.implicits._
-import cats.effect.kernel.Resource.ExitCase
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
 import fs2.concurrent.{NoneTerminatedQueue, Queue}

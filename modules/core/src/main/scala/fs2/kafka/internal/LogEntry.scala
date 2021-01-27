@@ -7,7 +7,6 @@
 package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
-import cats.effect.Deferred
 import cats.implicits._
 import fs2.Chunk
 import fs2.kafka.CommittableConsumerRecord
