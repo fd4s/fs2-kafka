@@ -99,7 +99,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .log(SubscribedTopics(topics, _))
       }
       .flatMap(callback)
-      .void
   }
 
   private[this] def subscribe(
@@ -123,7 +122,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .log(SubscribedPattern(pattern, _))
       }
       .flatMap(callback)
-      .void
   }
 
   private[this] def unsubscribe(
@@ -141,7 +139,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .log(Unsubscribed(_))
       }
       .flatMap(callback)
-      .void
   }
 
   private[this] def assign(
@@ -164,7 +161,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             .log(ManuallyAssignedPartitions(partitions, _))
       }
       .flatMap(callback)
-      .void
   }
 
   private[this] def fetch(
@@ -193,7 +189,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         }
 
     def completeRevoked =
-      callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked)).void
+      callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
 
     assigned.ifM(storeFetch, completeRevoked)
   }
@@ -628,10 +624,10 @@ private[kafka] object KafkaConsumerActor {
     callback: ((Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)) => F[Unit]
   ) {
     def completeRevoked(chunk: Chunk[CommittableConsumerRecord[F, K, V]]): F[Unit] =
-      callback((chunk, FetchCompletedReason.TopicPartitionRevoked)).void
+      callback((chunk, FetchCompletedReason.TopicPartitionRevoked))
 
     def completeRecords(chunk: Chunk[CommittableConsumerRecord[F, K, V]]): F[Unit] =
-      callback((chunk, FetchCompletedReason.FetchedRecords)).void
+      callback((chunk, FetchCompletedReason.FetchedRecords))
 
     override def toString: String =
       "FetchRequest$" + System.identityHashCode(this)
