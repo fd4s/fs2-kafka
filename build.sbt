@@ -87,7 +87,7 @@ lazy val dependencySettings = Seq(
       .withDottyCompat(scalaVersion.value),
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
-    "org.typelevel" %% "cats-testkit-scalatest" % "2.0.0",
+    "org.typelevel" %% "cats-testkit-scalatest" % "2.1.1",
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   libraryDependencies ++= (if (isDotty.value) Nil
