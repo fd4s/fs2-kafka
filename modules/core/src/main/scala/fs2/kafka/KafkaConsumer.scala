@@ -100,9 +100,9 @@ object KafkaConsumer {
             }
           }
           .start
-        .flatMap(fiber => 
-          deferred.get.rethrow.onCancel(fiber.cancel.start.void).start)
-    }}(_.cancel)
+          .flatMap(fiber => deferred.get.rethrow.onCancel(fiber.cancel.start.void).start)
+      }
+    }(_.cancel)
 
   private def startPollScheduler[F[_], K, V](
     polls: Queue[F, Request[F, K, V]],
@@ -123,8 +123,7 @@ object KafkaConsumer {
             }
           }
           .start
-          .flatMap(fiber => 
-          deferred.get.rethrow.onCancel(fiber.cancel.start.void).start)
+          .flatMap(fiber => deferred.get.rethrow.onCancel(fiber.cancel.start.void).start)
       }
     }(_.cancel)
 
@@ -139,23 +138,6 @@ object KafkaConsumer {
     stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-//      override val fiber: Fiber[F, Throwable, Unit] = {
-////        val actorFiber =
-////          Fiber[F, Unit](actor.join.guaranteeCase {
-////            case ExitCase.Completed => polls.cancel
-////            case _                  => F.unit
-////          }, actor.cancel)
-////
-////        val pollsFiber =
-////          Fiber[F, Unit](polls.join.guaranteeCase {
-////            case ExitCase.Completed => actor.cancel
-////            case _                  => F.unit
-////          }, polls.cancel)
-////
-////        actorFiber combine pollsFiber
-//        ???
-//      }
-
       override def terminate: F[Unit] = actor.cancel *> polls.cancel
 
       override def awaitTermination: F[Unit] =
