@@ -37,7 +37,7 @@ There are several settings specific to the library.
 Once settings are defined, we can use create an admin client in a `Stream`.
 
 ```scala mdoc:silent
-def kafkaAdminClientStream[F[_]: Concurrent](
+def kafkaAdminClientStream[F[_]: Async](
   bootstrapServers: String
 ): Stream[F, KafkaAdminClient[F]] =
   KafkaAdminClient.stream(adminClientSettings[F](bootstrapServers))
@@ -46,7 +46,7 @@ def kafkaAdminClientStream[F[_]: Concurrent](
 Alternatively, we can create an admin client in a `Resource` context.
 
 ```scala mdoc:silent
-def kafkaAdminClientResource[F[_]: Concurrent](
+def kafkaAdminClientResource[F[_]: Async](
   bootstrapServers: String
 ): Resource[F, KafkaAdminClient[F]] =
   KafkaAdminClient.resource(adminClientSettings[F](bootstrapServers))
@@ -59,7 +59,7 @@ There are functions available for describing, creating, and deleting topics.
 ```scala mdoc:silent
 import org.apache.kafka.clients.admin.{NewPartitions, NewTopic}
 
-def topicOperations[F[_]: Concurrent]: F[Unit] =
+def topicOperations[F[_]: Async]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
     for {
       topicNames <- client.listTopics.names
@@ -81,7 +81,7 @@ We can edit the configuration of different resources, like topics and nodes.
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry}
 
-def configOperations[F[_]: Concurrent]: F[Unit] =
+def configOperations[F[_]: Async]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
     val topic = new ConfigResource(ConfigResource.Type.TOPIC, "topic")
 
@@ -106,7 +106,7 @@ It's possible to retrieve metadata about the cluster nodes.
 ```scala mdoc:silent
 import org.apache.kafka.common.Node
 
-def clusterNodes[F[_]: Concurrent]: F[Set[Node]] =
+def clusterNodes[F[_]: Async]: F[Set[Node]] =
   kafkaAdminClientResource[F]("localhost:9092").use(_.describeCluster.nodes)
 ```
 
@@ -115,7 +115,7 @@ def clusterNodes[F[_]: Concurrent]: F[Set[Node]] =
 There are functions available for working with consumer groups.
 
 ```scala mdoc:silent
-def consumerGroupOperations[F[_]: Concurrent]: F[Unit] =
+def consumerGroupOperations[F[_]: Async: cats.Parallel]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
     for {
       consumerGroupIds <- client.listConsumerGroups.groupIds
@@ -141,7 +141,7 @@ import org.apache.kafka.common.resource.{
   ResourceType
 }
 
-def aclOperations[F[_]: Concurrent]: F[Unit] =
+def aclOperations[F[_]: Async]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
     for {
       describedAcls <- client.describeAcls(AclBindingFilter.ANY)

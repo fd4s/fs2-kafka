@@ -342,7 +342,7 @@ To achieve this behavior we could use a `stopConsuming` method on a` KafkaConsum
 We could combine `stopConsuming` with the custom resource handling and implement a graceful shutdown. Let's try it:
 
 ```scala mdoc:silent
-import cats.effect.concurrent.{Deferred, Ref}
+import cats.effect.{Deferred, Ref}
 
 object WithGracefulShutdownExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
@@ -370,7 +370,7 @@ object WithGracefulShutdownExample extends IOApp {
           }.uncancelable // [7]
         } { case ((consumer, closeConsumer), exitCase) => // [8]
           (exitCase match {
-            case ExitCase.Error(e) => handleError(e) // [9]
+            case Outcome.Errored(e) => handleError(e) // [9]
             case _ => for {
               _ <- gracefulShutdownStartedRef.set(true) // [10]
               _ <- consumer.stopConsuming // [11]
