@@ -113,9 +113,7 @@ object KafkaConsumer {
     timer: Timer[F]
   ): Resource[F, Fiber[F, Unit]] =
     spawn {
-      polls
-        .enqueue1(Request.poll)
-        .flatMap(_ => timer.sleep(pollInterval))
+      polls.enqueue1(Request.poll) >> timer.sleep(pollInterval)
     }
 
   private def createKafkaConsumer[F[_], K, V](
