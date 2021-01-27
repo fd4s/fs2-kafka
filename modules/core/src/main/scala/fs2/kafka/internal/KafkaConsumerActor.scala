@@ -12,7 +12,6 @@ import cats.effect.std._
 import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.Chunk
-import fs2.concurrent.Queue
 import fs2.kafka._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
@@ -372,7 +371,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
       val commit = runCommitAsync(offsets) { cb =>
-        requests.enqueue1(Request.Commit(offsets, cb))
+        requests.offer(Request.Commit(offsets, cb))
       }
 
       commit.handleErrorWith {
