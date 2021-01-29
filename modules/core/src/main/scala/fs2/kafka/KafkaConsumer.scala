@@ -165,7 +165,7 @@ object KafkaConsumer {
             shutdown = F
               .race(
                 F.race(
-                  fiber.join.attempt,
+                  awaitTermination.attempt,
                   dequeueDone.get
                 ),
                 stopConsumingDeferred.get
@@ -281,7 +281,7 @@ object KafkaConsumer {
                 Some(onRebalance(streamId, partitionStreamIdRef, partitionsMapQueue))
               )
             val assignment = requests.enqueue1(request) >> deferred.get.rethrow
-            F.race(fiber.join.attempt, assignment).map {
+            F.race(awaitTermination.attempt, assignment).map {
               case Left(_)         => SortedSet.empty[TopicPartition]
               case Right(assigned) => assigned
             }
@@ -306,7 +306,7 @@ object KafkaConsumer {
               partitionStreamIdRef <- Stream.eval(Ref.of[F, PartitionStreamId](0))
               _ <- Stream.eval(initialEnqueue(streamId, partitionsMapQueue, partitionStreamIdRef))
               out <- partitionsMapQueue.dequeue
-                .interruptWhen(fiber.join.attempt)
+                .interruptWhen(awaitTermination.attempt)
                 .concurrently(
                   Stream.eval(stopConsumingDeferred.get >> partitionsMapQueue.enqueue1(None))
                 )
@@ -352,7 +352,7 @@ object KafkaConsumer {
       ): F[A] =
         Deferred[F, Either[Throwable, A]].flatMap { deferred =>
           requests.enqueue1(request(deferred.complete)) >>
-            F.race(fiber.join.as(ConsumerShutdownException()), deferred.get.rethrow)
+            F.race(awaitTermination.as(ConsumerShutdownException()), deferred.get.rethrow)
         }.rethrow
 
       override def assignment: F[SortedSet[TopicPartition]] =
