@@ -94,7 +94,7 @@ object CommittableConsumerRecord {
       )(f: A => G[C], g: B => G[D])(
         implicit G: Applicative[G]
       ): G[CommittableConsumerRecord[F, C, D]] = {
-        fab.record.bitraverse(f, g).map { cd: ConsumerRecord[C, D] =>
+        fab.record.bitraverse(f, g).map { (cd: ConsumerRecord[C, D]) =>
           CommittableConsumerRecord(cd, fab.offset)
         }
       }
@@ -120,7 +120,7 @@ object CommittableConsumerRecord {
       override def traverse[G[_], A, B](
         fa: CommittableConsumerRecord[F, K, A]
       )(f: A => G[B])(implicit G: Applicative[G]): G[CommittableConsumerRecord[F, K, B]] = {
-        fa.record.traverse(f).map { b: ConsumerRecord[K, B] =>
+        fa.record.traverse(f).map { (b: ConsumerRecord[K, B]) =>
           CommittableConsumerRecord(b, fa.offset)
         }
       }

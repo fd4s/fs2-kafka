@@ -294,7 +294,7 @@ trait BaseGenerators {
     }
 
   def genCommittableConsumerRecord[
-    F[_]: ApplicativeError[*[_], Throwable],
+    F[_]: ApplicativeThrow,
     K: Arbitrary,
     V: Arbitrary
   ]: Gen[CommittableConsumerRecord[F, K, V]] =
@@ -304,7 +304,7 @@ trait BaseGenerators {
     } yield CommittableConsumerRecord[F, K, V](record, offset)
 
   implicit def arbCommittableConsumerRecord[
-    F[_]: ApplicativeError[*[_], Throwable],
+    F[_]: ApplicativeThrow,
     K: Arbitrary,
     V: Arbitrary
   ]: Arbitrary[CommittableConsumerRecord[F, K, V]] =
@@ -317,7 +317,7 @@ trait BaseGenerators {
     }
 
   def genCommittableProducerRecords[
-    F[_]: ApplicativeError[*[_], Throwable],
+    F[_]: ApplicativeThrow,
     K: Arbitrary,
     V: Arbitrary
   ]: Gen[CommittableProducerRecords[F, K, V]] =
@@ -327,7 +327,7 @@ trait BaseGenerators {
     } yield CommittableProducerRecords(records, offset)
 
   implicit def arbCommittableProducerRecords[
-    F[_]: ApplicativeError[*[_], Throwable],
+    F[_]: ApplicativeThrow,
     K: Arbitrary,
     V: Arbitrary
   ]: Arbitrary[CommittableProducerRecords[F, K, V]] =

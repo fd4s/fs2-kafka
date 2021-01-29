@@ -125,7 +125,7 @@ object CommittableProducerRecords {
           .traverse { record =>
             record.bitraverse(f, g)
           }
-          .map { cd: Chunk[ProducerRecord[C, D]] =>
+          .map { (cd: Chunk[ProducerRecord[C, D]]) =>
             CommittableProducerRecords(cd, fab.offset)
           }
       }
@@ -161,7 +161,7 @@ object CommittableProducerRecords {
           .traverse { record =>
             record.traverse(f)
           }
-          .map { b: Chunk[ProducerRecord[K, B]] =>
+          .map { (b: Chunk[ProducerRecord[K, B]]) =>
             CommittableProducerRecords(b, fa.offset)
           }
       }
