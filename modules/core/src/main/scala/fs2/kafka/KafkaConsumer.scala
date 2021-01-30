@@ -127,21 +127,8 @@ object KafkaConsumer {
     stopConsumingDeferred: TryableDeferred[F, Unit]
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-      override val fiber: Fiber[F, Unit] = {
-        val actorFiber =
-          Fiber[F, Unit](actor.join.guaranteeCase {
-            case ExitCase.Completed => polls.cancel
-            case _                  => F.unit
-          }, actor.cancel)
-
-        val pollsFiber =
-          Fiber[F, Unit](polls.join.guaranteeCase {
-            case ExitCase.Completed => actor.cancel
-            case _                  => F.unit
-          }, polls.cancel)
-
-        actorFiber combine pollsFiber
-      }
+      override val fiber: Fiber[F, Unit] =
+        Fiber(awaitTermination.start.void, terminate)
 
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
@@ -548,9 +535,9 @@ object KafkaConsumer {
       override def toString: String =
         "KafkaConsumer$" + id
 
-      override def terminate: F[Unit] = fiber.cancel
+      override def terminate: F[Unit] = (polls combine actor).cancel
 
-      override def awaitTermination: F[Unit] = fiber.join
+      override def awaitTermination: F[Unit] = (polls combine actor).join
     }
 
   @deprecated("use KafkaConsumer.resource", "1.2.0")
