@@ -87,10 +87,8 @@ lazy val dependencySettings = Seq(
       .withDottyCompat(scalaVersion.value),
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
-    "org.typelevel" %% "cats-laws" % catsVersion,
-    "org.typelevel" %% "cats-kernel-laws" % catsVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "jline" % "jline" % "2.14.6"
+    "org.typelevel" %% "cats-testkit-scalatest" % "2.1.1",
+    "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   libraryDependencies ++= (if (isDotty.value) Nil
                            else
@@ -241,6 +239,11 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
       ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.package.*"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withValue"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withKeyValue"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withValue"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withKeyValue"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.stopConsuming"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),

@@ -6,19 +6,36 @@ import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.{Arbitrary, Gen}
+import org.scalacheck.{Arbitrary, Cogen, Gen}
 import java.nio.charset._
 import java.util.UUID
 
+import cats.data.Chain
+import cats.laws.discipline.arbitrary._
+import fs2.Chunk
+import org.scalacheck.rng.Seed
+
 trait BaseGenerators {
+
+  implicit def chunkCogen[A: Cogen]: Cogen[Chunk[A]] = Cogen.it(_.iterator)
+
+  val genTopic: Gen[String] = arbitrary[String]
+
+  val genPartition: Gen[Int] = Gen.chooseNum(0, Int.MaxValue)
+
   val genTopicPartition: Gen[TopicPartition] =
     for {
-      topic <- arbitrary[String]
-      partition <- Gen.chooseNum(0, Int.MaxValue)
+      topic <- genTopic
+      partition <- genPartition
     } yield new TopicPartition(topic, partition)
 
   implicit val arbTopicPartition: Arbitrary[TopicPartition] =
     Arbitrary(genTopicPartition)
+
+  implicit val cogenTopicPartition: Cogen[TopicPartition] =
+    Cogen { (seed: Seed, topicPartition: TopicPartition) =>
+      Cogen.perturbPair(seed, (topicPartition.topic, topicPartition.partition()))
+    }
 
   val genOffsetAndMetadata: Gen[OffsetAndMetadata] =
     for {
@@ -28,6 +45,11 @@ trait BaseGenerators {
 
   implicit val arbOffsetAndMetadata: Arbitrary[OffsetAndMetadata] =
     Arbitrary(genOffsetAndMetadata)
+
+  implicit val cogenOffsetAndMetadata: Cogen[OffsetAndMetadata] =
+    Cogen { (seed: Seed, offset: OffsetAndMetadata) =>
+      Cogen.perturbPair(seed, (offset.offset, offset.metadata()))
+    }
 
   def genCommittableOffset[F[_]](
     implicit F: ApplicativeError[F, Throwable]
@@ -47,6 +69,15 @@ trait BaseGenerators {
     implicit F: ApplicativeError[F, Throwable]
   ): Arbitrary[CommittableOffset[F]] =
     Arbitrary(genCommittableOffset[F])
+
+  implicit def cogenCommittableOffset[F[_]]: Cogen[CommittableOffset[F]] =
+    Cogen { (seed: Seed, offset: CommittableOffset[F]) =>
+      (Cogen
+        .perturb(_: Seed, offset.topicPartition))
+        .andThen(Cogen.perturb(_, offset.offsetAndMetadata))
+        .andThen(Cogen.perturb(_, offset.consumerGroupId))
+        .apply(seed)
+    }
 
   def genCommittableOffsetBatch[F[_]](
     implicit F: ApplicativeError[F, Throwable]
@@ -121,11 +152,19 @@ trait BaseGenerators {
   implicit val arbHeader: Arbitrary[Header] =
     Arbitrary(genHeader)
 
+  implicit val cogenHeader: Cogen[Header] =
+    Cogen { (seed: Seed, header: Header) =>
+      Cogen.perturbPair(seed, (header.key, header.value))
+    }
+
   val genHeaders: Gen[Headers] =
     Gen.listOf(genHeader).map(Headers.fromSeq)
 
   implicit val arbHeaders: Arbitrary[Headers] =
     Arbitrary(genHeaders)
+
+  implicit val cogenHeaders: Cogen[Headers] =
+    Cogen[Chain[Header]].contramap(_.toChain)
 
   val genHeaderSerializerString: Gen[HeaderSerializer[String]] =
     genCharset.map(HeaderSerializer.string)
@@ -152,5 +191,151 @@ trait BaseGenerators {
           combine(a, deserializer.deserialize(bytes))
         }
       }
+    }
+
+  val genTimestamp: Gen[Timestamp] = for {
+    long <- Gen.choose(1L, Long.MaxValue)
+    timestamp <- Gen.oneOf(
+      Seq(
+        Timestamp.createTime(long),
+        Timestamp.logAppendTime(long),
+        Timestamp.unknownTime(long),
+        Timestamp.none
+      )
+    )
+  } yield timestamp
+
+  implicit val arbTimestamp: Arbitrary[Timestamp] = Arbitrary(genTimestamp)
+
+  implicit val cogenTimestamp: Cogen[Timestamp] =
+    Cogen { (seed: Seed, timestamp: Timestamp) =>
+      (Cogen
+        .perturb(_: Seed, timestamp.createTime))
+        .andThen(Cogen.perturb(_, timestamp.logAppendTime))
+        .andThen(Cogen.perturb(_, timestamp.unknownTime))
+        .andThen(Cogen.perturb(_, timestamp.isEmpty))
+        .apply(seed)
+    }
+
+  def genConsumerRecord[K: Arbitrary, V: Arbitrary]: Gen[ConsumerRecord[K, V]] =
+    for {
+      k <- Arbitrary.arbitrary[K]
+      v <- Arbitrary.arbitrary[V]
+      topicPartition <- genTopicPartition
+      offset <- genOffsetAndMetadata
+      headers <- Arbitrary.arbitrary[Option[Headers]]
+      timestamp <- Arbitrary.arbitrary[Option[Timestamp]]
+      leaderEpoch <- Arbitrary.arbitrary[Option[Int]]
+    } yield {
+      val record = ConsumerRecord(
+        topic = topicPartition.topic,
+        partition = topicPartition.partition,
+        offset = offset.offset,
+        key = k,
+        value = v
+      ).withHeaders(headers.getOrElse(Headers.empty))
+        .withTimestamp(timestamp.getOrElse(Timestamp.none))
+
+      leaderEpoch.fold(record)(record.withLeaderEpoch)
+    }
+
+  implicit def arbConsumerRecord[K: Arbitrary, V: Arbitrary]: Arbitrary[ConsumerRecord[K, V]] =
+    Arbitrary(genConsumerRecord[K, V])
+
+  implicit def cogenConsumerRecord[K: Cogen, V: Cogen]: Cogen[ConsumerRecord[K, V]] =
+    Cogen { (seed: Seed, record: ConsumerRecord[K, V]) =>
+      (Cogen
+        .perturb(_: Seed, record.topic))
+        .andThen(Cogen.perturb(_, record.partition))
+        .andThen(Cogen.perturb(_, record.offset))
+        .andThen(Cogen.perturb(_, record.key))
+        .andThen(Cogen.perturb(_, record.value))
+        .andThen(Cogen.perturb(_, record.headers))
+        .andThen(Cogen.perturb(_, record.timestamp))
+        .andThen(Cogen.perturb(_, record.serializedKeySize))
+        .andThen(Cogen.perturb(_, record.serializedValueSize))
+        .andThen(Cogen.perturb(_, record.leaderEpoch))
+        .apply(seed)
+    }
+
+  def genProducerRecord[K: Arbitrary, V: Arbitrary]: Gen[ProducerRecord[K, V]] =
+    for {
+      k <- Arbitrary.arbitrary[K]
+      v <- Arbitrary.arbitrary[V]
+      topic <- genTopic
+      partition <- Gen.option(genPartition)
+      headers <- Arbitrary.arbitrary[Option[Headers]]
+      timestamp <- Gen.option(Gen.choose(1L, Long.MaxValue))
+    } yield {
+      val record = ProducerRecord(
+        topic = topic,
+        key = k,
+        value = v
+      ).withHeaders(headers.getOrElse(Headers.empty))
+
+      val withPartition = partition.fold(record)(record.withPartition)
+
+      timestamp.fold(withPartition)(withPartition.withTimestamp)
+    }
+
+  implicit def arbProducerRecord[K: Arbitrary, V: Arbitrary]: Arbitrary[ProducerRecord[K, V]] =
+    Arbitrary(genProducerRecord[K, V])
+
+  implicit def cogenProducerRecord[K: Cogen, V: Cogen]: Cogen[ProducerRecord[K, V]] =
+    Cogen { (seed: Seed, record: ProducerRecord[K, V]) =>
+      (Cogen
+        .perturb(_: Seed, record.key))
+        .andThen(Cogen.perturb(_, record.value))
+        .andThen(Cogen.perturb(_, record.topic))
+        .andThen(Cogen.perturb(_, record.partition))
+        .andThen(Cogen.perturb(_, record.timestamp))
+        .andThen(Cogen.perturb(_, record.headers))
+        .apply(seed)
+    }
+
+  def genCommittableConsumerRecord[
+    F[_]: ApplicativeThrow,
+    K: Arbitrary,
+    V: Arbitrary
+  ]: Gen[CommittableConsumerRecord[F, K, V]] =
+    for {
+      record <- Arbitrary.arbitrary[ConsumerRecord[K, V]]
+      offset <- Arbitrary.arbitrary[CommittableOffset[F]]
+    } yield CommittableConsumerRecord[F, K, V](record, offset)
+
+  implicit def arbCommittableConsumerRecord[
+    F[_]: ApplicativeThrow,
+    K: Arbitrary,
+    V: Arbitrary
+  ]: Arbitrary[CommittableConsumerRecord[F, K, V]] =
+    Arbitrary(genCommittableConsumerRecord[F, K, V])
+
+  implicit def cogenCommittableConsumerRecord[F[_], K: Cogen, V: Cogen]
+    : Cogen[CommittableConsumerRecord[F, K, V]] =
+    Cogen { (seed: Seed, record: CommittableConsumerRecord[F, K, V]) =>
+      Cogen.perturbPair(seed, (record.record, record.offset))
+    }
+
+  def genCommittableProducerRecords[
+    F[_]: ApplicativeThrow,
+    K: Arbitrary,
+    V: Arbitrary
+  ]: Gen[CommittableProducerRecords[F, K, V]] =
+    for {
+      records <- Arbitrary.arbitrary[List[ProducerRecord[K, V]]]
+      offset <- Arbitrary.arbitrary[CommittableOffset[F]]
+    } yield CommittableProducerRecords(records, offset)
+
+  implicit def arbCommittableProducerRecords[
+    F[_]: ApplicativeThrow,
+    K: Arbitrary,
+    V: Arbitrary
+  ]: Arbitrary[CommittableProducerRecords[F, K, V]] =
+    Arbitrary(genCommittableProducerRecords[F, K, V])
+
+  implicit def cogenCommittableProducerRecords[F[_], K: Cogen, V: Cogen]
+    : Cogen[CommittableProducerRecords[F, K, V]] =
+    Cogen { (seed: Seed, records: CommittableProducerRecords[F, K, V]) =>
+      Cogen.perturbPair(seed, (records.records, records.offset))
     }
 }
