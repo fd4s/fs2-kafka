@@ -333,6 +333,15 @@ object KafkaConsumer {
         }
       }
 
+      override def signedPartitionedStream: Stream[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])] = {
+        partitionsMapStream.flatMap { partitionsMap =>
+          Stream.emits(partitionsMap.toVector.map {
+            case (topicPartition, partitionStream) =>
+              topicPartition -> partitionStream
+          })
+        }
+      }
+
       override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
         partitionedStream.parJoinUnbounded
 
