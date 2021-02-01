@@ -177,20 +177,9 @@ object KafkaConsumer {
     stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-      def terminate: F[Unit] = actor.cancel *> polls.cancel
+      def terminate: F[Unit] = fiber.cancel
 
-      def awaitTermination: F[Unit] =
-        actor.join.guaranteeCase { oc: Outcome[F, Throwable, Unit] =>
-          oc match {
-            case Outcome.Succeeded(_) => polls.cancel
-            case _                    => F.unit
-          }
-        } *> polls.join.guaranteeCase { oc: Outcome[F, Throwable, Unit] =>
-          oc match {
-            case Outcome.Succeeded(_) => actor.cancel
-            case _                    => F.unit
-          }
-        }
+      def awaitTermination: F[Unit] = fiber.join
 
       def fiber: FakeFiber[F, Unit] = FakeFiber(awaitTermination, terminate)
 
