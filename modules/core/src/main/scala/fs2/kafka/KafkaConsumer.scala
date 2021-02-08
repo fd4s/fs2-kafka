@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.{Foldable, Reducible}
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref, TryableDeferred}
 import cats.effect.implicits._
@@ -78,20 +78,10 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaConsumerLifecycle[F]
 
 object KafkaConsumer {
-  private def startConsumerActor[F[_], K, V](
-    requests: Queue[F, Request[F, K, V]],
-    polls: Queue[F, Request[F, K, V]],
-    actor: KafkaConsumerActor[F, K, V]
-  )(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
-  ): Resource[F, Fiber[F, Unit]] =
+  private def spawnRepeating[F[_]: Concurrent, A](fa: F[A]): Resource[F, Fiber[F, Unit]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        requests.tryDequeue1
-          .flatMap(_.map(F.pure).getOrElse(polls.dequeue1))
-          .flatMap(actor.handle(_) >> context.shift)
-          .foreverM[Unit]
+        fa.foreverM[Unit]
           .guaranteeCase {
             case ExitCase.Error(e) => deferred.complete(Left(e))
             case _                 => deferred.complete(Right(()))
@@ -101,6 +91,20 @@ object KafkaConsumer {
       }
     }(_.cancel)
 
+  private def startConsumerActor[F[_], K, V](
+    requests: Queue[F, Request[F, K, V]],
+    polls: Queue[F, Request[F, K, V]],
+    actor: KafkaConsumerActor[F, K, V]
+  )(
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
+  ): Resource[F, Fiber[F, Unit]] =
+    spawnRepeating {
+      OptionT(requests.tryDequeue1)
+        .getOrElseF(polls.dequeue1)
+        .flatMap(actor.handle(_) >> context.shift)
+    }
+
   private def startPollScheduler[F[_], K, V](
     polls: Queue[F, Request[F, K, V]],
     pollInterval: FiniteDuration
@@ -108,20 +112,9 @@ object KafkaConsumer {
     implicit F: Concurrent[F],
     timer: Timer[F]
   ): Resource[F, Fiber[F, Unit]] =
-    Resource.make {
-      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        polls
-          .enqueue1(Request.poll)
-          .flatMap(_ => timer.sleep(pollInterval))
-          .foreverM[Unit]
-          .guaranteeCase {
-            case ExitCase.Error(e) => deferred.complete(Left(e))
-            case _                 => deferred.complete(Right(()))
-          }
-          .start
-          .map(fiber => Fiber[F, Unit](deferred.get.rethrow, fiber.cancel.start.void))
-      }
-    }(_.cancel)
+    spawnRepeating {
+      polls.enqueue1(Request.poll) >> timer.sleep(pollInterval)
+    }
 
   private def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
@@ -134,6 +127,7 @@ object KafkaConsumer {
     stopConsumingDeferred: TryableDeferred[F, Unit]
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
+
       override val fiber: Fiber[F, Unit] = {
         val actorFiber =
           Fiber[F, Unit](actor.join.guaranteeCase {
@@ -172,7 +166,7 @@ object KafkaConsumer {
             shutdown = F
               .race(
                 F.race(
-                  fiber.join.attempt,
+                  awaitTermination.attempt,
                   dequeueDone.get
                 ),
                 stopConsumingDeferred.get
@@ -288,7 +282,7 @@ object KafkaConsumer {
                 Some(onRebalance(streamId, partitionStreamIdRef, partitionsMapQueue))
               )
             val assignment = requests.enqueue1(request) >> deferred.get.rethrow
-            F.race(fiber.join.attempt, assignment).map {
+            F.race(awaitTermination.attempt, assignment).map {
               case Left(_)         => SortedSet.empty[TopicPartition]
               case Right(assigned) => assigned
             }
@@ -313,7 +307,7 @@ object KafkaConsumer {
               partitionStreamIdRef <- Stream.eval(Ref.of[F, PartitionStreamId](0))
               _ <- Stream.eval(initialEnqueue(streamId, partitionsMapQueue, partitionStreamIdRef))
               out <- partitionsMapQueue.dequeue
-                .interruptWhen(fiber.join.attempt)
+                .interruptWhen(awaitTermination.attempt)
                 .concurrently(
                   Stream.eval(stopConsumingDeferred.get >> partitionsMapQueue.enqueue1(None))
                 )
@@ -359,7 +353,7 @@ object KafkaConsumer {
       ): F[A] =
         Deferred[F, Either[Throwable, A]].flatMap { deferred =>
           requests.enqueue1(request(deferred.complete)) >>
-            F.race(fiber.join.as(ConsumerShutdownException()), deferred.get.rethrow)
+            F.race(awaitTermination.as(ConsumerShutdownException()), deferred.get.rethrow)
         }.rethrow
 
       override def assignment: F[SortedSet[TopicPartition]] =
@@ -554,6 +548,10 @@ object KafkaConsumer {
 
       override def toString: String =
         "KafkaConsumer$" + id
+
+      override def terminate: F[Unit] = fiber.cancel
+
+      override def awaitTermination: F[Unit] = fiber.join
     }
 
   /**
