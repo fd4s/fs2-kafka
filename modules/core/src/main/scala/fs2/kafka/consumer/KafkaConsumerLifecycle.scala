@@ -8,6 +8,8 @@ package fs2.kafka.consumer
 
 import cats.effect.Fiber
 
+import scala.annotation.nowarn
+
 trait KafkaConsumerLifecycle[F[_]] {
 
   /**
@@ -39,12 +41,14 @@ trait KafkaConsumerLifecycle[F[_]] {
     * consumer to shutdown. If you also want to wait for the shutdown
     * to complete, you can use `awaitTermination`.<br>
     */
-  def terminate: F[Unit]
+  @nowarn("cat=deprecation")
+  def terminate: F[Unit] = fiber.cancel
 
   /**
     * Shutdown and wait for it to complete. Note that `awaitTermination` is guaranteed
     * to complete after consumer shutdown, even when the consumer is
     * cancelled with `terminate`.<br>
     */
-  def awaitTermination: F[Unit]
+  @nowarn("cat=deprecation")
+  def awaitTermination: F[Unit] = fiber.join
 }
