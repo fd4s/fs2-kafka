@@ -1,14 +1,14 @@
 val catsEffectVersion = "3.0.0-M5"
 
-val catsVersion = "2.3.1"
+val catsVersion = "2.4.1"
 
-val confluentVersion = "6.0.1"
+val confluentVersion = "6.1.0"
 
 val fs2Version = "3.0.0-M7"
 
 val kafkaVersion = "2.7.0"
 
-val testcontainersScalaVersion = "0.38.8"
+val testcontainersScalaVersion = "0.39.0"
 
 val vulcanVersion = "1.3.0"
 
@@ -89,10 +89,8 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "org.typelevel" %% "cats-laws" % catsVersion,
-    "org.typelevel" %% "cats-kernel-laws" % catsVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.3",
-    "jline" % "jline" % "2.14.6"
+    "org.typelevel" %% "cats-testkit-scalatest" % "2.1.1",
+    "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   libraryDependencies ++= (if (isDotty.value) Nil
                            else

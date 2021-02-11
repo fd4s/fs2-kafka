@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.data.{Chain, NonEmptyChain}
-import cats.Show
+import cats.{Eq, Show}
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 
@@ -245,4 +245,7 @@ object Headers {
 
   implicit val headersShow: Show[Headers] =
     Show.fromToString
+
+  implicit val headersEq: Eq[Headers] =
+    Eq.by(_.toChain)
 }

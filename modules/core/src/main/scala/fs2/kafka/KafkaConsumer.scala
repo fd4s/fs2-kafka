@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.{Foldable, Reducible, Applicative, Monoid}
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.effect._
 import cats.effect.std._
 import cats.effect.implicits._
@@ -118,24 +118,14 @@ object FakeFiber {
 }
 
 object KafkaConsumer {
-  private def startConsumerActor[F[_], K, V](
-    requests: Queue[F, Request[F, K, V]],
-    polls: Queue[F, Request[F, K, V]],
-    actor: KafkaConsumerActor[F, K, V]
-  )(
-    implicit F: Async[F]
-  ): Resource[F, FakeFiber[F, Unit]] =
+  private def spawnRepeating[F[_]: Concurrent, A](fa: F[A]): Resource[F, FakeFiber[F, Unit]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        requests.tryTake
-          .flatMap(_.map(F.pure).getOrElse(polls.take))
-          .flatMap(actor.handle(_))
-          .foreverM[Unit]
+        fa.foreverM[Unit]
           .guaranteeCase { outcome: Outcome[F, Throwable, Unit] =>
             outcome match {
               case Outcome.Errored(e) => deferred.complete(Left(e)).void
               case _                  => deferred.complete(Right(())).void
-              // TODO: cancelation?
             }
           }
           .start
@@ -143,28 +133,28 @@ object KafkaConsumer {
       }
     }(_.cancel)
 
+  private def startConsumerActor[F[_], K, V](
+    requests: Queue[F, Request[F, K, V]],
+    polls: Queue[F, Request[F, K, V]],
+    actor: KafkaConsumerActor[F, K, V]
+  )(
+    implicit F: Async[F]
+  ): Resource[F, FakeFiber[F, Unit]] =
+    spawnRepeating {
+      OptionT(requests.tryTake)
+        .getOrElseF(polls.take)
+        .flatMap(actor.handle(_))
+    }
+
   private def startPollScheduler[F[_], K, V](
     polls: Queue[F, Request[F, K, V]],
     pollInterval: FiniteDuration
   )(
     implicit F: Temporal[F]
   ): Resource[F, FakeFiber[F, Unit]] =
-    Resource.make {
-      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        polls
-          .offer(Request.poll)
-          .flatMap(_ => F.sleep(pollInterval))
-          .foreverM[Unit]
-          .guaranteeCase { outcome: Outcome[F, Throwable, Unit] =>
-            outcome match {
-              case Outcome.Errored(e) => deferred.complete(Left(e)).void
-              case _                  => deferred.complete(Right(())).void
-            }
-          }
-          .start
-          .map(fiber => FakeFiber(deferred.get.rethrow, fiber.cancel.start.void))
-      }
-    }(_.cancel)
+    spawnRepeating {
+      polls.offer(Request.poll) >> F.sleep(pollInterval)
+    }
 
   private def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
@@ -177,11 +167,26 @@ object KafkaConsumer {
     stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-      def terminate: F[Unit] = fiber.cancel
 
-      def awaitTermination: F[Unit] = fiber.join
+      private val fiber: FakeFiber[F, Unit] = {
+        val actorFiber =
+          FakeFiber[F, Unit](actor.join.guaranteeCase {
+            (_: Outcome[F, Throwable, Unit]) match {
+              case Outcome.Succeeded(_) => polls.cancel
+              case _                    => F.unit
+            }
+          }, actor.cancel)
 
-      def fiber: FakeFiber[F, Unit] = FakeFiber(awaitTermination, terminate)
+        val pollsFiber =
+          FakeFiber[F, Unit](polls.join.guaranteeCase {
+            (_: Outcome[F, Throwable, Unit]) match {
+              case Outcome.Succeeded(_) => actor.cancel
+              case _                    => F.unit
+            }
+          }, polls.cancel)
+
+        actorFiber combine pollsFiber
+      }
 
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
@@ -597,6 +602,9 @@ object KafkaConsumer {
       override def toString: String =
         "KafkaConsumer$" + id
 
+      override def terminate: F[Unit] = fiber.cancel
+
+      override def awaitTermination: F[Unit] = fiber.join
     }
 
   /**
