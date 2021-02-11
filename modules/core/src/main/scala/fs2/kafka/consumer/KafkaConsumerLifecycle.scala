@@ -39,15 +39,18 @@ trait KafkaConsumerLifecycle[F[_]] {
     * Whenever `terminate` is invoked, an attempt will be made to stop the
     * underlying consumer. The `terminate` operation will not wait for the
     * consumer to shutdown. If you also want to wait for the shutdown
-    * to complete, you can use `awaitTermination`.<br>
+    * to complete, you can use `terminate >> awaitTermination`.<br>
     */
   @nowarn("cat=deprecation")
   def terminate: F[Unit] = fiber.cancel
 
   /**
-    * Shutdown and wait for it to complete. Note that `awaitTermination` is guaranteed
+    * Wait for consumer to shut down. Note that `awaitTermination` is guaranteed
     * to complete after consumer shutdown, even when the consumer is
-    * cancelled with `terminate`.<br>
+    * cancelled with `terminate`.
+    *
+    * This method will not initiate shutdown. To initiate shutdown and wait for
+    * it to complete, you can use `terminate >> awaitTermination`.
     */
   @nowarn("cat=deprecation")
   def awaitTermination: F[Unit] = fiber.join
