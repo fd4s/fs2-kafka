@@ -269,9 +269,7 @@ lazy val scalaSettings = Seq(
     "UTF-8",
     "-feature",
     "-language:implicitConversions",
-    "-unchecked",
-    // Used instead of @nowarn to prevent spurious warnings in Scala 2.12.13 - see https://gitter.im/scala/scala?at=602584589d5c644f66661387
-    """-Wconf:cat=deprecation&src=modules/core/src/main/scala/fs2/kafka/consumer/KafkaConsumerLifecycle\.scala:s"""
+    "-unchecked"
   ) ++ (
     if (scalaVersion.value.startsWith("2.13"))
       Seq(
@@ -302,6 +300,7 @@ lazy val scalaSettings = Seq(
         "-Xignore-scala2-macros"
       )
   ),
+  scalacOptions in (Compile, doc) += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
   scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
   Compile / unmanagedSourceDirectories ++=
