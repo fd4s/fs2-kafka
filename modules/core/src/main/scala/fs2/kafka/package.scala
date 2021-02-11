@@ -107,7 +107,7 @@ package object kafka {
   ): Resource[F, KafkaAdminClient[F]] =
     KafkaAdminClient.resource(settings)
 
-  @deprecated("use KafkaConsumer.stream", "1.2.0")
+  @deprecated("use KafkaAdminClient.stream", "1.2.0")
   def adminClientStream[F[_]](settings: AdminClientSettings[F])(
     implicit F: Concurrent[F],
     context: ContextShift[F]
