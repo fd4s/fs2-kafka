@@ -2,7 +2,7 @@ pull_request_rules:
   - name: automatically merge scala-steward's PRs
     conditions:
       - author=scala-steward
-      - check-success=Continuous Integratio
+      - check-success=Continuous Integration
       - body~=labels:.*semver-patch
     actions:
       merge:
