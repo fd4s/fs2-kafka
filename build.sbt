@@ -12,7 +12,7 @@ val testcontainersScalaVersion = "0.39.0"
 
 val vulcanVersion = "1.3.0"
 
-val scala212 = "2.12.12"
+val scala212 = "2.12.13"
 
 val scala213 = "2.13.3"
 
@@ -247,9 +247,7 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.stopConsuming"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
       ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.consumer.KafkaConsumerLifecycle.terminate"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.consumer.KafkaConsumerLifecycle.awaitTermination")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*")
     )
     // format: on
   }
@@ -302,6 +300,7 @@ lazy val scalaSettings = Seq(
         "-Xignore-scala2-macros"
       )
   ),
+  scalacOptions in (Compile, doc) += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
   scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
   Compile / unmanagedSourceDirectories ++=
