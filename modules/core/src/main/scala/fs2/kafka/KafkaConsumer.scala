@@ -549,9 +549,6 @@ object KafkaConsumer {
       override def toString: String =
         "KafkaConsumer$" + id
 
-      override def terminate: F[Unit] = fiber.cancel
-
-      override def awaitTermination: F[Unit] = fiber.join
     }
 
   /**

@@ -10,9 +10,9 @@ val kafkaVersion = "2.7.0"
 
 val testcontainersScalaVersion = "0.39.0"
 
-val vulcanVersion = "1.3.0"
+val vulcanVersion = "1.4.0"
 
-val scala212 = "2.12.12"
+val scala212 = "2.12.13"
 
 val scala213 = "2.13.3"
 
@@ -238,7 +238,20 @@ lazy val mimaSettings = Seq(
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*")
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
+      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.package.*"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withValue"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withKeyValue"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withValue"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withKeyValue"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.stopConsuming"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.consumer.KafkaConsumerLifecycle.terminate"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.consumer.KafkaConsumerLifecycle.awaitTermination")
     )
     // format: on
   }
@@ -291,6 +304,7 @@ lazy val scalaSettings = Seq(
         "-Xignore-scala2-macros"
       )
   ),
+  scalacOptions in (Compile, doc) += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
   scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
   scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
   Compile / unmanagedSourceDirectories ++=
