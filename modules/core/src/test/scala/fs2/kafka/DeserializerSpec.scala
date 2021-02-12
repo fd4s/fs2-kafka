@@ -5,7 +5,6 @@ import cats.effect.unsafe.implicits.global
 import cats.laws.discipline._
 import cats.effect.laws._
 import cats.effect.testkit._
-import cats.effect.testkit.pure._
 
 final class DeserializerSpec extends BaseCatsSpec {
   // checkAll(
