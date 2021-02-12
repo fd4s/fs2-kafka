@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.{Foldable, Reducible, Applicative, Monoid}
+import cats.{Foldable, Reducible}
 import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.effect._
 import cats.effect.std._
@@ -76,49 +76,43 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaMetrics[F]
     with KafkaConsumerLifecycle[F]
 
-case class FakeFiber[F[_], A](join: F[A], cancel: F[Unit])
+case class FakeFiber[F[_]](join: F[Unit], cancel: F[Unit])(implicit F: Concurrent[F]) {
+  def combine(that: FakeFiber[F]): FakeFiber[F] = {
 
-object FakeFiber {
-  implicit def fiberApplicative[F[_]](implicit F: Concurrent[F]): Applicative[FakeFiber[F, *]] =
-    new Applicative[FakeFiber[F, *]] {
-      final override def pure[A](x: A): FakeFiber[F, A] =
-        FakeFiber(F.pure(x), F.unit)
-      final override def ap[A, B](ff: FakeFiber[F, A => B])(fa: FakeFiber[F, A]): FakeFiber[F, B] =
-        map2(ff, fa)(_(_))
-      final override def map2[A, B, Z](fa: FakeFiber[F, A], fb: FakeFiber[F, B])(
-        f: (A, B) => Z
-      ): FakeFiber[F, Z] = {
-        val fa2 = F.guaranteeCase(fa.join) {
-          case Outcome.Errored(_) => fb.cancel; case _ => F.unit
+    val fa0 =
+      FakeFiber[F](this.join.guaranteeCase {
+        (_: Outcome[F, Throwable, Unit]) match {
+          case Outcome.Succeeded(_) => that.cancel
+          case _                    => F.unit
         }
-        val fb2 = F.guaranteeCase(fb.join) {
-          case Outcome.Errored(_) => fa.cancel; case _ => F.unit
+      }, this.cancel)
+
+    val fb0 =
+      FakeFiber[F](that.join.guaranteeCase {
+        (_: Outcome[F, Throwable, Unit]) match {
+          case Outcome.Succeeded(_) => this.cancel
+          case _                    => F.unit
         }
-        FakeFiber(
-          F.racePair(fa2, fb2).flatMap {
-            case Left((a, fiberB))  => (a.embedNever, fiberB.joinWithNever).mapN(f)
-            case Right((fiberA, b)) => (fiberA.joinWithNever, b.embedNever).mapN(f)
-          },
-          F.map2(fa.cancel, fb.cancel)((_, _) => ())
-        )
-      }
-      final override def product[A, B](
-        fa: FakeFiber[F, A],
-        fb: FakeFiber[F, B]
-      ): FakeFiber[F, (A, B)] =
-        map2(fa, fb)((_, _))
-      final override def map[A, B](fa: FakeFiber[F, A])(f: A => B): FakeFiber[F, B] =
-        FakeFiber(F.map(fa.join)(f), fa.cancel)
-      final override val unit: FakeFiber[F, Unit] =
-        FakeFiber(F.unit, F.unit)
+      }, that.cancel)
+
+    val fa2 = F.guaranteeCase(fa0.join) {
+      case Outcome.Errored(_) => fb0.cancel; case _ => F.unit
     }
-
-  implicit def fiberMonoid[F[_]: Concurrent, M[_], A: Monoid]: Monoid[FakeFiber[F, A]] =
-    Applicative.monoid[FakeFiber[F, *], A]
+    val fb2 = F.guaranteeCase(fb0.join) {
+      case Outcome.Errored(_) => fa0.cancel; case _ => F.unit
+    }
+    FakeFiber(
+      F.racePair(fa2, fb2).flatMap {
+        case Left((a, fiberB))  => F.map2(a.embedNever, fiberB.joinWithNever)((_, _) => ())
+        case Right((fiberA, b)) => F.map2(fiberA.joinWithNever, b.embedNever)((_, _) => ())
+      },
+      F.map2(this.cancel, that.cancel)((_, _) => ())
+    )
+  }
 }
 
 object KafkaConsumer {
-  private def spawnRepeating[F[_]: Concurrent, A](fa: F[A]): Resource[F, FakeFiber[F, Unit]] =
+  private def spawnRepeating[F[_]: Concurrent, A](fa: F[A]): Resource[F, FakeFiber[F]] =
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
         fa.foreverM[Unit]
@@ -139,7 +133,7 @@ object KafkaConsumer {
     actor: KafkaConsumerActor[F, K, V]
   )(
     implicit F: Async[F]
-  ): Resource[F, FakeFiber[F, Unit]] =
+  ): Resource[F, FakeFiber[F]] =
     spawnRepeating {
       OptionT(requests.tryTake)
         .getOrElseF(polls.take)
@@ -151,7 +145,7 @@ object KafkaConsumer {
     pollInterval: FiniteDuration
   )(
     implicit F: Temporal[F]
-  ): Resource[F, FakeFiber[F, Unit]] =
+  ): Resource[F, FakeFiber[F]] =
     spawnRepeating {
       polls.offer(Request.poll) >> F.sleep(pollInterval)
     }
@@ -159,8 +153,8 @@ object KafkaConsumer {
   private def createKafkaConsumer[F[_], K, V](
     requests: Queue[F, Request[F, K, V]],
     settings: ConsumerSettings[F, K, V],
-    actor: FakeFiber[F, Unit],
-    polls: FakeFiber[F, Unit],
+    actor: FakeFiber[F],
+    polls: FakeFiber[F],
     streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F],
@@ -168,25 +162,7 @@ object KafkaConsumer {
   )(implicit F: Async[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
-      private val fiber: FakeFiber[F, Unit] = {
-        val actorFiber =
-          FakeFiber[F, Unit](actor.join.guaranteeCase {
-            (_: Outcome[F, Throwable, Unit]) match {
-              case Outcome.Succeeded(_) => polls.cancel
-              case _                    => F.unit
-            }
-          }, actor.cancel)
-
-        val pollsFiber =
-          FakeFiber[F, Unit](polls.join.guaranteeCase {
-            (_: Outcome[F, Throwable, Unit]) match {
-              case Outcome.Succeeded(_) => actor.cancel
-              case _                    => F.unit
-            }
-          }, polls.cancel)
-
-        actorFiber combine pollsFiber
-      }
+      private val fiber: FakeFiber[F] = actor.combine(polls)
 
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
