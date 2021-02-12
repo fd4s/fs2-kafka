@@ -518,8 +518,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .drain
             .guarantee(stopSignal.set(true))
-          consumer1assignments <- fiber1.joinAndEmbedNever
-          consumer2assignments <- fiber2.joinAndEmbedNever
+          consumer1assignments <- fiber1.joinWithNever
+          consumer2assignments <- fiber2.joinWithNever
           keys <- ref.get
         } yield {
           assert {

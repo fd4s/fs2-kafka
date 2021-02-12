@@ -96,8 +96,8 @@ object FakeFiber {
         }
         FakeFiber(
           F.racePair(fa2, fb2).flatMap {
-            case Left((a, fiberB))  => (a.embedNever, fiberB.joinAndEmbedNever).mapN(f)
-            case Right((fiberA, b)) => (fiberA.joinAndEmbedNever, b.embedNever).mapN(f)
+            case Left((a, fiberB))  => (a.embedNever, fiberB.joinWithNever).mapN(f)
+            case Right((fiberA, b)) => (fiberA.joinWithNever, b.embedNever).mapN(f)
           },
           F.map2(fa.cancel, fb.cancel)((_, _) => ())
         )

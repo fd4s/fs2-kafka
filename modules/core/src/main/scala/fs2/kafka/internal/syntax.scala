@@ -198,7 +198,7 @@ private[kafka] object syntax {
     def cancelToken[F[_]](implicit F: Async[F]): F[Option[F[Unit]]] =
       F.blocking { future.cancel(true); () }
         .start
-        .map(cancelFiber => Some(cancelFiber.joinAndEmbed(F.unit)))
+        .map(cancelFiber => Some(cancelFiber.joinWith(F.unit)))
 
     // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
     def cancelable[F[_]](implicit F: Async[F]): F[A] =
