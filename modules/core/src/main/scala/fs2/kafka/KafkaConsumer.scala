@@ -128,7 +128,7 @@ object KafkaConsumer {
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
-      override val fiber: Fiber[F, Unit] = {
+      private val fiber: Fiber[F, Unit] = {
         val actorFiber =
           Fiber[F, Unit](actor.join.guaranteeCase {
             case ExitCase.Completed => polls.cancel
@@ -549,6 +549,9 @@ object KafkaConsumer {
       override def toString: String =
         "KafkaConsumer$" + id
 
+      override def terminate: F[Unit] = fiber.cancel
+
+      override def awaitTermination: F[Unit] = fiber.join
     }
 
   /**
