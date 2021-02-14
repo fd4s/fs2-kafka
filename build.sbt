@@ -228,7 +228,7 @@ lazy val publishSettings =
   )
 
 lazy val mimaSettings = Seq(
-  // Restore this after releasing v2.0.0
+  // Restore this after releasing v3.0.0
   // mimaPreviousArtifacts := {
   //   if (publishArtifact.value) {
   //     Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
@@ -240,20 +240,7 @@ lazy val mimaSettings = Seq(
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[IncompatibleMethTypeProblem]("fs2.kafka.package.*"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.partitionsMapStream"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withValue"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerRecord.withKeyValue"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withValue"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerRecord.withKeyValue"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.stopConsuming"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitAsync"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.commitSync"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.*"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.consumer.KafkaConsumerLifecycle.terminate"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.consumer.KafkaConsumerLifecycle.awaitTermination")
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*")
     )
     // format: on
   }
@@ -284,8 +271,8 @@ lazy val scalaSettings = Seq(
         "-Ywarn-dead-code",
         "-Ywarn-numeric-widen",
         "-Ywarn-value-discard",
-        "-Ywarn-unused"
-        //"-Xfatal-warnings"
+        "-Ywarn-unused",
+        "-Xfatal-warnings"
       )
     else if (scalaVersion.value.startsWith("2.12"))
       Seq(
@@ -296,8 +283,8 @@ lazy val scalaSettings = Seq(
         "-Ywarn-numeric-widen",
         "-Ywarn-value-discard",
         "-Ywarn-unused",
-        "-Ypartial-unification"
-        //"-Xfatal-warnings"
+        "-Ypartial-unification",
+        "-Xfatal-warnings"
       )
     else
       Seq(
