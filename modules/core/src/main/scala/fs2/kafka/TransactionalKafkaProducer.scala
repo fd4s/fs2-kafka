@@ -67,7 +67,7 @@ object TransactionalKafkaProducer {
 
             private[this] def produceTransaction[P](
               records: TransactionalProducerRecords[F, K, V, P]
-            ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] = {
+            ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
               if (records.records.isEmpty) F.pure(Chunk.empty)
               else {
                 val batch =
@@ -105,7 +105,6 @@ object TransactionalKafkaProducer {
                   }.flatten
                 }
               }
-            }
 
             override def toString: String =
               "TransactionalKafkaProducer$" + System.identityHashCode(this)

@@ -42,7 +42,7 @@ object ProducerResult {
     override val passthrough: P
   ) extends ProducerResult[K, V, P] {
 
-    override def toString: String = {
+    override def toString: String =
       if (records.isEmpty)
         s"ProducerResult(<empty>, $passthrough)"
       else
@@ -56,7 +56,6 @@ object ProducerResult {
           sep = ", ",
           end = s", $passthrough)"
         )
-    }
   }
 
   /**

@@ -89,10 +89,9 @@ object Headers {
     override def exists(key: String): Boolean =
       headers.exists(_.key == key)
 
-    override def concat(that: Headers): Headers = {
+    override def concat(that: Headers): Headers =
       if (that.isEmpty) this
       else new HeadersImpl(headers.appendChain(that.toChain))
-    }
 
     override def toChain: Chain[Header] =
       headers.toChain
