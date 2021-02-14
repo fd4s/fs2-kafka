@@ -200,8 +200,7 @@ object KafkaConsumer {
               .start
               .as {
                 Stream
-                  .repeatEval(chunks.take)
-                  .unNoneTerminate
+                  .fromQueueNoneTerminated(chunks)
                   .flatMap(Stream.chunk)
                   .covary[F]
                   .onFinalize(dequeueDone.complete(()).void)
@@ -297,8 +296,7 @@ object KafkaConsumer {
               partitionStreamIdRef <- Stream.eval(Ref.of[F, PartitionStreamId](0))
               _ <- Stream.eval(initialEnqueue(streamId, partitionsMapQueue, partitionStreamIdRef))
               out <- Stream
-                .repeatEval(partitionsMapQueue.take)
-                .unNoneTerminate
+                .fromQueueNoneTerminated(partitionsMapQueue)
                 .interruptWhen(awaitTermination.attempt)
                 .concurrently(
                   Stream.eval(stopConsumingDeferred.get >> partitionsMapQueue.offer(None))
