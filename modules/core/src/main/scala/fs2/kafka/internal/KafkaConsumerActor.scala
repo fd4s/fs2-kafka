@@ -230,7 +230,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     offsets: Map[TopicPartition, OffsetAndMetadata]
   )(
     k: (Either[Throwable, Unit] => Unit) => F[Unit]
-  ): F[Unit] = {
+  ): F[Unit] =
     F.asyncF[Unit] { cb =>
         k(cb)
       }
@@ -241,7 +241,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
           offsets
         )
       })
-  }
 
   private[this] def manualCommitAsync(request: Request.ManualCommitAsync[F, K, V]): F[Unit] = {
     val commit = runCommitAsync(request.offsets) { cb =>
@@ -443,7 +442,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       def handleBatch(
         state: State[F, K, V],
         pendingCommits: Option[HandlePollResult.PendingCommits]
-      ) = {
+      ) =
         if (state.fetches.isEmpty) {
           if (newRecords.isEmpty) {
             (state, HandlePollResult.StateNotChanged(pendingCommits))
@@ -460,13 +459,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             val canBeCompleted = allRecords.keySetStrict intersect requested
             val canBeStored = newRecords.keySetStrict diff canBeCompleted
 
-            def completeFetches: F[Unit] = {
+            def completeFetches: F[Unit] =
               state.fetches.filterKeysStrictList(canBeCompleted).traverse_ {
                 case (partition, fetches) =>
                   val records = Chunk.vector(allRecords(partition).toVector)
                   fetches.values.toList.traverse_(_.completeRecords(records))
               }
-            }
 
             (canBeCompleted.nonEmpty, canBeStored.nonEmpty) match {
               case (true, true) =>
@@ -515,7 +513,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             (state, HandlePollResult.StateNotChanged(pendingCommits))
           }
         }
-      }
 
       def handlePendingCommits(state: State[F, K, V]) = {
         val currentRebalancing = state.rebalancing
@@ -593,12 +590,11 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       commits: Chain[Request.Commit[F, K, V]],
       log: CommittedPendingCommits[F, K, V]
     ) {
-      def commit: F[Unit] = {
+      def commit: F[Unit] =
         commits.foldLeft(F.unit) {
           case (acc, commitRequest) =>
             acc >> commitAsync(commitRequest.offsets, commitRequest.callback)
         } >> logging.log(log)
-      }
     }
 
     case class StateNotChanged(pendingCommits: Option[PendingCommits]) extends HandlePollResult

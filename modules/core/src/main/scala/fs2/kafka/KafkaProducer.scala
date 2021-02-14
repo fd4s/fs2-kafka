@@ -97,13 +97,12 @@ object KafkaProducer {
     new KafkaProducer.Metrics[F, K, V] {
       override def produce[P](
         records: ProducerRecords[K, V, P]
-      ): F[F[ProducerResult[K, V, P]]] = {
+      ): F[F[ProducerResult[K, V, P]]] =
         withProducer { (producer, _) =>
           records.records
             .traverse(produceRecord(keySerializer, valueSerializer, producer))
             .map(_.sequence.map(ProducerResult(_, records.passthrough)))
         }
-      }
 
       override def metrics: F[Map[MetricName, Metric]] =
         withProducer.blocking { _.metrics().asScala.toMap }
