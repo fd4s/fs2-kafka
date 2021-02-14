@@ -79,30 +79,20 @@ sealed abstract class KafkaConsumer[F[_], K, V]
 case class FakeFiber[F[_]](join: F[Unit], cancel: F[Unit])(implicit F: Concurrent[F]) {
   def combine(that: FakeFiber[F]): FakeFiber[F] = {
 
-    val fa0 =
-      FakeFiber[F](this.join.guaranteeCase {
-        (_: Outcome[F, Throwable, Unit]) match {
-          case Outcome.Succeeded(_) => that.cancel
-          case _                    => F.unit
-        }
-      }, this.cancel)
+    val fa0join =
+      this.join.guaranteeCase {
+        case Outcome.Canceled() => F.unit
+        case _                  => that.cancel
+      }
 
-    val fb0 =
-      FakeFiber[F](that.join.guaranteeCase {
-        (_: Outcome[F, Throwable, Unit]) match {
-          case Outcome.Succeeded(_) => this.cancel
-          case _                    => F.unit
-        }
-      }, that.cancel)
+    val fb0join =
+      that.join.guaranteeCase {
+        case Outcome.Canceled() => F.unit
+        case _                  => this.cancel
+      }
 
-    val fa2 = F.guaranteeCase(fa0.join) {
-      case Outcome.Errored(_) => fb0.cancel; case _ => F.unit
-    }
-    val fb2 = F.guaranteeCase(fb0.join) {
-      case Outcome.Errored(_) => fa0.cancel; case _ => F.unit
-    }
     FakeFiber(
-      F.racePair(fa2, fb2).flatMap {
+      F.racePair(fa0join, fb0join).flatMap {
         case Left((a, fiberB))  => F.map2(a.embedNever, fiberB.joinWithNever)((_, _) => ())
         case Right((fiberA, b)) => F.map2(fiberA.joinWithNever, b.embedNever)((_, _) => ())
       },
@@ -116,11 +106,9 @@ object KafkaConsumer {
     Resource.make {
       Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
         fa.foreverM[Unit]
-          .guaranteeCase { outcome: Outcome[F, Throwable, Unit] =>
-            outcome match {
-              case Outcome.Errored(e) => deferred.complete(Left(e)).void
-              case _                  => deferred.complete(Right(())).void
-            }
+          .guaranteeCase {
+            case Outcome.Errored(e) => deferred.complete(Left(e)).void
+            case _                  => deferred.complete(Right(())).void
           }
           .start
           .map(fiber => FakeFiber(deferred.get.rethrow, fiber.cancel.start.void))
