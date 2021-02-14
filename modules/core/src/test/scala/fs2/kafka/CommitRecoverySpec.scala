@@ -2,13 +2,13 @@ package fs2.kafka
 
 import cats.data.Chain
 import cats.effect.kernel.{Deferred, Fiber, Poll}
-import cats.effect.{Clock, IO, Ref, Temporal}
+import cats.effect.{IO, Ref, Temporal}
 import cats.effect.unsafe.implicits.global
 import cats.syntax.functor._
 import org.apache.kafka.clients.consumer.{OffsetAndMetadata, RetriableCommitFailedException}
 import org.apache.kafka.common.TopicPartition
 
-import scala.concurrent.duration.{FiniteDuration, TimeUnit}
+import scala.concurrent.duration.FiniteDuration
 
 final class CommitRecoverySpec extends BaseAsyncSpec {
   describe("CommitRecovery#Default") {
