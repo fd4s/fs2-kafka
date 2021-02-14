@@ -97,13 +97,11 @@ object TransactionalKafkaProducer {
                                 )
                               }
                             }
-                        } { (_, outcome: Outcome[F, Throwable, _]) =>
-                          outcome match {
-                            case Outcome.Succeeded(_) =>
-                              blocking(producer.commitTransaction())
-                            case Outcome.Canceled() | Outcome.Errored(_) =>
-                              blocking(producer.abortTransaction())
-                          }
+                        } {
+                          case (_, Outcome.Succeeded(_)) =>
+                            blocking(producer.commitTransaction())
+                          case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
+                            blocking(producer.abortTransaction())
                         }
                     }.flatten
                   }
