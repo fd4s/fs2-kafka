@@ -23,9 +23,9 @@ def loadKafkaSetup[F[_]: Async: ContextShift](
 ): Resource[F, KafkaCredentialStore] =
   Blocker[F].evalMap { blocker =>
     (
-      ClientPrivateKey(clientPrivateKey).liftTo[F],
-      ClientCertificate(clientCertificate).liftTo[F],
-      ServiceCertificate(serviceCertificate).liftTo[F],
+      ClientPrivateKey.fromString(clientPrivateKey).liftTo[F],
+      ClientCertificate.fromString(clientCertificate).liftTo[F],
+      ServiceCertificate.fromString(serviceCertificate).liftTo[F],
     ).tupled.flatMap {
       case (clientPrivateKey, clientCertificate, serviceCertificate) =>
         KafkaCredentialStore[F](clientPrivateKey, clientCertificate, serviceCertificate, blocker)
