@@ -14,7 +14,7 @@ final class ConsumerRecordSpec extends BaseSpec {
         f: ConsumerRecord[String, String] => Assertion
       ): Assertion = {
         val record =
-          new JavaByteConsumerRecord(
+          new KafkaByteConsumerRecord(
             "topic",
             0,
             1,
@@ -48,7 +48,7 @@ final class ConsumerRecordSpec extends BaseSpec {
         f: ConsumerRecord[String, String] => Assertion
       ): Assertion = {
         val record =
-          new JavaByteConsumerRecord(
+          new KafkaByteConsumerRecord(
             "topic",
             0,
             1,
@@ -77,7 +77,7 @@ final class ConsumerRecordSpec extends BaseSpec {
         f: ConsumerRecord[String, String] => Assertion
       ): Assertion = {
         val record =
-          new JavaByteConsumerRecord(
+          new KafkaByteConsumerRecord(
             "topic",
             0,
             1,
@@ -106,7 +106,7 @@ final class ConsumerRecordSpec extends BaseSpec {
         f: ConsumerRecord[String, String] => Assertion
       ): Assertion = {
         val record =
-          new JavaByteConsumerRecord(
+          new KafkaByteConsumerRecord(
             "topic",
             0,
             1,
