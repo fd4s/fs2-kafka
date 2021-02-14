@@ -13,67 +13,40 @@ package object kafka {
   type Id[+A] = A
 
   /** Alias for Java Kafka `Consumer[Array[Byte], Array[Byte]]`. */
-  type JavaByteConsumer =
+  type KafkaByteConsumer =
     org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
 
-  @deprecated("use JavaByteConsumer", "1.3.0")
-  type KafkaByteConsumer = JavaByteConsumer
-
   /** Alias for Java Kafka `Producer[Array[Byte], Array[Byte]]`. */
-  type JavaByteProducer =
+  type KafkaByteProducer =
     org.apache.kafka.clients.producer.Producer[Array[Byte], Array[Byte]]
 
-  @deprecated("use JavaByteProducer", "1.3.0")
-  type KafkaByteProducer = JavaByteProducer
-
   /** Alias for Java Kafka `Deserializer[A]`. */
-  type JavaDeserializer[A] =
+  type KafkaDeserializer[A] =
     org.apache.kafka.common.serialization.Deserializer[A]
 
-  @deprecated("use JavaDeserializer", "1.3.0")
-  type KafkaDeserializer[A] = JavaDeserializer[A]
-
   /** Alias for Java Kafka `Serializer[A]`. */
-  type JavaSerializer[A] =
+  type KafkaSerializer[A] =
     org.apache.kafka.common.serialization.Serializer[A]
 
-  @deprecated("use JavaSerializer", "1.3.0")
-  type KafkaSerializer[A] = JavaSerializer[A]
-
   /** Alias for Java Kafka `Header`. */
-  type JavaHeader =
+  type KafkaHeader =
     org.apache.kafka.common.header.Header
 
-  @deprecated("use JavaHeader", "1.3.0")
-  type KafkaHeader = JavaHeader
-
   /** Alias for Java Kafka `Headers`. */
-  type JavaHeaders =
+  type KafkaHeaders =
     org.apache.kafka.common.header.Headers
 
-  @deprecated("use JavaHeaders", "1.3.0")
-  type KafkaHeaders = JavaHeaders
-
   /** Alias for Java Kafka `ConsumerRecords[Array[Byte], Array[Byte]]`. */
-  type JavaByteConsumerRecords =
+  type KafkaByteConsumerRecords =
     org.apache.kafka.clients.consumer.ConsumerRecords[Array[Byte], Array[Byte]]
 
-  @deprecated("use JavaByteConsumerRecords", "1.3.0")
-  type KafkaByteConsumerRecords = JavaByteConsumerRecords
-
   /** Alias for Java Kafka `ConsumerRecord[Array[Byte], Array[Byte]]`. */
-  type JavaByteConsumerRecord =
+  type KafkaByteConsumerRecord =
     org.apache.kafka.clients.consumer.ConsumerRecord[Array[Byte], Array[Byte]]
 
-  @deprecated("use JavaByteConsumerRecord", "1.3.0")
-  type KafkaByteConsumerRecord = JavaByteConsumerRecord
-
   /** Alias for Java Kafka `ProducerRecord[Array[Byte], Array[Byte]]`. */
-  type JavaByteProducerRecord =
+  type KafkaByteProducerRecord =
     org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
-
-  @deprecated("use JavaByteProducerRecord", "1.3.0")
-  type KafkaByteProducerRecord = JavaByteProducerRecord
 
   /**
     * Commits offsets in batches of every `n` offsets or time window

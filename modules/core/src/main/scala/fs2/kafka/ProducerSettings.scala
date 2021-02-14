@@ -229,7 +229,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * operation should be bracketed, using e.g. `Resource`, to ensure
     * the `close` function on the producer is called.
     */
-  def createProducer: F[JavaByteProducer]
+  def createProducer: F[KafkaByteProducer]
 
   /**
     * Creates a new [[ProducerSettings]] with the specified function for
@@ -237,7 +237,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * is the [[properties]] of the settings instance.
     */
   def withCreateProducer(
-    createProducer: Map[String, String] => F[JavaByteProducer]
+    createProducer: Map[String, String] => F[KafkaByteProducer]
   ): ProducerSettings[F, K, V]
 }
 
@@ -249,7 +249,7 @@ object ProducerSettings {
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val parallelism: Int,
-    val createProducerWith: Map[String, String] => F[JavaByteProducer]
+    val createProducerWith: Map[String, String] => F[KafkaByteProducer]
   ) extends ProducerSettings[F, K, V] {
     override def withBlocker(blocker: Blocker): ProducerSettings[F, K, V] =
       copy(blocker = Some(blocker))
@@ -308,11 +308,11 @@ object ProducerSettings {
     override def withParallelism(parallelism: Int): ProducerSettings[F, K, V] =
       copy(parallelism = parallelism)
 
-    override def createProducer: F[JavaByteProducer] =
+    override def createProducer: F[KafkaByteProducer] =
       createProducerWith(properties)
 
     override def withCreateProducer(
-      createProducerWith: Map[String, String] => F[JavaByteProducer]
+      createProducerWith: Map[String, String] => F[KafkaByteProducer]
     ): ProducerSettings[F, K, V] =
       copy(createProducerWith = createProducerWith)
 

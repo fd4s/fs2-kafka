@@ -9,13 +9,13 @@ package fs2.kafka.internal
 import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
 import cats.effect.concurrent.Semaphore
 import cats.implicits._
-import fs2.kafka.{JavaByteConsumer, ConsumerSettings}
+import fs2.kafka.{KafkaByteConsumer, ConsumerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
-  def apply[A](f: (JavaByteConsumer, Blocking[F]) => F[A]): F[A]
+  def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A]
 
-  def blocking[A](f: JavaByteConsumer => A): F[A] = apply {
+  def blocking[A](f: KafkaByteConsumer => A): F[A] = apply {
     case (producer, blocking) => blocking(f(producer))
   }
 }
@@ -38,7 +38,7 @@ private[kafka] object WithConsumer {
         (settings.createConsumer, Semaphore[F](1L))
           .mapN { (consumer, semaphore) =>
             new WithConsumer[F] {
-              override def apply[A](f: (JavaByteConsumer, Blocking[F]) => F[A]): F[A] =
+              override def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A] =
                 semaphore.withPermit { f(consumer, blocking_) }
             }
           }
