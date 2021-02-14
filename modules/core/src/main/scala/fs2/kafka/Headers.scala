@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.data.{Chain, NonEmptyChain}
-import cats.Show
+import cats.{Eq, Show}
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 
@@ -89,10 +89,9 @@ object Headers {
     override def exists(key: String): Boolean =
       headers.exists(_.key == key)
 
-    override def concat(that: Headers): Headers = {
+    override def concat(that: Headers): Headers =
       if (that.isEmpty) this
       else new HeadersImpl(headers.appendChain(that.toChain))
-    }
 
     override def toChain: Chain[Header] =
       headers.toChain
@@ -245,4 +244,7 @@ object Headers {
 
   implicit val headersShow: Show[Headers] =
     Show.fromToString
+
+  implicit val headersEq: Eq[Headers] =
+    Eq.by(_.toChain)
 }

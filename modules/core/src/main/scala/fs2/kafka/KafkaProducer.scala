@@ -13,7 +13,7 @@ import cats.implicits._
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.clients.producer.{Callback, RecordMetadata}
+import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 
 /**
@@ -97,13 +97,12 @@ object KafkaProducer {
     new KafkaProducer.Metrics[F, K, V] {
       override def produce[P](
         records: ProducerRecords[K, V, P]
-      ): F[F[ProducerResult[K, V, P]]] = {
+      ): F[F[ProducerResult[K, V, P]]] =
         withProducer { (producer, _) =>
           records.records
             .traverse(produceRecord(keySerializer, valueSerializer, producer))
             .map(_.sequence.map(ProducerResult(_, records.passthrough)))
         }
-      }
 
       override def metrics: F[Map[MetricName, Metric]] =
         withProducer.blocking { _.metrics().asScala.toMap }
@@ -167,8 +166,7 @@ object KafkaProducer {
         Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
           F.delay {
               producer.send(
-                javaRecord,
-                callback { (metadata, exception) =>
+                javaRecord, { (metadata, exception) =>
                   val complete =
                     deferred.complete {
                       if (exception == null)
@@ -234,11 +232,5 @@ object KafkaProducer {
           valueBytes,
           record.headers.asJava
         )
-    }
-
-  private[this] def callback(f: (RecordMetadata, Exception) => Unit): Callback =
-    new Callback {
-      override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
-        f(metadata, exception)
     }
 }
