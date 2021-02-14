@@ -77,7 +77,7 @@ If we have a Java Kafka deserializer, use `delegate` to create a `Deserializer`.
 
 ```scala mdoc:silent
 Deserializer.delegate[IO, String] {
-  new JavaDeserializer[String] {
+  new KafkaDeserializer[String] {
     def deserialize(topic: String, data: Array[Byte]): String =
       new String(data)
   }
@@ -88,7 +88,7 @@ If the deserializer performs _side effects_, follow with `suspend` to capture th
 
 ```scala mdoc:silent
 Deserializer.delegate[IO, String] {
-   new JavaDeserializer[String] {
+   new KafkaDeserializer[String] {
     def deserialize(topic: String, data: Array[Byte]): String = {
       println(s"deserializing record on topic $topic")
       new String(data)
