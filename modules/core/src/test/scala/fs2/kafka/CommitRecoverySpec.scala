@@ -112,5 +112,7 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
       override def monotonic: IO[FiniteDuration] = ???
 
       override def realTime: IO[FiniteDuration] = ???
+
+      override def unique: IO[cats.effect.kernel.Unique.Token] = ???
     }
 }
