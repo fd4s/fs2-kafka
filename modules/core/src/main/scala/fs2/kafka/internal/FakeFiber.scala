@@ -10,6 +10,9 @@ import cats.effect.{Concurrent, Outcome}
 import cats.syntax.all._
 import cats.effect.syntax.all._
 
+/** A wrapper for `cancel` and `join` effects used to terminate and await
+  *  termination of running processes, ported from `Fiber` in cats-effect 2.
+  */
 case class FakeFiber[F[_]](join: F[Unit], cancel: F[Unit])(implicit F: Concurrent[F]) {
   def combine(that: FakeFiber[F]): FakeFiber[F] = {
 
