@@ -2,11 +2,13 @@ package fs2.kafka
 
 import cats._
 import cats.effect.IO
+import cats.effect.testkit.TestInstances
 import cats.tests._
 import org.scalacheck._
+
 import scala.util.Try
 
-trait BaseCatsSpec extends CatsSuite with BaseGenerators {
+trait BaseCatsSpec extends CatsSuite with BaseGenerators with TestInstances {
   implicit def deserializerEq[A](implicit A: Eq[IO[A]]): Eq[Deserializer[IO, A]] =
     Eq.instance { (d1, d2) =>
       Try {

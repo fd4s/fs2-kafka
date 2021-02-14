@@ -2,21 +2,21 @@ package fs2.kafka
 
 import cats._
 import cats.effect.IO
-import cats.effect.unsafe.implicits.global
 import cats.laws.discipline._
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 import org.scalacheck.Arbitrary
 import org.scalatest._
-import cats.effect.laws._
 
 final class SerializerSpec extends BaseCatsSpec {
-  // checkAll(
-  //   "Serializer[IO, *]", {
-  //     implicit val testContext: TestContext = TestContext()
-  //     ContravariantTests[Serializer[IO, *]].contravariant[String, String, String]
-  //   }
-  // )
+  checkAll(
+    "Serializer[IO, *]", {
+      implicit val ticker = Ticker()
+      ContravariantTests[Serializer[IO, *]].contravariant[String, String, String]
+    }
+  )
+
+  import cats.effect.unsafe.implicits.global
 
   test("Serializer#mapBytes") {
     val serializer =
