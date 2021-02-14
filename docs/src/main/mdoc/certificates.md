@@ -1,3 +1,8 @@
+---
+id: security
+title: Security & Certificates
+---
+
 ## Security: certificates, trust stores, and passwords 
 
 The `KafkaCredentialStore` can be used to create the necessary.
