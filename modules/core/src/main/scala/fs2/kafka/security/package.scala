@@ -18,13 +18,12 @@ package object security {
     private[this] final def hex(in: Array[Byte]): Array[Char] = {
       val length = in.length
 
-      @tailrec def encode(out: Array[Char], i: Int, j: Int): Array[Char] = {
+      @tailrec def encode(out: Array[Char], i: Int, j: Int): Array[Char] =
         if (i < length) {
           out(j) = hexChars((0xf0 & in(i)) >>> 4)
           out(j + 1) = hexChars(0x0f & in(i))
           encode(out, i + 1, j + 2)
         } else out
-      }
 
       encode(new Array(length << 1), 0, 0)
     }

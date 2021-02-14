@@ -13,7 +13,7 @@ sealed abstract class ServiceCertificate {
 }
 
 object ServiceCertificate {
-  def fromString(serviceCertificate: String): Either[CertificateException, ServiceCertificate] = {
+  def fromString(serviceCertificate: String): Either[CertificateException, ServiceCertificate] =
     internal.CertificateOps.loadFromString(serviceCertificate).map { certificate =>
       new ServiceCertificate {
         override final val value: Certificate =
@@ -23,11 +23,9 @@ object ServiceCertificate {
           s"ServiceCertificate(${serviceCertificate.valueShortHash})"
       }
     }
-  }
 
-  def fromCertificate(certificate: Certificate): ServiceCertificate = {
+  def fromCertificate(certificate: Certificate): ServiceCertificate =
     new ServiceCertificate {
       override def value: Certificate = certificate
     }
-  }
 }

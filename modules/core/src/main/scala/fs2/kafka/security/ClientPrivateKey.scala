@@ -18,7 +18,7 @@ sealed abstract class ClientPrivateKey {
 }
 
 object ClientPrivateKey {
-  def fromString(clientPrivateKey: String): Either[GeneralSecurityException, ClientPrivateKey] = {
+  def fromString(clientPrivateKey: String): Either[GeneralSecurityException, ClientPrivateKey] =
     Either.catchOnly[GeneralSecurityException] {
       new ClientPrivateKey {
         override final val value: PrivateKey =
@@ -40,14 +40,12 @@ object ClientPrivateKey {
           s"ClientPrivateKey(${clientPrivateKey.valueShortHash})"
       }
     }
-  }
 
-  def fromPrivateKey(privateKey: PrivateKey): ClientPrivateKey = {
+  def fromPrivateKey(privateKey: PrivateKey): ClientPrivateKey =
     new ClientPrivateKey {
       override def value: PrivateKey = privateKey
 
       override final def toString: String =
         s"ClientPrivateKey(${privateKey.toString.valueShortHash})"
     }
-  }
 }
