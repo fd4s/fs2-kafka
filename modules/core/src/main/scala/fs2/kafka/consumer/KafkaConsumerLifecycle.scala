@@ -8,6 +8,8 @@ package fs2.kafka.consumer
 
 import cats.effect.Fiber
 
+import scala.annotation.nowarn
+
 trait KafkaConsumerLifecycle[F[_]] {
 
   /**
@@ -30,5 +32,26 @@ trait KafkaConsumerLifecycle[F[_]] {
     * shut down. Most of the time, when you're only using the streams
     * provided by [[KafkaConsumer]], there is no need to use this.
     */
+  @deprecated("Use terminate/awaitTermination instead", since = "1.4.0")
   def fiber: Fiber[F, Unit]
+
+  /**
+    * Whenever `terminate` is invoked, an attempt will be made to stop the
+    * underlying consumer. The `terminate` operation will not wait for the
+    * consumer to shutdown. If you also want to wait for the shutdown
+    * to complete, you can use `terminate >> awaitTermination`.<br>
+    */
+  @nowarn("cat=deprecation")
+  def terminate: F[Unit] = fiber.cancel
+
+  /**
+    * Wait for consumer to shut down. Note that `awaitTermination` is guaranteed
+    * to complete after consumer shutdown, even when the consumer is
+    * cancelled with `terminate`.
+    *
+    * This method will not initiate shutdown. To initiate shutdown and wait for
+    * it to complete, you can use `terminate >> awaitTermination`.
+    */
+  @nowarn("cat=deprecation")
+  def awaitTermination: F[Unit] = fiber.join
 }

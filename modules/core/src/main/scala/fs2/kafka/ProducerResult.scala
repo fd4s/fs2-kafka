@@ -9,7 +9,7 @@ package fs2.kafka
 import cats.syntax.show._
 import cats.Show
 import fs2.Chunk
-import fs2.kafka.internal.instances._
+import fs2.kafka.instances._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.producer.RecordMetadata
 
@@ -42,7 +42,7 @@ object ProducerResult {
     override val passthrough: P
   ) extends ProducerResult[K, V, P] {
 
-    override def toString: String = {
+    override def toString: String =
       if (records.isEmpty)
         s"ProducerResult(<empty>, $passthrough)"
       else
@@ -56,7 +56,6 @@ object ProducerResult {
           sep = ", ",
           end = s", $passthrough)"
         )
-    }
   }
 
   /**

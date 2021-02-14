@@ -6,8 +6,14 @@
 
 package fs2.kafka
 
-import cats.Show
+import cats.syntax.bifoldable._
+import cats.syntax.bitraverse._
+import cats.syntax.foldable._
+import cats.syntax.functor._
 import cats.syntax.show._
+import cats.syntax.eq._
+import cats.syntax.traverse._
+import cats.{Applicative, Bitraverse, Eq, Eval, Show, Traverse}
 
 /**
   * [[CommittableConsumerRecord]] is a Kafka record along with an
@@ -71,4 +77,58 @@ object CommittableConsumerRecord {
   ): Show[CommittableConsumerRecord[F, K, V]] = Show.show { cm =>
     show"CommittableConsumerRecord(${cm.record}, ${cm.offset})"
   }
+
+  implicit def committableConsumerRecordEq[F[_], K: Eq, V: Eq]
+    : Eq[CommittableConsumerRecord[F, K, V]] =
+    Eq.instance {
+      case (l, r) =>
+        l.record === r.record && l.offset === r.offset
+    }
+
+  implicit def committableConsumerRecordBitraverse[F[_]]
+    : Bitraverse[CommittableConsumerRecord[F, *, *]] =
+    new Bitraverse[CommittableConsumerRecord[F, *, *]] {
+      override def bitraverse[G[_], A, B, C, D](
+        fab: CommittableConsumerRecord[F, A, B]
+      )(f: A => G[C], g: B => G[D])(
+        implicit G: Applicative[G]
+      ): G[CommittableConsumerRecord[F, C, D]] =
+        fab.record.bitraverse(f, g).map { (cd: ConsumerRecord[C, D]) =>
+          CommittableConsumerRecord(cd, fab.offset)
+        }
+
+      override def bifoldLeft[A, B, C](
+        fab: CommittableConsumerRecord[F, A, B],
+        c: C
+      )(f: (C, A) => C, g: (C, B) => C): C =
+        fab.record.bifoldLeft(c)(f, g)
+
+      override def bifoldRight[A, B, C](
+        fab: CommittableConsumerRecord[F, A, B],
+        c: Eval[C]
+      )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] =
+        fab.record.bifoldRight(c)(f, g)
+    }
+
+  implicit def committableConsumerRecordTraverse[F[_], K]
+    : Traverse[CommittableConsumerRecord[F, K, *]] =
+    new Traverse[CommittableConsumerRecord[F, K, *]] {
+      override def traverse[G[_], A, B](
+        fa: CommittableConsumerRecord[F, K, A]
+      )(f: A => G[B])(implicit G: Applicative[G]): G[CommittableConsumerRecord[F, K, B]] =
+        fa.record.traverse(f).map { (b: ConsumerRecord[K, B]) =>
+          CommittableConsumerRecord(b, fa.offset)
+        }
+
+      override def foldLeft[A, B](fa: CommittableConsumerRecord[F, K, A], b: B)(
+        f: (B, A) => B
+      ): B =
+        fa.record.foldLeft(b)(f)
+
+      override def foldRight[A, B](
+        fa: CommittableConsumerRecord[F, K, A],
+        lb: Eval[B]
+      )(f: (A, Eval[B]) => Eval[B]): Eval[B] =
+        fa.record.foldRight(lb)(f)
+    }
 }
