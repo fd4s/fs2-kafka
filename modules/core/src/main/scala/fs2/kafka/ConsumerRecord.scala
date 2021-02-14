@@ -165,7 +165,7 @@ object ConsumerRecord {
     )
 
   private[this] def deserializeFromBytes[F[_], K, V](
-    record: JavaByteConsumerRecord,
+    record: KafkaByteConsumerRecord,
     headers: Headers,
     keyDeserializer: Deserializer[F, K],
     valueDeserializer: Deserializer[F, V]
@@ -176,7 +176,7 @@ object ConsumerRecord {
   }
 
   private[kafka] def fromJava[F[_], K, V](
-    record: JavaByteConsumerRecord,
+    record: KafkaByteConsumerRecord,
     keyDeserializer: Deserializer[F, K],
     valueDeserializer: Deserializer[F, V]
   )(implicit F: Apply[F]): F[ConsumerRecord[K, V]] = {
@@ -260,46 +260,40 @@ object ConsumerRecord {
     new Bitraverse[ConsumerRecord] {
       override def bitraverse[G[_], A, B, C, D](
         fab: ConsumerRecord[A, B]
-      )(f: A => G[C], g: B => G[D])(implicit G: Applicative[G]): G[ConsumerRecord[C, D]] = {
+      )(f: A => G[C], g: B => G[D])(implicit G: Applicative[G]): G[ConsumerRecord[C, D]] =
         G.product(f(fab.key), g(fab.value)).map {
           case (c, d) =>
             fab.withKeyValue(c, d)
         }
-      }
 
       override def bifoldLeft[A, B, C](
         fab: ConsumerRecord[A, B],
         c: C
-      )(f: (C, A) => C, g: (C, B) => C): C = {
+      )(f: (C, A) => C, g: (C, B) => C): C =
         g(f(c, fab.key), fab.value)
-      }
 
       override def bifoldRight[A, B, C](
         fab: ConsumerRecord[A, B],
         c: Eval[C]
-      )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] = {
+      )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] =
         g(fab.value, f(fab.key, c))
-      }
     }
 
   implicit def consumerRecordTraverse[K]: Traverse[ConsumerRecord[K, *]] =
     new Traverse[ConsumerRecord[K, *]] {
       override def traverse[G[_], A, B](
         fa: ConsumerRecord[K, A]
-      )(f: A => G[B])(implicit G: Applicative[G]): G[ConsumerRecord[K, B]] = {
+      )(f: A => G[B])(implicit G: Applicative[G]): G[ConsumerRecord[K, B]] =
         f(fa.value).map { b =>
           fa.withValue(b)
         }
-      }
 
-      override def foldLeft[A, B](fa: ConsumerRecord[K, A], b: B)(f: (B, A) => B): B = {
+      override def foldLeft[A, B](fa: ConsumerRecord[K, A], b: B)(f: (B, A) => B): B =
         f(b, fa.value)
-      }
 
       override def foldRight[A, B](fa: ConsumerRecord[K, A], lb: Eval[B])(
         f: (A, Eval[B]) => Eval[B]
-      ): Eval[B] = {
+      ): Eval[B] =
         f(fa.value, lb)
-      }
     }
 }

@@ -45,10 +45,9 @@ object CommittableProducerRecords {
     override val records: Chunk[ProducerRecord[K, V]],
     override val offset: CommittableOffset[F]
   ) extends CommittableProducerRecords[F, K, V] {
-    override def toString: String = {
+    override def toString: String =
       if (records.isEmpty) s"CommittableProducerRecords(<empty>, $offset)"
       else records.mkString("CommittableProducerRecords(", ", ", s", $offset)")
-    }
   }
 
   /**
@@ -120,7 +119,7 @@ object CommittableProducerRecords {
         fab: CommittableProducerRecords[F, A, B]
       )(f: A => G[C], g: B => G[D])(
         implicit G: Applicative[G]
-      ): G[CommittableProducerRecords[F, C, D]] = {
+      ): G[CommittableProducerRecords[F, C, D]] =
         fab.records
           .traverse { record =>
             record.bitraverse(f, g)
@@ -128,27 +127,24 @@ object CommittableProducerRecords {
           .map { (cd: Chunk[ProducerRecord[C, D]]) =>
             CommittableProducerRecords(cd, fab.offset)
           }
-      }
 
       override def bifoldLeft[A, B, C](
         fab: CommittableProducerRecords[F, A, B],
         c: C
-      )(f: (C, A) => C, g: (C, B) => C): C = {
+      )(f: (C, A) => C, g: (C, B) => C): C =
         fab.records.foldLeft(c) {
           case (acc, record) =>
             record.bifoldLeft(acc)(f, g)
         }
-      }
 
       override def bifoldRight[A, B, C](
         fab: CommittableProducerRecords[F, A, B],
         c: Eval[C]
-      )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] = {
+      )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] =
         fab.records.foldRight(c) {
           case (record, acc) =>
             record.bifoldRight(acc)(f, g)
         }
-      }
     }
 
   implicit def committableProducerRecordsTraverse[F[_], K]
@@ -156,7 +152,7 @@ object CommittableProducerRecords {
     new Traverse[CommittableProducerRecords[F, K, *]] {
       override def traverse[G[_], A, B](
         fa: CommittableProducerRecords[F, K, A]
-      )(f: A => G[B])(implicit G: Applicative[G]): G[CommittableProducerRecords[F, K, B]] = {
+      )(f: A => G[B])(implicit G: Applicative[G]): G[CommittableProducerRecords[F, K, B]] =
         fa.records
           .traverse { record =>
             record.traverse(f)
@@ -164,25 +160,22 @@ object CommittableProducerRecords {
           .map { (b: Chunk[ProducerRecord[K, B]]) =>
             CommittableProducerRecords(b, fa.offset)
           }
-      }
 
       override def foldLeft[A, B](fa: CommittableProducerRecords[F, K, A], b: B)(
         f: (B, A) => B
-      ): B = {
+      ): B =
         fa.records.foldLeft(b) {
           case (acc, record) =>
             record.foldLeft(acc)(f)
         }
-      }
 
       override def foldRight[A, B](
         fa: CommittableProducerRecords[F, K, A],
         lb: Eval[B]
-      )(f: (A, Eval[B]) => Eval[B]): Eval[B] = {
+      )(f: (A, Eval[B]) => Eval[B]): Eval[B] =
         fa.records.foldRight(lb) {
           case (record, acc) =>
             record.foldRight(acc)(f)
         }
-      }
     }
 }

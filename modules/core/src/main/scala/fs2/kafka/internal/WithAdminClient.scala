@@ -20,7 +20,7 @@ private[kafka] sealed abstract class WithAdminClient[F[_]] {
 private[kafka] object WithAdminClient {
   def apply[F[_]](
     settings: AdminClientSettings[F]
-  )(implicit F: Async[F]): Resource[F, WithAdminClient[F]] = {
+  )(implicit F: Async[F]): Resource[F, WithAdminClient[F]] =
     Resource[F, WithAdminClient[F]] {
       settings.createAdminClient.map { adminClient =>
         val withAdminClient =
@@ -35,5 +35,4 @@ private[kafka] object WithAdminClient {
         (withAdminClient, close)
       }
     }
-  }
 }

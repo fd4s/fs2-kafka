@@ -469,7 +469,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         def startConsumer(
           consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
           stopSignal: SignallingRef[IO, Boolean]
-        ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] = {
+        ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] =
           Ref[IO]
             .of(Vector.empty[Set[Int]])
             .flatMap { assignedPartitionsRef =>
@@ -493,7 +493,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                 .drain >> assignedPartitionsRef.get
             }
             .start
-        }
 
         (for {
           stopSignal <- SignallingRef[IO, Boolean](false)
@@ -887,7 +886,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   private def commitTest(
     commit: (KafkaConsumer[IO, String, String], CommittableOffsetBatch[IO]) => IO[Unit]
-  ): Assertion = {
+  ): Assertion =
     withTopic { topic =>
       val partitionsAmount = 3
       createCustomTopic(topic, partitions = partitionsAmount)
@@ -923,5 +922,4 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         committed == actuallyCommitted
       }
     }
-  }
 }

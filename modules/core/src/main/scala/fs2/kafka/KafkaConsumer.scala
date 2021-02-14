@@ -142,8 +142,7 @@ object KafkaConsumer {
           streamId: StreamId,
           partitionStreamId: PartitionStreamId,
           partition: TopicPartition
-        ): F[Stream[F, CommittableConsumerRecord[F, K, V]]] = {
-
+        ): F[Stream[F, CommittableConsumerRecord[F, K, V]]] =
           for {
             chunks <- chunkQueue
             dequeueDone <- Deferred[F, Unit]
@@ -206,7 +205,6 @@ object KafkaConsumer {
                   .onFinalize(dequeueDone.complete(()).void)
               }
           }.flatten
-        }
 
         def enqueueAssignment(
           streamId: StreamId,
@@ -263,7 +261,7 @@ object KafkaConsumer {
           streamId: StreamId,
           partitionStreamIdRef: Ref[F, PartitionStreamId],
           partitionsMapQueue: PartitionsMapQueue
-        ): F[SortedSet[TopicPartition]] = {
+        ): F[SortedSet[TopicPartition]] =
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request =
               Request.Assignment[F, K, V](
@@ -276,7 +274,6 @@ object KafkaConsumer {
               case Right(assigned) => assigned
             }
           }
-        }
 
         def initialEnqueue(
           streamId: StreamId,
@@ -308,35 +305,32 @@ object KafkaConsumer {
         }
       }
 
-      override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] = {
+      override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
         partitionsMapStream.flatMap { partitionsMap =>
           Stream.emits(partitionsMap.toVector.map {
             case (_, partitionStream) =>
               partitionStream
           })
         }
-      }
 
       override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
         partitionedStream.parJoinUnbounded
 
-      override def commitAsync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = {
+      override def commitAsync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
         request { callback =>
           Request.ManualCommitAsync(
             callback = callback,
             offsets = offsets
           )
         }
-      }
 
-      override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] = {
+      override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
         request { callback =>
           Request.ManualCommitSync(
             callback = callback,
             offsets = offsets
           )
         }
-      }
 
       private[this] def request[A](
         request: (Either[Throwable, A] => F[Unit]) => Request[F, K, V]
@@ -483,7 +477,7 @@ object KafkaConsumer {
       override def assign(topic: String, partitions: NonEmptySet[Int]): F[Unit] =
         assign(partitions.map(new TopicPartition(topic, _)))
 
-      override def assign(topic: String): F[Unit] = {
+      override def assign(topic: String): F[Unit] =
         for {
           partitions <- partitionsFor(topic)
             .map { partitionInfo =>
@@ -493,7 +487,6 @@ object KafkaConsumer {
             }
           _ <- partitions.fold(F.unit)(assign(topic, _))
         } yield ()
-      }
 
       override def beginningOffsets(
         partitions: Set[TopicPartition]

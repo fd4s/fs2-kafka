@@ -43,10 +43,9 @@ object ProducerRecords {
     override val records: Chunk[ProducerRecord[K, V]],
     override val passthrough: P
   ) extends ProducerRecords[P, K, V] {
-    override def toString: String = {
+    override def toString: String =
       if (records.isEmpty) s"ProducerRecords(<empty>, $passthrough)"
       else records.mkString("ProducerRecords(", ", ", s", $passthrough)")
-    }
   }
 
   /**

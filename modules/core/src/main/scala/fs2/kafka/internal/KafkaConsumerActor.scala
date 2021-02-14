@@ -397,7 +397,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       )
     )
 
-  private[this] def records(batch: JavaByteConsumerRecords): F[ConsumerRecords] =
+  private[this] def records(batch: KafkaByteConsumerRecords): F[ConsumerRecords] =
     batch.partitions.toVector
       .traverse { partition =>
         NonEmptyVector
@@ -456,13 +456,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             val canBeCompleted = allRecords.keySetStrict intersect requested
             val canBeStored = newRecords.keySetStrict diff canBeCompleted
 
-            def completeFetches: F[Unit] = {
+            def completeFetches: F[Unit] =
               state.fetches.filterKeysStrictList(canBeCompleted).traverse_ {
                 case (partition, fetches) =>
                   val records = Chunk.vector(allRecords(partition).toVector)
                   fetches.values.toList.traverse_(_.completeRecords(records))
               }
-            }
 
             (canBeCompleted.nonEmpty, canBeStored.nonEmpty) match {
               case (true, true) =>
@@ -587,12 +586,11 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       commits: Chain[Request.Commit[F, K, V]],
       log: CommittedPendingCommits[F, K, V]
     ) {
-      def commit: F[Unit] = {
+      def commit: F[Unit] =
         commits.foldLeft(F.unit) {
           case (acc, commitRequest) =>
             acc >> commitAsync(commitRequest.offsets, commitRequest.callback)
         } >> logging.log(log)
-      }
     }
 
     case class StateNotChanged(pendingCommits: Option[PendingCommits]) extends HandlePollResult

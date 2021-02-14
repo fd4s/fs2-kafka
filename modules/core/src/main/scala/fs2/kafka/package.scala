@@ -13,39 +13,39 @@ package object kafka {
   type Id[+A] = A
 
   /** Alias for Java Kafka `Consumer[Array[Byte], Array[Byte]]`. */
-  type JavaByteConsumer =
+  type KafkaByteConsumer =
     org.apache.kafka.clients.consumer.Consumer[Array[Byte], Array[Byte]]
 
   /** Alias for Java Kafka `Producer[Array[Byte], Array[Byte]]`. */
-  type JavaByteProducer =
+  type KafkaByteProducer =
     org.apache.kafka.clients.producer.Producer[Array[Byte], Array[Byte]]
 
   /** Alias for Java Kafka `Deserializer[A]`. */
-  type JavaDeserializer[A] =
+  type KafkaDeserializer[A] =
     org.apache.kafka.common.serialization.Deserializer[A]
 
   /** Alias for Java Kafka `Serializer[A]`. */
-  type JavaSerializer[A] =
+  type KafkaSerializer[A] =
     org.apache.kafka.common.serialization.Serializer[A]
 
   /** Alias for Java Kafka `Header`. */
-  type JavaHeader =
+  type KafkaHeader =
     org.apache.kafka.common.header.Header
 
   /** Alias for Java Kafka `Headers`. */
-  type JavaHeaders =
+  type KafkaHeaders =
     org.apache.kafka.common.header.Headers
 
   /** Alias for Java Kafka `ConsumerRecords[Array[Byte], Array[Byte]]`. */
-  type JavaByteConsumerRecords =
+  type KafkaByteConsumerRecords =
     org.apache.kafka.clients.consumer.ConsumerRecords[Array[Byte], Array[Byte]]
 
   /** Alias for Java Kafka `ConsumerRecord[Array[Byte], Array[Byte]]`. */
-  type JavaByteConsumerRecord =
+  type KafkaByteConsumerRecord =
     org.apache.kafka.clients.consumer.ConsumerRecord[Array[Byte], Array[Byte]]
 
   /** Alias for Java Kafka `ProducerRecord[Array[Byte], Array[Byte]]`. */
-  type JavaByteProducerRecord =
+  type KafkaByteProducerRecord =
     org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
   /**

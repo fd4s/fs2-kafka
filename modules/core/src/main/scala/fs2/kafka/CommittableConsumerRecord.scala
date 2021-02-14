@@ -79,12 +79,11 @@ object CommittableConsumerRecord {
   }
 
   implicit def committableConsumerRecordEq[F[_], K: Eq, V: Eq]
-    : Eq[CommittableConsumerRecord[F, K, V]] = {
+    : Eq[CommittableConsumerRecord[F, K, V]] =
     Eq.instance {
       case (l, r) =>
         l.record === r.record && l.offset === r.offset
     }
-  }
 
   implicit def committableConsumerRecordBitraverse[F[_]]
     : Bitraverse[CommittableConsumerRecord[F, *, *]] =
@@ -93,25 +92,22 @@ object CommittableConsumerRecord {
         fab: CommittableConsumerRecord[F, A, B]
       )(f: A => G[C], g: B => G[D])(
         implicit G: Applicative[G]
-      ): G[CommittableConsumerRecord[F, C, D]] = {
+      ): G[CommittableConsumerRecord[F, C, D]] =
         fab.record.bitraverse(f, g).map { (cd: ConsumerRecord[C, D]) =>
           CommittableConsumerRecord(cd, fab.offset)
         }
-      }
 
       override def bifoldLeft[A, B, C](
         fab: CommittableConsumerRecord[F, A, B],
         c: C
-      )(f: (C, A) => C, g: (C, B) => C): C = {
+      )(f: (C, A) => C, g: (C, B) => C): C =
         fab.record.bifoldLeft(c)(f, g)
-      }
 
       override def bifoldRight[A, B, C](
         fab: CommittableConsumerRecord[F, A, B],
         c: Eval[C]
-      )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] = {
+      )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] =
         fab.record.bifoldRight(c)(f, g)
-      }
     }
 
   implicit def committableConsumerRecordTraverse[F[_], K]
@@ -119,23 +115,20 @@ object CommittableConsumerRecord {
     new Traverse[CommittableConsumerRecord[F, K, *]] {
       override def traverse[G[_], A, B](
         fa: CommittableConsumerRecord[F, K, A]
-      )(f: A => G[B])(implicit G: Applicative[G]): G[CommittableConsumerRecord[F, K, B]] = {
+      )(f: A => G[B])(implicit G: Applicative[G]): G[CommittableConsumerRecord[F, K, B]] =
         fa.record.traverse(f).map { (b: ConsumerRecord[K, B]) =>
           CommittableConsumerRecord(b, fa.offset)
         }
-      }
 
       override def foldLeft[A, B](fa: CommittableConsumerRecord[F, K, A], b: B)(
         f: (B, A) => B
-      ): B = {
+      ): B =
         fa.record.foldLeft(b)(f)
-      }
 
       override def foldRight[A, B](
         fa: CommittableConsumerRecord[F, K, A],
         lb: Eval[B]
-      )(f: (A, Eval[B]) => Eval[B]): Eval[B] = {
+      )(f: (A, Eval[B]) => Eval[B]): Eval[B] =
         fa.record.foldRight(lb)(f)
-      }
     }
 }

@@ -96,13 +96,12 @@ object KafkaProducer {
     new KafkaProducer.Metrics[F, K, V] {
       override def produce[P](
         records: ProducerRecords[P, K, V]
-      ): F[F[ProducerResult[P, K, V]]] = {
+      ): F[F[ProducerResult[P, K, V]]] =
         withProducer { (producer, _) =>
           records.records
             .traverse(produceRecord(keySerializer, valueSerializer, producer))
             .map(_.sequence.map(ProducerResult(_, records.passthrough)))
         }
-      }
 
       override def metrics: F[Map[MetricName, Metric]] =
         withProducer.blocking { _.metrics().asScala.toMap }
@@ -156,7 +155,7 @@ object KafkaProducer {
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V],
-    producer: JavaByteProducer
+    producer: KafkaByteProducer
   )(
     implicit F: Async[F],
     dispatcher: Dispatcher[F]
@@ -220,10 +219,10 @@ object KafkaProducer {
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V],
     record: ProducerRecord[K, V]
-  )(implicit F: Apply[F]): F[JavaByteProducerRecord] =
+  )(implicit F: Apply[F]): F[KafkaByteProducerRecord] =
     serializeToBytes(keySerializer, valueSerializer, record).map {
       case (keyBytes, valueBytes) =>
-        new JavaByteProducerRecord(
+        new KafkaByteProducerRecord(
           record.topic,
           record.partition.fold[java.lang.Integer](null)(identity),
           record.timestamp.fold[java.lang.Long](null)(identity),
