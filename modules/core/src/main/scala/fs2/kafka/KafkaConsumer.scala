@@ -396,7 +396,7 @@ object KafkaConsumer {
                     updateQueue.offer(initialAssignment) >>
                     initialAssignmentDeferred.complete(())
                 }
-                .as(Stream.repeatEval(updateQueue.take).changes)
+                .as(Stream.fromQueueUnterminated(updateQueue).changes)
           }
         }.flatten
       }
