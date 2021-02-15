@@ -14,17 +14,18 @@ any of the `*Settings` classes by using the `withProperties(kafkaCredentialStore
 ```scala mdoc
 import cats.effect._
 import cats.syntax.all._
+import fs2.kafka._
 import fs2.kafka.security._
 
-def createKafkaProducer[F[_]: Sync: ContextShift](
+def createKafkaProducer[F[_]: Sync: ContextShift, K, V](
     clientPrivateKey: String,
     clientCertificate: String,
     serviceCertificate: String,
-): F[ProducerSettings[F, UUID, String]] =
+)(implicit keySer: Serializer[F, K], valSer: Serializer[F, V]): F[ProducerSettings[F, K, V]] =
   Blocker[F].use { blocker =>
     KafkaCredentialStore.createFromStrings[F](clientPrivateKey, clientCertificate, serviceCertificate, blocker)
   }.map { credentialStore =>
-    ProducerSettings(Serializer.uuid[F], Serializer.string[F])
+    ProducerSettings(keySer, valSer)
       .withCredentials(credentialStore)
   }
 ```
