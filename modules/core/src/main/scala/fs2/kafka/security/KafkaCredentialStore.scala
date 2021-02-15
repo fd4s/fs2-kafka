@@ -132,10 +132,10 @@ object KafkaCredentialStore {
         override final val properties: Map[String, String] =
           Map(
             "security.protocol" -> "SSL",
-            "ssl.truststore.location" -> trustStoreFile.pathAsString,
+            "ssl.truststore.location" -> trustStoreFile.path.toString,
             "ssl.truststore.password" -> trustStorePassword.value,
             "ssl.keystore.type" -> "PKCS12",
-            "ssl.keystore.location" -> keyStoreFile.pathAsString,
+            "ssl.keystore.location" -> keyStoreFile.path.toString,
             "ssl.keystore.password" -> keyStorePassword.value,
             "ssl.key.password" -> keyStorePassword.value
           )
