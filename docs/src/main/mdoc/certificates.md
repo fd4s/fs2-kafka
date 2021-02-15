@@ -5,7 +5,7 @@ title: Security & Certificates
 
 ## Security: certificates, trust stores, and passwords 
 
-The `KafkaCredentialStore` can be used to create the necessary.
+The `KafkaCredentialStore` can be used to create the necessary trust stores and passwords to access kafka.
 
 The parameters passed in are string representations of the client private key, client certificate
 and service certificate. the `properties` field in `KafkaCredentialStore` can then be applied to
@@ -16,7 +16,7 @@ import cats.effect._
 import cats.syntax.all._
 import fs2.kafka.security._
 
-def loadKafkaSetup[F[_]: Async: ContextShift](
+def loadKafkaSetup[F[_]: Sync: ContextShift](
     clientPrivateKey: String,
     clientCertificate: String,
     serviceCertificate: String,
