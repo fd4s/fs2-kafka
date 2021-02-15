@@ -170,9 +170,9 @@ object KafkaConsumer {
                   stopReqs.complete(()).void
 
                 case Right((chunk, reason)) =>
-                  val enqueueChunk = chunks.offer(Some(chunk)).whenA(chunk.nonEmpty)
+                  val enqueueChunk = chunks.offer(Some(chunk)).unlessA(chunk.isEmpty)
 
-                  val completeRevoked: F[Unit] =
+                  val completeRevoked =
                     stopReqs.complete(()).void.whenA(reason.topicPartitionRevoked)
 
                   enqueueChunk >> completeRevoked
