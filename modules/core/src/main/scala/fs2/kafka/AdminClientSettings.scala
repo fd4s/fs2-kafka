@@ -9,7 +9,9 @@ package fs2.kafka
 import cats.effect.{Blocker, Sync}
 import cats.Show
 import fs2.kafka.internal.converters.collection._
+import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.admin.{AdminClient, AdminClientConfig}
+
 import scala.concurrent.duration._
 
 /**
@@ -201,6 +203,12 @@ sealed abstract class AdminClientSettings[F[_]] {
   def withCreateAdminClient(
     createAdminClient: Map[String, String] => F[AdminClient]
   ): AdminClientSettings[F]
+
+  /**
+    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
+    */
+  def withCredentials(credentialsStore: KafkaCredentialStore): AdminClientSettings[F] =
+    withProperties(credentialsStore.properties)
 }
 
 object AdminClientSettings {

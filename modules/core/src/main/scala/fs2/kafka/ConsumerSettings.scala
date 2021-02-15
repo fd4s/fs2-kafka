@@ -9,9 +9,11 @@ package fs2.kafka
 import cats.effect.{Blocker, Sync}
 import cats.Show
 import fs2.kafka.internal.converters.collection._
+import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
+
 import scala.concurrent.duration._
 
 /**
@@ -397,6 +399,12 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * instead be set to `2` and not the specified value.
     */
   def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V]
+
+  /**
+    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
+    */
+  def withCredentials(credentialsStore: KafkaCredentialStore): ConsumerSettings[F, K, V] =
+    withProperties(credentialsStore.properties)
 }
 
 object ConsumerSettings {

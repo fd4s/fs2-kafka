@@ -25,6 +25,6 @@ def createKafkaProducer[F[_]: Sync: ContextShift](
     KafkaCredentialStore.createFromStrings[F](clientPrivateKey, clientCertificate, serviceCertificate, blocker)
   }.map { credentialStore =>
     ProducerSettings(Serializer.uuid[F], Serializer.string[F])
-      .withProperties(credentialStore.properties)
+      .withCredentials(credentialStore)
   }
 ```
