@@ -16,19 +16,15 @@ import cats.effect._
 import cats.syntax.all._
 import fs2.kafka.security._
 
-def loadKafkaSetup[F[_]: Sync: ContextShift](
+def createKafkaProducer[F[_]: Sync: ContextShift](
     clientPrivateKey: String,
     clientCertificate: String,
     serviceCertificate: String,
-): F[KafkaCredentialStore] =
+): F[ProducerSettings[F, UUID, String]] =
   Blocker[F].use { blocker =>
-    (
-      ClientPrivateKey.fromString(clientPrivateKey).liftTo[F],
-      ClientCertificate.fromString(clientCertificate).liftTo[F],
-      ServiceCertificate.fromString(serviceCertificate).liftTo[F],
-    ).tupled.flatMap {
-      case (clientPrivateKey, clientCertificate, serviceCertificate) =>
-        KafkaCredentialStore[F](clientPrivateKey, clientCertificate, serviceCertificate, blocker)
-    }
+    KafkaCredentialStore.createFromStrings[F](clientPrivateKey, clientCertificate, serviceCertificate, blocker)
+  }.map { credentialStore =>
+    ProducerSettings(Serializer.uuid[F], Serializer.string[F])
+      .withProperties(credentialStore.properties)
   }
 ```

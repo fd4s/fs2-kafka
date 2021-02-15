@@ -48,6 +48,21 @@ object KafkaCredentialStore {
       )
     } yield setupDetails
 
+  final def createFromStrings[F[_]: Sync: ContextShift](
+    clientPrivateKey: String,
+    clientCertificate: String,
+    serviceCertificate: String,
+    blocker: Blocker
+  ): F[KafkaCredentialStore] =
+    (
+      ClientPrivateKey.fromString(clientPrivateKey).liftTo[F],
+      ClientCertificate.fromString(clientCertificate).liftTo[F],
+      ServiceCertificate.fromString(serviceCertificate).liftTo[F]
+    ).tupled.flatMap {
+      case (clientPrivateKey, clientCertificate, serviceCertificate) =>
+        apply[F](clientPrivateKey, clientCertificate, serviceCertificate, blocker)
+    }
+
   private final def setupStore[F[_]: ContextShift](
     storeType: String,
     storePath: Path,
