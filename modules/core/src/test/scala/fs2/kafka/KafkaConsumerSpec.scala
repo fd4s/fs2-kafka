@@ -505,7 +505,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- IO.sleep(5.seconds)
           _ <- IO(publishToKafka(topic, produced2))
           _ <- Stream
-            .repeatEval(queue.take)
+            .fromQueueUnterminated(queue)
             .evalMap { committable =>
               ref.modify { counts =>
                 val key = committable.record.key
@@ -622,10 +622,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- Stream.eval(queue1.offer(None))
           _ <- Stream.eval(queue2.offer(None))
           consumer1Updates <- Stream.eval(
-            Stream.repeatEval(queue1.take).unNoneTerminate.compile.toList
+            Stream.fromQueueNoneTerminated(queue1).compile.toList
           )
           consumer2Updates <- Stream.eval(
-            Stream.repeatEval(queue2.take).unNoneTerminate.compile.toList
+            Stream.fromQueueNoneTerminated(queue2).compile.toList
           )
           _ <- Stream.eval(IO(assert {
             // Startup assignments (zero), initial assignments (all topics),
@@ -660,7 +660,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           )
           _ <- Stream.eval(IO.sleep(5.seconds))
           _ <- Stream.eval(queue.offer(None))
-          updates <- Stream.eval(Stream.repeatEval(queue.take).unNoneTerminate.compile.toList)
+          updates <- Stream.eval(Stream.fromQueueNoneTerminated(queue).compile.toList)
           _ <- Stream.eval(IO(assert {
             updates.length == 1 && updates.head.size == 3
           }))
