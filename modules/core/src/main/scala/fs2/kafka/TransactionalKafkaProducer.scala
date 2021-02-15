@@ -55,63 +55,64 @@ object TransactionalKafkaProducer {
   )(
     implicit F: Async[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    Resource.eval(settings.producerSettings.keySerializer).flatMap { keySerializer =>
-      Resource.eval(settings.producerSettings.valueSerializer).flatMap { valueSerializer =>
-        Dispatcher[F].flatMap { implicit dispatcher =>
-          WithProducer(settings).map { withProducer =>
-            new TransactionalKafkaProducer[F, K, V] {
-              override def produce[P](
-                records: TransactionalProducerRecords[F, P, K, V]
-              ): F[ProducerResult[P, K, V]] =
-                produceTransaction(records)
-                  .map(ProducerResult(_, records.passthrough))
+    (
+      Resource.eval(settings.producerSettings.keySerializer),
+      Resource.eval(settings.producerSettings.valueSerializer),
+      WithProducer(settings),
+      Dispatcher[F]
+    ).mapN { (keySerializer, valueSerializer, withProducer, dispatcher) =>
+      implicit val dispatcher0 = dispatcher
 
-              private[this] def produceTransaction[P](
-                records: TransactionalProducerRecords[F, P, K, V]
-              ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-                if (records.records.isEmpty) F.pure(Chunk.empty)
-                else {
-                  val batch =
-                    CommittableOffsetBatch.fromFoldableMap(records.records)(_.offset)
+      new TransactionalKafkaProducer[F, K, V] {
+        override def produce[P](
+          records: TransactionalProducerRecords[F, P, K, V]
+        ): F[ProducerResult[P, K, V]] =
+          produceTransaction(records)
+            .map(ProducerResult(_, records.passthrough))
 
-                  val consumerGroupId =
-                    if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
-                      F.raiseError(ConsumerGroupException(batch.consumerGroupIds))
-                    else F.pure(batch.consumerGroupIds.head)
+        private[this] def produceTransaction[P](
+          records: TransactionalProducerRecords[F, P, K, V]
+        ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
+          if (records.records.isEmpty) F.pure(Chunk.empty)
+          else {
+            val batch =
+              CommittableOffsetBatch.fromFoldableMap(records.records)(_.offset)
 
-                  consumerGroupId.flatMap { groupId =>
-                    withProducer { (producer, blocking) =>
-                      blocking(producer.beginTransaction())
-                        .bracketCase { _ =>
-                          records.records
-                            .flatMap(_.records)
-                            .traverse(
-                              KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
-                            )
-                            .map(_.sequence)
-                            .flatTap { _ =>
-                              blocking {
-                                producer.sendOffsetsToTransaction(
-                                  batch.offsets.asJava,
-                                  groupId
-                                )
-                              }
-                            }
-                        } {
-                          case (_, Outcome.Succeeded(_)) =>
-                            blocking(producer.commitTransaction())
-                          case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                            blocking(producer.abortTransaction())
+            val consumerGroupId =
+              if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
+                F.raiseError(ConsumerGroupException(batch.consumerGroupIds))
+              else F.pure(batch.consumerGroupIds.head)
+
+            consumerGroupId.flatMap { groupId =>
+              withProducer { (producer, blocking) =>
+                blocking(producer.beginTransaction())
+                  .bracketCase { _ =>
+                    records.records
+                      .flatMap(_.records)
+                      .traverse(
+                        KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
+                      )
+                      .map(_.sequence)
+                      .flatTap { _ =>
+                        blocking {
+                          producer.sendOffsetsToTransaction(
+                            batch.offsets.asJava,
+                            groupId
+                          )
                         }
-                    }.flatten
+                      }
+                  } {
+                    case (_, Outcome.Succeeded(_)) =>
+                      blocking(producer.commitTransaction())
+                    case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
+                      blocking(producer.abortTransaction())
                   }
-                }
-
-              override def toString: String =
-                "TransactionalKafkaProducer$" + System.identityHashCode(this)
+              }.flatten
             }
           }
-        }
+
+        override def toString: String =
+          "TransactionalKafkaProducer$" + System.identityHashCode(this)
       }
     }
 
