@@ -20,8 +20,8 @@ def loadKafkaSetup[F[_]: Async: ContextShift](
     clientPrivateKey: String,
     clientCertificate: String,
     serviceCertificate: String,
-): Resource[F, KafkaCredentialStore] =
-  Blocker[F].evalMap { blocker =>
+): F[KafkaCredentialStore] =
+  Blocker[F].use { blocker =>
     (
       ClientPrivateKey.fromString(clientPrivateKey).liftTo[F],
       ClientCertificate.fromString(clientCertificate).liftTo[F],
