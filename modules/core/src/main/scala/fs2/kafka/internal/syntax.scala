@@ -196,7 +196,7 @@ private[kafka] object syntax {
       map(_ => ())
 
     def cancelToken[F[_]](implicit F: Async[F]): F[Option[F[Unit]]] =
-      F.blocking { future.cancel(true); () }.start.as(None)
+      F.blocking { future.cancel(true); () }.start.map(_.cancel.some)
 
     // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
     def cancelable[F[_]](implicit F: Async[F]): F[A] =
