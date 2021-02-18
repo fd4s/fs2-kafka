@@ -37,7 +37,7 @@ lazy val core = project
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
         "co.fs2" %% "fs2-core" % fs2Version,
-        "org.typelevel" %% "cats-effect-core" % catsEffectVersion",
+        "org.typelevel" %% "cats-effect-core" % catsEffectVersion,
         "org.apache.kafka" % "kafka-clients" % kafkaVersion
       )
     ),
