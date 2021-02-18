@@ -4,7 +4,7 @@ val catsVersion = "2.4.1"
 
 val confluentVersion = "6.1.0"
 
-val fs2Version = "2.5.0"
+val fs2Version = "2.5.1"
 
 val kafkaVersion = "2.7.0"
 
@@ -37,6 +37,7 @@ lazy val core = project
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
         "co.fs2" %% "fs2-core" % fs2Version,
+        "org.typelevel" %% "cats-effect" % catsEffectVersion,
         "org.apache.kafka" % "kafka-clients" % kafkaVersion
       )
     ),
