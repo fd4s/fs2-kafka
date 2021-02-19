@@ -1,23 +1,13 @@
 package fs2.kafka
 
-import cats.effect.{Blocker, IO}
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import scala.concurrent.duration._
 
 final class ConsumerSettingsSpec extends BaseSpec {
   describe("ConsumerSettings") {
-    it("should be able to set blocker") {
-      assert {
-        settings.blocker.isEmpty &&
-        settingWithBlocker
-          .use { settings =>
-            IO(settings.blocker.nonEmpty)
-          }
-          .unsafeRunSync()
-      }
-    }
-
     it("should provide withBootstrapServers") {
       assert {
         settings
@@ -314,10 +304,4 @@ final class ConsumerSettingsSpec extends BaseSpec {
       keyDeserializer = Deserializer[IO, String],
       valueDeserializer = Deserializer[IO, String]
     )
-
-  val settingWithBlocker =
-    Blocker[IO].map { blocker =>
-      ConsumerSettings[IO, String, String]
-        .withBlocker(blocker)
-    }
 }

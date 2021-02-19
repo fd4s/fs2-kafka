@@ -1,11 +1,13 @@
 package fs2.kafka
 
 import cats.data.NonEmptySet
-import cats.effect.concurrent.Ref
+import cats.effect.Ref
 import cats.effect.{Fiber, IO}
+import cats.effect.std.Queue
 import cats.implicits._
+import cats.effect.unsafe.implicits.global
 import fs2.Stream
-import fs2.concurrent.{Queue, SignallingRef}
+import fs2.concurrent.SignallingRef
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 import org.apache.kafka.common.TopicPartition
@@ -444,7 +446,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             val consume = consumer.stream.take(numRecords - readOffset)
 
             Stream.eval(consumer.subscribeTo(topic)).drain ++
-              (Stream.eval_(setOffset) ++ consume)
+              (Stream.exec(setOffset) ++ consume)
                 .map(_.record)
                 .map(record => record.key -> record.value)
           }
@@ -467,7 +469,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         def startConsumer(
           consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
           stopSignal: SignallingRef[IO, Boolean]
-        ): IO[Fiber[IO, Vector[Set[Int]]]] =
+        ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] =
           Ref[IO]
             .of(Vector.empty[Set[Int]])
             .flatMap { assignedPartitionsRef =>
@@ -479,7 +481,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                     Stream
                       .emits(assignment.map {
                         case (_, stream) =>
-                          stream.evalMap(consumedQueue.enqueue1)
+                          stream.evalMap(consumedQueue.offer)
                       }.toList)
                       .covary[IO]
                   }
@@ -502,7 +504,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           fiber2 <- startConsumer(queue, stopSignal)
           _ <- IO.sleep(5.seconds)
           _ <- IO(publishToKafka(topic, produced2))
-          _ <- queue.dequeue
+          _ <- Stream
+            .fromQueueUnterminated(queue)
             .evalMap { committable =>
               ref.modify { counts =>
                 val key = committable.record.key
@@ -514,8 +517,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .drain
             .guarantee(stopSignal.set(true))
-          consumer1assignments <- fiber1.join
-          consumer2assignments <- fiber2.join
+          consumer1assignments <- fiber1.joinWithNever
+          consumer2assignments <- fiber2.joinWithNever
           keys <- ref.get
         } yield {
           assert {
@@ -574,7 +577,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .parJoinUnbounded
             .concurrently(
               // run second stream to start a rebalance after initial rebalance, default timeout is 3 secs
-              Stream.sleep(5.seconds) >> stream.flatMap(_.stream)
+              Stream.sleep[IO](5.seconds) >> stream.flatMap(_.stream)
             )
             .interruptWhen(stopSignal)
             .compile
@@ -594,14 +597,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         val consumer =
           for {
-            queue <- Stream.eval(Queue.noneTerminated[IO, SortedSet[TopicPartition]])
+            queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
             _ <- KafkaConsumer
               .stream(consumerSettings[IO])
               .evalTap(_.subscribeTo(topic))
               .evalMap { consumer =>
                 consumer.assignmentStream
                   .concurrently(consumer.stream)
-                  .evalMap(as => queue.enqueue1(Some(as)))
+                  .evalMap(as => queue.offer(Some(as)))
                   .compile
                   .drain
                   .start
@@ -616,10 +619,14 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- Stream.eval(IO.sleep(5.seconds))
           queue2 <- consumer
           _ <- Stream.eval(IO.sleep(5.seconds))
-          _ <- Stream.eval(queue1.enqueue1(None))
-          _ <- Stream.eval(queue2.enqueue1(None))
-          consumer1Updates <- Stream.eval(queue1.dequeue.compile.toList)
-          consumer2Updates <- Stream.eval(queue2.dequeue.compile.toList)
+          _ <- Stream.eval(queue1.offer(None))
+          _ <- Stream.eval(queue2.offer(None))
+          consumer1Updates <- Stream.eval(
+            Stream.fromQueueNoneTerminated(queue1).compile.toList
+          )
+          consumer2Updates <- Stream.eval(
+            Stream.fromQueueNoneTerminated(queue2).compile.toList
+          )
           _ <- Stream.eval(IO(assert {
             // Startup assignments (zero), initial assignments (all topics),
             // revoke all on 2nd joining (zero), assign rebalanced set (< 3)
@@ -647,13 +654,13 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .stream(consumerSettings[IO])
             .evalTap(_.subscribeTo(topic))
           _ <- Stream.eval(IO.sleep(5.seconds)).concurrently(consumer.stream)
-          queue <- Stream.eval(Queue.noneTerminated[IO, SortedSet[TopicPartition]])
+          queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
           _ <- Stream.eval(
-            consumer.assignmentStream.evalTap(as => queue.enqueue1(Some(as))).compile.drain.start
+            consumer.assignmentStream.evalTap(as => queue.offer(Some(as))).compile.drain.start
           )
           _ <- Stream.eval(IO.sleep(5.seconds))
-          _ <- Stream.eval(queue.enqueue1(None))
-          updates <- Stream.eval(queue.dequeue.compile.toList)
+          _ <- Stream.eval(queue.offer(None))
+          updates <- Stream.eval(Stream.fromQueueNoneTerminated(queue).compile.toList)
           _ <- Stream.eval(IO(assert {
             updates.length == 1 && updates.head.size == 3
           }))

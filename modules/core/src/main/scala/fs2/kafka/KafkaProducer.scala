@@ -8,13 +8,13 @@ package fs2.kafka
 
 import cats.Apply
 import cats.effect._
-import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
+import cats.effect.std.Dispatcher
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -84,16 +84,15 @@ object KafkaProducer {
   def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducerConnection.resource(settings).evalMap(_.withSerializersFrom(settings))
 
-  private[kafka] def from[F[_]: ConcurrentEffect, K, V](
+  private[kafka] def from[F[_]: Async, K, V](
     withProducer: WithProducer[F],
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
-  ): KafkaProducer.Metrics[F, K, V] =
+  )(implicit dispatcher: Dispatcher[F]): KafkaProducer.Metrics[F, K, V] =
     new KafkaProducer.Metrics[F, K, V] {
       override def produce[P](
         records: ProducerRecords[P, K, V]
@@ -121,7 +120,7 @@ object KafkaProducer {
     * KafkaProducer.resource[F].using(settings)
     * }}}
     */
-  def resource[F[_]](implicit F: ConcurrentEffect[F]): ProducerResource[F] =
+  def resource[F[_]](implicit F: Async[F]): ProducerResource[F] =
     new ProducerResource(F)
 
   /**
@@ -136,8 +135,7 @@ object KafkaProducer {
     * }}}
     */
   def stream[F[_], K, V](settings: ProducerSettings[F, K, V])(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     Stream.resource(KafkaProducer.resource(settings))
 
@@ -151,7 +149,7 @@ object KafkaProducer {
     * KafkaProducer.stream[F].using(settings)
     * }}}
     */
-  def stream[F[_]](implicit F: ConcurrentEffect[F]): ProducerStream[F] =
+  def stream[F[_]](implicit F: Async[F]): ProducerStream[F] =
     new ProducerStream[F](F)
 
   private[kafka] def produceRecord[F[_], K, V](
@@ -159,12 +157,13 @@ object KafkaProducer {
     valueSerializer: Serializer[F, V],
     producer: KafkaByteProducer
   )(
-    implicit F: ConcurrentEffect[F]
+    implicit F: Async[F],
+    dispatcher: Dispatcher[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
       asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
         Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
-          F.delay {
+          F.blocking {
               producer.send(
                 javaRecord, { (metadata, exception) =>
                   val complete =
@@ -172,9 +171,8 @@ object KafkaProducer {
                       if (exception == null)
                         Right((record, metadata))
                       else Left(exception)
-                    }
-
-                  F.runAsync(complete)(_ => IO.unit).unsafeRunSync()
+                    }.void
+                  dispatcher.unsafeRunSync(complete)
                 }
               )
             }
@@ -187,7 +185,7 @@ object KafkaProducer {
     * produces record in batches, limiting the number of records
     * in the same batch using [[ProducerSettings#parallelism]].
     */
-  def pipe[F[_]: ConcurrentEffect: ContextShift, K, V, P](
+  def pipe[F[_]: Async, K, V, P](
     settings: ProducerSettings[F, K, V]
   ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
     records => stream(settings).flatMap(pipe(settings, _).apply(records))

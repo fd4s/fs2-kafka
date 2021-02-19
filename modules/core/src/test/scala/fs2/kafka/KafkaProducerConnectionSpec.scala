@@ -1,7 +1,7 @@
 package fs2.kafka
 
 import cats.effect.IO
-import cats.implicits._
+import cats.effect.unsafe.implicits.global
 import fs2.Stream
 import org.scalactic.TypeCheckedTripleEquals
 

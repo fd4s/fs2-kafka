@@ -4,6 +4,7 @@ import java.time.Instant
 
 import cats.implicits._
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import fs2.kafka._
 
 import org.scalatest.funspec.AnyFunSpec

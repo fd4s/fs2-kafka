@@ -7,12 +7,11 @@
 package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector, StateT}
-import cats.effect.{ConcurrentEffect, ContextShift, Timer}
-import cats.effect.concurrent.Ref
+import cats.effect._
+import cats.effect.std._
 import cats.effect.syntax.all._
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Chunk
-import fs2.concurrent.Queue
 import fs2.kafka._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
@@ -55,11 +54,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   requests: Queue[F, Request[F, K, V]],
   withConsumer: WithConsumer[F]
 )(
-  implicit F: ConcurrentEffect[F],
-  context: ContextShift[F],
+  implicit F: Async[F],
+  dispatcher: Dispatcher[F],
   logging: Logging[F],
-  jitter: Jitter[F],
-  timer: Timer[F]
+  jitter: Jitter[F]
 ) {
   import logging._
 
@@ -72,10 +70,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
       override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
-        F.toIO(revoked(partitions.toSortedSet)).unsafeRunSync()
+        dispatcher.unsafeRunSync(revoked(partitions.toSortedSet))
 
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
-        F.toIO(assigned(partitions.toSortedSet)).unsafeRunSync()
+        dispatcher.unsafeRunSync(assigned(partitions.toSortedSet))
     }
 
   private[this] def subscribe(
@@ -231,10 +229,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   )(
     k: (Either[Throwable, Unit] => Unit) => F[Unit]
   ): F[Unit] =
-    F.asyncF[Unit] { cb =>
-        k(cb)
+    F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
+        k(cb).as(None)
       }
-      .guarantee(context.shift)
       .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
         CommitTimeoutException(
           settings.commitTimeout,
@@ -374,7 +371,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
       val commit = runCommitAsync(offsets) { cb =>
-        requests.enqueue1(Request.Commit(offsets, cb))
+        requests.offer(Request.Commit(offsets, cb))
       }
 
       commit.handleErrorWith {
@@ -550,7 +547,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
         }
     }
-
     ref.get.flatMap { state =>
       if (state.subscribed && state.streaming) {
         val initialRebalancing = state.rebalancing

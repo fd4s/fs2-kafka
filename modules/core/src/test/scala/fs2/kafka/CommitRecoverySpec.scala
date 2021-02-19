@@ -1,22 +1,23 @@
 package fs2.kafka
 
 import cats.data.Chain
-import cats.effect.concurrent.Ref
-import cats.effect.{Clock, IO, Timer}
+import cats.effect.kernel.{Deferred, Fiber, Poll}
+import cats.effect.{IO, Ref, Temporal}
+import cats.effect.unsafe.implicits.global
 import cats.syntax.functor._
 import org.apache.kafka.clients.consumer.{OffsetAndMetadata, RetriableCommitFailedException}
 import org.apache.kafka.common.TopicPartition
 
-import scala.concurrent.duration.{FiniteDuration, TimeUnit}
+import scala.concurrent.duration.FiniteDuration
 
 final class CommitRecoverySpec extends BaseAsyncSpec {
   describe("CommitRecovery#Default") {
     it("should retry with jittered exponential backoff and fixed rate") {
-      val (result, sleeps) =
+      val (result: Either[Throwable, Unit], sleeps: Chain[FiniteDuration]) =
         Ref
           .of[IO, Chain[FiniteDuration]](Chain.empty)
           .flatMap { ref =>
-            implicit val timer: Timer[IO] = storeSleepsTimer(ref)
+            implicit val temporal: Temporal[IO] = storeSleepsTemporal(ref)
             val commit: IO[Unit] = IO.raiseError(new RetriableCommitFailedException("retriable"))
             val offsets = Map(new TopicPartition("topic", 0) -> new OffsetAndMetadata(1))
             val recovery = CommitRecovery.Default.recoverCommitWith(offsets, commit)
@@ -74,17 +75,44 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
   implicit val jitter: Jitter[IO] =
     Jitter.default[IO].unsafeRunSync()
 
-  private def storeSleepsTimer(ref: Ref[IO, Chain[FiniteDuration]]): Timer[IO] =
-    new Timer[IO] {
-      override def clock: Clock[IO] = new Clock[IO] {
-        override def realTime(unit: TimeUnit): IO[Long] =
-          IO.raiseError(new RuntimeException("clock#realTime"))
+  private def storeSleepsTemporal(_ref: Ref[IO, Chain[FiniteDuration]]): Temporal[IO] =
+    new Temporal[IO] {
+      override def sleep(time: FiniteDuration): IO[Unit] = _ref.update(_ append time)
 
-        override def monotonic(unit: TimeUnit): IO[Long] =
-          IO.raiseError(new RuntimeException("clock#monotonic"))
-      }
+      override def ref[A](a: A): IO[Ref[IO, A]] = ???
 
-      override def sleep(duration: FiniteDuration): IO[Unit] =
-        ref.update(_ append duration)
+      override def deferred[A]: IO[Deferred[IO, A]] = ???
+
+      override def start[A](fa: IO[A]): IO[Fiber[IO, Throwable, A]] = ???
+
+      override def never[A]: IO[A] = ???
+
+      override def cede: IO[Unit] = ???
+
+      override def forceR[A, B](fa: IO[A])(fb: IO[B]): IO[B] = ???
+
+      override def uncancelable[A](body: Poll[IO] => IO[A]): IO[A] = ???
+
+      override def canceled: IO[Unit] = ???
+
+      override def onCancel[A](fa: IO[A], fin: IO[Unit]): IO[A] = ???
+
+      override def flatMap[A, B](fa: IO[A])(f: A => IO[B]): IO[B] = fa.flatMap(f)
+
+      override def tailRecM[A, B](a: A)(f: A => IO[Either[A, B]]): IO[B] =
+        IO.asyncForIO.tailRecM(a)(f)
+
+      override def raiseError[A](e: Throwable): IO[A] = IO.raiseError(e)
+
+      override def handleErrorWith[A](fa: IO[A])(f: Throwable => IO[A]): IO[A] =
+        fa.handleErrorWith(f)
+
+      override def pure[A](x: A): IO[A] = IO.pure(x)
+
+      override def monotonic: IO[FiniteDuration] = ???
+
+      override def realTime: IO[FiniteDuration] = ???
+
+      override def unique: IO[cats.effect.kernel.Unique.Token] = ???
     }
 }

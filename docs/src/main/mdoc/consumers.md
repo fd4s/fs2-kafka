@@ -144,8 +144,6 @@ In addition, there are several settings specific to the library.
 
 - `withCreateConsumer` changes how the underlying Java Kafka consumer is created. The default merely creates a Java `KafkaConsumer` instance using set properties, but this function allows overriding the behaviour for e.g. testing purposes.
 
-- `withBlocker` sets the `Blocker` on which blocking Java Kafka consumer functions are executed. Unless specified, a default fixed single-thread pool is created as part of consumer initialization, with the thread name using the `fs2-kafka-consumer` prefix.
-
 - `withMaxPrefetchBatches` adjusts the maximum number of record batches per topic-partition to prefetch before backpressure is applied. The default is 2, meaning there can be up to 2 record batches per topic-partition waiting to be processed.
 
 - `withPollInterval` alters how often consumer `poll` should take place. Default is 50 milliseconds.
@@ -344,7 +342,7 @@ To achieve this behavior we could use a `stopConsuming` method on a` KafkaConsum
 We could combine `stopConsuming` with the custom resource handling and implement a graceful shutdown. Let's try it:
 
 ```scala mdoc:silent
-import cats.effect.concurrent.{Deferred, Ref}
+import cats.effect.{Deferred, Ref}
 
 object WithGracefulShutdownExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
@@ -372,7 +370,7 @@ object WithGracefulShutdownExample extends IOApp {
           }.uncancelable // [7]
         } { case ((consumer, closeConsumer), exitCase) => // [8]
           (exitCase match {
-            case ExitCase.Error(e) => handleError(e) // [9]
+            case Outcome.Errored(e) => handleError(e) // [9]
             case _ => for {
               _ <- gracefulShutdownStartedRef.set(true) // [10]
               _ <- consumer.stopConsuming // [11]

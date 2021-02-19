@@ -134,8 +134,6 @@ The following settings are specific to the library.
 
 - `withCreateProducer` changes how the underlying Java Kafka producer is created. The default merely creates a Java `KafkaProducer` instance using set properties, but this function allows overriding the behaviour for e.g. testing purposes.
 
-- `withBlocker` sets the `Blocker` on which blocking Java Kafka producer functions are executed. Unless specified, a default fixed single-thread pool is created as part of producer initialization, with the thread name using the `fs2-kafka-producer` prefix.
-
 ## Producer Creation
 
 Once [`ProducerSettings`][producersettings] is defined, use `KafkaProducer.stream` to create a [`KafkaProducer`][kafkaproducer] instance.

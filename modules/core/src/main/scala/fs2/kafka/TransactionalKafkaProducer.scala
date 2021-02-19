@@ -6,13 +6,14 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, Resource}
+import cats.effect.{Resource, Async, Outcome}
 import cats.effect.syntax.all._
-import cats.implicits._
+import cats.syntax.all._
 import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
+import cats.effect.std.Dispatcher
 
 /**
   * Represents a producer of Kafka records specialized for 'read-process-write'
@@ -52,14 +53,16 @@ object TransactionalKafkaProducer {
   def resource[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     (
-      Resource.liftF(settings.producerSettings.keySerializer),
-      Resource.liftF(settings.producerSettings.valueSerializer),
-      WithProducer(settings)
-    ).mapN { (keySerializer, valueSerializer, withProducer) =>
+      Resource.eval(settings.producerSettings.keySerializer),
+      Resource.eval(settings.producerSettings.valueSerializer),
+      WithProducer(settings),
+      Dispatcher[F]
+    ).mapN { (keySerializer, valueSerializer, withProducer, dispatcher) =>
+      implicit val dispatcher0 = dispatcher
+
       new TransactionalKafkaProducer[F, K, V] {
         override def produce[P](
           records: TransactionalProducerRecords[F, P, K, V]
@@ -99,9 +102,9 @@ object TransactionalKafkaProducer {
                         }
                       }
                   } {
-                    case (_, ExitCase.Completed) =>
+                    case (_, Outcome.Succeeded(_)) =>
                       blocking(producer.commitTransaction())
-                    case (_, ExitCase.Canceled | ExitCase.Error(_)) =>
+                    case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
                       blocking(producer.abortTransaction())
                   }
               }.flatten
@@ -124,7 +127,7 @@ object TransactionalKafkaProducer {
     * }}}
     */
   def resource[F[_]](
-    implicit F: ConcurrentEffect[F]
+    implicit F: Async[F]
   ): TransactionalProducerResource[F] =
     new TransactionalProducerResource(F)
 
@@ -141,8 +144,7 @@ object TransactionalKafkaProducer {
   def stream[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
     Stream.resource(resource(settings))
 
@@ -157,7 +159,7 @@ object TransactionalKafkaProducer {
     * }}}
     */
   def stream[F[_]](
-    implicit F: ConcurrentEffect[F]
+    implicit F: Async[F]
   ): TransactionalProducerStream[F] =
     new TransactionalProducerStream(F)
 }

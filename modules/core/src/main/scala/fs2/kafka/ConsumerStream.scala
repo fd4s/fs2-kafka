@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift, Timer}
+import cats.effect.Async
 import fs2.Stream
 
 /**
@@ -19,7 +19,7 @@ import fs2.Stream
   * }}}
   */
 final class ConsumerStream[F[_]] private[kafka] (
-  private val F: ConcurrentEffect[F]
+  private val F: Async[F]
 ) extends AnyVal {
 
   /**
@@ -27,11 +27,8 @@ final class ConsumerStream[F[_]] private[kafka] (
     * This is equivalent to using `KafkaConsumer.stream` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: ConsumerSettings[F, K, V])(
-    implicit context: ContextShift[F],
-    timer: Timer[F]
-  ): Stream[F, KafkaConsumer[F, K, V]] =
-    KafkaConsumer.stream(settings)(F, context, timer)
+  def using[K, V](settings: ConsumerSettings[F, K, V]): Stream[F, KafkaConsumer[F, K, V]] =
+    KafkaConsumer.stream[F, K, V](settings)(F)
 
   override def toString: String =
     "ConsumerStream$" + System.identityHashCode(this)

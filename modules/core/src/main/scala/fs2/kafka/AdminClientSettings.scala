@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Blocker, Sync}
+import cats.effect.Sync
 import cats.Show
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.admin.{AdminClient, AdminClientConfig}
@@ -26,19 +26,6 @@ import scala.concurrent.duration._
   * then apply any desired modifications on top of that instance.
   */
 sealed abstract class AdminClientSettings[F[_]] {
-
-  /**
-    * The `Blocker` to use for blocking Kafka operations. If not
-    * explicitly provided, a default `Blocker` will be created
-    * when creating a `KafkaAdminClient` instance.
-    */
-  def blocker: Option[Blocker]
-
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the
-    * specified [[blocker]] to use for blocking operations.
-    */
-  def withBlocker(blocker: Blocker): AdminClientSettings[F]
 
   /**
     * Properties which can be provided when creating a Java `KafkaAdminClient`
@@ -205,13 +192,10 @@ sealed abstract class AdminClientSettings[F[_]] {
 
 object AdminClientSettings {
   private[this] final case class AdminClientSettingsImpl[F[_]](
-    override val blocker: Option[Blocker],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     val createAdminClientWith: Map[String, String] => F[AdminClient]
   ) extends AdminClientSettings[F] {
-    override def withBlocker(blocker: Blocker): AdminClientSettings[F] =
-      copy(blocker = Some(blocker))
 
     override def withBootstrapServers(bootstrapServers: String): AdminClientSettings[F] =
       withProperty(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -279,11 +263,10 @@ object AdminClientSettings {
 
   def apply[F[_]](implicit F: Sync[F]): AdminClientSettings[F] =
     AdminClientSettingsImpl(
-      blocker = None,
       properties = Map.empty,
       closeTimeout = 20.seconds,
       createAdminClientWith = properties =>
-        F.delay {
+        F.blocking {
           AdminClient.create {
             (properties: Map[String, AnyRef]).asJava
           }

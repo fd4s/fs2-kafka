@@ -6,8 +6,8 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
-import cats.effect.concurrent.Semaphore
+import cats.effect.{Resource, Async}
+import cats.effect.std.Semaphore
 import cats.implicits._
 import fs2.kafka.{KafkaByteConsumer, ConsumerSettings}
 import fs2.kafka.internal.syntax._
@@ -24,25 +24,17 @@ private[kafka] object WithConsumer {
   def apply[F[_], K, V](
     settings: ConsumerSettings[F, K, V]
   )(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
-  ): Resource[F, WithConsumer[F]] = {
-    val blockingResource =
-      settings.blocker
-        .map(Resource.pure[F, Blocker])
-        .getOrElse(Blockers.consumer)
-        .map(Blocking.fromBlocker[F])
-
-    blockingResource.flatMap { blocking_ =>
-      Resource.make {
-        (settings.createConsumer, Semaphore[F](1L))
-          .mapN { (consumer, semaphore) =>
-            new WithConsumer[F] {
-              override def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A] =
-                semaphore.withPermit { f(consumer, blocking_) }
-            }
+    implicit F: Async[F]
+  ): Resource[F, WithConsumer[F]] =
+    Resource.make {
+      (settings.createConsumer, Semaphore[F](1L))
+        .mapN { (consumer, semaphore) =>
+          new WithConsumer[F] {
+            override def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A] =
+              semaphore.permit.use { _ =>
+                f(consumer, Blocking[F])
+              }
           }
-      }(_.blocking { _.close(settings.closeTimeout.asJava) })
-    }
-  }
+        }
+    }(_.blocking { _.close(settings.closeTimeout.asJava) })
 }

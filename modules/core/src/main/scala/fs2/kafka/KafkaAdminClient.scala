@@ -483,8 +483,7 @@ object KafkaAdminClient {
   def resource[F[_]](
     settings: AdminClientSettings[F]
   )(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Resource[F, KafkaAdminClient[F]] =
     WithAdminClient(settings).map { client =>
       new KafkaAdminClient[F] {
@@ -575,8 +574,7 @@ object KafkaAdminClient {
     * use the [[KafkaAdminClient.resource]].
     */
   def stream[F[_]](settings: AdminClientSettings[F])(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
+    implicit F: Async[F]
   ): Stream[F, KafkaAdminClient[F]] =
     Stream.resource(KafkaAdminClient.resource(settings))
 }

@@ -55,8 +55,7 @@ package object kafka {
     * offsets for that time window.
     */
   def commitBatchWithin[F[_]](n: Int, d: FiniteDuration)(
-    implicit F: Concurrent[F],
-    timer: Timer[F]
+    implicit F: Temporal[F]
   ): Pipe[F, CommittableOffset[F], Unit] =
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 }

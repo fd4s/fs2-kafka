@@ -1,6 +1,7 @@
 package fs2.kafka.vulcan
 
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
 import vulcan.{AvroError, Codec}

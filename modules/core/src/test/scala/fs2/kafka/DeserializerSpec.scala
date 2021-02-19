@@ -2,15 +2,16 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.laws.discipline._
-import cats.effect.laws.util._
 
-final class DeserializerSpec extends BaseCatsSpec with TestInstances {
+final class DeserializerSpec extends BaseCatsSpec {
   checkAll(
     "Deserializer[IO, *]", {
-      implicit val testContext: TestContext = TestContext()
+      implicit val ticker = Ticker()
       MonadErrorTests[Deserializer[IO, *], Throwable].monadError[String, String, String]
     }
   )
+
+  import cats.effect.unsafe.implicits.global
 
   test("Deserializer#attempt") {
     forAll { (topic: String, headers: Headers, i: Int) =>

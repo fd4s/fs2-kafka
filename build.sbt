@@ -1,10 +1,10 @@
-val catsEffectVersion = "2.3.1"
+val catsEffectVersion = "3.0.0-RC2"
 
 val catsVersion = "2.4.1"
 
 val confluentVersion = "6.1.0"
 
-val fs2Version = "2.5.0"
+val fs2Version = "3.0.0-M8"
 
 val kafkaVersion = "2.7.0"
 
@@ -36,6 +36,7 @@ lazy val core = project
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
+        "org.typelevel" %% "cats-effect" % catsEffectVersion,
         "co.fs2" %% "fs2-core" % fs2Version,
         "org.apache.kafka" % "kafka-clients" % kafkaVersion
       )
@@ -87,6 +88,7 @@ lazy val dependencySettings = Seq(
       .withDottyCompat(scalaVersion.value),
     "org.typelevel" %% "discipline-scalatest" % "2.1.1",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
+    "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
     "org.typelevel" %% "cats-testkit-scalatest" % "2.1.1",
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
@@ -226,7 +228,7 @@ lazy val publishSettings =
   )
 
 lazy val mimaSettings = Seq(
-  // Restore this after releasing v2.0.0
+  // Restore this after releasing v3.0.0
   // mimaPreviousArtifacts := {
   //   if (publishArtifact.value) {
   //     Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)

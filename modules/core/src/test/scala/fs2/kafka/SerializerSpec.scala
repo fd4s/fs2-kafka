@@ -7,16 +7,16 @@ import java.nio.charset.StandardCharsets
 import java.util.UUID
 import org.scalacheck.Arbitrary
 import org.scalatest._
-import cats.effect.laws.util.TestContext
-import cats.effect.laws.util.TestInstances
 
-final class SerializerSpec extends BaseCatsSpec with TestInstances {
+final class SerializerSpec extends BaseCatsSpec {
   checkAll(
     "Serializer[IO, *]", {
-      implicit val testContext: TestContext = TestContext()
+      implicit val ticker = Ticker()
       ContravariantTests[Serializer[IO, *]].contravariant[String, String, String]
     }
   )
+
+  import cats.effect.unsafe.implicits.global
 
   test("Serializer#mapBytes") {
     val serializer =

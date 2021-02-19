@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift}
+import cats.effect.Async
 import fs2.Stream
 
 /**
@@ -19,7 +19,7 @@ import fs2.Stream
   * }}}
   */
 final class TransactionalProducerStream[F[_]] private[kafka] (
-  private val F: ConcurrentEffect[F]
+  private val F: Async[F]
 ) extends AnyVal {
 
   /**
@@ -27,10 +27,10 @@ final class TransactionalProducerStream[F[_]] private[kafka] (
     * This is equivalent to using `TransactionalKafkaProducer.stream` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: TransactionalProducerSettings[F, K, V])(
-    implicit context: ContextShift[F]
+  def using[K, V](
+    settings: TransactionalProducerSettings[F, K, V]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
-    TransactionalKafkaProducer.stream(settings)(F, context)
+    TransactionalKafkaProducer.stream(settings)(F)
 
   override def toString: String =
     "TransactionalProducerStream$" + System.identityHashCode(this)
