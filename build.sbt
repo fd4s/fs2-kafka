@@ -10,13 +10,13 @@ val kafkaVersion = "2.7.0"
 
 val testcontainersScalaVersion = "0.39.1"
 
-val vulcanVersion = "1.4.0"
+val vulcanVersion = "1.4.1"
 
 val scala212 = "2.12.13"
 
-val scala213 = "2.13.3"
+val scala213 = "2.13.4"
 
-val scala3 = "3.0.0-M3"
+val scala3 = "3.0.0-RC1"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -36,8 +36,8 @@ lazy val core = project
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
-        "org.typelevel" %% "cats-effect" % catsEffectVersion,
         "co.fs2" %% "fs2-core" % fs2Version,
+        "org.typelevel" %% "cats-effect" % catsEffectVersion,
         "org.apache.kafka" % "kafka-clients" % kafkaVersion
       )
     ),
@@ -86,20 +86,22 @@ lazy val dependencySettings = Seq(
       .withDottyCompat(scalaVersion.value),
     ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
       .withDottyCompat(scalaVersion.value),
-    "org.typelevel" %% "discipline-scalatest" % "2.1.1",
+    "org.typelevel" %% "discipline-scalatest" % "2.1.2",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "org.typelevel" %% "cats-testkit-scalatest" % "2.1.1",
+    "org.typelevel" %% "cats-testkit-scalatest" % "2.1.2",
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
-  libraryDependencies ++= (if (isDotty.value) Nil
-                           else
-                             Seq(
-                               compilerPlugin(
-                                 ("org.typelevel" %% "kind-projector" % "0.11.3")
-                                   .cross(CrossVersion.full)
-                               )
-                             )),
+  libraryDependencies ++= {
+    if (isDotty.value) Nil
+    else
+      Seq(
+        compilerPlugin(
+          ("org.typelevel" %% "kind-projector" % "0.11.3")
+            .cross(CrossVersion.full)
+        )
+      )
+  },
   pomPostProcess := { (node: xml.Node) =>
     new xml.transform.RuleTransformer(new xml.transform.RewriteRule {
       def scopedDependency(e: xml.Elem): Boolean =
@@ -176,7 +178,7 @@ lazy val metadataSettings = Seq(
   organization := "com.github.fd4s"
 )
 
-ThisBuild / githubWorkflowTargetBranches := Seq("master", "series/*")
+ThisBuild / githubWorkflowTargetBranches := Seq("series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),

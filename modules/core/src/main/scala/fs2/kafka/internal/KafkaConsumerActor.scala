@@ -164,7 +164,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] def fetch(
     partition: TopicPartition,
     streamId: StreamId,
-    partitionStreamId: PartitionStreamId,
     callback: ((Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)) => F[Unit]
   ): F[Unit] = {
     val assigned =
@@ -174,7 +173,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       ref
         .modify { state =>
           val (newState, oldFetch) =
-            state.withFetch(partition, streamId, partitionStreamId, callback)
+            state.withFetch(partition, streamId, callback)
           (newState, (newState, oldFetch))
         }
         .flatMap {
@@ -563,8 +562,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case Request.Assign(partitions, callback)        => assign(partitions, callback)
       case Request.SubscribePattern(pattern, callback) => subscribe(pattern, callback)
       case Request.Unsubscribe(callback)               => unsubscribe(callback)
-      case Request.Fetch(partition, streamId, partitionStreamId, callback) =>
-        fetch(partition, streamId, partitionStreamId, callback)
+      case Request.Fetch(partition, streamId, callback) =>
+        fetch(partition, streamId, callback)
       case request @ Request.Commit(_, _)            => commit(request)
       case request @ Request.ManualCommitAsync(_, _) => manualCommitAsync(request)
       case request @ Request.ManualCommitSync(_, _)  => manualCommitSync(request)
@@ -630,11 +629,9 @@ private[kafka] object KafkaConsumerActor {
   }
 
   type StreamId = Int
-  type PartitionStreamId = Int
 
   final case class State[F[_], K, V](
     fetches: Map[TopicPartition, Map[StreamId, FetchRequest[F, K, V]]],
-    partitionStreamIds: Map[TopicPartition, PartitionStreamId],
     records: Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]],
     pendingCommits: Chain[Request.Commit[F, K, V]],
     onRebalances: Chain[OnRebalance[F, K, V]],
@@ -651,48 +648,29 @@ private[kafka] object KafkaConsumerActor {
     def withFetch(
       partition: TopicPartition,
       streamId: StreamId,
-      partitionStreamId: PartitionStreamId,
       callback: ((Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)) => F[Unit]
     ): (State[F, K, V], List[FetchRequest[F, K, V]]) = {
       val newFetchRequest =
         FetchRequest(callback)
 
-      val oldPartitionFetches =
+      val oldPartitionFetches: Map[StreamId, FetchRequest[F, K, V]] =
         fetches.getOrElse(partition, Map.empty)
 
-      val oldPartitionFetch =
-        oldPartitionFetches.get(streamId)
+      val newFetches: Map[TopicPartition, Map[StreamId, FetchRequest[F, K, V]]] =
+        fetches.updated(partition, oldPartitionFetches.updated(streamId, newFetchRequest))
 
-      val oldPartitionStreamId =
-        partitionStreamIds.getOrElse(partition, 0)
-
-      val hasMoreRecentPartitionStreamIds =
-        oldPartitionStreamId > partitionStreamId
-
-      val newFetches =
-        fetches.updated(partition, {
-          if (hasMoreRecentPartitionStreamIds) oldPartitionFetches - streamId
-          else oldPartitionFetches.updated(streamId, newFetchRequest)
-        })
-
-      val newPartitionStreamIds =
-        partitionStreamIds.updated(partition, oldPartitionStreamId max partitionStreamId)
-
-      val fetchesToRevoke =
-        if (hasMoreRecentPartitionStreamIds)
-          newFetchRequest :: oldPartitionFetch.toList
-        else oldPartitionFetch.toList
+      val fetchesToRevoke: List[FetchRequest[F, K, V]] =
+        oldPartitionFetches.get(streamId).toList
 
       (
-        copy(fetches = newFetches, partitionStreamIds = newPartitionStreamIds),
+        copy(fetches = newFetches),
         fetchesToRevoke
       )
     }
 
     def withoutFetches(partitions: Set[TopicPartition]): State[F, K, V] =
       copy(
-        fetches = fetches.filterKeysStrict(!partitions.contains(_)),
-        partitionStreamIds = partitionStreamIds.filterKeysStrict(!partitions.contains(_))
+        fetches = fetches.filterKeysStrict(!partitions.contains(_))
       )
 
     def withRecords(
@@ -703,7 +681,6 @@ private[kafka] object KafkaConsumerActor {
     def withoutFetchesAndRecords(partitions: Set[TopicPartition]): State[F, K, V] =
       copy(
         fetches = fetches.filterKeysStrict(!partitions.contains(_)),
-        partitionStreamIds = partitionStreamIds.filterKeysStrict(!partitions.contains(_)),
         records = records.filterKeysStrict(!partitions.contains(_))
       )
 
@@ -739,17 +716,7 @@ private[kafka] object KafkaConsumerActor {
               append(fs.mkString("[", ", ", "]"))
           }("", ", ", "")
 
-      val partitionStreamIdsString =
-        partitionStreamIds.toList
-          .sortBy { case (tp, _) => tp }
-          .mkStringAppend {
-            case (append, (tp, id)) =>
-              append(tp.toString)
-              append(" -> ")
-              append(id.toString)
-          }("", ", ", "")
-
-      s"State(fetches = Map($fetchesString), partitionStreamIds = Map($partitionStreamIdsString), records = Map(${recordsString(records)}), pendingCommits = $pendingCommits, onRebalances = $onRebalances, rebalancing = $rebalancing, subscribed = $subscribed, streaming = $streaming)"
+      s"State(fetches = Map($fetchesString), records = Map(${recordsString(records)}), pendingCommits = $pendingCommits, onRebalances = $onRebalances, rebalancing = $rebalancing, subscribed = $subscribed, streaming = $streaming)"
     }
   }
 
@@ -757,7 +724,6 @@ private[kafka] object KafkaConsumerActor {
     def empty[F[_], K, V]: State[F, K, V] =
       State(
         fetches = Map.empty,
-        partitionStreamIds = Map.empty,
         records = Map.empty,
         pendingCommits = Chain.empty,
         onRebalances = Chain.empty,
@@ -826,7 +792,6 @@ private[kafka] object KafkaConsumerActor {
     final case class Fetch[F[_], K, V](
       partition: TopicPartition,
       streamId: StreamId,
-      partitionStreamId: PartitionStreamId,
       callback: ((Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)) => F[Unit]
     ) extends Request[F, K, V]
 
