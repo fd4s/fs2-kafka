@@ -175,7 +175,7 @@ lazy val metadataSettings = Seq(
   organization := "com.github.fd4s"
 )
 
-ThisBuild / githubWorkflowTargetBranches := Seq("master", "series/*")
+ThisBuild / githubWorkflowTargetBranches := Seq("series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
