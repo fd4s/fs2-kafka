@@ -9,9 +9,9 @@ name: Continuous Integration
 
 on:
   pull_request:
-    branches: [master, series/*]
+    branches: [series/*]
   push:
-    branches: [master, series/*]
+    branches: [series/*]
     tags: [v*]
 
 env:
@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.12.13, 2.13.3, 3.0.0-M3]
+        scala: [2.12.13, 2.13.4, 3.0.0-RC1]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -54,7 +54,7 @@ jobs:
 
       - run: sbt ++${{ matrix.scala }} ci
 
-      - if: matrix.scala == '2.13.3'
+      - if: matrix.scala == '2.13.4'
         run: sbt ++${{ matrix.scala }} docs/run
 
   publish:
@@ -64,7 +64,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.3]
+        scala: [2.13.4]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
