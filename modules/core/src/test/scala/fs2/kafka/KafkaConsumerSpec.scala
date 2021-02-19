@@ -585,6 +585,66 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         }).unsafeRunSync()
       }
     }
+
+    it("should handle multiple rebalances with multiple instances under load #532") {
+      withTopic { topic =>
+        val numPartitions = 3
+        createCustomTopic(topic, partitions = numPartitions)
+
+        val produced = (0 until 10000).map(n => s"key-$n" -> s"value->$n")
+        publishToKafka(topic, produced)
+
+        def run(instance: Int, allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]): IO[Unit] =
+          KafkaConsumer
+            .stream(consumerSettings[IO].withGroupId("test"))
+            .evalTap(_.subscribeTo(topic))
+            .flatMap(_.partitionsMapStream)
+            .flatMap { assignment =>
+              Stream.eval(allAssignments.update { current =>
+                current.updated(instance, assignment.keySet.map(_.partition()))
+              }) >> Stream
+                .emits(assignment.map {
+                  case (_, partitionStream) =>
+                    partitionStream.evalMap(_ => IO.sleep(10.millis)) // imitating some work
+                }.toList)
+                .parJoinUnbounded
+            }
+            .compile
+            .drain
+
+        def checkAssignments(
+          allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]
+        )(instances: Set[Int]) =
+          allAssignments.discrete
+            .filter { state =>
+              state.keySet == instances &&
+              instances.forall { instance =>
+                state.get(instance).exists(_.nonEmpty)
+              } && state.values.toList.flatMap(_.toList).sorted == List(0, 1, 2)
+            }
+            .take(1)
+            .compile
+            .drain
+
+        (for {
+          allAssignments <- SignallingRef[IO, Map[Int, Set[Int]]](Map.empty)
+          check = checkAssignments(allAssignments)(_)
+          fiber0 <- run(0, allAssignments).start
+          _ <- check(Set(0))
+          fiber1 <- run(1, allAssignments).start
+          _ <- check(Set(0, 1))
+          fiber2 <- run(2, allAssignments).start
+          _ <- check(Set(0, 1, 2))
+          _ <- fiber2.cancel
+          _ <- allAssignments.update(_ - 2)
+          _ <- check(Set(0, 1))
+          _ <- fiber1.cancel
+          _ <- allAssignments.update(_ - 1)
+          _ <- check(Set(0))
+          _ <- fiber0.cancel
+        } yield succeed).unsafeRunSync()
+      }
+    }
   }
 
   describe("KafkaConsumer#assignmentStream") {
