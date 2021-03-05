@@ -3,7 +3,7 @@ rule = Fs2Kafka
  */
 package fix
 
-import fs2.kafka._
+import fs2.kafka.{ producerResource, _ }
 import scala.concurrent.ExecutionContext
 import cats.effect.{ContextShift, IO, Resource, Timer}
 
@@ -23,6 +23,9 @@ object Fs2Kafka {
   producerStream(producerSettings)
 
   produce(producerSettings)
+  
+  def foo(bar: Any)(baz: Any): Any = ???
+  foo(produce(producerSettings))(3)
 
   transactionalProducerResource[IO].using(transactionalProducerSettings)
   transactionalProducerResource(transactionalProducerSettings)
