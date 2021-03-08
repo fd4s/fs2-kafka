@@ -12,7 +12,11 @@ import cats.syntax.all._
 import java.nio.file.{Files, Path}
 import java.security.KeyStore
 
-sealed abstract class KafkaCredentialStore {
+sealed trait KafkaCredentialStore {
+  def properties: Map[String, String]
+}
+
+sealed abstract class Pkcs12KafkaCredentialStore extends KafkaCredentialStore {
   def keyStoreFile: KeyStoreFile
 
   def keyStorePassword: KeyStorePassword
@@ -20,19 +24,17 @@ sealed abstract class KafkaCredentialStore {
   def trustStoreFile: TrustStoreFile
 
   def trustStorePassword: TrustStorePassword
-
-  def properties: Map[String, String]
 }
 
-object KafkaCredentialStore {
+object Pkcs12KafkaCredentialStore {
   final def apply[F[_]: ContextShift](
     clientPrivateKey: ClientPrivateKey,
     clientCertificate: ClientCertificate,
     serviceCertificate: ServiceCertificate,
     blocker: Blocker
-  )(implicit F: Sync[F]): F[KafkaCredentialStore] =
+  )(implicit F: Sync[F]): F[Pkcs12KafkaCredentialStore] =
     for {
-      setupDetails <- KafkaCredentialStore.createTemporary[F]
+      setupDetails <- Pkcs12KafkaCredentialStore.createTemporary[F]
       _ <- setupKeyStore(
         clientPrivateKey = clientPrivateKey,
         clientCertificate = clientCertificate,
@@ -53,7 +55,7 @@ object KafkaCredentialStore {
     clientCertificate: String,
     serviceCertificate: String,
     blocker: Blocker
-  ): F[KafkaCredentialStore] =
+  ): F[Pkcs12KafkaCredentialStore] =
     (
       ClientPrivateKey.fromString(clientPrivateKey).liftTo[F],
       ClientCertificate.fromString(clientCertificate).liftTo[F],
@@ -124,14 +126,14 @@ object KafkaCredentialStore {
       blocker = blocker
     )
 
-  private final def createTemporary[F[_]](implicit F: Sync[F]): F[KafkaCredentialStore] =
+  private final def createTemporary[F[_]](implicit F: Sync[F]): F[Pkcs12KafkaCredentialStore] =
     for {
       _keyStoreFile <- KeyStoreFile.createTemporary[F]
       _keyStorePassword <- KeyStorePassword.createTemporary[F]
       _trustStoreFile <- TrustStoreFile.createTemporary[F]
       _trustStorePassword <- TrustStorePassword.createTemporary[F]
     } yield {
-      new KafkaCredentialStore {
+      new Pkcs12KafkaCredentialStore {
         override final val keyStoreFile: KeyStoreFile =
           _keyStoreFile
 
@@ -158,5 +160,26 @@ object KafkaCredentialStore {
         override final def toString: String =
           s"KafkaCredentialStore($keyStoreFile, $keyStorePassword, $trustStoreFile, $trustStorePassword)"
       }
+    }
+}
+
+sealed abstract class PemKafkaCredentialStore extends KafkaCredentialStore
+
+object PemKafkaCredentialStore {
+  final def createFromStrings[F[_]: Sync: ContextShift](
+    caCertificate: String,
+    accessKey: String,
+    accessCertificate: String
+  ): PemKafkaCredentialStore =
+    new PemKafkaCredentialStore {
+      override def properties: Map[String, String] =
+        Map(
+          "security.protocol" -> "SSL",
+          "ssl.truststore.type" -> "PEM",
+          "ssl.truststore.certificates" -> caCertificate,
+          "ssl.keystore.type" -> "PEM",
+          "ssl.keystore.key" -> accessKey,
+          "ssl.keystore.certificate.chain" -> accessCertificate
+        )
     }
 }
