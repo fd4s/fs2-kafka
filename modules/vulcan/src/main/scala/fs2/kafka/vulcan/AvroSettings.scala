@@ -10,7 +10,6 @@ import cats.effect.Sync
 import cats.implicits._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
-import fs2.kafka.security.KafkaCredentialStore
 
 /**
   * Describes how to create a `KafkaAvroDeserializer` and a
@@ -119,12 +118,6 @@ sealed abstract class AvroSettings[F[_]] {
     createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
     // format: on
   ): AvroSettings[F]
-
-  /**
-    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
-    */
-  def withCredentials(credentialsStore: KafkaCredentialStore): AvroSettings[F] =
-    withProperties(credentialsStore.properties)
 }
 
 object AvroSettings {

@@ -9,7 +9,6 @@ package fs2.kafka.vulcan
 import cats.effect.Sync
 import cats.Show
 import fs2.kafka.internal.converters.collection._
-import fs2.kafka.security.KafkaCredentialStore
 
 /**
   * Describes how to create a `SchemaRegistryClient` and which
@@ -84,12 +83,6 @@ sealed abstract class SchemaRegistryClientSettings[F[_]] {
   def withCreateSchemaRegistryClient(
     createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[SchemaRegistryClient]
   ): SchemaRegistryClientSettings[F]
-
-  /**
-    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
-    */
-  def withCredentials(credentialsStore: KafkaCredentialStore): SchemaRegistryClientSettings[F] =
-    withProperties(credentialsStore.properties)
 }
 
 object SchemaRegistryClientSettings {
