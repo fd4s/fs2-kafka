@@ -36,7 +36,7 @@ private[kafka] object WithAdminClient {
             new WithAdminClient[F] {
               override def apply[A](f: AdminClient => KafkaFuture[A]): F[A] =
                 context.blockOn(blocker) {
-                  F.suspend(f(adminClient).cancelable)
+                  F.defer(f(adminClient).cancelable)
                 }
             }
 
