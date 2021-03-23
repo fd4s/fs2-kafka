@@ -1,6 +1,6 @@
 package fix
 
-import fs2.kafka._
+import fs2.kafka.{ producerResource, _ }
 import scala.concurrent.ExecutionContext
 import cats.effect.{ContextShift, IO, Resource, Timer}
 import fs2.kafka.{ KafkaAdminClient, KafkaConsumer, KafkaProducer, TransactionalKafkaProducer }
@@ -21,6 +21,9 @@ object Fs2Kafka {
   KafkaProducer.stream(producerSettings)
 
   KafkaProducer.pipe(producerSettings)
+  
+  def foo(bar: Any)(baz: Any): Any = ???
+  foo(KafkaProducer.pipe(producerSettings))(3)
 
   TransactionalKafkaProducer.resource[IO].using(transactionalProducerSettings)
   TransactionalKafkaProducer.resource(transactionalProducerSettings)

@@ -16,19 +16,17 @@ class Fs2Kafka extends SemanticRule("Fs2Kafka") {
     "transactionalProducerStream" -> ("TransactionalKafkaProducer", "stream"),
     "produce" -> ("KafkaProducer", "pipe")
   )
+
   override def fix(implicit doc: SemanticDocument): Patch =
     doc.tree.collect {
-      case Term.Apply(r, _) =>
-        r.collect {
-          case term @ Name(name) if term.symbol.owner == Symbol("fs2/kafka/package.") =>
-            packageObjectDeprecations
-              .get(name)
-              .map {
-                case (obj, method) =>
-                  Patch.replaceTree(term, s"$obj.$method") +
-                    Patch.addGlobalImport(Symbol(s"fs2/kafka/$obj#"))
-              }
-              .getOrElse(Patch.empty)
-        }.asPatch
+      case term @ Term.Name(name)
+          if term.symbol.owner == Symbol("fs2/kafka/package.") =>
+        packageObjectDeprecations
+          .get(name)
+          .map { case (obj, method) =>
+            Patch.replaceTree(term, s"$obj.$method") +
+              Patch.addGlobalImport(Symbol(s"fs2/kafka/$obj#"))
+          }
+          .getOrElse(Patch.empty)
     }.asPatch
 }
