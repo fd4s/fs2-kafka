@@ -576,16 +576,16 @@ object KafkaConsumer {
     timer: Timer[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     for {
-      keyDeserializer <- Resource.liftF(settings.keyDeserializer)
-      valueDeserializer <- Resource.liftF(settings.valueDeserializer)
-      id <- Resource.liftF(F.delay(new Object().hashCode))
-      jitter <- Resource.liftF(Jitter.default[F])
-      logging <- Resource.liftF(Logging.default[F](id))
-      requests <- Resource.liftF(Queue.unbounded[F, Request[F, K, V]])
-      polls <- Resource.liftF(Queue.bounded[F, Request[F, K, V]](1))
-      ref <- Resource.liftF(Ref.of[F, State[F, K, V]](State.empty))
-      streamId <- Resource.liftF(Ref.of[F, StreamId](0))
-      stopConsumingDeferred <- Resource.liftF(Deferred.tryable[F, Unit])
+      keyDeserializer <- Resource.eval(settings.keyDeserializer)
+      valueDeserializer <- Resource.eval(settings.valueDeserializer)
+      id <- Resource.eval(F.delay(new Object().hashCode))
+      jitter <- Resource.eval(Jitter.default[F])
+      logging <- Resource.eval(Logging.default[F](id))
+      requests <- Resource.eval(Queue.unbounded[F, Request[F, K, V]])
+      polls <- Resource.eval(Queue.bounded[F, Request[F, K, V]](1))
+      ref <- Resource.eval(Ref.of[F, State[F, K, V]](State.empty))
+      streamId <- Resource.eval(Ref.of[F, StreamId](0))
+      stopConsumingDeferred <- Resource.eval(Deferred.tryable[F, Unit])
       withConsumer <- WithConsumer(settings)
       actor = {
         implicit val jitter0: Jitter[F] = jitter

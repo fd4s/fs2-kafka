@@ -56,8 +56,8 @@ object TransactionalKafkaProducer {
     context: ContextShift[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     (
-      Resource.liftF(settings.producerSettings.keySerializer),
-      Resource.liftF(settings.producerSettings.valueSerializer),
+      Resource.eval(settings.producerSettings.keySerializer),
+      Resource.eval(settings.producerSettings.valueSerializer),
       WithProducer(settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer[F, K, V] {

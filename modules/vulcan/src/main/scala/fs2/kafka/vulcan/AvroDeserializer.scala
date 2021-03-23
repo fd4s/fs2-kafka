@@ -25,7 +25,7 @@ final class AvroDeserializer[A] private[vulcan] (
           settings.createAvroDeserializer(_).map {
             case (deserializer, schemaRegistryClient) =>
               Deserializer.instance { (topic, _, bytes) =>
-                F.suspend {
+                F.defer {
                   val writerSchemaId =
                     ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
 
