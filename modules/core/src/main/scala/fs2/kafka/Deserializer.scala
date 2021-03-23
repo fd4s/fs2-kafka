@@ -166,7 +166,7 @@ object Deserializer {
 
       override def suspend: Deserializer[F, A] =
         Deserializer.instance { (topic, headers, bytes) =>
-          F.suspend(deserialize(topic, headers, bytes))
+          F.defer(deserialize(topic, headers, bytes))
         }
 
       override def toString: String =
