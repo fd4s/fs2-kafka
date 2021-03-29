@@ -1,7 +1,6 @@
 package fs2.kafka
 
 import cats.data.NonEmptySet
-import cats.effect.concurrent.Ref
 import cats.effect.{Fiber, IO}
 import cats.implicits._
 import fs2.Stream
@@ -14,6 +13,7 @@ import org.scalatest.Assertion
 
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
+import cats.effect.Ref
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
 

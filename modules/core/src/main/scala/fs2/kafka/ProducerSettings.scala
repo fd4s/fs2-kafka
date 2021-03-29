@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Blocker, Sync}
+import cats.effect.Sync
 import cats.Show
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -251,7 +251,7 @@ object ProducerSettings {
     override val parallelism: Int,
     val createProducerWith: Map[String, String] => F[KafkaByteProducer]
   ) extends ProducerSettings[F, K, V] {
-    override def withBlocker(blocker: Blocker): ProducerSettings[F, K, V] =
+    override def withBlocker: ProducerSettings[F, K, V] =
       copy(blocker = Some(blocker))
 
     override def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V] =

@@ -57,9 +57,7 @@ object KafkaProducerConnection {
   def stream[F[_]](
     settings: ProducerSettings[F, _, _]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
-  ): Stream[F, KafkaProducerConnection[F]] = Stream.resource(resource(settings))
+    implicit F: ConcurrentEffect[F]): Stream[F, KafkaProducerConnection[F]] = Stream.resource(resource(settings))
 
   /**
     * Creates a new [[KafkaProducerConnection]] in the `Resource` context,
@@ -72,9 +70,7 @@ object KafkaProducerConnection {
   def resource[F[_]](
     settings: ProducerSettings[F, _, _]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
-  ): Resource[F, KafkaProducerConnection[F]] =
+    implicit F: ConcurrentEffect[F]): Resource[F, KafkaProducerConnection[F]] =
     WithProducer(settings).map { withProducer =>
       new KafkaProducerConnection[F] {
         override def withSerializers[K, V](

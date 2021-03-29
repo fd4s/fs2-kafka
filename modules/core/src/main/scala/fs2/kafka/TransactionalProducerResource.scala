@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift, Resource}
+import cats.effect.{ConcurrentEffect, Resource}
 
 /**
   * [[TransactionalProducerResource]] provides support for inferring
@@ -26,9 +26,7 @@ final class TransactionalProducerResource[F[_]] private[kafka] (
     * This is equivalent to using `TransactionalKafkaProducer.resource` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: TransactionalProducerSettings[F, K, V])(
-    implicit context: ContextShift[F]
-  ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
+  def using[K, V](settings: TransactionalProducerSettings[F, K, V]): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     TransactionalKafkaProducer.resource(settings)(F, context)
 
   override def toString: String =
