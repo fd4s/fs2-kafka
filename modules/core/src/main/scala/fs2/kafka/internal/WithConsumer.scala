@@ -6,11 +6,11 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
-import cats.effect.concurrent.Semaphore
+import cats.effect.{Concurrent, Resource}
 import cats.implicits._
 import fs2.kafka.{KafkaByteConsumer, ConsumerSettings}
 import fs2.kafka.internal.syntax._
+import cats.effect.std.Semaphore
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
   def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A]
@@ -24,9 +24,7 @@ private[kafka] object WithConsumer {
   def apply[F[_], K, V](
     settings: ConsumerSettings[F, K, V]
   )(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
-  ): Resource[F, WithConsumer[F]] = {
+    implicit F: Concurrent[F]): Resource[F, WithConsumer[F]] = {
     val blockingResource =
       settings.blocker
         .map(Resource.pure[F, Blocker])

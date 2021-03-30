@@ -7,8 +7,7 @@
 package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector, StateT}
-import cats.effect.{ConcurrentEffect, ContextShift, Timer}
-import cats.effect.concurrent.Ref
+import cats.effect.ConcurrentEffect
 import cats.effect.syntax.all._
 import cats.implicits._
 import fs2.Chunk
@@ -31,6 +30,7 @@ import org.apache.kafka.clients.consumer.{
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.immutable.SortedSet
+import cats.effect.{ Ref, Temporal }
 
 /**
   * [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to
@@ -59,7 +59,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   context: ContextShift[F],
   logging: Logging[F],
   jitter: Jitter[F],
-  timer: Timer[F]
+  timer: Temporal[F]
 ) {
   import logging._
 

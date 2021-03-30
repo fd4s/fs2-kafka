@@ -6,7 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Blocker, ContextShift, Resource, Sync}
+import cats.effect.{Resource, Sync}
 import cats.implicits._
 import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
@@ -23,9 +23,7 @@ private[kafka] object WithProducer {
   def apply[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
-    implicit F: Sync[F],
-    context: ContextShift[F]
-  ): Resource[F, WithProducer[F]] =
+    implicit F: Sync[F]): Resource[F, WithProducer[F]] =
     blockingResource(settings).flatMap { blocking =>
       Resource.make(
         settings.createProducer.map(create(_, blocking))
@@ -35,9 +33,7 @@ private[kafka] object WithProducer {
   def apply[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: Sync[F],
-    context: ContextShift[F]
-  ): Resource[F, WithProducer[F]] =
+    implicit F: Sync[F]): Resource[F, WithProducer[F]] =
     blockingResource(settings.producerSettings).flatMap { blocking =>
       Resource[F, WithProducer[F]] {
         settings.producerSettings.createProducer.flatMap { producer =>
