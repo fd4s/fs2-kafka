@@ -1,6 +1,6 @@
 package fs2.kafka
 
-import cats.ApplicativeError
+import cats.{ApplicativeError, ApplicativeThrow}
 import cats.effect._
 import cats.implicits._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
