@@ -12,6 +12,8 @@ val testcontainersScalaVersion = "0.39.4"
 
 val vulcanVersion = "1.7.1"
 
+val munitVersion = "0.7.23"
+
 val scala212 = "2.12.13"
 
 val scala213 = "2.13.6"
@@ -27,7 +29,7 @@ lazy val `fs2-kafka` = project
     console := (core / Compile / console).value,
     Test / console := (core / Test / console).value
   )
-  .aggregate(core, vulcan)
+  .aggregate(core, vulcan, `vulcan-testkit`)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -64,6 +66,24 @@ lazy val vulcan = project
     testSettings
   )
   .dependsOn(core)
+
+lazy val `vulcan-testkit` = project
+  .in(file("modules/vulcan-testkit"))
+  .settings(
+    moduleName := "fs2-kafka-vulcan-testkit",
+    name := moduleName.value,
+    dependencySettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "org.scalameta" %% "munit" % munitVersion
+      )
+    ),
+    publishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(vulcan)
+
 
 lazy val docs = project
   .in(file("docs"))
