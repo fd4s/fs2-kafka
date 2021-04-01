@@ -12,12 +12,12 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         ProducerSettings[IO, String, String]
 
       KafkaProducer.resource[IO, String, String](settings)
-      KafkaProducer.resource[IO].toString should startWith("ProducerResource$")
-      KafkaProducer.resource[IO].using(settings)
+      KafkaProducer[IO].resource(settings)
 
       KafkaProducer.stream[IO, String, String](settings)
-      KafkaProducer.stream[IO].toString should startWith("ProducerStream$")
-      KafkaProducer.stream[IO].using(settings)
+      KafkaProducer[IO].stream(settings)
+
+      KafkaProducer[IO].toString should startWith("ProducerPartiallyApplied$")
     }
   }
 
@@ -56,7 +56,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       val toProduce = (0 until 100).map(n => s"key-$n" -> s"value->$n")
 
       (for {
-        producer <- KafkaProducer.stream[IO].using(producerSettings[IO])
+        producer <- KafkaProducer[IO].stream(producerSettings[IO])
         records <- Stream.chunk(Chunk.seq(toProduce).map {
           case passthrough @ (key, value) =>
             ProducerRecords.one(ProducerRecord(topic, key, value), passthrough)
