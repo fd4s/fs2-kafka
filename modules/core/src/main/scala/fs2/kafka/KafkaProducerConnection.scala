@@ -51,7 +51,7 @@ object KafkaProducerConnection {
     * using the specified [[ProducerSettings]].
     *
     * {{{
-    * KafkaProducerConnection.stream[F].using(settings)
+    * KafkaProducerConnection.stream[F](settings)
     * }}}
     */
   def stream[F[_]](
@@ -66,7 +66,7 @@ object KafkaProducerConnection {
     * using the specified [[ProducerSettings]].
     *
     * {{{
-    * KafkaProducerConnection.resource[F].using(settings)
+    * KafkaProducerConnection.resource[F](settings)
     * }}}
     */
   def resource[F[_]](
