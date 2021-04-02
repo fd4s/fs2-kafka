@@ -111,20 +111,6 @@ object KafkaProducer {
     }
 
   /**
-    * Alternative version of `resource` where the `F[_]` is
-    * specified explicitly, and where the key and value type can
-    * be inferred from the [[ProducerSettings]]. This allows you
-    * to use the following syntax.
-    *
-    * {{{
-    * KafkaProducer.resource[F].using(settings)
-    * }}}
-    */
-  @deprecated("use KafkaProducer[F].resource(settings)", "1.5.0")
-  def resource[F[_]](implicit F: Async[F]): ProducerResource[F] =
-    new ProducerResource(F)
-
-  /**
     * Creates a new [[KafkaProducer]] in the `Stream` context,
     * using the specified [[ProducerSettings]]. Note that there
     * is another version where `F[_]` is specified explicitly and
@@ -139,20 +125,6 @@ object KafkaProducer {
     implicit F: Async[F]
   ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     Stream.resource(KafkaProducer.resource(settings))
-
-  /**
-    * Alternative version of `stream` where the `F[_]` is
-    * specified explicitly, and where the key and value type can
-    * be inferred from the [[ProducerSettings]]. This allows you
-    * to use the following syntax.
-    *
-    * {{{
-    * KafkaProducer.stream[F].using(settings)
-    * }}}
-    */
-  @deprecated("use KafkaProducer[F].stream(settings)", "1.5.0")  
-  def stream[F[_]](implicit F: Async[F]): ProducerStream[F] =
-    new ProducerStream[F](F)
 
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
@@ -251,8 +223,7 @@ object KafkaProducer {
       * }}}
       */
     def resource[K, V](settings: ProducerSettings[F, K, V])(
-      implicit F: ConcurrentEffect[F],
-      context: ContextShift[F]
+      implicit F: Async[F]
     ): Resource[F, KafkaProducer[F, K, V]] =
       KafkaProducer.resource(settings)
 
@@ -267,8 +238,7 @@ object KafkaProducer {
       * }}}
       */
     def stream[K, V](settings: ProducerSettings[F, K, V])(
-      implicit F: ConcurrentEffect[F],
-      context: ContextShift[F]
+      implicit F: Async[F]
     ): Stream[F, KafkaProducer[F, K, V]] =
       KafkaProducer.stream(settings)
 

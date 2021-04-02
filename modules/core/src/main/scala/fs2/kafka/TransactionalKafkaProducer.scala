@@ -117,22 +117,6 @@ object TransactionalKafkaProducer {
     }
 
   /**
-    * Alternative version of `TransactionalKafkaProducer.resource` where the `F[_]`
-    * is specified explicitly, and where the key and value type can be
-    * inferred from the [[TransactionalProducerSettings]]. This allows
-    * you to use the following syntax.
-    *
-    * {{{
-    * TransactionalKafkaProducer.resource[F].using(settings)
-    * }}}
-    */
-  @deprecated("use TransactionalKafkaProducer[F].resource(settings)", "1.5.0")
-  def resource[F[_]](
-    implicit F: Async[F]
-  ): TransactionalProducerResource[F] =
-    new TransactionalProducerResource(F)
-
-  /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Stream` context,
     * using the specified [[TransactionalProducerSettings]]. Note that there
     * is another version where `F[_]` is specified explicitly and the key and
@@ -148,22 +132,6 @@ object TransactionalKafkaProducer {
     implicit F: Async[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
     Stream.resource(resource(settings))
-
-  /**
-    * Alternative version of `TransactionalKafkaProducer.stream` where the `F[_]`
-    * is specified explicitly, and where the key and value type can be
-    * inferred from the [[TransactionalProducerSettings]]. This allows
-    * you to use the following syntax.
-    *
-    * {{{
-    * TransactionalKafkaProducer.stream[F].using(settings)
-    * }}}
-    */
-  @deprecated("use TransactionalKafkaProducer[F].stream(settings)", "1.5.0")
-  def stream[F[_]](
-    implicit F: Async[F]
-  ): TransactionalProducerStream[F] =
-    new TransactionalProducerStream(F)
 
   def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
     new TransactionalProducerPartiallyApplied
@@ -182,8 +150,7 @@ object TransactionalKafkaProducer {
       * }}}
       */
     def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(
-      implicit F: ConcurrentEffect[F],
-      context: ContextShift[F]
+      implicit F: Async[F]
     ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
       TransactionalKafkaProducer.resource(settings)
 
@@ -198,8 +165,7 @@ object TransactionalKafkaProducer {
       * }}}
       */
     def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(
-      implicit F: ConcurrentEffect[F],
-      context: ContextShift[F]
+      implicit F: Async[F]
     ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
       TransactionalKafkaProducer.stream(settings)
 
