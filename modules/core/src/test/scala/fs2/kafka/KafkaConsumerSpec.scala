@@ -29,12 +29,12 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         ConsumerSettings[IO, String, String]
 
       KafkaConsumer.resource[IO, String, String](settings)
-      KafkaConsumer.resource[IO].toString should startWith("ConsumerResource$")
-      KafkaConsumer.resource[IO].using(settings)
+      KafkaConsumer[IO].resource(settings)
 
       KafkaConsumer.stream[IO, String, String](settings)
-      KafkaConsumer.stream[IO].toString should startWith("ConsumerStream$")
-      KafkaConsumer.stream[IO].using(settings)
+      KafkaConsumer[IO].stream(settings)
+
+      KafkaConsumer[IO].toString should startWith("ConsumerPartiallyApplied$")
     }
   }
 

@@ -611,6 +611,7 @@ object KafkaConsumer {
     * KafkaConsumer.resource[F].using(settings)
     * }}}
     */
+  @deprecated("use KafkaConsumer[F].resource(settings)", "1.5.0")  
   def resource[F[_]](implicit F: Async[F]): ConsumerResource[F] = new ConsumerResource(F)
 
   /**
@@ -639,6 +640,52 @@ object KafkaConsumer {
     * KafkaConsumer.stream[F].using(settings)
     * }}}
     */
+  @deprecated("use KafkaConsumer[F].stream(settings)", "1.5.0")
   def stream[F[_]](implicit F: Async[F]): ConsumerStream[F] =
     new ConsumerStream[F](F)
+
+  def apply[F[_]]: ConsumerPartiallyApplied[F] =
+    new ConsumerPartiallyApplied()
+
+  private[kafka] final class ConsumerPartiallyApplied[F[_]](val dummy: Boolean = true)
+      extends AnyVal {
+
+    /**
+      * Alternative version of `resource` where the `F[_]` is
+      * specified explicitly, and where the key and value type can
+      * be inferred from the [[ConsumerSettings]]. This allows you
+      * to use the following syntax.
+      *
+      * {{{
+      * KafkaConsumer[F].resource(settings)
+      * }}}
+      */
+    def resource[K, V](settings: ConsumerSettings[F, K, V])(
+      implicit F: ConcurrentEffect[F],
+      context: ContextShift[F],
+      timer: Timer[F]
+    ): Resource[F, KafkaConsumer[F, K, V]] =
+      KafkaConsumer.resource(settings)
+
+    /**
+      * Alternative version of `stream` where the `F[_]` is
+      * specified explicitly, and where the key and value type can
+      * be inferred from the [[ConsumerSettings]]. This allows you
+      * to use the following syntax.
+      *
+      * {{{
+      * KafkaConsumer[F].stream(settings)
+      * }}}
+      */
+    def stream[K, V](settings: ConsumerSettings[F, K, V])(
+      implicit F: ConcurrentEffect[F],
+      context: ContextShift[F],
+      timer: Timer[F]
+    ): Stream[F, KafkaConsumer[F, K, V]] =
+      KafkaConsumer.stream(settings)
+
+    override def toString: String =
+      "ConsumerPartiallyApplied$" + System.identityHashCode(this)
+  }
+
 }

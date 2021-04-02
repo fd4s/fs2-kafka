@@ -126,6 +126,7 @@ object TransactionalKafkaProducer {
     * TransactionalKafkaProducer.resource[F].using(settings)
     * }}}
     */
+  @deprecated("use TransactionalKafkaProducer[F].resource(settings)", "1.5.0")
   def resource[F[_]](
     implicit F: Async[F]
   ): TransactionalProducerResource[F] =
@@ -158,8 +159,51 @@ object TransactionalKafkaProducer {
     * TransactionalKafkaProducer.stream[F].using(settings)
     * }}}
     */
+  @deprecated("use TransactionalKafkaProducer[F].stream(settings)", "1.5.0")
   def stream[F[_]](
     implicit F: Async[F]
   ): TransactionalProducerStream[F] =
     new TransactionalProducerStream(F)
+
+  def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
+    new TransactionalProducerPartiallyApplied
+
+  private[kafka] final class TransactionalProducerPartiallyApplied[F[_]](val dummy: Boolean = true)
+      extends AnyVal {
+
+    /**
+      * Alternative version of `resource` where the `F[_]` is
+      * specified explicitly, and where the key and value type can
+      * be inferred from the [[TransactionalProducerSettings]]. This allows you
+      * to use the following syntax.
+      *
+      * {{{
+      * KafkaProducer[F].resource(settings)
+      * }}}
+      */
+    def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(
+      implicit F: ConcurrentEffect[F],
+      context: ContextShift[F]
+    ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
+      TransactionalKafkaProducer.resource(settings)
+
+    /**
+      * Alternative version of `stream` where the `F[_]` is
+      * specified explicitly, and where the key and value type can
+      * be inferred from the [[TransactionalProducerSettings]]. This allows you
+      * to use the following syntax.
+      *
+      * {{{
+      * KafkaProducer[F].stream(settings)
+      * }}}
+      */
+    def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(
+      implicit F: ConcurrentEffect[F],
+      context: ContextShift[F]
+    ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
+      TransactionalKafkaProducer.stream(settings)
+
+    override def toString: String =
+      "TransactionalProducerPartiallyApplied$" + System.identityHashCode(this)
+  }
 }
