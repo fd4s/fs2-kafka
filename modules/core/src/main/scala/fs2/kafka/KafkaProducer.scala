@@ -121,6 +121,7 @@ object KafkaProducer {
     * KafkaProducer.resource[F].using(settings)
     * }}}
     */
+  @deprecated("use KafkaProducer[F].resource(settings)", "1.5.0")
   def resource[F[_]](implicit F: ConcurrentEffect[F]): ProducerResource[F] =
     new ProducerResource(F)
 
@@ -151,6 +152,7 @@ object KafkaProducer {
     * KafkaProducer.stream[F].using(settings)
     * }}}
     */
+  @deprecated("use KafkaProducer[F].stream(settings)", "1.5.0")
   def stream[F[_]](implicit F: ConcurrentEffect[F]): ProducerStream[F] =
     new ProducerStream[F](F)
 
@@ -233,4 +235,46 @@ object KafkaProducer {
           record.headers.asJava
         )
     }
+
+  def apply[F[_]]: ProducerPartiallyApplied[F] =
+    new ProducerPartiallyApplied
+
+  private[kafka] final class ProducerPartiallyApplied[F[_]](val dummy: Boolean = true)
+      extends AnyVal {
+
+    /**
+      * Alternative version of `resource` where the `F[_]` is
+      * specified explicitly, and where the key and value type can
+      * be inferred from the [[ProducerSettings]]. This allows you
+      * to use the following syntax.
+      *
+      * {{{
+      * KafkaProducer[F].resource(settings)
+      * }}}
+      */
+    def resource[K, V](settings: ProducerSettings[F, K, V])(
+      implicit F: ConcurrentEffect[F],
+      context: ContextShift[F]
+    ): Resource[F, KafkaProducer[F, K, V]] =
+      KafkaProducer.resource(settings)
+
+    /**
+      * Alternative version of `stream` where the `F[_]` is
+      * specified explicitly, and where the key and value type can
+      * be inferred from the [[ProducerSettings]]. This allows you
+      * to use the following syntax.
+      *
+      * {{{
+      * KafkaProducer[F].stream(settings)
+      * }}}
+      */
+    def stream[K, V](settings: ProducerSettings[F, K, V])(
+      implicit F: ConcurrentEffect[F],
+      context: ContextShift[F]
+    ): Stream[F, KafkaProducer[F, K, V]] =
+      KafkaProducer.stream(settings)
+
+    override def toString: String =
+      "ProducerPartiallyApplied$" + System.identityHashCode(this)
+  }
 }

@@ -22,16 +22,14 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       val settings = TransactionalProducerSettings("id", ProducerSettings[IO, String, String])
 
       TransactionalKafkaProducer.resource[IO, String, String](settings)
-      TransactionalKafkaProducer.resource[IO].toString should startWith(
-        "TransactionalProducerResource$"
-      )
-      TransactionalKafkaProducer.resource[IO].using(settings)
+      TransactionalKafkaProducer[IO].resource(settings)
 
       TransactionalKafkaProducer.stream[IO, String, String](settings)
-      TransactionalKafkaProducer.stream[IO].toString should startWith(
-        "TransactionalProducerStream$"
+      TransactionalKafkaProducer[IO].resource(settings)
+
+      TransactionalKafkaProducer[IO].toString should startWith(
+        "TransactionalProducerPartiallyApplied$"
       )
-      TransactionalKafkaProducer.stream[IO].using(settings)
     }
   }
 
