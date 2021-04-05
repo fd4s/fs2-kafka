@@ -20,7 +20,7 @@ import scala.concurrent.duration._
   * [[AdminClientSettings]] instances are immutable and all modification
   * functions return a new [[AdminClientSettings]] instance.<br>
   * <br>
-  * Use [[AdminClientSettings.apply]] for the default settings, and
+  * Use [[AdminClientSettings#apply]] for the default settings, and
   * then apply any desired modifications on top of that instance.
   */
 sealed abstract class AdminClientSettings {
