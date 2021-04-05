@@ -14,10 +14,10 @@ object Fs2Kafka {
   val transactionalProducerSettings: TransactionalProducerSettings[IO, String, String] = ???
   val adminClientSettings: AdminClientSettings[IO] = ???
 
-  KafkaProducer.resource[IO].using(producerSettings)
+  KafkaProducer[IO].resource(producerSettings)
   KafkaProducer.resource(producerSettings)
 
-  KafkaProducer.stream[IO].using(producerSettings)
+  KafkaProducer[IO].stream(producerSettings)
   KafkaProducer.stream(producerSettings)
 
   KafkaProducer.pipe(producerSettings)
@@ -25,22 +25,22 @@ object Fs2Kafka {
   def foo(bar: Any)(baz: Any): Any = ???
   foo(KafkaProducer.pipe(producerSettings))(3)
 
-  TransactionalKafkaProducer.resource[IO].using(transactionalProducerSettings)
+  TransactionalKafkaProducer[IO].resource(transactionalProducerSettings)
   TransactionalKafkaProducer.resource(transactionalProducerSettings)
 
-  TransactionalKafkaProducer.stream[IO].using(transactionalProducerSettings)
+  TransactionalKafkaProducer[IO].stream(transactionalProducerSettings)
   TransactionalKafkaProducer.stream(transactionalProducerSettings)
 
-  KafkaConsumer.resource[IO].using(consumerSettings)
+  KafkaConsumer[IO].resource(consumerSettings)
   KafkaConsumer.resource(consumerSettings)
 
-  KafkaConsumer.stream[IO].using(consumerSettings)
+  KafkaConsumer[IO].stream(consumerSettings)
   KafkaConsumer.stream(consumerSettings)
 
   KafkaAdminClient.resource(adminClientSettings)
   KafkaAdminClient.stream(adminClientSettings)
   
-  fs2.kafka.KafkaConsumer.resource[IO].using(consumerSettings)
+  KafkaConsumer[IO].resource(consumerSettings)
   Resource.liftF(IO(consumerSettings)).flatMap(KafkaConsumer.resource(_))
-  Resource.liftF(IO(consumerSettings)).flatMap(KafkaConsumer.resource[IO].using(_))
+  Resource.liftF(IO(consumerSettings)).flatMap(KafkaConsumer[IO].resource(_))
 }

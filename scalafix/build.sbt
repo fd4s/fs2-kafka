@@ -20,12 +20,12 @@ lazy val rules = project.settings(
 
 lazy val input = project.settings(
   skip in publish := true,
-  libraryDependencies ++= Seq("com.github.fd4s" %% "fs2-kafka" % "1.0.0")
+  libraryDependencies ++= Seq("com.github.fd4s" %% "fs2-kafka" % "1.4.1")
 )
 
 lazy val output = project.settings(
   skip in publish := true,
-  libraryDependencies ++= Seq("com.github.fd4s" %% "fs2-kafka" % "1.3.1")
+  libraryDependencies ++= Seq("com.github.fd4s" %% "fs2-kafka" % "1.4.1")
 )
 
 lazy val tests = project
