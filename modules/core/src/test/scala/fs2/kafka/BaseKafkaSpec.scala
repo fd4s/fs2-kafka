@@ -26,7 +26,7 @@ This file contains code derived from the Embedded Kafka library
  */
 package fs2.kafka
 
-import cats.effect.{IO, Sync}
+import cats.effect.Sync
 import fs2.kafka.internal.converters.collection._
 import java.util.UUID
 
@@ -40,7 +40,7 @@ import org.apache.kafka.clients.producer.{
   KafkaProducer => KProducer,
   ProducerRecord => KProducerRecord
 }
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer}
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 import scala.concurrent.duration._
 import org.apache.kafka.clients.admin.NewTopic
@@ -120,12 +120,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
     res
   }
 
-  final def adminClientProperties: Map[String, String] =
-    Map(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers)
-
-  final def adminClientSettings: AdminClientSettings[IO] =
-    AdminClientSettings[IO]
-      .withProperties(adminClientProperties)
+  final def adminClientSettings: AdminClientSettings =
+    AdminClientSettings(bootstrapServers = container.bootstrapServers)
 
   final def defaultConsumerProperties: Map[String, String] =
     Map(
