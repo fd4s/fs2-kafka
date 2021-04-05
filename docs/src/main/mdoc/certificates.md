@@ -13,45 +13,20 @@ any of the `*Settings` classes by using the `withProperties(kafkaCredentialStore
 
 ```scala mdoc
 import cats.effect._
-import cats.syntax.all._
 import fs2.kafka._
 import fs2.kafka.security._
 
-def createKafkaProducerUsingPkcs12[F[_]: Sync: ContextShift, K, V](
-    clientPrivateKey: String,
-    clientCertificate: String,
-    serviceCertificate: String,
-)(implicit keySer: Serializer[F, K], valSer: Serializer[F, V]): F[ProducerSettings[F, K, V]] =
-  Blocker[F].use { blocker =>
-    Pkcs12KafkaCredentialStore.createFromStrings[F](clientPrivateKey, clientCertificate, serviceCertificate, blocker)
-  }.map { credentialStore =>
-    ProducerSettings(keySer, valSer)
-      .withCredentials(credentialStore)
-  }
-  
-def createKafkaProducerUsingPem[F[_]: Sync: ContextShift, K, V](
-    caCertificate: String,
-    accessKey: String,
-    accessCertificate: String,
-)(implicit keySer: Serializer[F, K], valSer: Serializer[F, V]): ProducerSettings[F, K, V] = {
-    val credentialStore = PemKafkaCredentialStore.createFromStrings[F](
-      s"""
-      -----BEGIN CERTIFICATE-----"
-      $caCertificate
-      -----END CERTIFICATE-----
-      """.replace('\n', ' '),
-      s"""
-      -----BEGIN PRIVATE KEY-----"
-      $accessKey
-      -----END PRIVATE KEY-----
-      """.replace('\n', ' '),
-      s"""
-      -----BEGIN CERTIFICATE-----"
-      $accessCertificate
-      -----END CERTIFICATE-----
-      """.replace('\n', ' ')
+def createKafkaProducerUsingPem[F[_]: Sync, K, V](
+  caCertificate: String,
+  accessKey: String,
+  accessCertificate: String
+)(implicit keySer: Serializer[F, K], valSer: Serializer[F, V]): ProducerSettings[F, K, V] =
+  ProducerSettings[F, K, V]
+    .withCredentials(
+      PemKafkaCredentialStore.fromPemStrings(
+        caCertificate,
+        accessKey,
+        accessCertificate
+      )
     )
-    ProducerSettings(keySer, valSer)
-      .withCredentials(credentialStore)
-  }
 ```
