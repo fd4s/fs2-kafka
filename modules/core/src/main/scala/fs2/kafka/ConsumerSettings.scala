@@ -6,12 +6,10 @@
 
 package fs2.kafka
 
-import cats.effect.{Sync}
-import cats.Show
-import fs2.kafka.internal.converters.collection._
+import cats.{Applicative, Show}
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
+
 import scala.concurrent.duration._
 
 /**
@@ -330,22 +328,6 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[F, K, V]
 
   /**
-    * Creates a new `Consumer` using the [[properties]]. Note that this
-    * operation should be bracketed, using e.g. `Resource`, to ensure
-    * the `close` function on the consumer is called.
-    */
-  def createConsumer: F[KafkaByteConsumer]
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified function for
-    * creating `Consumer` instances in [[createConsumer]]. The argument
-    * is the [[properties]] of the settings instance.
-    */
-  def withCreateConsumer(
-    createConsumer: Map[String, String] => F[KafkaByteConsumer]
-  ): ConsumerSettings[F, K, V]
-
-  /**
     * The function used to specify metadata for records. This
     * metadata will be included in `OffsetAndMetadata` in the
     * [[CommittableOffset]]s, and can then be committed with
@@ -397,8 +379,7 @@ object ConsumerSettings {
     override val pollTimeout: FiniteDuration,
     override val commitRecovery: CommitRecovery,
     override val recordMetadata: ConsumerRecord[K, V] => String,
-    override val maxPrefetchBatches: Int,
-    val createConsumerWith: Map[String, String] => F[KafkaByteConsumer]
+    override val maxPrefetchBatches: Int
   ) extends ConsumerSettings[F, K, V] {
 
     override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[F, K, V] =
@@ -503,14 +484,6 @@ object ConsumerSettings {
     override def withCommitRecovery(commitRecovery: CommitRecovery): ConsumerSettings[F, K, V] =
       copy(commitRecovery = commitRecovery)
 
-    override def createConsumer: F[KafkaByteConsumer] =
-      createConsumerWith(properties)
-
-    override def withCreateConsumer(
-      createConsumerWith: Map[String, String] => F[KafkaByteConsumer]
-    ): ConsumerSettings[F, K, V] =
-      copy(createConsumerWith = createConsumerWith)
-
     override def withRecordMetadata(
       recordMetadata: ConsumerRecord[K, V] => String
     ): ConsumerSettings[F, K, V] =
@@ -526,7 +499,7 @@ object ConsumerSettings {
   private[this] def create[F[_], K, V](
     keyDeserializer: F[Deserializer[F, K]],
     valueDeserializer: F[Deserializer[F, V]]
-  )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
+  ): ConsumerSettings[F, K, V] =
     ConsumerSettingsImpl(
       keyDeserializer = keyDeserializer,
       valueDeserializer = valueDeserializer,
@@ -540,22 +513,13 @@ object ConsumerSettings {
       pollTimeout = 50.millis,
       commitRecovery = CommitRecovery.Default,
       recordMetadata = _ => OffsetFetchResponse.NO_METADATA,
-      maxPrefetchBatches = 2,
-      createConsumerWith = properties =>
-        F.delay {
-          val byteArrayDeserializer = new ByteArrayDeserializer
-          new org.apache.kafka.clients.consumer.KafkaConsumer(
-            (properties: Map[String, AnyRef]).asJava,
-            byteArrayDeserializer,
-            byteArrayDeserializer
-          )
-        }
+      maxPrefetchBatches = 2
     )
 
   def apply[F[_], K, V](
     keyDeserializer: Deserializer[F, K],
     valueDeserializer: Deserializer[F, V]
-  )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
+  )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = F.pure(keyDeserializer),
       valueDeserializer = F.pure(valueDeserializer)
@@ -564,7 +528,7 @@ object ConsumerSettings {
   def apply[F[_], K, V](
     keyDeserializer: RecordDeserializer[F, K],
     valueDeserializer: Deserializer[F, V]
-  )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
+  )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = keyDeserializer.forKey,
       valueDeserializer = F.pure(valueDeserializer)
@@ -573,23 +537,14 @@ object ConsumerSettings {
   def apply[F[_], K, V](
     keyDeserializer: Deserializer[F, K],
     valueDeserializer: RecordDeserializer[F, V]
-  )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
+  )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = F.pure(keyDeserializer),
       valueDeserializer = valueDeserializer.forValue
     )
 
   def apply[F[_], K, V](
-    keyDeserializer: RecordDeserializer[F, K],
-    valueDeserializer: RecordDeserializer[F, V]
-  )(implicit F: Sync[F]): ConsumerSettings[F, K, V] =
-    create(
-      keyDeserializer = keyDeserializer.forKey,
-      valueDeserializer = valueDeserializer.forValue
-    )
-
-  def apply[F[_], K, V](
-    implicit F: Sync[F],
+    implicit
     keyDeserializer: RecordDeserializer[F, K],
     valueDeserializer: RecordDeserializer[F, V]
   ): ConsumerSettings[F, K, V] =

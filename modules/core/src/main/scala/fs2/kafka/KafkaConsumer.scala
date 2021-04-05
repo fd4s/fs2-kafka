@@ -559,7 +559,8 @@ object KafkaConsumer {
   def resource[F[_], K, V](
     settings: ConsumerSettings[F, K, V]
   )(
-    implicit F: Async[F]
+    implicit F: Async[F],
+    mk: MkConsumer[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     for {
       keyDeserializer <- Resource.eval(settings.keyDeserializer)
@@ -573,7 +574,7 @@ object KafkaConsumer {
       streamId <- Resource.eval(Ref.of[F, StreamId](0))
       dispatcher <- Dispatcher[F]
       stopConsumingDeferred <- Resource.eval(Deferred[F, Unit])
-      withConsumer <- WithConsumer(settings)
+      withConsumer <- WithConsumer(settings, mk)
       actor = {
         implicit val jitter0: Jitter[F] = jitter
         implicit val logging0: Logging[F] = logging
