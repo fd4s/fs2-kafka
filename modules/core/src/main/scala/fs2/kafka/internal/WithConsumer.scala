@@ -23,8 +23,8 @@ private[kafka] sealed abstract class WithConsumer[F[_]] {
 
 private[kafka] object WithConsumer {
   def apply[F[_], K, V](
-    settings: ConsumerSettings[F, K, V],
-    mk: MkConsumer[F]
+    mk: MkConsumer[F],
+    settings: ConsumerSettings[F, K, V]
   )(
     implicit F: Async[F]
   ): Resource[F, WithConsumer[F]] =

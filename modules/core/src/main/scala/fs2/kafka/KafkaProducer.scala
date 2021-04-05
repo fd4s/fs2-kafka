@@ -15,6 +15,7 @@ import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 import cats.effect.std.Dispatcher
+import fs2.kafka.producer.MkProducer
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -81,10 +82,8 @@ object KafkaProducer {
     * KafkaProducer.resource[F].using(settings)
     * }}}
     */
-  def resource[F[_], K, V](
+  def resource[F[_]: Async: MkProducer, K, V](
     settings: ProducerSettings[F, K, V]
-  )(
-    implicit F: Async[F]
   ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducerConnection.resource(settings).evalMap(_.withSerializersFrom(settings))
 
@@ -121,8 +120,8 @@ object KafkaProducer {
     * KafkaProducer.stream[F].using(settings)
     * }}}
     */
-  def stream[F[_], K, V](settings: ProducerSettings[F, K, V])(
-    implicit F: Async[F]
+  def stream[F[_]: Async: MkProducer, K, V](
+    settings: ProducerSettings[F, K, V]
   ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     Stream.resource(KafkaProducer.resource(settings))
 
@@ -159,7 +158,7 @@ object KafkaProducer {
     * produces record in batches, limiting the number of records
     * in the same batch using [[ProducerSettings#parallelism]].
     */
-  def pipe[F[_]: Async, K, V, P](
+  def pipe[F[_]: Async: MkProducer, K, V, P](
     settings: ProducerSettings[F, K, V]
   ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
     records => stream(settings).flatMap(pipe(settings, _).apply(records))
@@ -169,7 +168,7 @@ object KafkaProducer {
     * The number of records in the same batch is limited using the
     * [[ProducerSettings#parallelism]] setting.
     */
-  def pipe[F[_]: Concurrent, K, V, P](
+  def pipe[F[_]: Concurrent: MkProducer, K, V, P](
     settings: ProducerSettings[F, K, V],
     producer: KafkaProducer[F, K, V]
   ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
@@ -223,7 +222,8 @@ object KafkaProducer {
       * }}}
       */
     def resource[K, V](settings: ProducerSettings[F, K, V])(
-      implicit F: Async[F]
+      implicit F: Async[F],
+      mk: MkProducer[F]
     ): Resource[F, KafkaProducer[F, K, V]] =
       KafkaProducer.resource(settings)
 
@@ -238,7 +238,8 @@ object KafkaProducer {
       * }}}
       */
     def stream[K, V](settings: ProducerSettings[F, K, V])(
-      implicit F: Async[F]
+      implicit F: Async[F],
+      mk: MkProducer[F]
     ): Stream[F, KafkaProducer[F, K, V]] =
       KafkaProducer.stream(settings)
 

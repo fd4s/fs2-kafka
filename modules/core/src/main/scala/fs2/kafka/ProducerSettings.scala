@@ -6,11 +6,9 @@
 
 package fs2.kafka
 
-import cats.effect.{Sync}
-import cats.Show
-import fs2.kafka.internal.converters.collection._
+import cats.{Applicative, Show}
 import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.ByteArraySerializer
+
 import scala.concurrent.duration._
 
 /**
@@ -210,22 +208,6 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * Creates a new [[ProducerSettings]] with the specified [[parallelism]].
     */
   def withParallelism(parallelism: Int): ProducerSettings[F, K, V]
-
-  /**
-    * Creates a new `Producer` using the [[properties]]. Note that this
-    * operation should be bracketed, using e.g. `Resource`, to ensure
-    * the `close` function on the producer is called.
-    */
-  def createProducer: F[KafkaByteProducer]
-
-  /**
-    * Creates a new [[ProducerSettings]] with the specified function for
-    * creating `Producer` instances in [[createProducer]]. The argument
-    * is the [[properties]] of the settings instance.
-    */
-  def withCreateProducer(
-    createProducer: Map[String, String] => F[KafkaByteProducer]
-  ): ProducerSettings[F, K, V]
 }
 
 object ProducerSettings {
@@ -234,8 +216,7 @@ object ProducerSettings {
     override val valueSerializer: F[Serializer[F, V]],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
-    override val parallelism: Int,
-    val createProducerWith: Map[String, String] => F[KafkaByteProducer]
+    override val parallelism: Int
   ) extends ProducerSettings[F, K, V] {
 
     override def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V] =
@@ -292,14 +273,6 @@ object ProducerSettings {
     override def withParallelism(parallelism: Int): ProducerSettings[F, K, V] =
       copy(parallelism = parallelism)
 
-    override def createProducer: F[KafkaByteProducer] =
-      createProducerWith(properties)
-
-    override def withCreateProducer(
-      createProducerWith: Map[String, String] => F[KafkaByteProducer]
-    ): ProducerSettings[F, K, V] =
-      copy(createProducerWith = createProducerWith)
-
     override def toString: String =
       s"ProducerSettings(closeTimeout = $closeTimeout)"
   }
@@ -307,7 +280,7 @@ object ProducerSettings {
   private[this] def create[F[_], K, V](
     keySerializer: F[Serializer[F, K]],
     valueSerializer: F[Serializer[F, V]]
-  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
+  ): ProducerSettings[F, K, V] =
     ProducerSettingsImpl(
       keySerializer = keySerializer,
       valueSerializer = valueSerializer,
@@ -315,22 +288,13 @@ object ProducerSettings {
         ProducerConfig.RETRIES_CONFIG -> "0"
       ),
       closeTimeout = 60.seconds,
-      parallelism = 10000,
-      createProducerWith = properties =>
-        F.delay {
-          val byteArraySerializer = new ByteArraySerializer
-          new org.apache.kafka.clients.producer.KafkaProducer(
-            (properties: Map[String, AnyRef]).asJava,
-            byteArraySerializer,
-            byteArraySerializer
-          )
-        }
+      parallelism = 10000
     )
 
   def apply[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
-  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
+  )(implicit F: Applicative[F]): ProducerSettings[F, K, V] =
     create(
       keySerializer = F.pure(keySerializer),
       valueSerializer = F.pure(valueSerializer)
@@ -339,7 +303,7 @@ object ProducerSettings {
   def apply[F[_], K, V](
     keySerializer: RecordSerializer[F, K],
     valueSerializer: Serializer[F, V]
-  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
+  )(implicit F: Applicative[F]): ProducerSettings[F, K, V] =
     create(
       keySerializer = keySerializer.forKey,
       valueSerializer = F.pure(valueSerializer)
@@ -348,24 +312,14 @@ object ProducerSettings {
   def apply[F[_], K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: RecordSerializer[F, V]
-  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
+  )(implicit F: Applicative[F]): ProducerSettings[F, K, V] =
     create(
       keySerializer = F.pure(keySerializer),
       valueSerializer = valueSerializer.forValue
     )
 
   def apply[F[_], K, V](
-    keySerializer: RecordSerializer[F, K],
-    valueSerializer: RecordSerializer[F, V]
-  )(implicit F: Sync[F]): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = keySerializer.forKey,
-      valueSerializer = valueSerializer.forValue
-    )
-
-  def apply[F[_], K, V](
-    implicit F: Sync[F],
-    keySerializer: RecordSerializer[F, K],
+    implicit keySerializer: RecordSerializer[F, K],
     valueSerializer: RecordSerializer[F, V]
   ): ProducerSettings[F, K, V] =
     create(
