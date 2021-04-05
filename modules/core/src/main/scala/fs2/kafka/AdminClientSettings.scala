@@ -234,7 +234,7 @@ object AdminClientSettings {
       s"AdminClientSettings(closeTimeout = $closeTimeout)"
   }
 
-  @deprecated("use the overload that takes an argument for BootstrapSettings", "2.0.0")
+  @deprecated("use the overload that takes an argument for BootstrapServers", "2.0.0")
   def apply: AdminClientSettings =
     AdminClientSettingsImpl(
       properties = Map.empty,
