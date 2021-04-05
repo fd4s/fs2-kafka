@@ -19,11 +19,6 @@ import fs2.kafka._
 
 [`AdminClientSettings`][adminclientsettings] is provided to avoid having to deal with `String` key-value settings.
 
-```scala mdoc:silent
-def adminClientSettings[F[_]: Sync](bootstrapServers: String): AdminClientSettings[F] =
-  AdminClientSettings[F].withBootstrapServers(bootstrapServers)
-```
-
 ### Default Settings
 
 There are several settings specific to the library.
@@ -40,7 +35,7 @@ Once settings are defined, we can use create an admin client in a `Stream`.
 def kafkaAdminClientStream[F[_]: Async](
   bootstrapServers: String
 ): Stream[F, KafkaAdminClient[F]] =
-  KafkaAdminClient.stream(adminClientSettings[F](bootstrapServers))
+  KafkaAdminClient.stream[F](AdminClientSettings(bootstrapServers))
 ```
 
 Alternatively, we can create an admin client in a `Resource` context.
@@ -49,7 +44,7 @@ Alternatively, we can create an admin client in a `Resource` context.
 def kafkaAdminClientResource[F[_]: Async](
   bootstrapServers: String
 ): Resource[F, KafkaAdminClient[F]] =
-  KafkaAdminClient.resource(adminClientSettings[F](bootstrapServers))
+  KafkaAdminClient.resource[F](AdminClientSettings(bootstrapServers))
 ```
 
 ## Topics
