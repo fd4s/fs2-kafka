@@ -29,7 +29,7 @@ private[kafka] object WithConsumer {
     implicit F: Async[F]
   ): Resource[F, WithConsumer[F]] =
     Resource.make {
-      (mk.make(settings.properties), Semaphore[F](1L))
+      (mk(settings), Semaphore[F](1L))
         .mapN { (consumer, semaphore) =>
           new WithConsumer[F] {
             override def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A] =
