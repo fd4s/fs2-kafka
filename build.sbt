@@ -24,8 +24,8 @@ lazy val `fs2-kafka` = project
     mimaSettings,
     scalaSettings,
     noPublishSettings,
-    console := (console in (core, Compile)).value,
-    console in Test := (console in (core, Test)).value
+    console := (core / Compile / console).value,
+    Test / console := (core / Test / console).value
   )
   .aggregate(core, vulcan)
 
@@ -83,16 +83,16 @@ lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
     ("com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion)
-      .withDottyCompat(scalaVersion.value),
+      .cross(CrossVersion.for3Use2_13),
     ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
-      .withDottyCompat(scalaVersion.value),
+      .cross(CrossVersion.for3Use2_13),
     "org.typelevel" %% "discipline-scalatest" % "2.1.3",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-testkit-scalatest" % "2.1.3",
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   libraryDependencies ++= {
-    if (isDotty.value) Nil
+    if (scalaVersion.value.startsWith("3")) Nil
     else
       Seq(
         compilerPlugin(
@@ -116,27 +116,27 @@ lazy val dependencySettings = Seq(
 )
 
 lazy val mdocSettings = Seq(
-  mdoc := run.in(Compile).evaluated,
+  mdoc := (Compile / run).evaluated,
   scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
   crossScalaVersions := Seq(scalaVersion.value),
-  unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(core, vulcan),
-  target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
-  cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
+  ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
+  ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
+  cleanFiles += (ScalaUnidoc / unidoc / target).value,
   docusaurusCreateSite := docusaurusCreateSite
-    .dependsOn(unidoc in Compile)
-    .dependsOn(updateSiteVariables in ThisBuild)
+    .dependsOn(Compile / unidoc)
+    .dependsOn(ThisBuild / updateSiteVariables)
     .value,
   docusaurusPublishGhpages :=
     docusaurusPublishGhpages
-      .dependsOn(unidoc in Compile)
-      .dependsOn(updateSiteVariables in ThisBuild)
+      .dependsOn(Compile / unidoc)
+      .dependsOn(ThisBuild / updateSiteVariables)
       .value,
   // format: off
-  scalacOptions in (ScalaUnidoc, unidoc) ++= Seq(
-    "-doc-source-url", s"https://github.com/fd4s/fs2-kafka/tree/v${(latestVersion in ThisBuild).value}€{FILE_PATH}.scala",
-    "-sourcepath", baseDirectory.in(LocalRootProject).value.getAbsolutePath,
+  ScalaUnidoc / unidoc / scalacOptions ++= Seq(
+    "-doc-source-url", s"https://github.com/fd4s/fs2-kafka/tree/v${(ThisBuild / latestVersion).value}€{FILE_PATH}.scala",
+    "-sourcepath", (LocalRootProject / baseDirectory).value.getAbsolutePath,
     "-doc-title", "FS2 Kafka",
-    "-doc-version", s"v${(latestVersion in ThisBuild).value}"
+    "-doc-version", s"v${(ThisBuild / latestVersion).value}"
   )
   // format: on
 )
@@ -148,24 +148,24 @@ lazy val buildInfoSettings = Seq(
     scalaVersion,
     scalacOptions,
     sourceDirectory,
-    latestVersion in ThisBuild,
-    BuildInfoKey.map(version in ThisBuild) {
+    ThisBuild / latestVersion,
+    BuildInfoKey.map(ThisBuild / version) {
       case (_, v) => "latestSnapshotVersion" -> v
     },
-    BuildInfoKey.map(moduleName in core) {
+    BuildInfoKey.map(core / moduleName) {
       case (k, v) => "core" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(crossScalaVersions in core) {
+    BuildInfoKey.map(core / crossScalaVersions) {
       case (k, v) => "core" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(moduleName in vulcan) {
+    BuildInfoKey.map(vulcan / moduleName) {
       case (k, v) => "vulcan" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(crossScalaVersions in vulcan) {
+    BuildInfoKey.map(vulcan / crossScalaVersions) {
       case (k, v) => "vulcan" ++ k.capitalize -> v
     },
-    organization in LocalRootProject,
-    crossScalaVersions in core,
+    LocalRootProject / organization,
+    core / crossScalaVersions,
     BuildInfoKey("fs2Version" -> fs2Version),
     BuildInfoKey("kafkaVersion" -> kafkaVersion),
     BuildInfoKey("vulcanVersion" -> vulcanVersion),
@@ -205,7 +205,7 @@ ThisBuild / githubWorkflowPublish := Seq(
 
 lazy val publishSettings =
   metadataSettings ++ Seq(
-    publishArtifact in Test := false,
+    Test / publishArtifact := false,
     pomIncludeRepository := (_ => false),
     homepage := Some(url("https://fd4s.github.io/fs2-kafka")),
     licenses := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
@@ -217,7 +217,7 @@ lazy val publishSettings =
         HeaderLicenseStyle.SpdxSyntax
       )
     ),
-    excludeFilter.in(headerSources) := HiddenFileFilter,
+    headerSources / excludeFilter := HiddenFileFilter,
     developers := List(
       Developer(
         id = "vlovgr",
@@ -230,8 +230,8 @@ lazy val publishSettings =
 
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
-    if (publishArtifact.value && !isDotty.value) {
-      Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
+    if (publishArtifact.value && !scalaVersion.value.startsWith("3")) {
+      Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
     } else Set()
   },
   mimaBinaryIssueFilters ++= {
@@ -258,7 +258,7 @@ lazy val mimaSettings = Seq(
 
 lazy val noPublishSettings =
   publishSettings ++ Seq(
-    skip in publish := true,
+    publish / skip := true,
     publishArtifact := false
   )
 
@@ -303,22 +303,24 @@ lazy val scalaSettings = Seq(
         "-Xignore-scala2-macros"
       )
   ),
-  scalacOptions in (Compile, doc) += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
-  scalacOptions in (Compile, console) --= Seq("-Xlint", "-Ywarn-unused"),
-  scalacOptions in (Test, console) := (scalacOptions in (Compile, console)).value,
+  Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
+  Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
+  Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   Compile / unmanagedSourceDirectories ++=
     Seq(
-      baseDirectory.value / "src" / "main" / (if (scalaVersion.value.startsWith("2.12"))
-                                                "scala-2.12"
-                                              else "scala-2.13+")
+      baseDirectory.value / "src" / "main" / {
+        if (scalaVersion.value.startsWith("2.12"))
+          "scala-2.12"
+        else "scala-2.13+"
+      }
     ),
   Test / fork := true
 )
 
 lazy val testSettings = Seq(
-  logBuffered in Test := false,
-  parallelExecution in Test := false,
-  testOptions in Test += Tests.Argument("-oDF")
+  Test / logBuffered := false,
+  Test / parallelExecution := false,
+  Test / testOptions += Tests.Argument("-oDF")
 )
 
 def minorVersion(version: String): String = {
@@ -328,29 +330,29 @@ def minorVersion(version: String): String = {
 }
 
 val latestVersion = settingKey[String]("Latest stable released version")
-latestVersion in ThisBuild := {
-  val snapshot = (isSnapshot in ThisBuild).value
-  val stable = (isVersionStable in ThisBuild).value
+ThisBuild / latestVersion := {
+  val snapshot = (ThisBuild / isSnapshot).value
+  val stable = (ThisBuild / isVersionStable).value
 
   if (!snapshot && stable) {
-    (version in ThisBuild).value
+    (ThisBuild / version).value
   } else {
-    (previousStableVersion in ThisBuild).value.get
+    (ThisBuild / previousStableVersion).value.get
   }
 }
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
-updateSiteVariables in ThisBuild := {
+ThisBuild / updateSiteVariables := {
   val file =
-    (baseDirectory in LocalRootProject).value / "website" / "variables.js"
+    (LocalRootProject / baseDirectory).value / "website" / "variables.js"
 
   val variables =
     Map[String, String](
-      "organization" -> (organization in LocalRootProject).value,
-      "coreModuleName" -> (moduleName in core).value,
-      "latestVersion" -> (latestVersion in ThisBuild).value,
+      "organization" -> (LocalRootProject / organization).value,
+      "coreModuleName" -> (core / moduleName).value,
+      "latestVersion" -> (ThisBuild / latestVersion).value,
       "scalaPublishVersions" -> {
-        val minorVersions = (crossScalaVersions in core).value.map(minorVersion)
+        val minorVersions = (core / crossScalaVersions).value.map(minorVersion)
         if (minorVersions.size <= 2) minorVersions.mkString(" and ")
         else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
       }
