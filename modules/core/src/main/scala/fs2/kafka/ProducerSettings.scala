@@ -9,8 +9,10 @@ package fs2.kafka
 import cats.effect.{Blocker, Sync}
 import cats.Show
 import fs2.kafka.internal.converters.collection._
+import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
+
 import scala.concurrent.duration._
 
 /**
@@ -239,6 +241,12 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   def withCreateProducer(
     createProducer: Map[String, String] => F[KafkaByteProducer]
   ): ProducerSettings[F, K, V]
+
+  /**
+    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
+    */
+  def withCredentials(credentialsStore: KafkaCredentialStore): ProducerSettings[F, K, V] =
+    withProperties(credentialsStore.properties)
 }
 
 object ProducerSettings {
