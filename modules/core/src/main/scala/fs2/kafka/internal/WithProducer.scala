@@ -6,6 +6,7 @@
 
 package fs2.kafka.internal
 
+import fs2.kafka.producer.MkProducer
 import cats.effect.{Resource, Sync}
 import cats.implicits._
 import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
@@ -21,21 +22,23 @@ private[kafka] sealed abstract class WithProducer[F[_]] {
 
 private[kafka] object WithProducer {
   def apply[F[_], K, V](
+    mk: MkProducer[F],
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: Sync[F]
   ): Resource[F, WithProducer[F]] =
     Resource.make(
-      settings.createProducer.map(create(_, Blocking[F]))
+      mk(settings).map(create(_, Blocking[F]))
     )(_.blocking { _.close(settings.closeTimeout.asJava) })
 
   def apply[F[_], K, V](
+    mk: MkProducer[F],
     settings: TransactionalProducerSettings[F, K, V]
   )(
     implicit F: Sync[F]
   ): Resource[F, WithProducer[F]] =
     Resource[F, WithProducer[F]] {
-      settings.producerSettings.createProducer.flatMap { producer =>
+      mk(settings.producerSettings).flatMap { producer =>
         val withProducer = create(producer, Blocking[F])
 
         val initTransactions = withProducer.blocking { _.initTransactions() }

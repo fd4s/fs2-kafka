@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Resource, Async, Outcome}
+import cats.effect.{Async, Outcome, Resource}
 import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
@@ -14,6 +14,7 @@ import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
 import cats.effect.std.Dispatcher
+import fs2.kafka.producer.MkProducer
 
 /**
   * Represents a producer of Kafka records specialized for 'read-process-write'
@@ -53,12 +54,13 @@ object TransactionalKafkaProducer {
   def resource[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: Async[F]
+    implicit F: Async[F],
+    mk: MkProducer[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
     (
       Resource.eval(settings.producerSettings.keySerializer),
       Resource.eval(settings.producerSettings.valueSerializer),
-      WithProducer(settings),
+      WithProducer(mk, settings),
       Dispatcher[F]
     ).mapN { (keySerializer, valueSerializer, withProducer, dispatcher) =>
       implicit val dispatcher0 = dispatcher
@@ -129,7 +131,8 @@ object TransactionalKafkaProducer {
   def stream[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: Async[F]
+    implicit F: Async[F],
+    mk: MkProducer[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
     Stream.resource(resource(settings))
 
@@ -150,7 +153,8 @@ object TransactionalKafkaProducer {
       * }}}
       */
     def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(
-      implicit F: Async[F]
+      implicit F: Async[F],
+      mk: MkProducer[F]
     ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
       TransactionalKafkaProducer.resource(settings)
 
@@ -165,7 +169,8 @@ object TransactionalKafkaProducer {
       * }}}
       */
     def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(
-      implicit F: Async[F]
+      implicit F: Async[F],
+      mk: MkProducer[F]
     ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
       TransactionalKafkaProducer.stream(settings)
 

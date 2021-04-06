@@ -11,6 +11,7 @@ import cats.implicits._
 import fs2.Stream
 import fs2.kafka.internal._
 import cats.effect.std.Dispatcher
+import fs2.kafka.producer.MkProducer
 
 /**
   * [[KafkaProducerConnection]] represents a connection to a Kafka broker
@@ -72,10 +73,11 @@ object KafkaProducerConnection {
   def resource[F[_]](
     settings: ProducerSettings[F, _, _]
   )(
-    implicit F: Async[F]
+    implicit F: Async[F],
+    mk: MkProducer[F]
   ): Resource[F, KafkaProducerConnection[F]] =
     Dispatcher[F].flatMap { implicit dispatcher =>
-      WithProducer(settings).map { withProducer =>
+      WithProducer(mk, settings).map { withProducer =>
         new KafkaProducerConnection[F] {
           override def withSerializers[K, V](
             keySerializer: Serializer[F, K],

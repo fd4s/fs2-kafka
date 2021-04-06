@@ -10,6 +10,7 @@ import cats.Foldable
 import cats.effect._
 import fs2.Stream
 import fs2.kafka.KafkaAdminClient._
+import fs2.kafka.admin.MkAdminClient
 import fs2.kafka.internal.WithAdminClient
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
@@ -481,11 +482,12 @@ object KafkaAdminClient {
     * `Stream` context, you might prefer [[KafkaAdminClient.stream]].
     */
   def resource[F[_]](
-    settings: AdminClientSettings[F]
+    settings: AdminClientSettings
   )(
-    implicit F: Async[F]
+    implicit F: Async[F],
+    mk: MkAdminClient[F]
   ): Resource[F, KafkaAdminClient[F]] =
-    WithAdminClient(settings).map { client =>
+    WithAdminClient(mk, settings).map { client =>
       new KafkaAdminClient[F] {
 
         override def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
@@ -573,8 +575,8 @@ object KafkaAdminClient {
     * working in a `Stream` context, you might instead prefer to
     * use the [[KafkaAdminClient.resource]].
     */
-  def stream[F[_]](settings: AdminClientSettings[F])(
-    implicit F: Async[F]
+  def stream[F[_]: Async: MkAdminClient](
+    settings: AdminClientSettings
   ): Stream[F, KafkaAdminClient[F]] =
     Stream.resource(KafkaAdminClient.resource(settings))
 }

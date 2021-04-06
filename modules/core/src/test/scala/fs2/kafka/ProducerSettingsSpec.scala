@@ -115,17 +115,6 @@ final class ProducerSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should provide withCreateProducer") {
-      assert {
-        settings
-          .withCreateProducer(_ => IO.raiseError(new RuntimeException))
-          .createProducer
-          .attempt
-          .unsafeRunSync()
-          .isLeft
-      }
-    }
-
     it("should provide withProperty/withProperties") {
       assert {
         settings.withProperty("a", "b").properties("a").contains("b") &&

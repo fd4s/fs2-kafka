@@ -6,10 +6,11 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Resource, Async}
+import cats.effect.{Async, Resource}
 import cats.effect.std.Semaphore
 import cats.implicits._
-import fs2.kafka.{KafkaByteConsumer, ConsumerSettings}
+import fs2.kafka.consumer.MkConsumer
+import fs2.kafka.{ConsumerSettings, KafkaByteConsumer}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
@@ -22,12 +23,13 @@ private[kafka] sealed abstract class WithConsumer[F[_]] {
 
 private[kafka] object WithConsumer {
   def apply[F[_], K, V](
+    mk: MkConsumer[F],
     settings: ConsumerSettings[F, K, V]
   )(
     implicit F: Async[F]
   ): Resource[F, WithConsumer[F]] =
     Resource.make {
-      (settings.createConsumer, Semaphore[F](1L))
+      (mk(settings), Semaphore[F](1L))
         .mapN { (consumer, semaphore) =>
           new WithConsumer[F] {
             override def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A] =

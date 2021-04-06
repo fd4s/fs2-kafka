@@ -223,17 +223,6 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should provide withCreateConsumer") {
-      assert {
-        settings
-          .withCreateConsumer(_ => IO.raiseError(new RuntimeException))
-          .createConsumer
-          .attempt
-          .unsafeRunSync()
-          .isLeft
-      }
-    }
-
     it("should provide withRecordMetadata") {
       val record = ConsumerRecord("topic", 0, 0L, "key", "value")
 

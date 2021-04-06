@@ -1,10 +1,8 @@
 package fs2.kafka
 
-import cats.effect.{IO}
 import cats.implicits._
 import org.apache.kafka.clients.admin.AdminClientConfig
 import scala.concurrent.duration._
-import cats.effect.unsafe.implicits.global
 
 final class AdminClientSettingsSpec extends BaseSpec {
   describe("AdminClientSettings") {
@@ -119,17 +117,6 @@ final class AdminClientSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should provide withCreateAdminClient") {
-      assert {
-        settings
-          .withCreateAdminClient(_ => IO.raiseError(new RuntimeException))
-          .createAdminClient
-          .attempt
-          .unsafeRunSync()
-          .isLeft
-      }
-    }
-
     it("should have a Show instance and matching toString") {
       assert {
         settings.toString == "AdminClientSettings(closeTimeout = 20 seconds)" &&
@@ -138,6 +125,6 @@ final class AdminClientSettingsSpec extends BaseSpec {
     }
   }
 
-  val settings =
-    AdminClientSettings[IO]
+  def settings =
+    AdminClientSettings("test")
 }
