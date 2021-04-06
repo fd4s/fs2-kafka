@@ -7,7 +7,6 @@
 package fs2.kafka.producer
 
 import cats.effect.Sync
-import fs2.kafka.consumer.MkConsumer
 import fs2.kafka.{KafkaByteProducer, ProducerSettings}
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import fs2.kafka.internal.converters.collection._
