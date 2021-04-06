@@ -7,7 +7,7 @@
 package fs2.kafka.producer
 
 import cats.effect.Sync
-import fs2.kafka.{KafkaByteProducer, ProducerSettings}
+import fs2.kafka.{KafkaByteProducer, ProducerConfig}
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import fs2.kafka.internal.converters.collection._
 
@@ -23,7 +23,7 @@ import fs2.kafka.internal.converters.collection._
   * lexical scope.
   */
 trait MkProducer[F[_]] {
-  def apply(settings: ProducerSettings[F, _, _]): F[KafkaByteProducer]
+  def apply(settings: ProducerConfig[_]): F[KafkaByteProducer]
 }
 
 object MkProducer {
