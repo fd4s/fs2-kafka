@@ -7,6 +7,7 @@
 package fs2.kafka
 
 import cats.Show
+import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.admin.AdminClientConfig
 import scala.concurrent.duration._
 
@@ -170,6 +171,11 @@ sealed abstract class AdminClientSettings {
     * Creates a new [[AdminClientSettings]] with the specified [[closeTimeout]].
     */
   def withCloseTimeout(closeTimeout: FiniteDuration): AdminClientSettings
+
+  /**
+    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
+    */
+  def withCredentials(credentialsStore: KafkaCredentialStore): AdminClientSettings
 }
 
 object AdminClientSettings {
@@ -229,6 +235,9 @@ object AdminClientSettings {
 
     override def withCloseTimeout(closeTimeout: FiniteDuration): AdminClientSettings =
       copy(closeTimeout = closeTimeout)
+
+    override def withCredentials(credentialsStore: KafkaCredentialStore): AdminClientSettings =
+      withProperties(credentialsStore.properties)
 
     override def toString: String =
       s"AdminClientSettings(closeTimeout = $closeTimeout)"

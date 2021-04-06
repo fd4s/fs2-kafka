@@ -7,6 +7,7 @@
 package fs2.kafka
 
 import cats.{Applicative, Show}
+import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.producer.ProducerConfig
 
 import scala.concurrent.duration._
@@ -208,6 +209,11 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * Creates a new [[ProducerSettings]] with the specified [[parallelism]].
     */
   def withParallelism(parallelism: Int): ProducerSettings[F, K, V]
+
+  /**
+    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
+    */
+  def withCredentials(credentialsStore: KafkaCredentialStore): ProducerSettings[F, K, V]
 }
 
 object ProducerSettings {
@@ -272,6 +278,14 @@ object ProducerSettings {
 
     override def withParallelism(parallelism: Int): ProducerSettings[F, K, V] =
       copy(parallelism = parallelism)
+
+    /**
+      * Includes the credentials properties from the provided [[KafkaCredentialStore]]
+      */
+    override def withCredentials(
+      credentialsStore: KafkaCredentialStore
+    ): ProducerSettings[F, K, V] =
+      withProperties(credentialsStore.properties)
 
     override def toString: String =
       s"ProducerSettings(closeTimeout = $closeTimeout)"

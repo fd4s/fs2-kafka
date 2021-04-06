@@ -7,6 +7,7 @@
 package fs2.kafka
 
 import cats.{Applicative, Show}
+import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
 
@@ -366,6 +367,11 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * instead be set to `2` and not the specified value.
     */
   def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V]
+
+  /**
+    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
+    */
+  def withCredentials(credentialsStore: KafkaCredentialStore): ConsumerSettings[F, K, V]
 }
 
 object ConsumerSettings {
@@ -491,6 +497,11 @@ object ConsumerSettings {
 
     override def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V] =
       copy(maxPrefetchBatches = Math.max(2, maxPrefetchBatches))
+
+    override def withCredentials(
+      credentialsStore: KafkaCredentialStore
+    ): ConsumerSettings[F, K, V] =
+      withProperties(credentialsStore.properties)
 
     override def toString: String =
       s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery)"
