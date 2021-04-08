@@ -60,6 +60,10 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * Returns a new [[ConsumerSettings]] instance with the
     * specified [[blocker]] to use for blocking operations.
     */
+  @deprecated(
+    "For thread-safety reasons you should use the default single-threaded blocker",
+    "1.5.1"
+  )
   def withBlocker(blocker: Blocker): ConsumerSettings[F, K, V]
 
   /**
