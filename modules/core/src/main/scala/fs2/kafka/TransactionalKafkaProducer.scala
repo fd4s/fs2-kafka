@@ -136,7 +136,7 @@ object TransactionalKafkaProducer {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
-    Stream.resource(resource(settings))
+    Stream.resource(resource(settings)(F, mk))
 
   def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
     new TransactionalProducerPartiallyApplied
@@ -158,7 +158,7 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-      TransactionalKafkaProducer.resource(settings)
+      TransactionalKafkaProducer.resource(settings)(F, mk)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -174,7 +174,7 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
-      TransactionalKafkaProducer.stream(settings)
+      TransactionalKafkaProducer.stream(settings)(F, mk)
 
     override def toString: String =
       "TransactionalProducerPartiallyApplied$" + System.identityHashCode(this)

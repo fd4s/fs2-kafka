@@ -84,10 +84,10 @@ object KafkaProducer {
     * KafkaProducer.resource[F].using(settings)
     * }}}
     */
-  def resource[F[_]: Async: MkProducer, K, V](
+  def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
-  ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
-    KafkaProducerConnection.resource(settings).evalMap(_.withSerializersFrom(settings))
+  )(implicit F: Async[F], mk: MkProducer[F]): Resource[F, KafkaProducer.Metrics[F, K, V]] =
+    KafkaProducerConnection.resource(settings)(F, mk).evalMap(_.withSerializersFrom(settings))
 
   private[kafka] def from[F[_]: Async, K, V](
     withProducer: WithProducer[F],
@@ -122,10 +122,10 @@ object KafkaProducer {
     * KafkaProducer.stream[F].using(settings)
     * }}}
     */
-  def stream[F[_]: Async: MkProducer, K, V](
+  def stream[F[_], K, V](
     settings: ProducerSettings[F, K, V]
-  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
-    Stream.resource(KafkaProducer.resource(settings))
+  )(implicit F: Async[F], mk: MkProducer[F]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
+    Stream.resource(KafkaProducer.resource(settings)(F, mk))
 
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
@@ -160,10 +160,13 @@ object KafkaProducer {
     * produces record in batches, limiting the number of records
     * in the same batch using [[ProducerSettings#parallelism]].
     */
-  def pipe[F[_]: Async: MkProducer, K, V, P](
+  def pipe[F[_], K, V, P](
     settings: ProducerSettings[F, K, V]
+  )(
+    implicit F: Async[F],
+    mk: MkProducer[F]
   ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
-    records => stream(settings).flatMap(pipe(settings, _).apply(records))
+    records => stream(settings)(F, mk).flatMap(pipe(settings, _).apply(records))
 
   /**
     * Produces records in batches using the provided [[KafkaProducer]].
@@ -227,7 +230,7 @@ object KafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Resource[F, KafkaProducer[F, K, V]] =
-      KafkaProducer.resource(settings)
+      KafkaProducer.resource(settings)(F, mk)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -243,7 +246,7 @@ object KafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Stream[F, KafkaProducer[F, K, V]] =
-      KafkaProducer.stream(settings)
+      KafkaProducer.stream(settings)(F, mk)
 
     override def toString: String =
       "ProducerPartiallyApplied$" + System.identityHashCode(this)

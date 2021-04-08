@@ -577,10 +577,10 @@ object KafkaAdminClient {
     * working in a `Stream` context, you might instead prefer to
     * use the [[KafkaAdminClient.resource]].
     */
-  def stream[F[_]: Async: MkAdminClient](
+  def stream[F[_]](
     settings: AdminClientSettings
-  ): Stream[F, KafkaAdminClient[F]] =
-    Stream.resource(KafkaAdminClient.resource(settings))
+  )(implicit F: Async[F], mk: MkAdminClient[F]): Stream[F, KafkaAdminClient[F]] =
+    Stream.resource(KafkaAdminClient.resource(settings)(F, mk))
 
   /*
    * Prevents the default `MkAdminClient` instance from being implicitly available

@@ -614,10 +614,10 @@ object KafkaConsumer {
     * KafkaConsumer.stream[F].using(settings)
     * }}}
     */
-  def stream[F[_]: Async: MkConsumer, K, V](
+  def stream[F[_], K, V](
     settings: ConsumerSettings[F, K, V]
-  ): Stream[F, KafkaConsumer[F, K, V]] =
-    Stream.resource(resource(settings))
+  )(implicit F: Async[F], mk: MkConsumer[F]): Stream[F, KafkaConsumer[F, K, V]] =
+    Stream.resource(resource(settings)(F, mk))
 
   def apply[F[_]]: ConsumerPartiallyApplied[F] =
     new ConsumerPartiallyApplied()
@@ -639,7 +639,7 @@ object KafkaConsumer {
       implicit F: Async[F],
       mk: MkConsumer[F]
     ): Resource[F, KafkaConsumer[F, K, V]] =
-      KafkaConsumer.resource(settings)
+      KafkaConsumer.resource(settings)(F, mk)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -655,7 +655,7 @@ object KafkaConsumer {
       implicit F: Async[F],
       mk: MkConsumer[F]
     ): Stream[F, KafkaConsumer[F, K, V]] =
-      KafkaConsumer.stream(settings)
+      KafkaConsumer.stream(settings)(F, mk)
 
     override def toString: String =
       "ConsumerPartiallyApplied$" + System.identityHashCode(this)
