@@ -8,7 +8,7 @@ package fs2.kafka
 
 import cats.{Applicative, Show}
 import fs2.kafka.security.KafkaCredentialStore
-import org.apache.kafka.clients.consumer.{ConsumerConfig => JConsumerConfig}
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
 
 import scala.concurrent.duration._
@@ -35,321 +35,7 @@ import scala.concurrent.duration._
   * Use `ConsumerSettings#apply` to create a new instance.
   */
 sealed abstract class ConsumerSettings[F[_], K, V]
-    extends DeserializerSettings[F, K, V, ConsumerSettings[F, K, V]]
-    with ConsumerConfig[ConsumerSettings[F, K, V]]
-
-sealed trait ConsumerConfig[Settings <: ConsumerConfig[Settings]] {
-  self: Settings =>
-
-  /**
-    * Properties which can be provided when creating a Java `KafkaConsumer`
-    * instance. Numerous functions in [[ConsumerSettings]] add properties
-    * here if the settings are used by the Java `KafkaConsumer`.
-    */
-  def properties: Map[String, String]
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * bootstrap servers. This is equivalent to setting the following
-    * property using the [[withProperty]] function.
-    *
-    * {{{
-    * JConsumerConfig.BOOTSTRAP_SERVERS_CONFIG
-    * }}}
-    */
-  def withBootstrapServers(bootstrapServers: String): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * auto offset reset. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with [[AutoOffsetReset]] instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.AUTO_OFFSET_RESET_CONFIG
-    * }}}
-    */
-  def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * client id. This is equivalent to setting the following property
-    * using the [[withProperty]] function.
-    *
-    * {{{
-    * JConsumerConfig.CLIENT_ID_CONFIG
-    * }}}
-    */
-  def withClientId(clientId: String): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * group id. This is equivalent to setting the following property
-    * using the [[withProperty]] function.
-    *
-    * {{{
-    * JConsumerConfig.GROUP_ID_CONFIG
-    * }}}
-    */
-  def withGroupId(groupId: String): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * group instance id. This is equivalent to setting the following
-    * property using the [[withProperty]] function.
-    *
-    * {{{
-    * JConsumerConfig.GROUP_INSTANCE_ID_CONFIG
-    * }}}
-    */
-  def withGroupInstanceId(groupInstanceId: String): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * max poll records. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with an `Int` instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.MAX_POLL_RECORDS_CONFIG
-    * }}}
-    */
-  def withMaxPollRecords(maxPollRecords: Int): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * max poll interval. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with a `FiniteDuration` instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG
-    * }}}
-    */
-  def withMaxPollInterval(maxPollInterval: FiniteDuration): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * session timeout. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with a `FiniteDuration` instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.SESSION_TIMEOUT_MS_CONFIG
-    * }}}
-    */
-  def withSessionTimeout(sessionTimeout: FiniteDuration): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * heartbeat interval. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with a `FiniteDuration` instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG
-    * }}}
-    */
-  def withHeartbeatInterval(heartbeatInterval: FiniteDuration): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * auto commit setting. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with a `Boolean` instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG
-    * }}}
-    *
-    * Note that by default, this setting is set to `false`.
-    */
-  def withEnableAutoCommit(enableAutoCommit: Boolean): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * auto commit interval. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with a `FiniteDuration` instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG
-    * }}}
-    */
-  def withAutoCommitInterval(autoCommitInterval: FiniteDuration): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * request timeout. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with a `FiniteDuration` instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG
-    * }}}
-    */
-  def withRequestTimeout(requestTimeout: FiniteDuration): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * default api timeout. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with a `FiniteDuration` instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
-    * }}}
-    */
-  def withDefaultApiTimeout(defaultApiTimeout: FiniteDuration): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * isolation level. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with an [[IsolationLevel]] instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.ISOLATION_LEVEL_CONFIG
-    * }}}
-    */
-  def withIsolationLevel(isolationLevel: IsolationLevel): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * allow auto create topics. This is equivalent to setting the
-    * following property using the [[withProperty]] function, except
-    * you can specify it with a `Boolean` instead of a `String`.
-    *
-    * {{{
-    * JConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG
-    * }}}
-    */
-  def withAllowAutoCreateTopics(allowAutoCreateTopics: Boolean): Settings
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * client rack. This is equivalent to setting the following
-    * property using the [[withProperty]] function.
-    *
-    * {{{
-    * JConsumerConfig.CLIENT_RACK_CONFIG
-    * }}}
-    */
-  def withClientRack(clientRack: String): Settings
-
-  /**
-    * Includes a property with the specified `key` and `value`.
-    * The key should be one of the keys in `ConsumerConfig`,
-    * and the value should be a valid choice for the key.
-    */
-  def withProperty(key: String, value: String): Settings
-
-  /**
-    * Includes the specified keys and values as properties. The
-    * keys should be part of the `ConsumerConfig` keys, and
-    * the values should be valid choices for the keys.
-    */
-  def withProperties(properties: (String, String)*): Settings
-
-  /**
-    * Includes the specified keys and values as properties. The
-    * keys should be part of the `ConsumerConfig` keys, and
-    * the values should be valid choices for the keys.
-    */
-  def withProperties(properties: Map[String, String]): Settings
-
-  /**
-    * The time to wait for the Java `KafkaConsumer` to shutdown.<br>
-    * <br>
-    * The default value is 20 seconds.
-    */
-  def closeTimeout: FiniteDuration
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified [[closeTimeout]].
-    */
-  def withCloseTimeout(closeTimeout: FiniteDuration): Settings
-
-  /**
-    * The time to wait for offset commits to complete. If an offset commit
-    * doesn't complete within this time, a [[CommitTimeoutException]] will
-    * be raised instead.<br>
-    * <br>
-    * The default value is 15 seconds.
-    */
-  def commitTimeout: FiniteDuration
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified [[commitTimeout]].
-    */
-  def withCommitTimeout(commitTimeout: FiniteDuration): Settings
-
-  /**
-    * How often we should attempt to call `poll` on the Java `KafkaConsumer`.<br>
-    * <br>
-    * The default value is 50 milliseconds.
-    */
-  def pollInterval: FiniteDuration
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified [[pollInterval]].
-    */
-  def withPollInterval(pollInterval: FiniteDuration): Settings
-
-  /**
-    * How long we should allow the `poll` call to block for in the
-    * Java `KafkaConsumer`.<br>
-    * <br>
-    * The default value is 50 milliseconds.
-    */
-  def pollTimeout: FiniteDuration
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified [[pollTimeout]].
-    */
-  def withPollTimeout(pollTimeout: FiniteDuration): Settings
-
-  /**
-    * The [[CommitRecovery]] strategy for recovering from offset
-    * commit exceptions.<br>
-    * <br>
-    * The default is [[CommitRecovery#Default]].
-    */
-  def commitRecovery: CommitRecovery
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified
-    * [[CommitRecovery]] as the [[commitRecovery]] to use.
-    */
-  def withCommitRecovery(commitRecovery: CommitRecovery): Settings
-
-  /**
-    * The maximum number of record batches to prefetch per topic-partition.
-    * This means that, while records are being processed, there can be up
-    * to `maxPrefetchBatches * max.poll.records` records per topic-partition
-    * that have already been fetched, and are waiting to be processed. You can
-    * use [[withMaxPollRecords]] to control the `max.poll.records` setting.<br>
-    * <br>
-    * This setting effectively controls backpressure, i.e. the maximum number
-    * of batches to prefetch per topic-parititon before starting to slow down
-    * (not fetching more records) until processing has caught-up.<br>
-    * <br>
-    * Note that prefetching cannot be disabled and is generally preferred since
-    * it yields improved performance. The minimum value for this setting is `2`.
-    */
-  def maxPrefetchBatches: Int
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified value
-    * for [[maxPrefetchBatches]]. Note that if a value lower than
-    * the minimum `2` is specified, [[maxPrefetchBatches]] will
-    * instead be set to `2` and not the specified value.
-    */
-  def withMaxPrefetchBatches(maxPrefetchBatches: Int): Settings
-}
-
-sealed trait DeserializerSettings[F[_], K, V, Settings <: DeserializerSettings[F, K, V, Settings]] {
-  self: Settings =>
+    extends GenericConsumerSettings[ConsumerSettings[F, K, V]] {
 
   /**
     * The `Deserializer` to use for deserializing record keys.
@@ -375,12 +61,322 @@ sealed trait DeserializerSettings[F[_], K, V, Settings <: DeserializerSettings[F
   /**
     * Creates a new [[ConsumerSettings]] with the specified [[recordMetadata]].
     */
-  def withRecordMetadata(recordMetadata: ConsumerRecord[K, V] => String): Settings
+  def withRecordMetadata(recordMetadata: ConsumerRecord[K, V] => String): ConsumerSettings[F, K, V]
+}
+
+sealed trait GenericConsumerSettings[This <: GenericConsumerSettings[This]] {
+  self: This =>
+
+  /**
+    * Properties which can be provided when creating a Java `KafkaConsumer`
+    * instance. Numerous functions in [[ConsumerSettings]] add properties
+    * here if the settings are used by the Java `KafkaConsumer`.
+    */
+  def properties: Map[String, String]
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * bootstrap servers. This is equivalent to setting the following
+    * property using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG
+    * }}}
+    */
+  def withBootstrapServers(bootstrapServers: String): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * auto offset reset. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with [[AutoOffsetReset]] instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.AUTO_OFFSET_RESET_CONFIG
+    * }}}
+    */
+  def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * client id. This is equivalent to setting the following property
+    * using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.CLIENT_ID_CONFIG
+    * }}}
+    */
+  def withClientId(clientId: String): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * group id. This is equivalent to setting the following property
+    * using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.GROUP_ID_CONFIG
+    * }}}
+    */
+  def withGroupId(groupId: String): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * group instance id. This is equivalent to setting the following
+    * property using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.GROUP_INSTANCE_ID_CONFIG
+    * }}}
+    */
+  def withGroupInstanceId(groupInstanceId: String): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * max poll records. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with an `Int` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.MAX_POLL_RECORDS_CONFIG
+    * }}}
+    */
+  def withMaxPollRecords(maxPollRecords: Int): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * max poll interval. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG
+    * }}}
+    */
+  def withMaxPollInterval(maxPollInterval: FiniteDuration): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * session timeout. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG
+    * }}}
+    */
+  def withSessionTimeout(sessionTimeout: FiniteDuration): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * heartbeat interval. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG
+    * }}}
+    */
+  def withHeartbeatInterval(heartbeatInterval: FiniteDuration): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * auto commit setting. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `Boolean` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG
+    * }}}
+    *
+    * Note that by default, this setting is set to `false`.
+    */
+  def withEnableAutoCommit(enableAutoCommit: Boolean): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * auto commit interval. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG
+    * }}}
+    */
+  def withAutoCommitInterval(autoCommitInterval: FiniteDuration): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * request timeout. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG
+    * }}}
+    */
+  def withRequestTimeout(requestTimeout: FiniteDuration): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * default api timeout. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with a `FiniteDuration` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG
+    * }}}
+    */
+  def withDefaultApiTimeout(defaultApiTimeout: FiniteDuration): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * isolation level. This is equivalent to setting the following
+    * property using the [[withProperty]] function, except you can
+    * specify it with an [[IsolationLevel]] instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.ISOLATION_LEVEL_CONFIG
+    * }}}
+    */
+  def withIsolationLevel(isolationLevel: IsolationLevel): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * allow auto create topics. This is equivalent to setting the
+    * following property using the [[withProperty]] function, except
+    * you can specify it with a `Boolean` instead of a `String`.
+    *
+    * {{{
+    * ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG
+    * }}}
+    */
+  def withAllowAutoCreateTopics(allowAutoCreateTopics: Boolean): This
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the specified
+    * client rack. This is equivalent to setting the following
+    * property using the [[withProperty]] function.
+    *
+    * {{{
+    * ConsumerConfig.CLIENT_RACK_CONFIG
+    * }}}
+    */
+  def withClientRack(clientRack: String): This
+
+  /**
+    * Includes a property with the specified `key` and `value`.
+    * The key should be one of the keys in `ConsumerConfig`,
+    * and the value should be a valid choice for the key.
+    */
+  def withProperty(key: String, value: String): This
+
+  /**
+    * Includes the specified keys and values as properties. The
+    * keys should be part of the `ConsumerConfig` keys, and
+    * the values should be valid choices for the keys.
+    */
+  def withProperties(properties: (String, String)*): This
+
+  /**
+    * Includes the specified keys and values as properties. The
+    * keys should be part of the `ConsumerConfig` keys, and
+    * the values should be valid choices for the keys.
+    */
+  def withProperties(properties: Map[String, String]): This
+
+  /**
+    * The time to wait for the Java `KafkaConsumer` to shutdown.<br>
+    * <br>
+    * The default value is 20 seconds.
+    */
+  def closeTimeout: FiniteDuration
+
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[closeTimeout]].
+    */
+  def withCloseTimeout(closeTimeout: FiniteDuration): This
+
+  /**
+    * The time to wait for offset commits to complete. If an offset commit
+    * doesn't complete within this time, a [[CommitTimeoutException]] will
+    * be raised instead.<br>
+    * <br>
+    * The default value is 15 seconds.
+    */
+  def commitTimeout: FiniteDuration
+
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[commitTimeout]].
+    */
+  def withCommitTimeout(commitTimeout: FiniteDuration): This
+
+  /**
+    * How often we should attempt to call `poll` on the Java `KafkaConsumer`.<br>
+    * <br>
+    * The default value is 50 milliseconds.
+    */
+  def pollInterval: FiniteDuration
+
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[pollInterval]].
+    */
+  def withPollInterval(pollInterval: FiniteDuration): This
+
+  /**
+    * How long we should allow the `poll` call to block for in the
+    * Java `KafkaConsumer`.<br>
+    * <br>
+    * The default value is 50 milliseconds.
+    */
+  def pollTimeout: FiniteDuration
+
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified [[pollTimeout]].
+    */
+  def withPollTimeout(pollTimeout: FiniteDuration): This
+
+  /**
+    * The [[CommitRecovery]] strategy for recovering from offset
+    * commit exceptions.<br>
+    * <br>
+    * The default is [[CommitRecovery#Default]].
+    */
+  def commitRecovery: CommitRecovery
+
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified
+    * [[CommitRecovery]] as the [[commitRecovery]] to use.
+    */
+  def withCommitRecovery(commitRecovery: CommitRecovery): This
+
+  /**
+    * The maximum number of record batches to prefetch per topic-partition.
+    * This means that, while records are being processed, there can be up
+    * to `maxPrefetchBatches * max.poll.records` records per topic-partition
+    * that have already been fetched, and are waiting to be processed. You can
+    * use [[withMaxPollRecords]] to control the `max.poll.records` setting.<br>
+    * <br>
+    * This setting effectively controls backpressure, i.e. the maximum number
+    * of batches to prefetch per topic-parititon before starting to slow down
+    * (not fetching more records) until processing has caught-up.<br>
+    * <br>
+    * Note that prefetching cannot be disabled and is generally preferred since
+    * it yields improved performance. The minimum value for this setting is `2`.
+    */
+  def maxPrefetchBatches: Int
+
+  /**
+    * Creates a new [[ConsumerSettings]] with the specified value
+    * for [[maxPrefetchBatches]]. Note that if a value lower than
+    * the minimum `2` is specified, [[maxPrefetchBatches]] will
+    * instead be set to `2` and not the specified value.
+    */
+  def withMaxPrefetchBatches(maxPrefetchBatches: Int): This
 
   /**
     * Includes the credentials properties from the provided [[KafkaCredentialStore]]
     */
-  def withCredentials(credentialsStore: KafkaCredentialStore): Settings
+  def withCredentials(credentialsStore: KafkaCredentialStore): This
 }
 
 object ConsumerSettings {
@@ -398,11 +394,11 @@ object ConsumerSettings {
   ) extends ConsumerSettings[F, K, V] {
 
     override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
+      withProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
 
     override def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): ConsumerSettings[F, K, V] =
       withProperty(
-        JConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
         autoOffsetReset match {
           case AutoOffsetReset.EarliestOffsetReset => "earliest"
           case AutoOffsetReset.LatestOffsetReset   => "latest"
@@ -411,45 +407,45 @@ object ConsumerSettings {
       )
 
     override def withClientId(clientId: String): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.CLIENT_ID_CONFIG, clientId)
+      withProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientId)
 
     override def withGroupId(groupId: String): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.GROUP_ID_CONFIG, groupId)
+      withProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId)
 
     override def withGroupInstanceId(groupInstanceId: String): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.GROUP_INSTANCE_ID_CONFIG, groupInstanceId)
+      withProperty(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG, groupInstanceId)
 
     override def withMaxPollRecords(maxPollRecords: Int): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords.toString)
+      withProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords.toString)
 
     override def withMaxPollInterval(maxPollInterval: FiniteDuration): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, maxPollInterval.toMillis.toString)
+      withProperty(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, maxPollInterval.toMillis.toString)
 
     override def withSessionTimeout(sessionTimeout: FiniteDuration): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sessionTimeout.toMillis.toString)
+      withProperty(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sessionTimeout.toMillis.toString)
 
     override def withHeartbeatInterval(
       heartbeatInterval: FiniteDuration
     ): ConsumerSettings[F, K, V] =
       withProperty(
-        JConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG,
+        ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG,
         heartbeatInterval.toMillis.toString
       )
 
     override def withEnableAutoCommit(enableAutoCommit: Boolean): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, enableAutoCommit.toString)
+      withProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, enableAutoCommit.toString)
 
     override def withAutoCommitInterval(
       autoCommitInterval: FiniteDuration
     ): ConsumerSettings[F, K, V] =
       withProperty(
-        JConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
+        ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
         autoCommitInterval.toMillis.toString
       )
 
     override def withRequestTimeout(requestTimeout: FiniteDuration): ConsumerSettings[F, K, V] =
       withProperty(
-        JConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG,
+        ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG,
         requestTimeout.toMillis.toString
       )
 
@@ -457,13 +453,13 @@ object ConsumerSettings {
       defaultApiTimeout: FiniteDuration
     ): ConsumerSettings[F, K, V] =
       withProperty(
-        JConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG,
+        ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG,
         defaultApiTimeout.toMillis.toString
       )
 
     override def withIsolationLevel(isolationLevel: IsolationLevel): ConsumerSettings[F, K, V] =
       withProperty(
-        JConsumerConfig.ISOLATION_LEVEL_CONFIG,
+        ConsumerConfig.ISOLATION_LEVEL_CONFIG,
         isolationLevel match {
           case IsolationLevel.ReadCommittedIsolationLevel   => "read_committed"
           case IsolationLevel.ReadUncommittedIsolationLevel => "read_uncommitted"
@@ -473,10 +469,10 @@ object ConsumerSettings {
     override def withAllowAutoCreateTopics(
       allowAutoCreateTopics: Boolean
     ): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, allowAutoCreateTopics.toString)
+      withProperty(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, allowAutoCreateTopics.toString)
 
     override def withClientRack(clientRack: String): ConsumerSettings[F, K, V] =
-      withProperty(JConsumerConfig.CLIENT_RACK_CONFIG, clientRack)
+      withProperty(ConsumerConfig.CLIENT_RACK_CONFIG, clientRack)
 
     override def withProperty(key: String, value: String): ConsumerSettings[F, K, V] =
       copy(properties = properties.updated(key, value))
@@ -527,8 +523,8 @@ object ConsumerSettings {
       keyDeserializer = keyDeserializer,
       valueDeserializer = valueDeserializer,
       properties = Map(
-        JConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "none",
-        JConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"
+        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "none",
+        ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"
       ),
       closeTimeout = 20.seconds,
       commitTimeout = 15.seconds,

@@ -9,7 +9,7 @@ package fs2.kafka.internal
 import fs2.kafka.producer.MkProducer
 import cats.effect.{Resource, Sync}
 import cats.implicits._
-import fs2.kafka.{KafkaByteProducer, ProducerConfig, TransactionalProducerSettings}
+import fs2.kafka.{KafkaByteProducer, GenericProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
@@ -23,7 +23,7 @@ private[kafka] sealed abstract class WithProducer[F[_]] {
 private[kafka] object WithProducer {
   def apply[F[_], G[_]](
     mk: MkProducer[F],
-    settings: ProducerConfig[_]
+    settings: GenericProducerSettings[_]
   )(
     implicit F: Sync[F],
     G: Sync[G]

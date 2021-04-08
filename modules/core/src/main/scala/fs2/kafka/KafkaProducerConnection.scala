@@ -41,7 +41,7 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     * }}}
     */
   def withSerializersFrom[K, V](
-    settings: SerializerSettings[F, K, V]
+    settings: ProducerSettings[F, K, V]
   ): F[KafkaProducer.Metrics[F, K, V]]
 }
 
@@ -49,14 +49,14 @@ object KafkaProducerConnection {
 
   /**
     * Creates a new [[KafkaProducerConnection]] in the `Stream` context,
-    * using the specified [[ProducerConfig]].
+    * using the specified [[GenericProducerSettings]].
     *
     * {{{
     * KafkaProducerConnection.stream[F](settings)
     * }}}
     */
   def stream[F[_]](
-    config: ProducerConfig[_]
+    config: GenericProducerSettings[_]
   )(
     implicit F: Async[F]
   ): Stream[F, KafkaProducerConnection[F]] = Stream.resource(resource(config))
@@ -70,11 +70,11 @@ object KafkaProducerConnection {
     * }}}
     */
   def resource[F[_]: Async: MkProducer](
-    config: ProducerConfig[_]
+    config: GenericProducerSettings[_]
   ): Resource[F, KafkaProducerConnection[F]] = resourceIn[F, F](config)
 
   def resourceIn[F[_], G[_]](
-    config: ProducerConfig[_]
+    config: GenericProducerSettings[_]
   )(
     implicit
     G: Async[G],
@@ -90,7 +90,7 @@ object KafkaProducerConnection {
           KafkaProducer.from(withProducer, keySerializer, valueSerializer)
 
         override def withSerializersFrom[K, V](
-          settings: SerializerSettings[F, K, V]
+          settings: ProducerSettings[F, K, V]
         ): F[KafkaProducer.Metrics[F, K, V]] =
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
       }

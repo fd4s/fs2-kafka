@@ -7,7 +7,7 @@
 package fs2.kafka.consumer
 
 import cats.effect.Sync
-import fs2.kafka.{ConsumerConfig, KafkaByteConsumer}
+import fs2.kafka.{GenericConsumerSettings, KafkaByteConsumer}
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
@@ -22,7 +22,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
   * lexical scope.
   */
 trait MkConsumer[F[_]] {
-  def apply(settings: ConsumerConfig[_]): F[KafkaByteConsumer]
+  def apply(settings: GenericConsumerSettings[_]): F[KafkaByteConsumer]
 }
 
 object MkConsumer {
