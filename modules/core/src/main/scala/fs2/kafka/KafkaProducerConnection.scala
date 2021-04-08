@@ -59,7 +59,8 @@ object KafkaProducerConnection {
   def stream[F[_]](
     settings: ProducerSettings[F, _, _]
   )(
-    implicit F: Async[F]
+    implicit F: Async[F],
+    mk: MkProducer[F]
   ): Stream[F, KafkaProducerConnection[F]] = Stream.resource(resource(settings))
 
   /**
