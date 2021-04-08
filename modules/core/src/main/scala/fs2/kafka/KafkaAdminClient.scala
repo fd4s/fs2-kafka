@@ -11,7 +11,6 @@ import cats.effect._
 import fs2.Stream
 import fs2.kafka.KafkaAdminClient._
 import fs2.kafka.admin.MkAdminClient
-import fs2.kafka.consumer.MkConsumer
 import fs2.kafka.internal.WithAdminClient
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
