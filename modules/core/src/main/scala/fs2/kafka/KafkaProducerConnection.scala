@@ -76,9 +76,8 @@ object KafkaProducerConnection {
   def resourceIn[F[_], G[_]](
     config: GenericProducerSettings[_]
   )(
-    implicit
-    G: Async[G],
-    F: Async[F],
+    implicit F: Async[F],
+    G: Sync[G],
     mk: MkProducer[G]
   ): Resource[G, KafkaProducerConnection[F]] =
     WithProducer[G, F](mk, config).map { withProducer =>
