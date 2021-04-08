@@ -91,7 +91,7 @@ object KafkaProducer {
     withProducer: WithProducer[F],
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
-  )(implicit dispatcher: Dispatcher[F]): KafkaProducer.Metrics[F, K, V] =
+  ): KafkaProducer.Metrics[F, K, V] =
     new KafkaProducer.Metrics[F, K, V] {
       override def produce[P](
         records: ProducerRecords[P, K, V]
@@ -130,26 +130,27 @@ object KafkaProducer {
     valueSerializer: Serializer[F, V],
     producer: KafkaByteProducer
   )(
-    implicit F: Async[F],
-    dispatcher: Dispatcher[F]
+    implicit F: Async[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
       asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
         Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
-          F.blocking {
-              producer.send(
-                javaRecord, { (metadata, exception) =>
-                  val complete =
-                    deferred.complete {
-                      if (exception == null)
-                        Right((record, metadata))
-                      else Left(exception)
-                    }.void
-                  dispatcher.unsafeRunSync(complete)
-                }
-              )
-            }
-            .as(deferred.get.rethrow)
+          Dispatcher[F].use { dispatcher =>
+            F.blocking {
+                producer.send(
+                  javaRecord, { (metadata, exception) =>
+                    val complete =
+                      deferred.complete {
+                        if (exception == null)
+                          Right((record, metadata))
+                        else Left(exception)
+                      }.void
+                    dispatcher.unsafeRunSync(complete)
+                  }
+                )
+              }
+              .as(deferred.get.rethrow)
+          }
         }
       }
 

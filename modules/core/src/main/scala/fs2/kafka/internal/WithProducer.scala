@@ -21,15 +21,18 @@ private[kafka] sealed abstract class WithProducer[F[_]] {
 }
 
 private[kafka] object WithProducer {
-  def apply[F[_], K, V](
+  def apply[F[_], G[_]](
     mk: MkProducer[F],
     settings: ProducerConfig[_]
   )(
-    implicit F: Sync[F]
-  ): Resource[F, WithProducer[F]] =
-    Resource.make(
-      mk(settings).map(create(_, Blocking[F]))
-    )(_.blocking { _.close(settings.closeTimeout.asJava) })
+    implicit F: Sync[F],
+    G: Sync[G]
+  ): Resource[F, WithProducer[G]] =
+    Resource
+      .make(
+        mk(settings)
+      )(consumer => F.blocking { consumer.close(settings.closeTimeout.asJava) })
+      .map(create(_, Blocking[G]))
 
   def apply[F[_], K, V](
     mk: MkProducer[F],
