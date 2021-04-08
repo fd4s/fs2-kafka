@@ -427,10 +427,7 @@ object ConsumerSettings {
     override def withHeartbeatInterval(
       heartbeatInterval: FiniteDuration
     ): ConsumerSettings[F, K, V] =
-      withProperty(
-        ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG,
-        heartbeatInterval.toMillis.toString
-      )
+      withProperty(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, heartbeatInterval.toMillis.toString)
 
     override def withEnableAutoCommit(enableAutoCommit: Boolean): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, enableAutoCommit.toString)
