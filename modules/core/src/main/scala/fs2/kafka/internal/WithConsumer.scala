@@ -22,21 +22,23 @@ private[kafka] sealed abstract class WithConsumer[F[_]] {
 }
 
 private[kafka] object WithConsumer {
-  def apply[F[_], K, V](
+  def apply[F[_]: Async, K, V](
     mk: MkConsumer[F],
     settings: ConsumerSettings[F, K, V]
-  )(
-    implicit F: Async[F]
   ): Resource[F, WithConsumer[F]] =
-    Resource.make {
-      (mk(settings), Semaphore[F](1L))
-        .mapN { (consumer, semaphore) =>
-          new WithConsumer[F] {
-            override def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A] =
-              semaphore.permit.use { _ =>
-                f(consumer, Blocking[F])
-              }
+    Blocking.singleThreaded[F]("fs2-kafka-consumer").flatMap { b =>
+      Resource.make {
+        (mk(settings), Semaphore[F](1L))
+          .mapN { (consumer, semaphore) =>
+            new WithConsumer[F] {
+              override def apply[A](f: (KafkaByteConsumer, Blocking[F]) => F[A]): F[A] =
+                semaphore.permit.use { _ =>
+                  f(consumer, b)
+                }
+            }
           }
-        }
-    }(_.blocking { _.close(settings.closeTimeout.asJava) })
+      }(_.blocking {
+        _.close(settings.closeTimeout.asJava)
+      })
+    }
 }
