@@ -11,6 +11,7 @@ import cats.effect._
 import fs2.Stream
 import fs2.kafka.KafkaAdminClient._
 import fs2.kafka.admin.MkAdminClient
+import fs2.kafka.consumer.MkConsumer
 import fs2.kafka.internal.WithAdminClient
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
@@ -19,6 +20,8 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.acl.{AclBinding, AclBindingFilter}
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.{Node, TopicPartition}
+
+import scala.annotation.nowarn
 
 /**
   * [[KafkaAdminClient]] represents an admin client for Kafka, which is able to
@@ -579,4 +582,16 @@ object KafkaAdminClient {
     settings: AdminClientSettings
   ): Stream[F, KafkaAdminClient[F]] =
     Stream.resource(KafkaAdminClient.resource(settings))
+
+  /*
+   * Prevents the default `MkAdminClient` instance from being implicitly available
+   * to code defined in this object, ensuring factory methods require an instance
+   * to be provided at the call site.
+   */
+  @nowarn("cat=unused")
+  implicit private def mkAmbig1[F[_]]: MkAdminClient[F] =
+    throw new AssertionError("should not be used")
+  @nowarn("cat=unused")
+  implicit private def mkAmbig2[F[_]]: MkAdminClient[F] =
+    throw new AssertionError("should not be used")
 }

@@ -24,6 +24,7 @@ import java.util
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
 
+import scala.annotation.nowarn
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
@@ -660,4 +661,15 @@ object KafkaConsumer {
       "ConsumerPartiallyApplied$" + System.identityHashCode(this)
   }
 
+  /*
+   * Prevents the default `MkConsumer` instance from being implicitly available
+   * to code defined in this object, ensuring factory methods require an instance
+   * to be provided at the call site.
+   */
+  @nowarn("cat=unused")
+  implicit private def mkAmbig1[F[_]]: MkConsumer[F] =
+    throw new AssertionError("should not be used")
+  @nowarn("cat=unused")
+  implicit private def mkAmbig2[F[_]]: MkConsumer[F] =
+    throw new AssertionError("should not be used")
 }

@@ -13,6 +13,8 @@ import fs2.kafka.internal._
 import cats.effect.std.Dispatcher
 import fs2.kafka.producer.MkProducer
 
+import scala.annotation.nowarn
+
 /**
   * [[KafkaProducerConnection]] represents a connection to a Kafka broker
   * that can be used to create [[KafkaProducer]] instances. All [[KafkaProducer]]
@@ -93,4 +95,16 @@ object KafkaProducerConnection {
         }
       }
     }
+
+  /*
+   * Prevents the default `MkProducer` instance from being implicitly available
+   * to code defined in this object, ensuring factory methods require an instance
+   * to be provided at the call site.
+   */
+  @nowarn("cat=unused")
+  implicit private def mkAmbig1[F[_]]: MkProducer[F] =
+    throw new AssertionError("should not be used")
+  @nowarn("cat=unused")
+  implicit private def mkAmbig2[F[_]]: MkProducer[F] =
+    throw new AssertionError("should not be used")
 }
