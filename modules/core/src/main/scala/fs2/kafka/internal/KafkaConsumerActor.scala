@@ -197,15 +197,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     offsets: Map[TopicPartition, OffsetAndMetadata],
     callback: Either[Throwable, Unit] => Unit
   ): F[Unit] =
-    withConsumer { (consumer, _) =>
-      F.delay {
-          consumer.commitAsync(
-            offsets.asJava,
-            (_, exception) => callback(Option(exception).toLeft(()))
-          )
-        }
-        .handleErrorWith(e => F.delay(callback(Left(e))))
-    }
+    withConsumer
+      .blocking {
+        _.commitAsync(
+          offsets.asJava,
+          (_, exception) => callback(Option(exception).toLeft(()))
+        )
+      }
+      .handleErrorWith(e => F.delay(callback(Left(e))))
 
   private[this] def commit(request: Request.Commit[F, K, V]): F[Unit] =
     ref
