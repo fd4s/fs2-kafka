@@ -22,13 +22,13 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
   * lexical scope.
   */
 trait MkConsumer[F[_]] {
-  def apply(settings: ConsumerSettings[F, _, _]): F[KafkaByteConsumer]
+  def apply[G[_]](settings: ConsumerSettings[G, _, _]): F[KafkaByteConsumer]
 }
 
 object MkConsumer {
   implicit def mkConsumerForSync[F[_]](implicit F: Sync[F]): MkConsumer[F] =
-    settings =>
-      F.delay {
+    new MkConsumer[F] {
+      def apply[G[_]](settings: ConsumerSettings[G, _, _]): F[KafkaByteConsumer] = F.delay {
         val byteArrayDeserializer = new ByteArrayDeserializer
         new org.apache.kafka.clients.consumer.KafkaConsumer(
           (settings.properties: Map[String, AnyRef]).asJava,
@@ -36,4 +36,5 @@ object MkConsumer {
           byteArrayDeserializer
         )
       }
+    }
 }

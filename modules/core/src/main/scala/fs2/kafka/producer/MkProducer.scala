@@ -23,13 +23,13 @@ import fs2.kafka.internal.converters.collection._
   * lexical scope.
   */
 trait MkProducer[F[_]] {
-  def apply(settings: ProducerSettings[F, _, _]): F[KafkaByteProducer]
+  def apply[G[_]](settings: ProducerSettings[G, _, _]): F[KafkaByteProducer]
 }
 
 object MkProducer {
   implicit def mkProducerForSync[F[_]](implicit F: Sync[F]): MkProducer[F] =
-    settings =>
-      F.delay {
+    new MkProducer[F] {
+      def apply[G[_]](settings: ProducerSettings[G, _, _]): F[KafkaByteProducer] = F.delay {
         val byteArraySerializer = new ByteArraySerializer
         new org.apache.kafka.clients.producer.KafkaProducer(
           (settings.properties: Map[String, AnyRef]).asJava,
@@ -37,4 +37,5 @@ object MkProducer {
           byteArraySerializer
         )
       }
+    }
 }

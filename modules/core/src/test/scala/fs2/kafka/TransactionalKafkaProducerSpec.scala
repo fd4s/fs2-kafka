@@ -159,24 +159,26 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
       val error = new RuntimeException("BOOM")
 
-      implicit val mk: MkProducer[IO] = settings =>
-        IO.delay {
-          new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
-            (settings.properties: Map[String, AnyRef]).asJava,
-            new ByteArraySerializer,
-            new ByteArraySerializer
-          ) {
-            override def sendOffsetsToTransaction(
-              offsets: util.Map[TopicPartition, OffsetAndMetadata],
-              consumerGroupId: String
-            ): Unit =
-              if (offsets.containsKey(new TopicPartition(topic, 2))) {
-                throw error
-              } else {
-                super.sendOffsetsToTransaction(offsets, consumerGroupId)
-              }
+      implicit val mk: MkProducer[IO] = new MkProducer[IO] {
+        def apply[G[_]](settings: ProducerSettings[G, _, _]): IO[KafkaByteProducer] =
+          IO.delay {
+            new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
+              (settings.properties: Map[String, AnyRef]).asJava,
+              new ByteArraySerializer,
+              new ByteArraySerializer
+            ) {
+              override def sendOffsetsToTransaction(
+                offsets: util.Map[TopicPartition, OffsetAndMetadata],
+                consumerGroupId: String
+              ): Unit =
+                if (offsets.containsKey(new TopicPartition(topic, 2))) {
+                  throw error
+                } else {
+                  super.sendOffsetsToTransaction(offsets, consumerGroupId)
+                }
+            }
           }
-        }
+      }
 
       val produced =
         (for {
@@ -232,8 +234,8 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       createCustomTopic(topic, partitions = 3)
       val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n")
 
-      implicit val mkProducer: MkProducer[IO] = settings =>
-        IO.delay {
+      implicit val mkProducer: MkProducer[IO] = new MkProducer[IO] {
+        def apply[G[_]](settings: ProducerSettings[G, _, _]): IO[KafkaByteProducer] = IO.delay {
           new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
             (settings.properties: Map[String, AnyRef]).asJava,
             new ByteArraySerializer,
@@ -245,6 +247,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             }
           }
         }
+      }
 
       val produced =
         (for {
