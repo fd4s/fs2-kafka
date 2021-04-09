@@ -14,9 +14,9 @@ import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
-import cats.effect.std.Dispatcher
 import fs2.kafka.producer.MkProducer
 
+import scala.concurrent.Promise
 import scala.annotation.nowarn
 
 /**
@@ -93,7 +93,7 @@ object KafkaProducer {
     withProducer: WithProducer[F],
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
-  )(implicit dispatcher: Dispatcher[F]): KafkaProducer.Metrics[F, K, V] =
+  ): KafkaProducer.Metrics[F, K, V] =
     new KafkaProducer.Metrics[F, K, V] {
       override def produce[P](
         records: ProducerRecords[P, K, V]
@@ -132,26 +132,21 @@ object KafkaProducer {
     valueSerializer: Serializer[F, V],
     producer: KafkaByteProducer
   )(
-    implicit F: Async[F],
-    dispatcher: Dispatcher[F]
+    implicit F: Async[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
       asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
-        Deferred[F, Either[Throwable, (ProducerRecord[K, V], RecordMetadata)]].flatMap { deferred =>
+        F.delay(Promise[(ProducerRecord[K, V], RecordMetadata)]()).flatMap { promise =>
           F.blocking {
               producer.send(
                 javaRecord, { (metadata, exception) =>
-                  val complete =
-                    deferred.complete {
-                      if (exception == null)
-                        Right((record, metadata))
-                      else Left(exception)
-                    }.void
-                  dispatcher.unsafeRunSync(complete)
+                  if (exception == null)
+                    promise.success((record, metadata))
+                  else promise.failure(exception)
                 }
               )
             }
-            .as(deferred.get.rethrow)
+            .as(F.fromFuture(F.delay(promise.future)))
         }
       }
 
