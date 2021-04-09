@@ -16,6 +16,8 @@ import org.apache.kafka.clients.producer.RecordMetadata
 import cats.effect.std.Dispatcher
 import fs2.kafka.producer.MkProducer
 
+import scala.annotation.nowarn
+
 /**
   * Represents a producer of Kafka records specialized for 'read-process-write'
   * streams, with the ability to atomically produce `ProducerRecord`s and commit
@@ -134,7 +136,7 @@ object TransactionalKafkaProducer {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
-    Stream.resource(resource(settings))
+    Stream.resource(resource(settings)(F, mk))
 
   def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
     new TransactionalProducerPartiallyApplied
@@ -156,7 +158,7 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-      TransactionalKafkaProducer.resource(settings)
+      TransactionalKafkaProducer.resource(settings)(F, mk)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -172,9 +174,21 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
-      TransactionalKafkaProducer.stream(settings)
+      TransactionalKafkaProducer.stream(settings)(F, mk)
 
     override def toString: String =
       "TransactionalProducerPartiallyApplied$" + System.identityHashCode(this)
   }
+
+  /*
+   * Prevents the default `MkProducer` instance from being implicitly available
+   * to code defined in this object, ensuring factory methods require an instance
+   * to be provided at the call site.
+   */
+  @nowarn("cat=unused")
+  implicit private def mkAmbig1[F[_]]: MkProducer[F] =
+    throw new AssertionError("should not be used")
+  @nowarn("cat=unused")
+  implicit private def mkAmbig2[F[_]]: MkProducer[F] =
+    throw new AssertionError("should not be used")
 }

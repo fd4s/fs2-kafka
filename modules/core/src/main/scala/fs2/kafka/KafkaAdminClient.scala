@@ -20,6 +20,8 @@ import org.apache.kafka.common.acl.{AclBinding, AclBindingFilter}
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.{Node, TopicPartition}
 
+import scala.annotation.nowarn
+
 /**
   * [[KafkaAdminClient]] represents an admin client for Kafka, which is able to
   * describe queries about topics, consumer groups, offsets, and other entities
@@ -575,8 +577,20 @@ object KafkaAdminClient {
     * working in a `Stream` context, you might instead prefer to
     * use the [[KafkaAdminClient.resource]].
     */
-  def stream[F[_]: Async: MkAdminClient](
+  def stream[F[_]](
     settings: AdminClientSettings
-  ): Stream[F, KafkaAdminClient[F]] =
-    Stream.resource(KafkaAdminClient.resource(settings))
+  )(implicit F: Async[F], mk: MkAdminClient[F]): Stream[F, KafkaAdminClient[F]] =
+    Stream.resource(KafkaAdminClient.resource(settings)(F, mk))
+
+  /*
+   * Prevents the default `MkAdminClient` instance from being implicitly available
+   * to code defined in this object, ensuring factory methods require an instance
+   * to be provided at the call site.
+   */
+  @nowarn("cat=unused")
+  implicit private def mkAmbig1[F[_]]: MkAdminClient[F] =
+    throw new AssertionError("should not be used")
+  @nowarn("cat=unused")
+  implicit private def mkAmbig2[F[_]]: MkAdminClient[F] =
+    throw new AssertionError("should not be used")
 }
