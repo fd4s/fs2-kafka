@@ -4,6 +4,8 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import org.apache.kafka.clients.producer.ProducerConfig
+
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 final class ProducerSettingsSpec extends BaseSpec {
@@ -159,6 +161,16 @@ final class ProducerSettingsSpec extends BaseSpec {
       ProducerSettings[IO, Int, String].valueSerializer.unsafeRunSync() shouldBe serializerInstance
       ProducerSettings[IO, String, String]
     }
+
+    it("should be able to set a custom blocking context") {
+      assert {
+        settings.customBlockingContext.isEmpty &&
+        settings.withCustomBlockingContext(ExecutionContext.global).customBlockingContext === Some(
+          ExecutionContext.global
+        )
+      }
+    }
+
   }
 
   val settings = ProducerSettings[IO, String, String]

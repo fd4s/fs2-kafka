@@ -11,6 +11,7 @@ import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 /**
@@ -45,6 +46,24 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * The `Deserializer` to use for deserializing record values.
     */
   def valueDeserializer: F[Deserializer[F, V]]
+
+  /**
+    * A custom `ExecutionContext` to use for blocking Kafka operations. If not
+    * provided, a default single-threaded `ExecutionContext` will be created
+    * when creating a `KafkaConsumer` instance.
+    */
+  def customBlockingContext: Option[ExecutionContext]
+
+  /**
+    * Returns a new [[ConsumerSettings]] instance with the
+    * specified [[ExecutionContext]] to use for blocking operations.
+    *
+    * Because the underlying Java consumer is not thread-safe,
+    * the ExecutionContext *must* be single-threaded. If in doubt,
+    * leave this unset so that a default single-threaded
+    * blocker will be provided.
+    */
+  def withCustomBlockingContext(ec: ExecutionContext): ConsumerSettings[F, K, V]
 
   /**
     * Properties which can be provided when creating a Java `KafkaConsumer`
@@ -378,6 +397,7 @@ object ConsumerSettings {
   private[this] final case class ConsumerSettingsImpl[F[_], K, V](
     override val keyDeserializer: F[Deserializer[F, K]],
     override val valueDeserializer: F[Deserializer[F, V]],
+    override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val commitTimeout: FiniteDuration,
@@ -387,6 +407,8 @@ object ConsumerSettings {
     override val recordMetadata: ConsumerRecord[K, V] => String,
     override val maxPrefetchBatches: Int
   ) extends ConsumerSettings[F, K, V] {
+    override def withCustomBlockingContext(ec: ExecutionContext): ConsumerSettings[F, K, V] =
+      copy(customBlockingContext = Some(ec))
 
     override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -512,6 +534,7 @@ object ConsumerSettings {
     valueDeserializer: F[Deserializer[F, V]]
   ): ConsumerSettings[F, K, V] =
     ConsumerSettingsImpl(
+      customBlockingContext = None,
       keyDeserializer = keyDeserializer,
       valueDeserializer = valueDeserializer,
       properties = Map(
