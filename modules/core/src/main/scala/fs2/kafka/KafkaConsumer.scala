@@ -269,7 +269,7 @@ object KafkaConsumer {
         ): F[SortedSet[TopicPartition]] =
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request =
-              Request.Assignment[F, K, V](
+              Request.Assignment[F](
                 deferred.complete(_).void,
                 Some(onRebalance(streamId, prevAssignmentFinisherRef, partitionsMapQueue))
               )
