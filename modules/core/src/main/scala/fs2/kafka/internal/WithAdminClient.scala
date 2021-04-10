@@ -6,7 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Async, Resource}
+import cats.effect.{Async, Resource, Sync}
 import cats.implicits._
 import fs2.kafka.AdminClientSettings
 import fs2.kafka.admin.MkAdminClient
@@ -19,11 +19,11 @@ private[kafka] sealed abstract class WithAdminClient[F[_]] {
 }
 
 private[kafka] object WithAdminClient {
-  def apply[F[_]](
-    mk: MkAdminClient[F],
+  def apply[F[_], G[_]](
+    mk: MkAdminClient[G],
     settings: AdminClientSettings
-  )(implicit F: Async[F]): Resource[F, WithAdminClient[F]] =
-    Resource[F, WithAdminClient[F]] {
+  )(implicit F: Async[F], G: Sync[G]): Resource[G, WithAdminClient[F]] =
+    Resource[G, WithAdminClient[F]] {
       mk(settings).map { adminClient =>
         val withAdminClient =
           new WithAdminClient[F] {
@@ -32,7 +32,7 @@ private[kafka] object WithAdminClient {
           }
 
         val close =
-          F.blocking(adminClient.close(settings.closeTimeout.asJava))
+          G.blocking(adminClient.close(settings.closeTimeout.asJava))
 
         (withAdminClient, close)
       }

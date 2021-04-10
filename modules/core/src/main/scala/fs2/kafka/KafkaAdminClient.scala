@@ -488,87 +488,100 @@ object KafkaAdminClient {
   )(
     implicit F: Async[F],
     mk: MkAdminClient[F]
-  ): Resource[F, KafkaAdminClient[F]] =
-    WithAdminClient(mk, settings).map { client =>
-      new KafkaAdminClient[F] {
+  ): Resource[F, KafkaAdminClient[F]] = resourceIn[F, F](settings)(F, F, mk)
 
-        override def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
-          implicit G: Foldable[G]
-        ): F[Unit] =
-          alterConfigsWith(client, configs)
+  /**
+    * Like [[resource]], but allows the effect type of the created [[KafkaAdminClient]] to
+    * be different from the effect type of the [[Resource]] that allocates it.
+    */
+  def resourceIn[F[_], G[_]](
+    settings: AdminClientSettings
+  )(
+    implicit F: Async[F],
+    G: Sync[G],
+    mk: MkAdminClient[G]
+  ): Resource[G, KafkaAdminClient[F]] =
+    WithAdminClient[F, G](mk, settings).map(create)
 
-        override def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit] =
-          createPartitionsWith(client, newPartitions)
+  private def create[F[_]](client: WithAdminClient[F]) =
+    new KafkaAdminClient[F] {
 
-        override def createTopic(topic: NewTopic): F[Unit] =
-          createTopicWith(client, topic)
+      override def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
+        implicit G: Foldable[G]
+      ): F[Unit] =
+        alterConfigsWith(client, configs)
 
-        override def createTopics[G[_]](topics: G[NewTopic])(
-          implicit G: Foldable[G]
-        ): F[Unit] =
-          createTopicsWith(client, topics)
+      override def createPartitions(newPartitions: Map[String, NewPartitions]): F[Unit] =
+        createPartitionsWith(client, newPartitions)
 
-        override def createAcls[G[_]](acls: G[AclBinding])(
-          implicit G: Foldable[G]
-        ): F[Unit] =
-          createAclsWith(client, acls)
+      override def createTopic(topic: NewTopic): F[Unit] =
+        createTopicWith(client, topic)
 
-        override def deleteTopic(topic: String): F[Unit] =
-          deleteTopicWith(client, topic)
+      override def createTopics[G[_]](topics: G[NewTopic])(
+        implicit G: Foldable[G]
+      ): F[Unit] =
+        createTopicsWith(client, topics)
 
-        override def deleteTopics[G[_]](topics: G[String])(implicit G: Foldable[G]): F[Unit] =
-          deleteTopicsWith(client, topics)
+      override def createAcls[G[_]](acls: G[AclBinding])(
+        implicit G: Foldable[G]
+      ): F[Unit] =
+        createAclsWith(client, acls)
 
-        override def deleteAcls[G[_]](filters: G[AclBindingFilter])(
-          implicit G: Foldable[G]
-        ): F[Unit] =
-          deleteAclsWith(client, filters)
+      override def deleteTopic(topic: String): F[Unit] =
+        deleteTopicWith(client, topic)
 
-        override def describeCluster: DescribeCluster[F] =
-          describeClusterWith(client)
+      override def deleteTopics[G[_]](topics: G[String])(implicit G: Foldable[G]): F[Unit] =
+        deleteTopicsWith(client, topics)
 
-        override def describeConfigs[G[_]](resources: G[ConfigResource])(
-          implicit G: Foldable[G]
-        ): F[Map[ConfigResource, List[ConfigEntry]]] =
-          describeConfigsWith(client, resources)
+      override def deleteAcls[G[_]](filters: G[AclBindingFilter])(
+        implicit G: Foldable[G]
+      ): F[Unit] =
+        deleteAclsWith(client, filters)
 
-        override def describeConsumerGroups[G[_]](groupIds: G[String])(
-          implicit G: Foldable[G]
-        ): F[Map[String, ConsumerGroupDescription]] =
-          describeConsumerGroupsWith(client, groupIds)
+      override def describeCluster: DescribeCluster[F] =
+        describeClusterWith(client)
 
-        override def describeTopics[G[_]](topics: G[String])(
-          implicit G: Foldable[G]
-        ): F[Map[String, TopicDescription]] =
-          describeTopicsWith(client, topics)
+      override def describeConfigs[G[_]](resources: G[ConfigResource])(
+        implicit G: Foldable[G]
+      ): F[Map[ConfigResource, List[ConfigEntry]]] =
+        describeConfigsWith(client, resources)
 
-        override def listConsumerGroupOffsets(groupId: String): ListConsumerGroupOffsets[F] =
-          listConsumerGroupOffsetsWith(client, groupId)
+      override def describeConsumerGroups[G[_]](groupIds: G[String])(
+        implicit G: Foldable[G]
+      ): F[Map[String, ConsumerGroupDescription]] =
+        describeConsumerGroupsWith(client, groupIds)
 
-        override def listConsumerGroups: ListConsumerGroups[F] =
-          listConsumerGroupsWith(client)
+      override def describeTopics[G[_]](topics: G[String])(
+        implicit G: Foldable[G]
+      ): F[Map[String, TopicDescription]] =
+        describeTopicsWith(client, topics)
 
-        override def listTopics: ListTopics[F] =
-          listTopicsWith(client)
+      override def listConsumerGroupOffsets(groupId: String): ListConsumerGroupOffsets[F] =
+        listConsumerGroupOffsetsWith(client, groupId)
 
-        override def describeAcls(filter: AclBindingFilter): F[List[AclBinding]] =
-          describeAclsWith(client, filter)
+      override def listConsumerGroups: ListConsumerGroups[F] =
+        listConsumerGroupsWith(client)
 
-        override def alterConsumerGroupOffsets(
-          groupId: String,
-          offsets: Map[TopicPartition, OffsetAndMetadata]
-        ): F[Unit] =
-          alterConsumerGroupOffsetsWith(client, groupId, offsets)
+      override def listTopics: ListTopics[F] =
+        listTopicsWith(client)
 
-        override def deleteConsumerGroupOffsets(
-          groupId: String,
-          partitions: Set[TopicPartition]
-        ): F[Unit] =
-          deleteConsumerGroupOffsetsWith(client, groupId, partitions)
+      override def describeAcls(filter: AclBindingFilter): F[List[AclBinding]] =
+        describeAclsWith(client, filter)
 
-        override def toString: String =
-          "KafkaAdminClient$" + System.identityHashCode(this)
-      }
+      override def alterConsumerGroupOffsets(
+        groupId: String,
+        offsets: Map[TopicPartition, OffsetAndMetadata]
+      ): F[Unit] =
+        alterConsumerGroupOffsetsWith(client, groupId, offsets)
+
+      override def deleteConsumerGroupOffsets(
+        groupId: String,
+        partitions: Set[TopicPartition]
+      ): F[Unit] =
+        deleteConsumerGroupOffsetsWith(client, groupId, partitions)
+
+      override def toString: String =
+        "KafkaAdminClient$" + System.identityHashCode(this)
     }
 
   /**
@@ -580,7 +593,16 @@ object KafkaAdminClient {
   def stream[F[_]](
     settings: AdminClientSettings
   )(implicit F: Async[F], mk: MkAdminClient[F]): Stream[F, KafkaAdminClient[F]] =
-    Stream.resource(KafkaAdminClient.resource(settings)(F, mk))
+    streamIn[F, F](settings)(F, F, mk)
+
+  /**
+    * Like [[stream]], but allows the effect type of the created [[KafkaAdminClient]] to
+    * be different from the effect type of the [[Stream]] that allocates it.
+    */
+  def streamIn[F[_], G[_]](
+    settings: AdminClientSettings
+  )(implicit F: Async[F], G: Sync[G], mk: MkAdminClient[G]): Stream[G, KafkaAdminClient[F]] =
+    Stream.resource(KafkaAdminClient.resourceIn(settings)(F, G, mk))
 
   /*
    * Prevents the default `MkAdminClient` instance from being implicitly available
