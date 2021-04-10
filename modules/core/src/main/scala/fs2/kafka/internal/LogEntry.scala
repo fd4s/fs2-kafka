@@ -152,7 +152,7 @@ private[kafka] object LogEntry {
   }
 
   final case class StoredPendingCommit[F[_]](
-    commit: Request.Commit,
+    commit: Request.Commit[F],
     state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
@@ -161,7 +161,7 @@ private[kafka] object LogEntry {
   }
 
   final case class CommittedPendingCommits[F[_]](
-    pendingCommits: Chain[Request.Commit],
+    pendingCommits: Chain[Request.Commit[F]],
     state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
