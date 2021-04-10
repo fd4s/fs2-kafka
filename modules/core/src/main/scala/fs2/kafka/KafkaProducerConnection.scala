@@ -10,7 +10,6 @@ import cats.effect._
 import cats.implicits._
 import fs2.Stream
 import fs2.kafka.internal._
-import cats.effect.std.Dispatcher
 import fs2.kafka.producer.MkProducer
 
 import scala.annotation.nowarn
@@ -79,20 +78,18 @@ object KafkaProducerConnection {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Resource[F, KafkaProducerConnection[F]] =
-    Dispatcher[F].flatMap { implicit dispatcher =>
-      WithProducer(mk, settings).map { withProducer =>
-        new KafkaProducerConnection[F] {
-          override def withSerializers[K, V](
-            keySerializer: Serializer[F, K],
-            valueSerializer: Serializer[F, V]
-          ): KafkaProducer.Metrics[F, K, V] =
-            KafkaProducer.from(withProducer, keySerializer, valueSerializer)
+    WithProducer(mk, settings).map { withProducer =>
+      new KafkaProducerConnection[F] {
+        override def withSerializers[K, V](
+          keySerializer: Serializer[F, K],
+          valueSerializer: Serializer[F, V]
+        ): KafkaProducer.Metrics[F, K, V] =
+          KafkaProducer.from(withProducer, keySerializer, valueSerializer)
 
-          override def withSerializersFrom[K, V](
-            settings: ProducerSettings[F, K, V]
-          ): F[KafkaProducer.Metrics[F, K, V]] =
-            (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
-        }
+        override def withSerializersFrom[K, V](
+          settings: ProducerSettings[F, K, V]
+        ): F[KafkaProducer.Metrics[F, K, V]] =
+          (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
       }
     }
 

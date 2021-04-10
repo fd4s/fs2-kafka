@@ -13,7 +13,6 @@ import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
-import cats.effect.std.Dispatcher
 import fs2.kafka.producer.MkProducer
 
 import scala.annotation.nowarn
@@ -62,11 +61,8 @@ object TransactionalKafkaProducer {
     (
       Resource.eval(settings.producerSettings.keySerializer),
       Resource.eval(settings.producerSettings.valueSerializer),
-      WithProducer(mk, settings),
-      Dispatcher[F]
-    ).mapN { (keySerializer, valueSerializer, withProducer, dispatcher) =>
-      implicit val dispatcher0 = dispatcher
-
+      WithProducer(mk, settings)
+    ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer[F, K, V] {
         override def produce[P](
           records: TransactionalProducerRecords[F, P, K, V]
