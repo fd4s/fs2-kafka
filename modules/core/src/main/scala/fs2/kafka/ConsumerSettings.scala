@@ -51,14 +51,19 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
 
   /**
     * The `Blocker` to use for blocking Kafka operations. If not
-    * explicitly provided, a default `Blocker` will be created
-    * when creating a `KafkaConsumer` instance.
+    * explicitly provided, a default single-threaded `Blocker`
+    * will be created when creating a `KafkaConsumer` instance.
     */
   def blocker: Option[Blocker]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the
     * specified [[blocker]] to use for blocking operations.
+    *
+    * Because the underlying Java consumer is not thread-safe,
+    * the blocker *must* be single-threaded. If in doubt,
+    * leave this unset so that a default single-threaded
+    * blocker will be provided.
     */
   def withBlocker(blocker: Blocker): ConsumerSettings[F, K, V]
 
