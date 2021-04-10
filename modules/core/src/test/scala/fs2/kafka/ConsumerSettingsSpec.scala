@@ -3,8 +3,6 @@ package fs2.kafka
 import cats.effect.{Blocker, IO}
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerConfig
-
-import scala.annotation.nowarn
 import scala.concurrent.duration._
 
 final class ConsumerSettingsSpec extends BaseSpec {
@@ -317,7 +315,6 @@ final class ConsumerSettingsSpec extends BaseSpec {
       valueDeserializer = Deserializer[IO, String]
     )
 
-  @nowarn("cat=deprecation")
   val settingWithBlocker =
     Blocker[IO].map { blocker =>
       ConsumerSettings[IO, String, String]
