@@ -9,7 +9,7 @@ package fs2.kafka
 import cats.{Foldable, Reducible}
 import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.effect._
-import cats.effect.concurrent.{Deferred, Ref, TryableDeferred}
+import cats.effect.concurrent.TryableDeferred
 import cats.effect.implicits._
 import cats.implicits._
 import fs2.{Chunk, Stream}
@@ -28,6 +28,7 @@ import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartitio
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
+import cats.effect.{ Deferred, Ref, Spawn, Temporal }
 
 /**
   * [[KafkaConsumer]] represents a consumer of Kafka records, with the
@@ -96,13 +97,11 @@ object KafkaConsumer {
     polls: Queue[F, Request[F, K, V]],
     actor: KafkaConsumerActor[F, K, V]
   )(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
-  ): Resource[F, Fiber[F, Unit]] =
+    implicit F: Concurrent[F]): Resource[F, Fiber[F, Unit]] =
     spawnRepeating {
       OptionT(requests.tryDequeue1)
         .getOrElseF(polls.dequeue1)
-        .flatMap(actor.handle(_) >> context.shift)
+        .flatMap(actor.handle(_) >> Spawn[F].cede)
     }
 
   private def startPollScheduler[F[_], K, V](
@@ -110,7 +109,7 @@ object KafkaConsumer {
     pollInterval: FiniteDuration
   )(
     implicit F: Concurrent[F],
-    timer: Timer[F]
+    timer: Temporal[F]
   ): Resource[F, Fiber[F, Unit]] =
     spawnRepeating {
       polls.enqueue1(Request.poll) >> timer.sleep(pollInterval)
@@ -559,8 +558,7 @@ object KafkaConsumer {
     settings: ConsumerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
-    context: ContextShift[F],
-    timer: Timer[F]
+    timer: Temporal[F]
   ): Resource[F, KafkaConsumer[F, K, V]] = resource(settings)
 
   /**
@@ -578,8 +576,7 @@ object KafkaConsumer {
     settings: ConsumerSettings[F, K, V]
   )(
     implicit F: ConcurrentEffect[F],
-    context: ContextShift[F],
-    timer: Timer[F]
+    timer: Temporal[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     for {
       keyDeserializer <- Resource.eval(settings.keyDeserializer)
@@ -645,8 +642,7 @@ object KafkaConsumer {
     */
   def stream[F[_], K, V](settings: ConsumerSettings[F, K, V])(
     implicit F: ConcurrentEffect[F],
-    context: ContextShift[F],
-    timer: Timer[F]
+    timer: Temporal[F]
   ): Stream[F, KafkaConsumer[F, K, V]] =
     Stream.resource(resource(settings))
 
@@ -682,8 +678,7 @@ object KafkaConsumer {
       */
     def resource[K, V](settings: ConsumerSettings[F, K, V])(
       implicit F: ConcurrentEffect[F],
-      context: ContextShift[F],
-      timer: Timer[F]
+      timer: Temporal[F]
     ): Resource[F, KafkaConsumer[F, K, V]] =
       KafkaConsumer.resource(settings)
 
@@ -699,8 +694,7 @@ object KafkaConsumer {
       */
     def stream[K, V](settings: ConsumerSettings[F, K, V])(
       implicit F: ConcurrentEffect[F],
-      context: ContextShift[F],
-      timer: Timer[F]
+      timer: Temporal[F]
     ): Stream[F, KafkaConsumer[F, K, V]] =
       KafkaConsumer.stream(settings)
 
