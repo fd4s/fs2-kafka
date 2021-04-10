@@ -92,30 +92,30 @@ object KafkaConsumer {
     }(_.cancel)
 
   private def startConsumerActor[F[_], K, V](
-    requests: Queue[F, Request[F, K, V]],
-    polls: Queue[F, Request[F, K, V]],
+    requests: QueueSource[F, Request[F, K, V]],
+    polls: QueueSource[F, Request.Poll],
     actor: KafkaConsumerActor[F, K, V]
   )(
     implicit F: Async[F]
   ): Resource[F, FakeFiber[F]] =
     spawnRepeating {
       OptionT(requests.tryTake)
-        .getOrElseF(polls.take)
+        .getOrElseF(polls.take.widen)
         .flatMap(actor.handle(_))
     }
 
   private def startPollScheduler[F[_], K, V](
-    polls: Queue[F, Request[F, K, V]],
+    polls: QueueSink[F, Request.Poll],
     pollInterval: FiniteDuration
   )(
     implicit F: Temporal[F]
   ): Resource[F, FakeFiber[F]] =
     spawnRepeating {
-      polls.offer(Request.poll) >> F.sleep(pollInterval)
+      polls.offer(Request.Poll) >> F.sleep(pollInterval)
     }
 
   private def createKafkaConsumer[F[_], K, V](
-    requests: Queue[F, Request[F, K, V]],
+    requests: QueueSink[F, Request[F, K, V]],
     settings: ConsumerSettings[F, K, V],
     actor: FakeFiber[F],
     polls: FakeFiber[F],
@@ -570,7 +570,7 @@ object KafkaConsumer {
       jitter <- Resource.eval(Jitter.default[F])
       logging <- Resource.eval(Logging.default[F](id))
       requests <- Resource.eval(Queue.unbounded[F, Request[F, K, V]])
-      polls <- Resource.eval(Queue.bounded[F, Request[F, K, V]](1))
+      polls <- Resource.eval(Queue.bounded[F, Request.Poll](1))
       ref <- Resource.eval(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.eval(Ref.of[F, StreamId](0))
       dispatcher <- Dispatcher[F]
