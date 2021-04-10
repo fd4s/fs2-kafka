@@ -343,7 +343,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private[this] def assignment(
     callback: Either[Throwable, SortedSet[TopicPartition]] => F[Unit],
-    onRebalance: Option[OnRebalance[F, K, V]]
+    onRebalance: Option[OnRebalance[F]]
   ): F[Unit] = {
     def resolveDeferred(subscribed: Boolean): F[Unit] = {
       val result =
@@ -573,7 +573,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     completeWithRecords: F[Unit],
     completeWithoutRecords: F[Unit],
     removeRevokedRecords: F[Unit],
-    onRebalances: Chain[OnRebalance[F, K, V]]
+    onRebalances: Chain[OnRebalance[F]]
   )
 
   private[this] sealed trait HandlePollResult {
@@ -582,7 +582,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] object HandlePollResult {
     case class PendingCommits(
       commits: Chain[Request.Commit[F, K, V]],
-      log: CommittedPendingCommits[F, K, V]
+      log: CommittedPendingCommits[F]
     ) {
       def commit: F[Unit] =
         commits.foldLeft(F.unit) {
@@ -594,20 +594,20 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     case class StateNotChanged(pendingCommits: Option[PendingCommits]) extends HandlePollResult
 
     case class Stored(
-      log: LogEntry.StoredRecords[F, K, V],
+      log: LogEntry.StoredRecords[F],
       pendingCommits: Option[PendingCommits]
     ) extends HandlePollResult
 
     case class Completed(
       completeFetches: F[Unit],
-      log: LogEntry.CompletedFetchesWithRecords[F, K, V],
+      log: LogEntry.CompletedFetchesWithRecords[F],
       pendingCommits: Option[PendingCommits]
     ) extends HandlePollResult
 
     case class CompletedAndStored(
       completeFetches: F[Unit],
-      completedLog: LogEntry.CompletedFetchesWithRecords[F, K, V],
-      storedLog: LogEntry.StoredRecords[F, K, V],
+      completedLog: LogEntry.CompletedFetchesWithRecords[F],
+      storedLog: LogEntry.StoredRecords[F],
       pendingCommits: Option[PendingCommits]
     ) extends HandlePollResult
   }
@@ -633,12 +633,12 @@ private[kafka] object KafkaConsumerActor {
     fetches: Map[TopicPartition, Map[StreamId, FetchRequest[F, K, V]]],
     records: Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]],
     pendingCommits: Chain[Request.Commit[F, K, V]],
-    onRebalances: Chain[OnRebalance[F, K, V]],
+    onRebalances: Chain[OnRebalance[F]],
     rebalancing: Boolean,
     subscribed: Boolean,
     streaming: Boolean
   ) {
-    def withOnRebalance(onRebalance: OnRebalance[F, K, V]): State[F, K, V] =
+    def withOnRebalance(onRebalance: OnRebalance[F]): State[F, K, V] =
       copy(onRebalances = onRebalances append onRebalance)
 
     /**
@@ -745,7 +745,7 @@ private[kafka] object KafkaConsumerActor {
     case object FetchedRecords extends FetchCompletedReason
   }
 
-  final case class OnRebalance[F[_], K, V](
+  final case class OnRebalance[F[_]](
     onAssigned: SortedSet[TopicPartition] => F[Unit],
     onRevoked: SortedSet[TopicPartition] => F[Unit]
   ) {
@@ -758,7 +758,7 @@ private[kafka] object KafkaConsumerActor {
   object Request {
     final case class Assignment[F[_], K, V](
       callback: Either[Throwable, SortedSet[TopicPartition]] => F[Unit],
-      onRebalance: Option[OnRebalance[F, K, V]]
+      onRebalance: Option[OnRebalance[F]]
     ) extends Request[F, K, V]
 
     final case class Poll[F[_], K, V]() extends Request[F, K, V]

@@ -241,7 +241,7 @@ object KafkaConsumer {
           streamId: StreamId,
           prevAssignmentFinisherRef: Ref[F, Deferred[F, Unit]],
           partitionsMapQueue: PartitionsMapQueue
-        ): OnRebalance[F, K, V] =
+        ): OnRebalance[F] =
           OnRebalance(
             onRevoked = _ => {
               for {
@@ -353,7 +353,7 @@ object KafkaConsumer {
         assignment(Option.empty)
 
       private def assignment(
-        onRebalance: Option[OnRebalance[F, K, V]]
+        onRebalance: Option[OnRebalance[F]]
       ): F[SortedSet[TopicPartition]] =
         request { callback =>
           Request.Assignment(
@@ -371,7 +371,7 @@ object KafkaConsumer {
           updateQueue: Queue[F, SortedSet[TopicPartition]],
           assignmentRef: Ref[F, SortedSet[TopicPartition]],
           initialAssignmentDone: F[Unit]
-        ): OnRebalance[F, K, V] =
+        ): OnRebalance[F] =
           OnRebalance(
             onAssigned = assigned =>
               initialAssignmentDone >>
