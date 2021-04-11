@@ -92,20 +92,20 @@ object KafkaConsumer {
     }(_.cancel)
 
   private def startConsumerActor[F[_], K, V](
-    requests: Queue[F, Request[F, K, V]],
-    polls: Queue[F, Request[F, K, V]],
+    requests: QueueSource[F, Request[F, K, V]],
+    polls: QueueSource[F, Request.Poll[F]],
     actor: KafkaConsumerActor[F, K, V]
   )(
     implicit F: Async[F]
   ): Resource[F, FakeFiber[F]] =
     spawnRepeating {
       OptionT(requests.tryTake)
-        .getOrElseF(polls.take)
+        .getOrElseF(polls.take.widen)
         .flatMap(actor.handle(_))
     }
 
   private def startPollScheduler[F[_], K, V](
-    polls: Queue[F, Request[F, K, V]],
+    polls: QueueSink[F, Request.Poll[F]],
     pollInterval: FiniteDuration
   )(
     implicit F: Temporal[F]
@@ -115,7 +115,7 @@ object KafkaConsumer {
     }
 
   private def createKafkaConsumer[F[_], K, V](
-    requests: Queue[F, Request[F, K, V]],
+    requests: QueueSink[F, Request[F, K, V]],
     settings: ConsumerSettings[F, K, V],
     actor: FakeFiber[F],
     polls: FakeFiber[F],
@@ -241,7 +241,7 @@ object KafkaConsumer {
           streamId: StreamId,
           prevAssignmentFinisherRef: Ref[F, Deferred[F, Unit]],
           partitionsMapQueue: PartitionsMapQueue
-        ): OnRebalance[F, K, V] =
+        ): OnRebalance[F] =
           OnRebalance(
             onRevoked = _ => {
               for {
@@ -269,7 +269,7 @@ object KafkaConsumer {
         ): F[SortedSet[TopicPartition]] =
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request =
-              Request.Assignment[F, K, V](
+              Request.Assignment[F](
                 deferred.complete(_).void,
                 Some(onRebalance(streamId, prevAssignmentFinisherRef, partitionsMapQueue))
               )
@@ -353,7 +353,7 @@ object KafkaConsumer {
         assignment(Option.empty)
 
       private def assignment(
-        onRebalance: Option[OnRebalance[F, K, V]]
+        onRebalance: Option[OnRebalance[F]]
       ): F[SortedSet[TopicPartition]] =
         request { callback =>
           Request.Assignment(
@@ -371,7 +371,7 @@ object KafkaConsumer {
           updateQueue: Queue[F, SortedSet[TopicPartition]],
           assignmentRef: Ref[F, SortedSet[TopicPartition]],
           initialAssignmentDone: F[Unit]
-        ): OnRebalance[F, K, V] =
+        ): OnRebalance[F] =
           OnRebalance(
             onAssigned = assigned =>
               initialAssignmentDone >>
@@ -570,7 +570,7 @@ object KafkaConsumer {
       jitter <- Resource.eval(Jitter.default[F])
       logging <- Resource.eval(Logging.default[F](id))
       requests <- Resource.eval(Queue.unbounded[F, Request[F, K, V]])
-      polls <- Resource.eval(Queue.bounded[F, Request[F, K, V]](1))
+      polls <- Resource.eval(Queue.bounded[F, Request.Poll[F]](1))
       ref <- Resource.eval(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.eval(Ref.of[F, StreamId](0))
       dispatcher <- Dispatcher[F]

@@ -25,42 +25,42 @@ private[kafka] sealed abstract class LogEntry {
 }
 
 private[kafka] object LogEntry {
-  final case class SubscribedTopics[F[_], K, V](
+  final case class SubscribedTopics[F[_]](
     topics: NonEmptyList[String],
-    state: State[F, K, V]
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Consumer subscribed to topics [${topics.toList.mkString(", ")}]. Current state [$state]."
   }
 
-  final case class ManuallyAssignedPartitions[F[_], K, V](
+  final case class ManuallyAssignedPartitions[F[_]](
     partitions: NonEmptySet[TopicPartition],
-    state: State[F, K, V]
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Consumer manually assigned partitions [${partitions.toList.mkString(", ")}]. Current state [$state]."
   }
 
-  final case class SubscribedPattern[F[_], K, V](
+  final case class SubscribedPattern[F[_]](
     pattern: Pattern,
-    state: State[F, K, V]
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Consumer subscribed to pattern [$pattern]. Current state [$state]."
   }
 
-  final case class Unsubscribed[F[_], K, V](
-    state: State[F, K, V]
+  final case class Unsubscribed[F[_]](
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Consumer unsubscribed from all partitions. Current state [$state]."
   }
 
-  final case class StoredFetch[F[_], K, V, A](
+  final case class StoredFetch[F[_], K, V](
     partition: TopicPartition,
     callback: ((Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)) => F[Unit],
     state: State[F, K, V]
@@ -70,72 +70,72 @@ private[kafka] object LogEntry {
       s"Stored fetch [$callback] for partition [$partition]. Current state [$state]."
   }
 
-  final case class StoredOnRebalance[F[_], K, V](
-    onRebalance: OnRebalance[F, K, V],
-    state: State[F, K, V]
+  final case class StoredOnRebalance[F[_]](
+    onRebalance: OnRebalance[F],
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Stored OnRebalance [$onRebalance]. Current state [$state]."
   }
 
-  final case class AssignedPartitions[F[_], K, V](
+  final case class AssignedPartitions[F[_]](
     partitions: SortedSet[TopicPartition],
-    state: State[F, K, V]
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Assigned partitions [${partitions.mkString(", ")}]. Current state [$state]."
   }
 
-  final case class RevokedPartitions[F[_], K, V](
+  final case class RevokedPartitions[F[_]](
     partitions: SortedSet[TopicPartition],
-    state: State[F, K, V]
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Revoked partitions [${partitions.mkString(", ")}]. Current state [$state]."
   }
 
-  final case class CompletedFetchesWithRecords[F[_], K, V](
-    records: Records[F, K, V],
-    state: State[F, K, V]
+  final case class CompletedFetchesWithRecords[F[_]](
+    records: Records[F],
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Completed fetches with records for partitions [${recordsString(records)}]. Current state [$state]."
   }
 
-  final case class RevokedFetchesWithRecords[F[_], K, V](
-    records: Records[F, K, V],
-    state: State[F, K, V]
+  final case class RevokedFetchesWithRecords[F[_]](
+    records: Records[F],
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Revoked fetches with records for partitions [${recordsString(records)}]. Current state [$state]."
   }
 
-  final case class RevokedFetchesWithoutRecords[F[_], K, V](
+  final case class RevokedFetchesWithoutRecords[F[_]](
     partitions: Set[TopicPartition],
-    state: State[F, K, V]
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Revoked fetches without records for partitions [${partitions.mkString(", ")}]. Current state [$state]."
   }
 
-  final case class RemovedRevokedRecords[F[_], K, V](
-    records: Records[F, K, V],
-    state: State[F, K, V]
+  final case class RemovedRevokedRecords[F[_]](
+    records: Records[F],
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Removed revoked records for partitions [${recordsString(records)}]. Current state [$state]."
   }
 
-  final case class StoredRecords[F[_], K, V](
-    records: Records[F, K, V],
-    state: State[F, K, V]
+  final case class StoredRecords[F[_]](
+    records: Records[F],
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -151,26 +151,26 @@ private[kafka] object LogEntry {
       s"Revoked previous fetch for partition [$partition] in stream with id [$streamId]."
   }
 
-  final case class StoredPendingCommit[F[_], K, V](
-    commit: Request.Commit[F, K, V],
-    state: State[F, K, V]
+  final case class StoredPendingCommit[F[_]](
+    commit: Request.Commit[F],
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Stored pending commit [$commit] as rebalance is in-progress. Current state [$state]."
   }
 
-  final case class CommittedPendingCommits[F[_], K, V](
-    pendingCommits: Chain[Request.Commit[F, K, V]],
-    state: State[F, K, V]
+  final case class CommittedPendingCommits[F[_]](
+    pendingCommits: Chain[Request.Commit[F]],
+    state: State[F, _, _]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Committed pending commits [$pendingCommits]. Current state [$state]."
   }
 
-  def recordsString[F[_], K, V](
-    records: Records[F, K, V]
+  def recordsString[F[_]](
+    records: Records[F]
   ): String =
     records.toList
       .sortBy { case (tp, _) => tp }
@@ -184,6 +184,6 @@ private[kafka] object LogEntry {
           append(" }")
       }("", ", ", "")
 
-  private[this] type Records[F[_], K, V] =
-    Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]]
+  private[this] type Records[F[_]] =
+    Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, _, _]]]
 }
