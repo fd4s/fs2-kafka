@@ -4,10 +4,21 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerConfig
+
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 final class ConsumerSettingsSpec extends BaseSpec {
   describe("ConsumerSettings") {
+    it("should be able to set a custom blocking context") {
+      assert {
+        settings.customBlockingContext.isEmpty &&
+        settings.withCustomBlockingContext(ExecutionContext.global).customBlockingContext === Some(
+          ExecutionContext.global
+        )
+      }
+    }
+
     it("should provide withBootstrapServers") {
       assert {
         settings

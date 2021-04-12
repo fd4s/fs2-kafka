@@ -20,8 +20,13 @@ private[kafka] object WithConsumer {
   def apply[F[_]: Async, K, V](
     mk: MkConsumer[F],
     settings: ConsumerSettings[F, K, V]
-  ): Resource[F, WithConsumer[F]] =
-    Blocking.singleThreaded[F]("fs2-kafka-consumer").flatMap { b =>
+  ): Resource[F, WithConsumer[F]] = {
+    val blocking: Resource[F, Blocking[F]] = settings.customBlockingContext match {
+      case None     => Blocking.singleThreaded[F]("fs2-kafka-consumer")
+      case Some(ec) => Resource.pure(Blocking.fromExecutionContext(ec))
+    }
+
+    blocking.flatMap { b =>
       Resource.make {
         mk(settings).map { consumer =>
           new WithConsumer[F] {
@@ -31,4 +36,5 @@ private[kafka] object WithConsumer {
         }
       }(_.blocking { _.close(settings.closeTimeout.asJava) })
     }
+  }
 }

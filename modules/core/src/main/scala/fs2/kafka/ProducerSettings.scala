@@ -10,6 +10,7 @@ import cats.{Applicative, Show}
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.producer.ProducerConfig
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 /**
@@ -36,6 +37,22 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * The `Serializer` to use for serializing record values.
     */
   def valueSerializer: F[Serializer[F, V]]
+
+  /**
+    * A custom [[ExecutionContext]] to use for blocking Kafka operations.
+    * If not provided, the default blocking ExecutionContext provided by
+    * [[cats.effect.Sync]] will be used.
+    */
+  def customBlockingContext: Option[ExecutionContext]
+
+  /**
+    * Returns a new [[ProducerSettings]] instance with the
+    * specified [[ExecutionContext]] to use for blocking operations.
+    *
+    * If not provided, the default blocking ExecutionContext provided by
+    * [[cats.effect.Sync]] will be used. If in doubt, leave this unset.
+    */
+  def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings[F, K, V]
 
   /**
     * Properties which can be provided when creating a Java `KafkaProducer`
@@ -220,10 +237,13 @@ object ProducerSettings {
   private[this] final case class ProducerSettingsImpl[F[_], K, V](
     override val keySerializer: F[Serializer[F, K]],
     override val valueSerializer: F[Serializer[F, V]],
+    override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
     override val parallelism: Int
   ) extends ProducerSettings[F, K, V] {
+    override def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings[F, K, V] =
+      copy(customBlockingContext = Some(ec))
 
     override def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V] =
       withProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
@@ -298,6 +318,7 @@ object ProducerSettings {
     ProducerSettingsImpl(
       keySerializer = keySerializer,
       valueSerializer = valueSerializer,
+      customBlockingContext = None,
       properties = Map(
         ProducerConfig.RETRIES_CONFIG -> "0"
       ),

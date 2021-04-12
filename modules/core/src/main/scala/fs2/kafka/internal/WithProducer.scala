@@ -7,7 +7,7 @@
 package fs2.kafka.internal
 
 import fs2.kafka.producer.MkProducer
-import cats.effect.{Resource, Sync}
+import cats.effect.{Async, Resource}
 import cats.implicits._
 import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
@@ -25,21 +25,27 @@ private[kafka] object WithProducer {
     mk: MkProducer[F],
     settings: ProducerSettings[F, K, V]
   )(
-    implicit F: Sync[F]
-  ): Resource[F, WithProducer[F]] =
+    implicit F: Async[F]
+  ): Resource[F, WithProducer[F]] = {
+    val blocking =
+      settings.customBlockingContext.fold(Blocking.fromSync[F])(Blocking.fromExecutionContext)
     Resource.make(
-      mk(settings).map(create(_, Blocking[F]))
+      mk(settings).map(create(_, blocking))
     )(_.blocking { _.close(settings.closeTimeout.asJava) })
+  }
 
   def apply[F[_], K, V](
     mk: MkProducer[F],
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: Sync[F]
+    implicit F: Async[F]
   ): Resource[F, WithProducer[F]] =
     Resource[F, WithProducer[F]] {
       mk(settings.producerSettings).flatMap { producer =>
-        val withProducer = create(producer, Blocking[F])
+        val blocking = settings.producerSettings.customBlockingContext
+          .fold(Blocking.fromSync[F])(Blocking.fromExecutionContext)
+
+        val withProducer = create(producer, blocking)
 
         val initTransactions = withProducer.blocking { _.initTransactions() }
 
