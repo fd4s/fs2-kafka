@@ -90,7 +90,7 @@ object KafkaProducerConnection {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Resource[F, KafkaProducerConnection[F]] =
-    resourceIn(settings)
+    resourceIn(settings)(F, F, mk)
 
   /**
     * Like [[resource]], but allows use of different effect types for
