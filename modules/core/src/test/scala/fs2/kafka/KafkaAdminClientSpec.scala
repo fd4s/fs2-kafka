@@ -1,6 +1,6 @@
 package fs2.kafka
 
-import cats.effect.IO
+import cats.effect.{IO, SyncIO}
 import cats.implicits._
 import cats.effect.unsafe.implicits.global
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewPartitions, NewTopic}
@@ -18,6 +18,16 @@ import org.apache.kafka.common.resource.{
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
 
   describe("KafkaAdminClient") {
+    it("should allow creating instances") {
+      KafkaAdminClient.resource[IO](adminClientSettings).use(IO.pure).unsafeRunSync()
+      KafkaAdminClient.stream[IO](adminClientSettings).compile.lastOrError.unsafeRunSync()
+      KafkaAdminClient
+        .resourceIn[SyncIO, IO](adminClientSettings)
+        .use(SyncIO.pure)
+        .unsafeRunSync()
+      KafkaAdminClient.streamIn[SyncIO, IO](adminClientSettings).compile.lastOrError.unsafeRunSync()
+    }
+
     it("should support consumer groups-related functionalities") {
       withTopic { topic =>
         commonSetup(topic)
