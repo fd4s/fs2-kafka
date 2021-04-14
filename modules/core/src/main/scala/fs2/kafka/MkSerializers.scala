@@ -55,36 +55,36 @@ private[kafka] trait MkValueserializerLowPriority {
   * key or value is being serialized, and which may require
   * a creation effect.
   */
-sealed abstract class MkSerializers[F[_], A]
-    extends MkKeySerializer[F, A]
-    with MkValueSerializer[F, A]
+sealed abstract class MkSerializers[F[_], K, V]
+    extends MkKeySerializer[F, K]
+    with MkValueSerializer[F, V]
 
 object MkSerializers {
-  def apply[F[_], A](
-    implicit serializer: MkSerializers[F, A]
-  ): MkSerializers[F, A] =
+  def apply[F[_], K, V](
+    implicit serializer: MkSerializers[F, K, V]
+  ): MkSerializers[F, K, V] =
     serializer
 
   def const[F[_]: Functor, A](
     serializer: => F[Serializer[F, A]]
-  ): MkSerializers[F, A] =
+  ): MkSerializers[F, A, A] =
     MkSerializers.instance(
       forKey = serializer.map(_.forKey),
       forValue = serializer.map(_.forValue)
     )
 
-  def instance[F[_], A](
-    forKey: => F[KeySerializer[F, A]],
-    forValue: => F[ValueSerializer[F, A]]
-  ): MkSerializers[F, A] = {
+  def instance[F[_], K, V](
+    forKey: => F[KeySerializer[F, K]],
+    forValue: => F[ValueSerializer[F, V]]
+  ): MkSerializers[F, K, V] = {
     def _forKey = forKey
     def _forValue = forValue
 
-    new MkSerializers[F, A] {
-      override def forKey: F[KeySerializer[F, A]] =
+    new MkSerializers[F, K, V] {
+      override def forKey: F[KeySerializer[F, K]] =
         _forKey
 
-      override def forValue: F[ValueSerializer[F, A]] =
+      override def forValue: F[ValueSerializer[F, V]] =
         _forValue
 
       override def toString: String =
@@ -94,6 +94,6 @@ object MkSerializers {
 
   def lift[F[_], A](serializer: => Serializer[F, A])(
     implicit F: Applicative[F]
-  ): MkSerializers[F, A] =
+  ): MkSerializers[F, A, A] =
     MkSerializers.const(F.pure(serializer))
 }
