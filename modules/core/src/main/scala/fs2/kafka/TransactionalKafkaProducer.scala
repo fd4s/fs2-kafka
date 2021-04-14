@@ -90,7 +90,8 @@ object TransactionalKafkaProducer {
                     records.records
                       .flatMap(_.records)
                       .traverse(
-                        KafkaProducer.produceRecord(keySerializer, valueSerializer, producer)
+                        KafkaProducer
+                          .produceRecord(keySerializer, valueSerializer, producer, blocking)
                       )
                       .map(_.sequence)
                       .flatTap { _ =>
