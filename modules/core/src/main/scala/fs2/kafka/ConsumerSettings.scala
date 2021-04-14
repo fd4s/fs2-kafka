@@ -40,12 +40,12 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   /**
     * The `Deserializer` to use for deserializing record keys.
     */
-  def keyDeserializer: F[Deserializer[F, K]]
+  def keyDeserializer: F[KeyDeserializer[F, K]]
 
   /**
     * The `Deserializer` to use for deserializing record values.
     */
-  def valueDeserializer: F[Deserializer[F, V]]
+  def valueDeserializer: F[ValueDeserializer[F, V]]
 
   /**
     * A custom `ExecutionContext` to use for blocking Kafka operations. If not
@@ -395,8 +395,8 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
 
 object ConsumerSettings {
   private[this] final case class ConsumerSettingsImpl[F[_], K, V](
-    override val keyDeserializer: F[Deserializer[F, K]],
-    override val valueDeserializer: F[Deserializer[F, V]],
+    override val keyDeserializer: F[KeyDeserializer[F, K]],
+    override val valueDeserializer: F[ValueDeserializer[F, V]],
     override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
@@ -530,8 +530,8 @@ object ConsumerSettings {
   }
 
   private[this] def create[F[_], K, V](
-    keyDeserializer: F[Deserializer[F, K]],
-    valueDeserializer: F[Deserializer[F, V]]
+    keyDeserializer: F[KeyDeserializer[F, K]],
+    valueDeserializer: F[ValueDeserializer[F, V]]
   ): ConsumerSettings[F, K, V] =
     ConsumerSettingsImpl(
       customBlockingContext = None,
@@ -551,8 +551,8 @@ object ConsumerSettings {
     )
 
   def apply[F[_], K, V](
-    keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer[F, V]
+    keyDeserializer: KeyDeserializer[F, K],
+    valueDeserializer: ValueDeserializer[F, V]
   )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = F.pure(keyDeserializer),
@@ -560,7 +560,7 @@ object ConsumerSettings {
     )
 
   def apply[F[_], K, V](
-    keyDeserializer: RecordDeserializer[F, K],
+    keyDeserializer: MkKeyDeserializer[F, K],
     valueDeserializer: Deserializer[F, V]
   )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
     create(
@@ -570,7 +570,7 @@ object ConsumerSettings {
 
   def apply[F[_], K, V](
     keyDeserializer: Deserializer[F, K],
-    valueDeserializer: RecordDeserializer[F, V]
+    valueDeserializer: MkValueDeserializer[F, V]
   )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = F.pure(keyDeserializer),
@@ -579,8 +579,8 @@ object ConsumerSettings {
 
   def apply[F[_], K, V](
     implicit
-    keyDeserializer: RecordDeserializer[F, K],
-    valueDeserializer: RecordDeserializer[F, V]
+    keyDeserializer: MkKeyDeserializer[F, K],
+    valueDeserializer: MkValueDeserializer[F, V]
   ): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = keyDeserializer.forKey,

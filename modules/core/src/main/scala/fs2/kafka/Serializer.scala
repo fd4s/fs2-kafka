@@ -55,7 +55,17 @@ private[kafka] sealed trait GenSerializer[+This[g[_], x] <: GenSerializer[This, 
 
 sealed trait KeySerializer[F[_], A] extends GenSerializer[KeySerializer, F, A]
 
+object KeySerializer {
+  implicit def widen[F[_], A](implicit serializer: Serializer[F, A]): KeySerializer[F, A] =
+    serializer
+}
+
 sealed trait ValueSerializer[F[_], A] extends GenSerializer[ValueSerializer, F, A]
+
+object ValueSerializer {
+  implicit def widen[F[_], A](implicit serializer: Serializer[F, A]): ValueSerializer[F, A] =
+    serializer
+}
 
 sealed abstract class Serializer[F[_], A]
     extends GenSerializer[Serializer, F, A]

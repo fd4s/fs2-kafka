@@ -153,7 +153,7 @@ final class ProducerSettingsSpec extends BaseSpec {
         Serializer[IO, String]
           .mapBytes(identity)
 
-      implicit val serializer: MkSerializers[IO, String] =
+      implicit val serializer: MkSerializers[IO, String, String] =
         MkSerializers.lift(serializerInstance)
 
       implicit val valueSerializerInstance: ValueSerializer[IO, Int] = Serializer[IO, Int]

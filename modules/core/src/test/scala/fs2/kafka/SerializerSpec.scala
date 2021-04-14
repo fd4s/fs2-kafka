@@ -43,6 +43,9 @@ final class SerializerSpec extends BaseCatsSpec {
   }
 
   test("Serializer#identity") {
+    val serializer =
+      Serializer.identity[IO]
+
     forAll { (topic: String, bytes: Array[Byte]) =>
       serializer
         .serialize(topic, Headers.empty, bytes)

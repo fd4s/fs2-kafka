@@ -1,7 +1,9 @@
 package fs2.kafka
 
+import cats.MonadThrow
 import cats.effect.IO
 import cats.laws.discipline._
+import org.scalatest.funsuite.AnyFunSuite
 
 final class DeserializerSpec extends BaseCatsSpec {
   checkAll(
@@ -12,6 +14,24 @@ final class DeserializerSpec extends BaseCatsSpec {
   )
 
   import cats.effect.unsafe.implicits.global
+
+  test("InvariantOps syntax should compile with cats implicits in scope") {
+
+    Deserializer[IO, String].flatMap(Deserializer.const[IO, String])
+    Deserializer[IO, String].product(Deserializer[IO, Int])
+
+    Deserializer[IO, String].forKey.flatMap(Deserializer.const[IO, String])
+    Deserializer[IO, String].forKey.product(Deserializer[IO, Int])
+
+    Deserializer[IO, String].forValue.flatMap(Deserializer.const[IO, String])
+    Deserializer[IO, String].forValue.product(Deserializer[IO, Int])
+  }
+
+  test("instances should be available") {
+    MonadThrow[Deserializer[IO, *]]
+    MonadThrow[KeyDeserializer[IO, *]]
+    MonadThrow[ValueDeserializer[IO, *]]
+  }
 
   test("Deserializer#attempt") {
     forAll { (topic: String, headers: Headers, i: Int) =>
@@ -187,6 +207,22 @@ final class DeserializerSpec extends BaseCatsSpec {
   }
 
   test("Deserializer.Record#toString") {
-    assert(RecordDeserializer[IO, String].toString startsWith "Deserializer.Record$")
+    assert(
+      MkDeserializers.lift(Deserializer[IO, String]).toString startsWith "Deserializer.Record$"
+    )
+  }
+}
+
+final class DeserializerNoCatsSpec extends AnyFunSuite {
+  test("InvariantOps syntax should compile without cats implicits in scope") {
+
+    Deserializer[IO, String].flatMap(Deserializer.const[IO, String])
+    Deserializer[IO, String].product(Deserializer[IO, Int])
+
+    Deserializer[IO, String].forKey.flatMap(Deserializer.const[IO, String])
+    Deserializer[IO, String].forKey.product(Deserializer[IO, Int])
+
+    Deserializer[IO, String].forValue.flatMap(Deserializer.const[IO, String])
+    Deserializer[IO, String].forValue.product(Deserializer[IO, Int])
   }
 }

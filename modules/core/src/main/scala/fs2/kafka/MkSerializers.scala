@@ -13,7 +13,7 @@ sealed trait MkKeySerializer[F[_], A] {
   def forKey: F[KeySerializer[F, A]]
 }
 
-object MkKeySerializer extends MkKeyserializerLowPriority {
+object MkKeySerializer {
 
   implicit def lift[F[_], A](
     implicit serializer: KeySerializer[F, A],
@@ -21,33 +21,20 @@ object MkKeySerializer extends MkKeyserializerLowPriority {
   ): MkKeySerializer[F, A] = new MkKeySerializer[F, A] {
     override def forKey: F[KeySerializer[F, A]] = F.pure(serializer)
   }
-}
 
-private[kafka] trait MkKeyserializerLowPriority {
-  implicit def liftWiden[F[_], A](
-    implicit serializer: Serializer[F, A],
-    F: Applicative[F]
-  ): MkKeySerializer[F, A] = MkKeySerializer.lift(serializer, F)
 }
 
 sealed trait MkValueSerializer[F[_], A] {
   def forValue: F[ValueSerializer[F, A]]
 }
 
-object MkValueSerializer extends MkValueserializerLowPriority {
+object MkValueSerializer {
   implicit def lift[F[_], A](
     implicit serializer: ValueSerializer[F, A],
     F: Applicative[F]
   ): MkValueSerializer[F, A] = new MkValueSerializer[F, A] {
     override def forValue: F[ValueSerializer[F, A]] = F.pure(serializer)
   }
-}
-
-private[kafka] trait MkValueserializerLowPriority {
-  implicit def liftWiden[F[_], A](
-    implicit serializer: Serializer[F, A],
-    F: Applicative[F]
-  ): MkValueSerializer[F, A] = MkValueSerializer.lift(serializer, F)
 }
 
 /**
@@ -94,6 +81,12 @@ object MkSerializers {
 
   def lift[F[_], A](serializer: => Serializer[F, A])(
     implicit F: Applicative[F]
+  ): MkSerializers[F, A, A] =
+    MkSerializers.const(F.pure(serializer))
+
+  implicit def lift[F[_], A](
+    implicit serializer: Serializer[F, A],
+    F: Applicative[F]
   ): MkSerializers[F, A, A] =
     MkSerializers.const(F.pure(serializer))
 }
