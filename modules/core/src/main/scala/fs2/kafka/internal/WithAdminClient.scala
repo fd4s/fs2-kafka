@@ -20,19 +20,19 @@ private[kafka] sealed abstract class WithAdminClient[F[_]] {
 
 private[kafka] object WithAdminClient {
   def apply[F[_], G[_]](
-    mk: MkAdminClient[G],
+    mk: MkAdminClient[F],
     settings: AdminClientSettings
-  )(implicit F: Async[F], G: Sync[G]): Resource[G, WithAdminClient[F]] =
-    Resource[G, WithAdminClient[F]] {
+  )(implicit F: Sync[F], G: Async[G]): Resource[F, WithAdminClient[G]] =
+    Resource {
       mk(settings).map { adminClient =>
         val withAdminClient =
-          new WithAdminClient[F] {
-            override def apply[A](f: AdminClient => KafkaFuture[A]): F[A] =
-              F.defer(f(adminClient).cancelable)
+          new WithAdminClient[G] {
+            override def apply[A](f: AdminClient => KafkaFuture[A]): G[A] =
+              G.defer(f(adminClient).cancelable)
           }
 
         val close =
-          G.blocking(adminClient.close(settings.closeTimeout.asJava))
+          F.blocking(adminClient.close(settings.closeTimeout.asJava))
 
         (withAdminClient, close)
       }

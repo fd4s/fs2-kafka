@@ -497,10 +497,10 @@ object KafkaAdminClient {
   def resourceIn[F[_], G[_]](
     settings: AdminClientSettings
   )(
-    implicit F: Async[F],
-    G: Sync[G],
-    mk: MkAdminClient[G]
-  ): Resource[G, KafkaAdminClient[F]] =
+    implicit F: Sync[F],
+    G: Async[G],
+    mk: MkAdminClient[F]
+  ): Resource[F, KafkaAdminClient[G]] =
     WithAdminClient[F, G](mk, settings).map(create)
 
   private def create[F[_]](client: WithAdminClient[F]) =
@@ -601,7 +601,7 @@ object KafkaAdminClient {
     */
   def streamIn[F[_], G[_]](
     settings: AdminClientSettings
-  )(implicit F: Async[F], G: Sync[G], mk: MkAdminClient[G]): Stream[G, KafkaAdminClient[F]] =
+  )(implicit F: Sync[F], G: Async[G], mk: MkAdminClient[F]): Stream[F, KafkaAdminClient[G]] =
     Stream.resource(KafkaAdminClient.resourceIn(settings)(F, G, mk))
 
   /*

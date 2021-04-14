@@ -22,10 +22,10 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       KafkaAdminClient.resource[IO](adminClientSettings).use(IO.pure).unsafeRunSync()
       KafkaAdminClient.stream[IO](adminClientSettings).compile.lastOrError.unsafeRunSync()
       KafkaAdminClient
-        .resourceIn[IO, SyncIO](adminClientSettings)
+        .resourceIn[SyncIO, IO](adminClientSettings)
         .use(SyncIO.pure)
         .unsafeRunSync()
-      KafkaAdminClient.streamIn[IO, SyncIO](adminClientSettings).compile.lastOrError.unsafeRunSync()
+      KafkaAdminClient.streamIn[SyncIO, IO](adminClientSettings).compile.lastOrError.unsafeRunSync()
     }
 
     it("should support consumer groups-related functionalities") {
