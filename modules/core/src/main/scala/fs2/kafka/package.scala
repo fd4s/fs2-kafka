@@ -48,6 +48,12 @@ package object kafka {
   type KafkaByteProducerRecord =
     org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
+  @deprecated("use MkDeserializer, MkSerializer, or MkSerializers", "2.0.0")
+  type RecordSerializer[F[_], A] = MkSerializers[F, A]
+
+  @deprecated("use MkDeserializer, MkSerializer, or MkSerializers", "2.0.0")
+  val RecordSerializer: MkSerializers.type = MkSerializers
+
   /**
     * Commits offsets in batches of every `n` offsets or time window
     * of length `d`, whichever happens first. If there are no offsets

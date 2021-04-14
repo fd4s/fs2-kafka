@@ -9,14 +9,14 @@ package fs2.kafka.vulcan
 import _root_.vulcan.Codec
 import cats.effect.Sync
 import cats.implicits._
-import fs2.kafka.{RecordSerializer, Serializer}
+import fs2.kafka.{MkSerializers, Serializer}
 
 final class AvroSerializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
   def using[F[_]](
     settings: AvroSettings[F]
-  )(implicit F: Sync[F]): RecordSerializer[F, A] = {
+  )(implicit F: Sync[F]): MkSerializers[F, A] = {
     val createSerializer: Boolean => F[Serializer[F, A]] =
       settings.createAvroSerializer(_).map {
         case (serializer, _) =>
@@ -30,7 +30,7 @@ final class AvroSerializer[A] private[vulcan] (
           }
       }
 
-    RecordSerializer.instance(
+    MkSerializers.instance(
       forKey = createSerializer(true).map(_.forKey),
       forValue = createSerializer(false).map(_.forValue)
     )

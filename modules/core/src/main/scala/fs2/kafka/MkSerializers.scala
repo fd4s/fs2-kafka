@@ -55,20 +55,20 @@ private[kafka] trait MkValueserializerLowPriority {
   * key or value is being serialized, and which may require
   * a creation effect.
   */
-sealed abstract class RecordSerializer[F[_], A]
+sealed abstract class MkSerializers[F[_], A]
     extends MkKeySerializer[F, A]
     with MkValueSerializer[F, A]
 
-object RecordSerializer {
+object MkSerializers {
   def apply[F[_], A](
-    implicit serializer: RecordSerializer[F, A]
-  ): RecordSerializer[F, A] =
+    implicit serializer: MkSerializers[F, A]
+  ): MkSerializers[F, A] =
     serializer
 
   def const[F[_]: Functor, A](
     serializer: => F[Serializer[F, A]]
-  ): RecordSerializer[F, A] =
-    RecordSerializer.instance(
+  ): MkSerializers[F, A] =
+    MkSerializers.instance(
       forKey = serializer.map(_.forKey),
       forValue = serializer.map(_.forValue)
     )
@@ -76,11 +76,11 @@ object RecordSerializer {
   def instance[F[_], A](
     forKey: => F[KeySerializer[F, A]],
     forValue: => F[ValueSerializer[F, A]]
-  ): RecordSerializer[F, A] = {
+  ): MkSerializers[F, A] = {
     def _forKey = forKey
     def _forValue = forValue
 
-    new RecordSerializer[F, A] {
+    new MkSerializers[F, A] {
       override def forKey: F[KeySerializer[F, A]] =
         _forKey
 
@@ -94,6 +94,6 @@ object RecordSerializer {
 
   def lift[F[_], A](serializer: => Serializer[F, A])(
     implicit F: Applicative[F]
-  ): RecordSerializer[F, A] =
-    RecordSerializer.const(F.pure(serializer))
+  ): MkSerializers[F, A] =
+    MkSerializers.const(F.pure(serializer))
 }
