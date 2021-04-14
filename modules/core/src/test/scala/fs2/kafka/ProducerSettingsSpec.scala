@@ -164,7 +164,7 @@ final class ProducerSettingsSpec extends BaseSpec {
         .unsafeRunSync() shouldBe valueSerializerInstance
       ProducerSettings[IO, Int, String].valueSerializer.unsafeRunSync() shouldBe serializerInstance
       ProducerSettings[IO, Int, String].keySerializer
-        .unsafeRunSync() should not be (valueSerializerInstance)
+        .unsafeRunSync() should not be valueSerializerInstance
       ProducerSettings[IO, String, String]
     }
 

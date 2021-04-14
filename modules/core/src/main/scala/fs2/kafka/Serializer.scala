@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.{Applicative, Contravariant}
+import cats.Contravariant
 import cats.effect.Sync
 import cats.implicits._
 
@@ -55,45 +55,7 @@ private[kafka] sealed trait GenSerializer[+This[g[_], x] <: GenSerializer[This, 
 
 sealed trait KeySerializer[F[_], A] extends GenSerializer[KeySerializer, F, A]
 
-object KeySerializer extends LowPriorityKey {
-
-  implicit def lift[F[_], A](
-    implicit ev: KeySerializer[F, A],
-    F: Applicative[F]
-  ): F[KeySerializer[F, A]] = F.pure(ev)
-
-  implicit def fromRecordSerializer[F[_], A](
-    implicit ev: RecordSerializer[F, A]
-  ): F[KeySerializer[F, A]] = ev.forKey
-}
-
-trait LowPriorityKey {
-  implicit def liftWiden[F[_], A](
-    implicit ev: Serializer[F, A],
-    F: Applicative[F]
-  ): F[KeySerializer[F, A]] = F.pure(ev)
-}
-
 sealed trait ValueSerializer[F[_], A] extends GenSerializer[ValueSerializer, F, A]
-
-object ValueSerializer extends LowPriorityValue {
-
-  implicit def lift[F[_], A](
-    implicit ev: ValueSerializer[F, A],
-    F: Applicative[F]
-  ): F[ValueSerializer[F, A]] = F.pure(ev)
-
-  implicit def fromRecordSerializer[F[_], A](
-    implicit ev: RecordSerializer[F, A]
-  ): F[ValueSerializer[F, A]] = ev.forValue
-}
-
-trait LowPriorityValue {
-  implicit def liftWiden[F[_], A](
-    implicit ev: Serializer[F, A],
-    F: Applicative[F]
-  ): F[ValueSerializer[F, A]] = F.pure(ev)
-}
 
 sealed abstract class Serializer[F[_], A]
     extends GenSerializer[Serializer, F, A]
