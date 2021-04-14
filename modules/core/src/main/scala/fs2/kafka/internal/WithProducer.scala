@@ -29,9 +29,9 @@ private[kafka] object WithProducer {
     G: Async[G]
   ): Resource[F, WithProducer[G]] = {
     val blockingF =
-      settings.customBlockingContext.fold(Blocking.fromSync[F])(Blocking.fromExecutionContext)
+      settings.customBlockingContext.fold(Blocking.fromSync[F])(Blocking.fromExecutionContext[F])
     val blockingG =
-      settings.customBlockingContext.fold(Blocking.fromSync[G])(Blocking.fromExecutionContext)
+      settings.customBlockingContext.fold(Blocking.fromSync[G])(Blocking.fromExecutionContext[G])
 
     Resource
       .make(
