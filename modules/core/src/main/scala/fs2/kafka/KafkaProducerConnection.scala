@@ -30,8 +30,8 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     * }}}
     */
   def withSerializers[K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V]
   ): KafkaProducer.Metrics[F, K, V]
 
   /**
@@ -81,8 +81,8 @@ object KafkaProducerConnection {
     WithProducer(mk, settings).map { withProducer =>
       new KafkaProducerConnection[F] {
         override def withSerializers[K, V](
-          keySerializer: Serializer[F, K],
-          valueSerializer: Serializer[F, V]
+          keySerializer: KeySerializer[F, K],
+          valueSerializer: ValueSerializer[F, V]
         ): KafkaProducer.Metrics[F, K, V] =
           KafkaProducer.from(withProducer, keySerializer, valueSerializer)
 

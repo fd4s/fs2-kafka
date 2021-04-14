@@ -6,7 +6,8 @@
 
 package fs2.kafka
 
-import cats.Applicative
+import cats.{Applicative, Functor}
+import cats.syntax.all._
 
 /**
   * Serializer which may vary depending on whether a record
@@ -14,9 +15,9 @@ import cats.Applicative
   * a creation effect.
   */
 sealed abstract class RecordSerializer[F[_], A] {
-  def forKey: F[Serializer[F, A]]
+  def forKey: F[KeySerializer[F, A]]
 
-  def forValue: F[Serializer[F, A]]
+  def forValue: F[ValueSerializer[F, A]]
 }
 
 object RecordSerializer {
@@ -25,26 +26,26 @@ object RecordSerializer {
   ): RecordSerializer[F, A] =
     serializer
 
-  def const[F[_], A](
+  def const[F[_]: Functor, A](
     serializer: => F[Serializer[F, A]]
   ): RecordSerializer[F, A] =
     RecordSerializer.instance(
-      forKey = serializer,
-      forValue = serializer
+      forKey = serializer.map(_.forKey),
+      forValue = serializer.map(_.forValue)
     )
 
   def instance[F[_], A](
-    forKey: => F[Serializer[F, A]],
-    forValue: => F[Serializer[F, A]]
+    forKey: => F[KeySerializer[F, A]],
+    forValue: => F[ValueSerializer[F, A]]
   ): RecordSerializer[F, A] = {
     def _forKey = forKey
     def _forValue = forValue
 
     new RecordSerializer[F, A] {
-      override def forKey: F[Serializer[F, A]] =
+      override def forKey: F[KeySerializer[F, A]] =
         _forKey
 
-      override def forValue: F[Serializer[F, A]] =
+      override def forValue: F[ValueSerializer[F, A]] =
         _forValue
 
       override def toString: String =
@@ -56,10 +57,4 @@ object RecordSerializer {
     implicit F: Applicative[F]
   ): RecordSerializer[F, A] =
     RecordSerializer.const(F.pure(serializer))
-
-  implicit def lift[F[_], A](
-    implicit F: Applicative[F],
-    serializer: Serializer[F, A]
-  ): RecordSerializer[F, A] =
-    RecordSerializer.lift(serializer)
 }

@@ -156,9 +156,15 @@ final class ProducerSettingsSpec extends BaseSpec {
       implicit val serializer: RecordSerializer[IO, String] =
         RecordSerializer.lift(serializerInstance)
 
+      implicit val valueSerializerInstance: ValueSerializer[IO, Int] = Serializer[IO, Int]
+
       ProducerSettings[IO, Int, Int]
       ProducerSettings[IO, String, Int].keySerializer.unsafeRunSync() shouldBe serializerInstance
+      ProducerSettings[IO, String, Int].valueSerializer
+        .unsafeRunSync() shouldBe valueSerializerInstance
       ProducerSettings[IO, Int, String].valueSerializer.unsafeRunSync() shouldBe serializerInstance
+      ProducerSettings[IO, Int, String].keySerializer
+        .unsafeRunSync() should not be (valueSerializerInstance)
       ProducerSettings[IO, String, String]
     }
 
