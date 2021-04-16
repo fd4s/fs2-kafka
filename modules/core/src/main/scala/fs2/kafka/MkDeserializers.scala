@@ -22,16 +22,16 @@ object MkKeyDeserializer {
         "MkKeyDeserializers$" + System.identityHashCode(this)
     }
 
-  def lift[F[_], A](serializer: => KeySerializer[F, A])(
+  def lift[F[_], A](deserializer: => KeyDeserializer[F, A])(
     implicit F: Applicative[F]
   ): MkKeyDeserializer[F, A] =
-    instance(F.pure(serializer))
+    instance(F.pure(deserializer))
 
   implicit def lift[F[_], A](
     implicit deserializer: KeyDeserializer[F, A],
     F: Applicative[F]
   ): MkKeyDeserializer[F, A] = new MkKeyDeserializer[F, A] {
-    override def forKey: F[KeyDeserializer[F, A]] = F.pure(Deserializer)
+    override def forKey: F[KeyDeserializer[F, A]] = F.pure(deserializer)
   }
 }
 
@@ -49,10 +49,10 @@ object MkValueDeserializer {
         "MkValueDeserializers$" + System.identityHashCode(this)
     }
 
-  def lift[F[_], A](serializer: => ValueSerializer[F, A])(
+  def lift[F[_], A](deserializer: => ValueDeserializer[F, A])(
     implicit F: Applicative[F]
   ): MkValueDeserializer[F, A] =
-    instance(F.pure(serializer))
+    instance(F.pure(deserializer))
 
   implicit def lift[F[_], A](
     implicit deserializer: ValueDeserializer[F, A],

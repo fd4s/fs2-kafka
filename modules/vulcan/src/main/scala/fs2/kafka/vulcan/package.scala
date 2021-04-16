@@ -26,9 +26,11 @@ package object vulcan {
   type KafkaAvroSerializer =
     io.confluent.kafka.serializers.KafkaAvroSerializer
 
+  @deprecated("use AvroDeserializer[A] or AvroDeserializers[A, A]", "2.0.0")
   def avroDeserializer[A](implicit codec: Codec[A]): AvroDeserializer[A] =
     new AvroDeserializer(codec)
 
+  @deprecated("use AvroSerializer[A] or AvroSerializers[A, A]", "2.0.0")
   def avroSerializer[A](implicit codec: Codec[A]): AvroSerializer[A] =
     new AvroSerializer(codec)
 }
