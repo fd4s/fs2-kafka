@@ -14,9 +14,21 @@ sealed trait MkKeyDeserializer[F[_], A] {
 }
 
 object MkKeyDeserializer {
+  def instance[F[_], A](mk: => F[KeyDeserializer[F, A]]): MkKeyDeserializer[F, A] =
+    new MkKeyDeserializer[F, A] {
+      override def forKey: F[KeyDeserializer[F, A]] = mk
+
+      override def toString: String =
+        "MkKeyDeserializers$" + System.identityHashCode(this)
+    }
+
+  def lift[F[_], A](serializer: => KeySerializer[F, A])(
+    implicit F: Applicative[F]
+  ): MkKeyDeserializer[F, A] =
+    instance(F.pure(serializer))
 
   implicit def lift[F[_], A](
-    implicit Deserializer: KeyDeserializer[F, A],
+    implicit deserializer: KeyDeserializer[F, A],
     F: Applicative[F]
   ): MkKeyDeserializer[F, A] = new MkKeyDeserializer[F, A] {
     override def forKey: F[KeyDeserializer[F, A]] = F.pure(Deserializer)
@@ -29,12 +41,23 @@ sealed trait MkValueDeserializer[F[_], A] {
 
 object MkValueDeserializer {
 
+  def instance[F[_], A](mk: => F[ValueDeserializer[F, A]]): MkValueDeserializer[F, A] =
+    new MkValueDeserializer[F, A] {
+      override def forValue: F[ValueDeserializer[F, A]] = mk
+
+      override def toString: String =
+        "MkValueDeserializers$" + System.identityHashCode(this)
+    }
+
+  def lift[F[_], A](serializer: => ValueSerializer[F, A])(
+    implicit F: Applicative[F]
+  ): MkValueDeserializer[F, A] =
+    instance(F.pure(serializer))
+
   implicit def lift[F[_], A](
     implicit deserializer: ValueDeserializer[F, A],
     F: Applicative[F]
-  ): MkValueDeserializer[F, A] = new MkValueDeserializer[F, A] {
-    override def forValue: F[ValueDeserializer[F, A]] = F.pure(deserializer)
-  }
+  ): MkValueDeserializer[F, A] = instance(F.pure(deserializer))
 }
 
 /**
@@ -75,7 +98,7 @@ object MkDeserializers {
         _forValue
 
       override def toString: String =
-        "Deserializer.Record$" + System.identityHashCode(this)
+        "MkDeserializers$" + System.identityHashCode(this)
     }
   }
 

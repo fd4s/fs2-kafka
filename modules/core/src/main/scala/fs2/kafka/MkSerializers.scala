@@ -14,6 +14,18 @@ sealed trait MkKeySerializer[F[_], A] {
 }
 
 object MkKeySerializer {
+  def instance[F[_], A](mk: => F[KeySerializer[F, A]]): MkKeySerializer[F, A] =
+    new MkKeySerializer[F, A] {
+      override def forKey: F[KeySerializer[F, A]] = mk
+
+      override def toString: String =
+        "MkKeySerializers$" + System.identityHashCode(this)
+    }
+
+  def lift[F[_], A](serializer: => KeySerializer[F, A])(
+    implicit F: Applicative[F]
+  ): MkKeySerializer[F, A] =
+    instance(F.pure(serializer))
 
   implicit def lift[F[_], A](
     implicit serializer: KeySerializer[F, A],
@@ -21,7 +33,6 @@ object MkKeySerializer {
   ): MkKeySerializer[F, A] = new MkKeySerializer[F, A] {
     override def forKey: F[KeySerializer[F, A]] = F.pure(serializer)
   }
-
 }
 
 sealed trait MkValueSerializer[F[_], A] {
@@ -29,12 +40,24 @@ sealed trait MkValueSerializer[F[_], A] {
 }
 
 object MkValueSerializer {
+  def instance[F[_], A](mkForValue: => F[ValueSerializer[F, A]]): MkValueSerializer[F, A] =
+    new MkValueSerializer[F, A] {
+      override def forValue: F[ValueSerializer[F, A]] = mkForValue
+
+      override def toString: String =
+        "MkValueSerializers$" + System.identityHashCode(this)
+    }
+
+  def lift[F[_], A](serializer: => ValueSerializer[F, A])(
+    implicit F: Applicative[F]
+  ): MkValueSerializer[F, A] =
+    instance(F.pure(serializer))
+
   implicit def lift[F[_], A](
     implicit serializer: ValueSerializer[F, A],
     F: Applicative[F]
-  ): MkValueSerializer[F, A] = new MkValueSerializer[F, A] {
-    override def forValue: F[ValueSerializer[F, A]] = F.pure(serializer)
-  }
+  ): MkValueSerializer[F, A] = instance(F.pure(serializer))
+
 }
 
 /**
@@ -75,18 +98,12 @@ object MkSerializers {
         _forValue
 
       override def toString: String =
-        "Serializer.Record$" + System.identityHashCode(this)
+        "MkSerializers$" + System.identityHashCode(this)
     }
   }
 
   def lift[F[_], A](serializer: => Serializer[F, A])(
     implicit F: Applicative[F]
-  ): MkSerializers[F, A, A] =
-    MkSerializers.const(F.pure(serializer))
-
-  implicit def lift[F[_], A](
-    implicit serializer: Serializer[F, A],
-    F: Applicative[F]
   ): MkSerializers[F, A, A] =
     MkSerializers.const(F.pure(serializer))
 }
