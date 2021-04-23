@@ -73,10 +73,10 @@ object AvroDeserializer {
                   null
               }
 
-              codec.decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
-                case Right(a)    => F.pure(a)
-                case Left(error) => F.raiseError(error.throwable)
-              }
+              codec
+                .decode(deserializer.deserialize(topic, bytes, schema), writerSchema)
+                .leftMap(_.throwable)
+                .liftTo[F]
             }
           }
       }

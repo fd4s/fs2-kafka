@@ -9,11 +9,14 @@ import vulcan.{AvroError, Codec}
 final class AvroDeserializerSpec extends AnyFunSpec {
   describe("AvroDeserializer") {
     it("can create a deserializer") {
-      val deserializer =
-        AvroDeserializer[Int].using(avroSettings)
+      val keyDeserializer =
+        AvroDeserializer[Int].forKey(avroSettings)
 
-      assert(deserializer.forKey.attempt.unsafeRunSync().isRight)
-      assert(deserializer.forValue.attempt.unsafeRunSync().isRight)
+      val valueDeserializer =
+        AvroDeserializer[Int].forValue(avroSettings)
+
+      assert(keyDeserializer.forKey.attempt.unsafeRunSync().isRight)
+      assert(valueDeserializer.forValue.attempt.unsafeRunSync().isRight)
     }
 
     it("raises schema errors") {
@@ -24,16 +27,19 @@ final class AvroDeserializerSpec extends AnyFunSpec {
           (_, _) => Left(AvroError("decode"))
         )
 
-      val deserializer =
-        avroDeserializer(codec).using(avroSettings)
+      val keyDeserializer =
+        AvroDeserializer(codec).forKey(avroSettings)
 
-      assert(deserializer.forKey.attempt.unsafeRunSync().isLeft)
-      assert(deserializer.forValue.attempt.unsafeRunSync().isLeft)
+      val valueDeserializer =
+        AvroDeserializer(codec).forValue(avroSettings)
+
+      assert(keyDeserializer.forKey.attempt.unsafeRunSync().isLeft)
+      assert(valueDeserializer.forValue.attempt.unsafeRunSync().isLeft)
     }
 
     it("toString") {
       assert {
-        avroDeserializer[Int].toString() startsWith "AvroDeserializer$"
+        AvroDeserializer[Int].toString() startsWith "AvroDeserializer$"
       }
     }
   }
