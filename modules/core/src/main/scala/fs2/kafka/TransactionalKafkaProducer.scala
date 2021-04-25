@@ -89,7 +89,8 @@ object TransactionalKafkaProducer {
                         KafkaProducer.produceRecord(
                           settings.producerSettings.keySerializer,
                           settings.producerSettings.valueSerializer,
-                          producer
+                          producer,
+                          blocking
                         )
                       )
                       .map(_.sequence)
