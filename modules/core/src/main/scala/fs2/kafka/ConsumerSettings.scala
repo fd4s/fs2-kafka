@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.{Applicative, Show}
+import cats.Show
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
@@ -40,12 +40,12 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   /**
     * The `Deserializer` to use for deserializing record keys.
     */
-  def keyDeserializer: F[KeyDeserializer[F, K]]
+  def keyDeserializer: KeyDeserializer[F, K]
 
   /**
     * The `Deserializer` to use for deserializing record values.
     */
-  def valueDeserializer: F[ValueDeserializer[F, V]]
+  def valueDeserializer: ValueDeserializer[F, V]
 
   /**
     * A custom `ExecutionContext` to use for blocking Kafka operations. If not
@@ -395,8 +395,8 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
 
 object ConsumerSettings {
   private[this] final case class ConsumerSettingsImpl[F[_], K, V](
-    override val keyDeserializer: F[KeyDeserializer[F, K]],
-    override val valueDeserializer: F[ValueDeserializer[F, V]],
+    override val keyDeserializer: KeyDeserializer[F, K],
+    override val valueDeserializer: ValueDeserializer[F, V],
     override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
@@ -529,9 +529,9 @@ object ConsumerSettings {
       s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery)"
   }
 
-  private[this] def create[F[_], K, V](
-    keyDeserializer: F[KeyDeserializer[F, K]],
-    valueDeserializer: F[ValueDeserializer[F, V]]
+  def apply[F[_], K, V](
+    implicit keyDeserializer: KeyDeserializer[F, K],
+    valueDeserializer: ValueDeserializer[F, V]
   ): ConsumerSettings[F, K, V] =
     ConsumerSettingsImpl(
       customBlockingContext = None,
@@ -548,43 +548,6 @@ object ConsumerSettings {
       commitRecovery = CommitRecovery.Default,
       recordMetadata = _ => OffsetFetchResponse.NO_METADATA,
       maxPrefetchBatches = 2
-    )
-
-  def apply[F[_], K, V](
-    keyDeserializer: KeyDeserializer[F, K],
-    valueDeserializer: ValueDeserializer[F, V]
-  )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
-    create(
-      keyDeserializer = F.pure(keyDeserializer),
-      valueDeserializer = F.pure(valueDeserializer)
-    )
-
-  def apply[F[_], K, V](
-    keyDeserializer: MkKeyDeserializer[F, K],
-    valueDeserializer: Deserializer[F, V]
-  )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
-    create(
-      keyDeserializer = keyDeserializer.forKey,
-      valueDeserializer = F.pure(valueDeserializer)
-    )
-
-  def apply[F[_], K, V](
-    keyDeserializer: Deserializer[F, K],
-    valueDeserializer: MkValueDeserializer[F, V]
-  )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
-    create(
-      keyDeserializer = F.pure(keyDeserializer),
-      valueDeserializer = valueDeserializer.forValue
-    )
-
-  def apply[F[_], K, V](
-    implicit
-    keyDeserializer: MkKeyDeserializer[F, K],
-    valueDeserializer: MkValueDeserializer[F, V]
-  ): ConsumerSettings[F, K, V] =
-    create(
-      keyDeserializer = keyDeserializer.forKey,
-      valueDeserializer = valueDeserializer.forValue
     )
 
   implicit def consumerSettingsShow[F[_], K, V]: Show[ConsumerSettings[F, K, V]] =

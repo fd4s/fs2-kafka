@@ -27,6 +27,8 @@ sealed abstract class AvroSettings[F[_]] {
     */
   def schemaRegistryClient: F[SchemaRegistryClient]
 
+  def withSchemaRegistryClient(schemaRegistryClient: F[SchemaRegistryClient]): AvroSettings[F]
+
   /**
     * Creates a new `AvroSettings` instance with the specified
     * setting for whether serializers should register schemas
@@ -129,6 +131,11 @@ object AvroSettings {
     val createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
     // format: on
   ) extends AvroSettings[F] {
+    override def withSchemaRegistryClient(
+      schemaRegistryClient: F[SchemaRegistryClient]
+    ): AvroSettings[F] =
+      copy(schemaRegistryClient = schemaRegistryClient)
+
     override def withAutoRegisterSchemas(autoRegisterSchemas: Boolean): AvroSettings[F] =
       withProperty("auto.register.schemas", autoRegisterSchemas.toString)
 

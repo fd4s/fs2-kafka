@@ -1,7 +1,6 @@
 package fs2.kafka
 
 import cats.effect.IO
-import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import org.apache.kafka.clients.producer.ProducerConfig
 
@@ -11,8 +10,8 @@ import scala.concurrent.duration._
 final class ProducerSettingsSpec extends BaseSpec {
   describe("ProducerSettings") {
     it("should provide apply") {
-      ProducerSettings[IO, String, String]
-      ProducerSettings(Serializer[IO, String], Serializer[IO, String])
+      ProducerSettings[IO, String, Int]
+      ProducerSettings(Serializer[IO, String], Serializer[IO, Int])
     }
 
     it("should provide withBootstrapServers") {
@@ -138,33 +137,26 @@ final class ProducerSettingsSpec extends BaseSpec {
       )
     }
 
-    it("should be able to create with and without serializer creation effects") {
+    it("should be able to create") {
       val serializer = Serializer[IO, String]
-      val recordSerializer = MkSerializers.lift(serializer)
 
       ProducerSettings(serializer, serializer)
-      ProducerSettings(recordSerializer, serializer)
-      ProducerSettings(serializer, recordSerializer)
-      ProducerSettings(recordSerializer, recordSerializer)
     }
 
     it("should be able to implicitly create with and without serializer creation effects") {
-      val serializerInstance =
-        Serializer[IO, String]
+      implicit val serializerInstance: Serializer[IO, String] =
+        Serializer
+          .string[IO]
           .mapBytes(identity)
 
-      implicit val serializer: MkSerializers[IO, String, String] =
-        MkSerializers.lift(serializerInstance)
-
-      implicit val valueSerializerInstance: ValueSerializer[IO, Int] = Serializer[IO, Int]
+      implicit val valueSerializerInstance: ValueSerializer[IO, Int] =
+        Serializer[IO, Int].mapBytes(identity)
 
       ProducerSettings[IO, Int, Int]
-      ProducerSettings[IO, String, Int].keySerializer.unsafeRunSync() shouldBe serializerInstance
-      ProducerSettings[IO, String, Int].valueSerializer
-        .unsafeRunSync() shouldBe valueSerializerInstance
-      ProducerSettings[IO, Int, String].valueSerializer.unsafeRunSync() shouldBe serializerInstance
-      ProducerSettings[IO, Int, String].keySerializer
-        .unsafeRunSync() should not be valueSerializerInstance
+      ProducerSettings[IO, String, Int].keySerializer shouldBe serializerInstance
+      ProducerSettings[IO, String, Int].valueSerializer shouldBe valueSerializerInstance
+      ProducerSettings[IO, Int, String].valueSerializer shouldBe serializerInstance
+      ProducerSettings[IO, Int, String].keySerializer should not be valueSerializerInstance
       ProducerSettings[IO, String, String]
     }
 

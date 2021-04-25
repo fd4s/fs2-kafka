@@ -87,7 +87,7 @@ object KafkaProducer {
   def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(implicit F: Async[F], mk: MkProducer[F]): Resource[F, KafkaProducer.Metrics[F, K, V]] =
-    KafkaProducerConnection.resource(settings)(F, mk).evalMap(_.withSerializersFrom(settings))
+    KafkaProducerConnection.resource(settings)(F, mk).map(_.withSerializersFrom(settings))
 
   private[kafka] def from[F[_]: Async, K, V](
     withProducer: WithProducer[F],

@@ -7,7 +7,6 @@
 package fs2.kafka
 
 import cats.effect._
-import cats.implicits._
 import fs2.Stream
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
@@ -44,7 +43,7 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     */
   def withSerializersFrom[K, V](
     settings: ProducerSettings[F, K, V]
-  ): F[KafkaProducer.Metrics[F, K, V]]
+  ): KafkaProducer.Metrics[F, K, V]
 }
 
 object KafkaProducerConnection {
@@ -88,8 +87,8 @@ object KafkaProducerConnection {
 
         override def withSerializersFrom[K, V](
           settings: ProducerSettings[F, K, V]
-        ): F[KafkaProducer.Metrics[F, K, V]] =
-          (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
+        ): KafkaProducer.Metrics[F, K, V] =
+          withSerializers(settings.keySerializer, settings.valueSerializer)
       }
     }
 

@@ -16,30 +16,33 @@ final class PackageSpec extends AnyFunSpec {
   describe("AvroSerializer/AvroDeserializer") {
     it("should be able to do roundtrip serialization") {
       (for {
-        serializer <- AvroSerializer[Test].forValue(avroSettings).forValue
+        client <- AvroSchemaRegistryClient(avroSettings)
+        serializer = client.valueSerializer[Test]
         test = Test("test")
         serialized <- serializer.serialize("topic", Headers.empty, test)
-        deserializer <- AvroDeserializer[Test].forValue(avroSettings).forValue
+        deserializer = client.valueDeserializer[Test]
         deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
       } yield assert(deserialized == test)).unsafeRunSync()
     }
 
     it("should be able to do roundtrip serialization using compatible schemas") {
       (for {
-        serializer <- AvroSerializer[Test2].forValue(avroSettings).forValue
+        client <- AvroSchemaRegistryClient(avroSettings)
+        serializer = client.valueSerializer[Test2]
         test2 = Test2("test", 42)
         serialized <- serializer.serialize("topic2", Headers.empty, test2)
-        deserializer <- AvroDeserializer[Test].forValue(avroSettings).forValue
+        deserializer = client.valueDeserializer[Test]
         deserialized <- deserializer.deserialize("topic2", Headers.empty, serialized)
       } yield assert(deserialized == Test("test"))).unsafeRunSync()
     }
 
     it("should error when reader and writer schemas have mismatching logical types") {
       (for {
-        serializer <- AvroSerializer[Long].forValue(avroSettings).forValue
+        client <- AvroSchemaRegistryClient(avroSettings)
+        serializer = client.valueSerializer[Long]
         rawLong = 42L
         serialized <- serializer.serialize("topic3", Headers.empty, rawLong)
-        deserializer <- AvroDeserializer[Instant].forValue(avroSettings).forValue
+        deserializer = client.valueDeserializer[Instant]
         deserialized <- deserializer.deserialize("topic3", Headers.empty, serialized).attempt
       } yield assert(deserialized.isLeft)).unsafeRunSync()
     }

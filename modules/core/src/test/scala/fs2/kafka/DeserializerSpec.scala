@@ -206,11 +206,6 @@ final class DeserializerSpec extends BaseCatsSpec {
     assert(Deserializer[IO, String].toString startsWith "Deserializer$")
   }
 
-  test("MkDeserializers#toString") {
-    assert(
-      MkDeserializers.lift(Deserializer[IO, String]).toString startsWith "MkDeserializers$"
-    )
-  }
 }
 
 final class DeserializerNoCatsSpec extends AnyFunSuite {
