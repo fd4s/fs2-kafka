@@ -26,8 +26,6 @@ sealed trait ValueDeserializer[F[_], A] extends GenDeserializer[ValueDeserialize
 /**
   * Functional composable Kafka deserializer that can deserialize
   * both record keys and record values.
-  *
-  *
   */
 sealed abstract class Deserializer[F[_], A]
     extends GenDeserializer[Deserializer, F, A]
@@ -109,6 +107,24 @@ object Deserializer {
       override def map[B](f: A => B): Deserializer[F, B] =
         Deserializer.instance { (topic, headers, bytes) =>
           deserialize(topic, headers, bytes).map(f)
+        }
+
+      override def flatMap[That[f[_], x] >: Deserializer[f, x] <: GenDeserializer[That, f, x], B](
+        f: A => That[F, B]
+      ): That[F, B] =
+        instance { (topic, headers, bytes) =>
+          F.flatMap(deserialize(topic, headers, bytes)) { a =>
+            f(a).deserialize(topic, headers, bytes)
+          }
+        }
+
+      override def product[That[f[_], x] >: Deserializer[f, x] <: GenDeserializer[That, f, x], B](
+        that: That[F, B]
+      ): That[F, (A, B)] =
+        Deserializer.instance { (topic, headers, bytes) =>
+          val a = this.deserialize(topic, headers, bytes)
+          val b = that.deserialize(topic, headers, bytes)
+          F.product(a, b)
         }
 
       override def attempt: Deserializer[F, Either[Throwable, A]] =
@@ -261,6 +277,24 @@ sealed abstract class GenDeserializer[+This[f[_], x] <: GenDeserializer[This, f,
   def map[B](f: A => B): This[F, B]
 
   /**
+    * Creates a new [[Deserializer]] by first deserializing
+    * with this [[Deserializer]] and then using the result
+    * as input to the specified function.
+    */
+  def flatMap[That[f[_], x] >: This[f, x] <: GenDeserializer[That, f, x], B](
+    f: A => That[F, B]
+  ): That[F, B]
+
+  /**
+    * Creates a new [[Deserializer]] which deserializes both using
+    * this [[Deserializer]] and that [[Deserializer]], and returns
+    * both results in a tuple.
+    */
+  def product[That[f[_], x] >: This[f, x] <: GenDeserializer[That, f, x], B](
+    that: That[F, B]
+  ): That[F, (A, B)]
+
+  /**
     * Creates a new [[Deserializer]] which handles errors by
     * turning them into `Either` values.
     */
@@ -281,36 +315,6 @@ sealed abstract class GenDeserializer[+This[f[_], x] <: GenDeserializer[This, f,
 }
 
 object GenDeserializer {
-  // format: off
-  implicit class InvariantOps[This[f[_], x] >: Deserializer[f, x] <: GenDeserializer[This, f, x], F[_], A](
-                                                                                                            // format: on
-  private val self: This[F, A]) extends AnyVal {
-
-    /**
-      * Creates a new [[Deserializer]] by first deserializing
-      * with this [[Deserializer]] and then using the result
-      * as input to the specified function.
-      */
-    def flatMap[B](f: A => This[F, B])(implicit F: Sync[F]): This[F, B] =
-      Deserializer.instance { (topic, headers, bytes) =>
-        F.flatMap(self.deserialize(topic, headers, bytes)) { a =>
-          f(a).deserialize(topic, headers, bytes)
-        }
-      }
-
-    /**
-      * Creates a new [[Deserializer]] which deserializes both using
-      * this [[Deserializer]] and that [[Deserializer]], and returns
-      * both results in a tuple.
-      */
-    def product[B](that: This[F, B])(implicit F: Sync[F]): This[F, (A, B)] =
-      Deserializer.instance { (topic, headers, bytes) =>
-        val a = self.deserialize(topic, headers, bytes)
-        val b = that.deserialize(topic, headers, bytes)
-        F.product(a, b)
-      }
-  }
-
   implicit def monadError[F[_], This[g[_], x] >: Deserializer[g, x] <: GenDeserializer[This, g, x]](
     implicit F: Sync[F]
   ): MonadError[This[F, *], Throwable] =
@@ -355,7 +359,7 @@ object GenDeserializer {
   implicit def identity[F[_]](implicit F: Sync[F]): Deserializer[F, Array[Byte]] =
     Deserializer.identity
 
-  implicit def option[This[f[_], a] <: GenDeserializer[This, f, a], F[_], A](
+  implicit def option[This[f[_], a] >: Deserializer[f, a] <: GenDeserializer[This, f, a], F[_], A](
     implicit deserializer: This[F, A]
   ): This[F, Option[A]] =
     deserializer.option
