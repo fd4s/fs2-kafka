@@ -72,7 +72,7 @@ sealed abstract class SchemaRegistryClientSettings[F[_]] {
     * Creates a new `SchemaRegistryClient` using the settings
     * contained within this [[SchemaRegistryClientSettings]].
     */
-  def createSchemaRegistryClient: F[SchemaRegistryClient]
+  def createSchemaRegistryClient: F[JavaSchemaRegistryClient]
 
   /**
     * Creates a new [[SchemaRegistryClientSettings]] instance
@@ -81,7 +81,11 @@ sealed abstract class SchemaRegistryClientSettings[F[_]] {
     * are [[baseUrl]], [[maxCacheSize]], and [[properties]].
     */
   def withCreateSchemaRegistryClient(
-    createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[SchemaRegistryClient]
+    createSchemaRegistryClientWith: (
+      String,
+      Int,
+      Map[String, String]
+    ) => F[JavaSchemaRegistryClient]
   ): SchemaRegistryClientSettings[F]
 }
 
@@ -91,7 +95,7 @@ object SchemaRegistryClientSettings {
     override val maxCacheSize: Int,
     override val properties: Map[String, String],
     // format: off
-    val createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[SchemaRegistryClient]
+    val createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[JavaSchemaRegistryClient]
     // format: on
   ) extends SchemaRegistryClientSettings[F] {
     override def withMaxCacheSize(maxCacheSize: Int): SchemaRegistryClientSettings[F] =
@@ -124,11 +128,15 @@ object SchemaRegistryClientSettings {
     override def withProperties(properties: Map[String, String]): SchemaRegistryClientSettings[F] =
       copy(properties = this.properties ++ properties)
 
-    override def createSchemaRegistryClient: F[SchemaRegistryClient] =
+    override def createSchemaRegistryClient: F[JavaSchemaRegistryClient] =
       createSchemaRegistryClientWith(baseUrl, maxCacheSize, properties)
 
     override def withCreateSchemaRegistryClient(
-      createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[SchemaRegistryClient]
+      createSchemaRegistryClientWith: (
+        String,
+        Int,
+        Map[String, String]
+      ) => F[JavaSchemaRegistryClient]
     ): SchemaRegistryClientSettings[F] =
       copy(createSchemaRegistryClientWith = createSchemaRegistryClientWith)
 

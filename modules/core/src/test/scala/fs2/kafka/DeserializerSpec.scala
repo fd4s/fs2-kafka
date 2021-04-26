@@ -165,6 +165,36 @@ final class DeserializerSpec extends BaseCatsSpec {
     }
   }
 
+  test("Deserializer#topic") {
+    val deserializer =
+      Deserializer.topic {
+        case "topic" => Deserializer[IO, Int].forValue
+        case _       => Deserializer[IO, String].map(_.toInt).suspend.forValue
+      }
+
+    forAll { (i: Int) =>
+      val serialized = Serializer[IO, Int].serialize("topic", Headers.empty, i).unsafeRunSync()
+      val deserialized = deserializer.deserialize("topic", Headers.empty, serialized)
+      deserialized.attempt.unsafeRunSync() shouldBe Right(i)
+    }
+
+    forAll { (topic: String, i: Int) =>
+      whenever(topic != "topic") {
+        val serialized =
+          Serializer[IO, String]
+            .contramap[Int](_.toString)
+            .serialize(topic, Headers.empty, i)
+            .unsafeRunSync()
+        val deserialized =
+          Deserializer[IO, String]
+            .map(_.toInt)
+            .deserialize(topic, Headers.empty, serialized)
+
+        deserialized.attempt.unsafeRunSync() shouldBe Right(i)
+      }
+    }
+  }
+
   test("Deserializer#topic.unknown") {
     val deserializer =
       Deserializer.topic {

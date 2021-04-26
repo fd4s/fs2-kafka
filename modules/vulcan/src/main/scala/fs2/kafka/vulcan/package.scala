@@ -9,7 +9,7 @@ package fs2.kafka
 package object vulcan {
 
   /** Alias for `io.confluent.kafka.schemaregistry.client.SchemaRegistryClient`. */
-  type SchemaRegistryClient =
+  type JavaSchemaRegistryClient =
     io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 
   /** Alias for `io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient`. */

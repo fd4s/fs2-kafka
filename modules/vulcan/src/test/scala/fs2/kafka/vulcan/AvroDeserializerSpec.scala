@@ -8,7 +8,7 @@ import org.scalatest.funspec.AnyFunSpec
 final class AvroDeserializerSpec extends AnyFunSpec {
   describe("AvroDeserializer") {
     it("can create a deserializer") {
-      val src: AvroSchemaRegistryClient[IO] = AvroSchemaRegistryClient(avroSettings).unsafeRunSync()
+      val src: SchemaRegistryClient[IO] = SchemaRegistryClient(avroSettings).unsafeRunSync()
 
       src.keyDeserializer[Int]
 

@@ -21,7 +21,7 @@ import vulcan.Codec
 
 import java.nio.ByteBuffer
 
-sealed abstract class AvroSchemaRegistryClient[F[_]] {
+sealed abstract class SchemaRegistryClient[F[_]] {
   def keyDeserializer[A](implicit codec: Codec[A]): KeyDeserializer[F, A]
   def valueDeserializer[A](implicit codec: Codec[A]): ValueDeserializer[F, A]
 
@@ -29,39 +29,32 @@ sealed abstract class AvroSchemaRegistryClient[F[_]] {
   def valueSerializer[A](implicit codec: Codec[A]): ValueSerializer[F, A]
 }
 
-object AvroSchemaRegistryClient {
-  def apply[F[_]](settings: AvroSettings[F])(implicit F: Sync[F]): F[AvroSchemaRegistryClient[F]] =
-    settings.schemaRegistryClient.flatMap { src =>
-      val memoizedSettings = settings.withSchemaRegistryClient(F.pure(src))
+object SchemaRegistryClient {
+  def apply[F[_]](settings: AvroSettings[F])(implicit F: Sync[F]): F[SchemaRegistryClient[F]] =
+    settings.schemaRegistryClient.flatMap { underlying =>
+      val memoizedSettings = settings.withSchemaRegistryClient(F.pure(underlying))
       (
         memoizedSettings.createAvroSerializer(isKey = true).map(_._1),
         memoizedSettings.createAvroSerializer(isKey = false).map(_._1),
         memoizedSettings.createAvroDeserializer(isKey = true).map(_._1),
         memoizedSettings.createAvroDeserializer(isKey = false).map(_._1)
-      ).mapN { (keySerializer, valueSerializer, keyDeserializer, valueDeserializer) =>
-        apply(src, keySerializer, valueSerializer, keyDeserializer, valueDeserializer)
+      ).mapN {
+        (javaKeySerializer, javaValueSerializer, javaKeyDeserializer, javaValueDeserializer) =>
+          new SchemaRegistryClient[F] {
+            def keyDeserializer[A](implicit codec: Codec[A]): KeyDeserializer[F, A] =
+              createDeserializer(codec, javaKeyDeserializer, underlying)
+
+            def valueDeserializer[A](implicit codec: Codec[A]): ValueDeserializer[F, A] =
+              createDeserializer(codec, javaValueDeserializer, underlying)
+
+            def keySerializer[A](implicit codec: Codec[A]): KeySerializer[F, A] =
+              createSerializer(codec, javaKeySerializer)
+
+            def valueSerializer[A](implicit codec: Codec[A]): ValueSerializer[F, A] =
+              createSerializer(codec, javaValueSerializer)
+          }
       }
     }
-
-  def apply[F[_]: Sync](
-    schemaRegistryClient: SchemaRegistryClient,
-    javaKeySerializer: KafkaAvroSerializer,
-    javaValueSerializer: KafkaAvroSerializer,
-    javaKeyDeserializer: KafkaAvroDeserializer,
-    javaValueDeserializer: KafkaAvroDeserializer
-  ): AvroSchemaRegistryClient[F] = new AvroSchemaRegistryClient[F] {
-    def keyDeserializer[A](implicit codec: Codec[A]): KeyDeserializer[F, A] =
-      createDeserializer(codec, javaKeyDeserializer, schemaRegistryClient)
-
-    def valueDeserializer[A](implicit codec: Codec[A]): ValueDeserializer[F, A] =
-      createDeserializer(codec, javaValueDeserializer, schemaRegistryClient)
-
-    def keySerializer[A](implicit codec: Codec[A]): KeySerializer[F, A] =
-      createSerializer(codec, javaKeySerializer)
-
-    def valueSerializer[A](implicit codec: Codec[A]): ValueSerializer[F, A] =
-      createSerializer(codec, javaValueSerializer)
-  }
 
   private def createSerializer[F[_], A](codec: Codec[A], javaSerializer: KafkaAvroSerializer)(
     implicit F: Sync[F]
@@ -79,7 +72,7 @@ object AvroSchemaRegistryClient {
   private def createDeserializer[F[_], A](
     codec: Codec[A],
     javaDeserializer: KafkaAvroDeserializer,
-    schemaRegistryClient: SchemaRegistryClient
+    schemaRegistryClient: JavaSchemaRegistryClient
   )(implicit F: Sync[F]): Deserializer[F, A] =
     codec.schema match {
       case Left(err) => Deserializer.fail(err.throwable)

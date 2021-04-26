@@ -110,5 +110,5 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
     AvroSettings(SchemaRegistryClientSettings[IO]("baseUrl"))
 
   val settingsWithClient: AvroSettings[IO] =
-    AvroSettings(null: SchemaRegistryClient)
+    AvroSettings(null: JavaSchemaRegistryClient)
 }

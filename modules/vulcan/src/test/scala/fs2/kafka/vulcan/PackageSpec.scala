@@ -16,9 +16,9 @@ final class PackageSpec extends AnyFunSpec {
   describe("AvroSerializer/AvroDeserializer") {
     it("should be able to do roundtrip serialization") {
       (for {
-        client <- AvroSchemaRegistryClient(avroSettings)
+        client <- SchemaRegistryClient(avroSettings)
         serializer = client.valueSerializer[Test]
-        test = Test("test")
+        test = Test(Instant.now)
         serialized <- serializer.serialize("topic", Headers.empty, test)
         deserializer = client.valueDeserializer[Test]
         deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
@@ -27,18 +27,18 @@ final class PackageSpec extends AnyFunSpec {
 
     it("should be able to do roundtrip serialization using compatible schemas") {
       (for {
-        client <- AvroSchemaRegistryClient(avroSettings)
+        client <- SchemaRegistryClient(avroSettings)
         serializer = client.valueSerializer[Test2]
-        test2 = Test2("test", 42)
+        test2 = Test2(Instant.now, 42)
         serialized <- serializer.serialize("topic2", Headers.empty, test2)
         deserializer = client.valueDeserializer[Test]
         deserialized <- deserializer.deserialize("topic2", Headers.empty, serialized)
-      } yield assert(deserialized == Test("test"))).unsafeRunSync()
+      } yield assert(deserialized == Test(test2.timestamp))).unsafeRunSync()
     }
 
     it("should error when reader and writer schemas have mismatching logical types") {
       (for {
-        client <- AvroSchemaRegistryClient(avroSettings)
+        client <- SchemaRegistryClient(avroSettings)
         serializer = client.valueSerializer[Long]
         rawLong = 42L
         serialized <- serializer.serialize("topic3", Headers.empty, rawLong)
@@ -46,9 +46,19 @@ final class PackageSpec extends AnyFunSpec {
         deserialized <- deserializer.deserialize("topic3", Headers.empty, serialized).attempt
       } yield assert(deserialized.isLeft)).unsafeRunSync()
     }
+
+    ignore("should not error when reader and writer schemas have mismatching logical types") {
+      (for {
+        client <- SchemaRegistryClient(avroSettings)
+        serializer = client.valueSerializer[Instant]
+        serialized <- serializer.serialize("topic3", Headers.empty, Instant.now)
+        deserializer = client.valueDeserializer[Instant]
+        deserialized <- deserializer.deserialize("topic3", Headers.empty, serialized).attempt
+      } yield assert(deserialized.isRight)).unsafeRunSync()
+    }
   }
 
-  case class Test(name: String)
+  case class Test(timestamp: Instant)
 
   object Test {
     implicit val codec: Codec[Test] =
@@ -56,11 +66,11 @@ final class PackageSpec extends AnyFunSpec {
         name = "Test",
         namespace = "fs2.kafka.vulcan"
       ) { field =>
-        field("name", _.name).map(Test(_))
+        field("name", _.timestamp).map(Test(_))
       }
   }
 
-  case class Test2(name: String, number: Int)
+  case class Test2(timestamp: Instant, number: Int)
   object Test2 {
     implicit val codec: Codec[Test2] =
       Codec.record(
@@ -68,7 +78,7 @@ final class PackageSpec extends AnyFunSpec {
         namespace = "fs2.kafka.vulcan"
       ) { field =>
         (
-          field("name", _.name),
+          field("name", _.timestamp),
           field("number", _.number)
         ).mapN(apply)
       }
