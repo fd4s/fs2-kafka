@@ -259,20 +259,20 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
       ProducerConfig.RETRY_BACKOFF_MS_CONFIG -> 1000.toString
     )
 
-  def publishToKafka(
+  def publishToKafka[T](
     topic: String,
-    message: String
-  ): Unit =
-    publishToKafka_(
+    message: T
+  )(implicit serializer: KafkaSerializer[T]): Unit =
+    publishToKafka(
       new KProducer(
         (defaultProducerConfig: Map[String, Object]).asJava,
         new StringSerializer(),
-        new StringSerializer()
+        serializer
       ),
-      new KProducerRecord[String, String](topic, message)
+      new KProducerRecord[String, T](topic, message)
     )
 
-  private def publishToKafka_[K, T](
+  private def publishToKafka[K, T](
     kafkaProducer: KProducer[K, T],
     record: KProducerRecord[K, T]
   ): Unit = {
@@ -289,16 +289,19 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
     }
   }
 
-  def publishToKafka(topic: String, messages: Seq[(String, String)]): Unit = {
+  def publishToKafka[K, T](topic: String, messages: Seq[(K, T)])(
+    implicit keySerializer: KafkaSerializer[K],
+    serializer: KafkaSerializer[T]
+  ): Unit = {
     val producer =
       new KProducer(
         defaultProducerConfig.asInstanceOf[Map[String, Object]].asJava,
-        new StringSerializer(),
-        new StringSerializer()
+        keySerializer,
+        serializer
       )
 
     val tupleToRecord =
-      (new KProducerRecord(topic, _: String, _: String)).tupled
+      (new KProducerRecord(topic, _: K, _: T)).tupled
 
     val futureSend = tupleToRecord andThen producer.send
 
