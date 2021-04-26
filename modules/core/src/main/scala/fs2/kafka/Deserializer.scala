@@ -15,7 +15,7 @@ import java.util.UUID
   * Functional composable Kafka key- and record deserializer with
   * support for effect types.
   */
-sealed trait GenDeserializer[+This[g[_], x] <: GenDeserializer[This, g, x], F[_], A] {
+private[kafka] sealed trait GenDeserializer[+This[g[_], x] <: GenDeserializer[This, g, x], F[_], A] {
   self: This[F, A] =>
 
   /**
