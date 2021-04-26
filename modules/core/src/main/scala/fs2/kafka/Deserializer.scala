@@ -52,11 +52,11 @@ sealed trait GenDeserializer[+This[g[_], x] <: GenDeserializer[This, g, x], F[_]
 }
 
 object GenDeserializer {
-  implicit class InvariantOps[This[g[_], x] >: Deserializer[g, x] <: GenDeserializer[This, g, x], F[
-    _
-  ], A](
+  // format: off
+  implicit class InvariantOps[This[g[_], x] >: Deserializer[g, x] <: GenDeserializer[This, g, x], F[_], A](
     private val self: This[F, A]
   ) extends AnyVal {
+    // format: on
 
     /**
       * Creates a new [[Deserializer]] by first deserializing
