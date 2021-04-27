@@ -1,6 +1,6 @@
 val catsEffectVersion = "2.5.0"
 
-val catsVersion = "2.4.1"
+val catsVersion = "2.6.0"
 
 val confluentVersion = "6.1.1"
 
@@ -10,13 +10,13 @@ val kafkaVersion = "2.8.0"
 
 val testcontainersScalaVersion = "0.39.3"
 
-val vulcanVersion = "1.5.1"
+val vulcanVersion = "1.6.0"
 
 val scala212 = "2.12.13"
 
 val scala213 = "2.13.5"
 
-val scala3 = "3.0.0-RC2"
+val scala3 = "3.0.0-RC3"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
