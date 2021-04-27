@@ -3,7 +3,6 @@ package fs2.kafka
 import cats.MonadThrow
 import cats.effect.IO
 import cats.laws.discipline._
-import org.scalatest.funsuite.AnyFunSuite
 
 final class DeserializerSpec extends BaseCatsSpec {
   checkAll(
@@ -236,18 +235,4 @@ final class DeserializerSpec extends BaseCatsSpec {
     assert(Deserializer[IO, String].toString startsWith "Deserializer$")
   }
 
-}
-
-final class DeserializerNoCatsSpec extends AnyFunSuite {
-  test("InvariantOps syntax should compile without cats implicits in scope") {
-
-    Deserializer[IO, String].flatMap(Deserializer.const[IO, String])
-    Deserializer[IO, String].product(Deserializer[IO, Int])
-
-    Deserializer[IO, String].forKey.flatMap(Deserializer.const[IO, String])
-    Deserializer[IO, String].forKey.product(Deserializer[IO, Int])
-
-    Deserializer[IO, String].forValue.flatMap(Deserializer.const[IO, String])
-    Deserializer[IO, String].forValue.product(Deserializer[IO, Int])
-  }
 }

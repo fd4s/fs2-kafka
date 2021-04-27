@@ -232,6 +232,8 @@ object Serializer {
 /**
   * Functional composable Kafka key- and record serializer with
   * support for effect types.
+  *
+  * The `This` type parameter will always be one of `Serializer`, `KeySerializer` or `ValueSerializer`.
   */
 sealed trait GenSerializer[+This[g[_], x] <: GenSerializer[This, g, x], F[_], A] {
   self: This[F, A] =>
