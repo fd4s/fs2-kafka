@@ -42,13 +42,13 @@ val avroSettings =
   }
 ```
 
-We use these `AvroSettings` to create an `AvroSchemaRegistryClient`. Here we use `unsafeRunSync`, but this should never be done in production code. Instead the effectful allocation should be composed monadically, as shown below.
+We use these `AvroSettings` to create a `SchemaRegistryClient`. Here we use `unsafeRunSync`, but this should never be done in production code. Instead the effectful allocation should be composed monadically, as shown below.
 
 ```scala mdoc:silent
-import fs2.kafka.vulcan.AvroSchemaRegistryClient
+import fs2.kafka.vulcan.SchemaRegistryClient
 import cats.effect.unsafe.implicits.global
 
-val schemaRegistryClient = AvroSchemaRegistryClient(avroSettings).unsafeRunSync()
+val schemaRegistryClient = SchemaRegistryClient(avroSettings).unsafeRunSync()
 ```
 
 We can then create a `ValueSerializer` and `ValueDeserializer` instance for `Person`.
