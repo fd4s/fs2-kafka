@@ -8,7 +8,7 @@ val fs2Version = "3.0.2"
 
 val kafkaVersion = "2.8.0"
 
-val testcontainersScalaVersion = "0.39.3"
+val testcontainersScalaVersion = "0.39.4"
 
 val vulcanVersion = "1.6.0"
 
