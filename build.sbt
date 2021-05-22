@@ -88,7 +88,6 @@ lazy val dependencySettings = Seq(
       .cross(CrossVersion.for3Use2_13),
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
-    "org.typelevel" %% "cats-testkit-scalatest" % "2.1.5",
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   libraryDependencies ++= {
