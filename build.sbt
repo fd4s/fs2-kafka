@@ -1,22 +1,22 @@
-val catsEffectVersion = "3.1.0"
+val catsEffectVersion = "3.1.1"
 
-val catsVersion = "2.6.0"
+val catsVersion = "2.6.1"
 
 val confluentVersion = "6.1.1"
 
-val fs2Version = "3.0.2"
+val fs2Version = "3.0.4"
 
 val kafkaVersion = "2.8.0"
 
 val testcontainersScalaVersion = "0.39.4"
 
-val vulcanVersion = "1.6.0"
+val vulcanVersion = "1.7.0"
 
 val scala212 = "2.12.13"
 
 val scala213 = "2.13.6"
 
-val scala3 = "3.0.0-RC3"
+val scala3 = "3.0.0"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -86,10 +86,9 @@ lazy val dependencySettings = Seq(
       .cross(CrossVersion.for3Use2_13),
     ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
       .cross(CrossVersion.for3Use2_13),
-    "org.typelevel" %% "discipline-scalatest" % "2.1.4",
+    "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "org.typelevel" %% "cats-testkit-scalatest" % "2.1.4",
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   ).map(_ % Test),
   libraryDependencies ++= {
@@ -230,13 +229,12 @@ lazy val publishSettings =
   )
 
 lazy val mimaSettings = Seq(
-  // Restore this after releasing v3.0.0
-  // mimaPreviousArtifacts := {
-  //   if (publishArtifact.value) {
-  //     Set(organization.value %% moduleName.value % (previousStableVersion in ThisBuild).value.get)
-  //   } else Set()
-  // },
-  mimaPreviousArtifacts := Set(),
+  // remove scala 3 exclusion after releasing for Scala 3.0.0
+  mimaPreviousArtifacts := {
+    if (publishArtifact.value && !scalaVersion.value.startsWith("3")) {
+      Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
+    } else Set()
+  },
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
     // format: off
