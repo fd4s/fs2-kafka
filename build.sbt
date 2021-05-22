@@ -4,7 +4,7 @@ val catsVersion = "2.6.1"
 
 val confluentVersion = "6.1.1"
 
-val fs2Version = "3.0.2"
+val fs2Version = "3.0.4"
 
 val kafkaVersion = "2.8.0"
 
