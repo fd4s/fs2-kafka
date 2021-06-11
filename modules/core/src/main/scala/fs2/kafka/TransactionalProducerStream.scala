@@ -29,7 +29,7 @@ final class TransactionalProducerStream[F[_]] private[kafka] (
     */
   def using[K, V](settings: TransactionalProducerSettings[F, K, V])(
     implicit context: ContextShift[F]
-  ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
+  ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
     TransactionalKafkaProducer.stream(settings)(F, context)
 
   override def toString: String =
