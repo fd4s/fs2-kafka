@@ -135,6 +135,29 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
     }
   }
 
+
+  it("should produce one without passthrough") {
+    withKafka { (config, topic) =>
+      createCustomTopic(topic, partitions = 3)
+      val toProduce = ("some-key" -> "some-value")
+
+      val produced =
+        (for {
+          settings <- Stream(producerSettings[IO](config))
+          producer <- producerStream[IO].using(settings)
+          _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
+          batched <- Stream
+            .eval(producer.produceOne_(ProducerRecord(topic, toProduce._1, toProduce._2)))
+          _ <- Stream.eval(batched)
+        } yield ()).compile.toVector.unsafeRunSync()
+
+      val consumed =
+        consumeNumberKeyedMessagesFrom[String, String](topic, produced.size)
+
+      consumed should contain only toProduce
+    }
+  }
+
   it("should get metrics") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)

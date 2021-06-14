@@ -15,6 +15,7 @@ import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
+import fs2.Chunk
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -52,6 +53,16 @@ abstract class KafkaProducer[F[_], K, V] {
   def produce[P](
     records: ProducerRecords[K, V, P]
   ): F[F[ProducerResult[K, V, P]]]
+
+  def produce_(records: ProducerRecords[K, V, _]): F[F[Chunk[(ProducerRecord[K, V], RecordMetadata)]]]
+
+  def produceOne[P](record: ProducerRecord[K, V], passthrough: P): F[F[ProducerResult[K, V, P]]]
+
+  def produceOne[P](topic: String, key: K, value: V, passthrough: P): F[F[ProducerResult[K, V, P]]]
+
+  def produceOne_(producerRecord: ProducerRecord[K, V]): F[F[RecordMetadata]]
+  
+  def produceOne_(topic: String, key: K, value: V): F[F[RecordMetadata]]
 }
 
 object KafkaProducer {
@@ -103,6 +114,33 @@ object KafkaProducer {
             .traverse(produceRecord(keySerializer, valueSerializer, producer))
             .map(_.sequence.map(ProducerResult(_, records.passthrough)))
         }
+
+      override def produceOne_(record: ProducerRecord[K,V]): F[F[RecordMetadata]] = {
+        withProducer { (producer, _) =>
+          val produce = produceRecord(keySerializer, valueSerializer, producer)
+          produce(record).map(_.map(_._2))
+        }
+      }
+
+      override def produceOne_(topic: String, key: K, value: V): F[F[RecordMetadata]] = {
+        produceOne_(ProducerRecord(topic, key, value))
+      }
+
+      override def produce_(records: ProducerRecords[K, V, _]): F[F[Chunk[(ProducerRecord[K,V], RecordMetadata)]]] = {
+        withProducer { (producer, _) =>
+          records.records
+            .traverse(produceRecord(keySerializer, valueSerializer, producer))
+            .map(_.sequence)
+        }
+      }
+
+      override def produceOne[P](topic: String, key: K, value: V, passthrough: P): F[F[ProducerResult[K,V,P]]] = {
+        produceOne(ProducerRecord(topic, key, value), passthrough)
+      }
+
+      override def produceOne[P](record: ProducerRecord[K,V], passthrough: P): F[F[ProducerResult[K,V,P]]] = {
+        produce(ProducerRecords.one(record, passthrough))
+      }
 
       override def metrics: F[Map[MetricName, Metric]] =
         withProducer.blocking { _.metrics().asScala.toMap }
