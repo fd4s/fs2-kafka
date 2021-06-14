@@ -54,14 +54,33 @@ abstract class KafkaProducer[F[_], K, V] {
     records: ProducerRecords[K, V, P]
   ): F[F[ProducerResult[K, V, P]]]
 
+  /**
+    * Produces the specified [[ProducerRecords]] without a passthrough value, 
+    * see [[produce]] for general semantics.
+    */
   def produce_(records: ProducerRecords[K, V, _]): F[F[Chunk[(ProducerRecord[K, V], RecordMetadata)]]]
 
+  /**
+    * Produce a single [[ProducerRecord]], see [[produce]] for general semantics.
+    */
   def produceOne[P](record: ProducerRecord[K, V], passthrough: P): F[F[ProducerResult[K, V, P]]]
 
+  /**
+    * Produce a single record to the specified topic using the provided key and value,
+    * see [[produce]] for general semantics.
+    */
   def produceOne[P](topic: String, key: K, value: V, passthrough: P): F[F[ProducerResult[K, V, P]]]
 
+  /**
+    * Produce a single [[ProducerRecord]] without a passthrough value,
+    * see [[produce]] for general semantics.
+    */
   def produceOne_(producerRecord: ProducerRecord[K, V]): F[F[RecordMetadata]]
   
+  /**
+    * Produce a single record to the specified topic using the provided key and value
+    * without a passthrough value, see [[produce]] for general semantics.
+    */
   def produceOne_(topic: String, key: K, value: V): F[F[RecordMetadata]]
 }
 
