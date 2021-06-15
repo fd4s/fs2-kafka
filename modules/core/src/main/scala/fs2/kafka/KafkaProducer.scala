@@ -16,6 +16,7 @@ import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 import fs2.Chunk
+import cats.MonadError
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -53,38 +54,56 @@ abstract class KafkaProducer[F[_], K, V] {
   def produce[P](
     records: ProducerRecords[K, V, P]
   ): F[F[ProducerResult[K, V, P]]]
-
-  /**
-    * Produces the specified [[ProducerRecords]] without a passthrough value, 
-    * see [[produce]] for general semantics.
-    */
-  def produce_(records: ProducerRecords[K, V, _]): F[F[Chunk[(ProducerRecord[K, V], RecordMetadata)]]]
-
-  /**
-    * Produce a single [[ProducerRecord]], see [[produce]] for general semantics.
-    */
-  def produceOne[P](record: ProducerRecord[K, V], passthrough: P): F[F[ProducerResult[K, V, P]]]
-
-  /**
-    * Produce a single record to the specified topic using the provided key and value,
-    * see [[produce]] for general semantics.
-    */
-  def produceOne[P](topic: String, key: K, value: V, passthrough: P): F[F[ProducerResult[K, V, P]]]
-
-  /**
-    * Produce a single [[ProducerRecord]] without a passthrough value,
-    * see [[produce]] for general semantics.
-    */
-  def produceOne_(producerRecord: ProducerRecord[K, V]): F[F[RecordMetadata]]
-  
-  /**
-    * Produce a single record to the specified topic using the provided key and value
-    * without a passthrough value, see [[produce]] for general semantics.
-    */
-  def produceOne_(topic: String, key: K, value: V): F[F[RecordMetadata]]
 }
 
 object KafkaProducer {
+
+  implicit class ProducerOps[F[_] : MonadThrow, K, V](producer: KafkaProducer[F, K, V]) {
+
+      /**
+        * Produce a single [[ProducerRecord]] without a passthrough value,
+        * see [[KafkaProducer.produce]] for general semantics.
+        */
+      def produceOne_(record: ProducerRecord[K,V]): F[F[RecordMetadata]] = {
+        produceOne(record, ()).map(_.flatMap { res =>
+          val metadata = res.records.head.map(_._2)
+          MonadError[F,Throwable].fromOption(metadata, new IllegalStateException("Exactly one record metadata should be"))
+        })
+      }
+
+      /**
+        * Produce a single record to the specified topic using the provided key and value
+        * without a passthrough value, see [[KafkaProducer.produce]] for general semantics.
+        */
+      def produceOne_(topic: String, key: K, value: V): F[F[RecordMetadata]] = {
+        produceOne_(ProducerRecord(topic, key, value))
+      }
+
+
+      /**
+        * Produces the specified [[ProducerRecords]] without a passthrough value, 
+        * see [[KafkaProducer.produce]] for general semantics.
+        */
+      def produce_(records: ProducerRecords[K, V, _]): F[F[Chunk[(ProducerRecord[K,V], RecordMetadata)]]] = {
+        producer.produce(records).map(_.map(_.records))
+      }
+
+      /**
+        * Produce a single record to the specified topic using the provided key and value,
+        * see [[KafkaProducer.produce]] for general semantics.
+        */
+      def produceOne[P](topic: String, key: K, value: V, passthrough: P): F[F[ProducerResult[K,V,P]]] = {
+        produceOne(ProducerRecord(topic, key, value), passthrough)
+      }
+
+      /**
+        * Produce a single [[ProducerRecord]], see [[KafkaProducer.produce]] for general semantics.
+        */
+      def produceOne[P](record: ProducerRecord[K,V], passthrough: P): F[F[ProducerResult[K,V,P]]] = {
+        producer.produce(ProducerRecords.one(record, passthrough))
+      }
+
+  }
 
   /**
     * [[KafkaProducer.Metrics]] extends [[KafkaProducer]] to provide
@@ -133,33 +152,6 @@ object KafkaProducer {
             .traverse(produceRecord(keySerializer, valueSerializer, producer))
             .map(_.sequence.map(ProducerResult(_, records.passthrough)))
         }
-
-      override def produceOne_(record: ProducerRecord[K,V]): F[F[RecordMetadata]] = {
-        withProducer { (producer, _) =>
-          val produce = produceRecord(keySerializer, valueSerializer, producer)
-          produce(record).map(_.map(_._2))
-        }
-      }
-
-      override def produceOne_(topic: String, key: K, value: V): F[F[RecordMetadata]] = {
-        produceOne_(ProducerRecord(topic, key, value))
-      }
-
-      override def produce_(records: ProducerRecords[K, V, _]): F[F[Chunk[(ProducerRecord[K,V], RecordMetadata)]]] = {
-        withProducer { (producer, _) =>
-          records.records
-            .traverse(produceRecord(keySerializer, valueSerializer, producer))
-            .map(_.sequence)
-        }
-      }
-
-      override def produceOne[P](topic: String, key: K, value: V, passthrough: P): F[F[ProducerResult[K,V,P]]] = {
-        produceOne(ProducerRecord(topic, key, value), passthrough)
-      }
-
-      override def produceOne[P](record: ProducerRecord[K,V], passthrough: P): F[F[ProducerResult[K,V,P]]] = {
-        produce(ProducerRecords.one(record, passthrough))
-      }
 
       override def metrics: F[Map[MetricName, Metric]] =
         withProducer.blocking { _.metrics().asScala.toMap }
