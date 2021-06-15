@@ -28,7 +28,7 @@ final class TransactionalProducerResource[F[_]] private[kafka] (
     */
   def using[K, V](settings: TransactionalProducerSettings[F, K, V])(
     implicit context: ContextShift[F]
-  ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
+  ): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
     TransactionalKafkaProducer.resource(settings)(F, context)
 
   override def toString: String =
