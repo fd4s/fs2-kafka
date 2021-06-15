@@ -67,7 +67,7 @@ object KafkaProducer {
       def produceOne_(record: ProducerRecord[K,V]): F[F[RecordMetadata]] = {
         produceOne(record, ()).map(_.flatMap { res =>
           val metadata = res.records.head.map(_._2)
-          MonadError[F,Throwable].fromOption(metadata, new IllegalStateException("Exactly one record metadata should be"))
+          MonadError[F,Throwable].fromOption(metadata, new IllegalStateException("Exactly one record metadata expected"))
         })
       }
 
