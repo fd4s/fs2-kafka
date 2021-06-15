@@ -135,7 +135,6 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
     }
   }
 
-
   it("should produce one without passthrough") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
