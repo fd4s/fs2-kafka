@@ -16,7 +16,7 @@ import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 import fs2.Chunk
-import cats.MonadError
+import cats.Functor
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -58,16 +58,15 @@ abstract class KafkaProducer[F[_], K, V] {
 
 object KafkaProducer {
 
-  implicit class ProducerOps[F[_] : MonadThrow, K, V](producer: KafkaProducer[F, K, V]) {
+  implicit class ProducerOps[F[_] : Functor, K, V](producer: KafkaProducer[F, K, V]) {
 
       /**
         * Produce a single [[ProducerRecord]] without a passthrough value,
         * see [[KafkaProducer.produce]] for general semantics.
         */
       def produceOne_(record: ProducerRecord[K,V]): F[F[RecordMetadata]] = {
-        produceOne(record, ()).map(_.flatMap { res =>
-          val metadata = res.records.head.map(_._2)
-          MonadError[F,Throwable].fromOption(metadata, new IllegalStateException("Exactly one record metadata expected"))
+        produceOne(record, ()).map(_.map { res =>
+          res.records.head.get._2//Should always be present so get is ok
         })
       }
 
