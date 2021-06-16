@@ -58,7 +58,8 @@ abstract class KafkaProducer[F[_], K, V] {
 
 object KafkaProducer {
 
-  implicit class ProducerOps[F[_], K, V](private val producer: KafkaProducer[F, K, V]) extends AnyVal {
+  implicit class ProducerOps[F[_], K, V](private val producer: KafkaProducer[F, K, V])
+      extends AnyVal {
 
     /**
       * Produce a single [[ProducerRecord]] without a passthrough value,
