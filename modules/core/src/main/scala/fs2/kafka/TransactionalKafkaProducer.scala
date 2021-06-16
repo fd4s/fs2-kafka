@@ -13,6 +13,7 @@ import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
+import org.apache.kafka.common.{Metric, MetricName}
 import fs2.kafka.producer.MkProducer
 
 import scala.annotation.nowarn
@@ -43,6 +44,20 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
 object TransactionalKafkaProducer {
 
   /**
+    * [[TransactionalKafkaProducer.Metrics]] extends [[TransactionalKafkaProducer]] to provide
+    * access to the underlying producer metrics.
+    */
+  abstract class Metrics[F[_], K, V] extends TransactionalKafkaProducer[F, K, V] {
+
+    /**
+      * Returns producer metrics.
+      *
+      * @see org.apache.kafka.clients.producer.KafkaProducer#metrics
+      */
+    def metrics: F[Map[MetricName, Metric]]
+  }
+
+  /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context,
     * using the specified [[TransactionalProducerSettings]]. Note that there
     * is another version where `F[_]` is specified explicitly and the key and
@@ -57,13 +72,13 @@ object TransactionalKafkaProducer {
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
-  ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
+  ): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
     (
       Resource.eval(settings.producerSettings.keySerializer),
       Resource.eval(settings.producerSettings.valueSerializer),
       WithProducer(mk, settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
-      new TransactionalKafkaProducer[F, K, V] {
+      new TransactionalKafkaProducer.Metrics[F, K, V] {
         override def produce[P](
           records: TransactionalProducerRecords[F, P, K, V]
         ): F[ProducerResult[P, K, V]] =
@@ -112,6 +127,9 @@ object TransactionalKafkaProducer {
             }
           }
 
+        override def metrics: F[Map[MetricName, Metric]] =
+          withProducer.blocking { _.metrics().asScala.toMap }
+
         override def toString: String =
           "TransactionalKafkaProducer$" + System.identityHashCode(this)
       }
@@ -132,7 +150,7 @@ object TransactionalKafkaProducer {
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
-  ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
+  ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
     Stream.resource(resource(settings)(F, mk))
 
   def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
@@ -154,7 +172,7 @@ object TransactionalKafkaProducer {
     def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
+    ): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
       TransactionalKafkaProducer.resource(settings)(F, mk)
 
     /**
@@ -170,7 +188,7 @@ object TransactionalKafkaProducer {
     def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Stream[F, TransactionalKafkaProducer[F, K, V]] =
+    ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
       TransactionalKafkaProducer.stream(settings)(F, mk)
 
     override def toString: String =
