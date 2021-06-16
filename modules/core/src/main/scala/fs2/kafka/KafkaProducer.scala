@@ -58,13 +58,13 @@ abstract class KafkaProducer[F[_], K, V] {
 
 object KafkaProducer {
 
-  implicit class ProducerOps[F[_]: Functor, K, V](producer: KafkaProducer[F, K, V]) {
+  implicit class ProducerOps[F[_], K, V](private val producer: KafkaProducer[F, K, V]) extends AnyVal {
 
     /**
       * Produce a single [[ProducerRecord]] without a passthrough value,
       * see [[KafkaProducer.produce]] for general semantics.
       */
-    def produceOne_(record: ProducerRecord[K, V]): F[F[RecordMetadata]] =
+    def produceOne_(record: ProducerRecord[K, V])(implicit F: Functor[F]): F[F[RecordMetadata]] =
       produceOne(record, ()).map(_.map { res =>
         res.records.head.get._2 //Should always be present so get is ok
       })
@@ -73,7 +73,7 @@ object KafkaProducer {
       * Produce a single record to the specified topic using the provided key and value
       * without a passthrough value, see [[KafkaProducer.produce]] for general semantics.
       */
-    def produceOne_(topic: String, key: K, value: V): F[F[RecordMetadata]] =
+    def produceOne_(topic: String, key: K, value: V)(implicit F: Functor[F]): F[F[RecordMetadata]] =
       produceOne_(ProducerRecord(topic, key, value))
 
     /**
@@ -82,7 +82,7 @@ object KafkaProducer {
       */
     def produce_(
       records: ProducerRecords[K, V, _]
-    ): F[F[Chunk[(ProducerRecord[K, V], RecordMetadata)]]] =
+    )(implicit F: Functor[F]): F[F[Chunk[(ProducerRecord[K, V], RecordMetadata)]]] =
       producer.produce(records).map(_.map(_.records))
 
     /**
