@@ -287,4 +287,29 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       consumedOrError.isLeft shouldBe true
     }
   }
+
+  it("should get metrics") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+
+      val info =
+        TransactionalKafkaProducer[IO]
+          .stream(
+            TransactionalProducerSettings(
+              transactionalId = "id",
+              producerSettings = producerSettings[IO].withRetries(Int.MaxValue)
+            )
+          )
+          .evalMap(_.metrics)
+
+      val res =
+        info
+          .take(1)
+          .compile
+          .lastOrError
+          .unsafeRunSync()
+
+      assert(res.nonEmpty)
+    }
+  }
 }

@@ -136,6 +136,118 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
     }
   }
 
+  it("should produce one without passthrough") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+      val toProduce = ("some-key" -> "some-value")
+
+      val produced =
+        (for {
+          producer <- KafkaProducer.stream(producerSettings[IO])
+          _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
+          batched <- Stream
+            .eval(producer.produceOne_(ProducerRecord(topic, toProduce._1, toProduce._2)))
+          _ <- Stream.eval(batched)
+        } yield ()).compile.toVector.unsafeRunSync()
+
+      val consumed =
+        consumeNumberKeyedMessagesFrom[String, String](topic, produced.size)
+
+      consumed should contain only toProduce
+    }
+  }
+
+  it("should produce one from individual topic, key and value without passthrough") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+      val toProduce = ("some-key" -> "some-value")
+
+      val produced =
+        (for {
+          producer <- KafkaProducer.stream(producerSettings[IO])
+          _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
+          batched <- Stream
+            .eval(producer.produceOne_(topic, toProduce._1, toProduce._2))
+          _ <- Stream.eval(batched)
+        } yield ()).compile.toVector.unsafeRunSync()
+
+      val consumed =
+        consumeNumberKeyedMessagesFrom[String, String](topic, produced.size)
+
+      consumed should contain only toProduce
+    }
+  }
+
+  it("should produce one") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+      val toProduce = ("some-key" -> "some-value")
+      val passthrough = "passthrough"
+
+      val result =
+        (for {
+          producer <- KafkaProducer.stream(producerSettings[IO])
+          _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
+          batched <- Stream
+            .eval(
+              producer.produceOne(ProducerRecord(topic, toProduce._1, toProduce._2), passthrough)
+            )
+          result <- Stream.eval(batched)
+        } yield result).compile.lastOrError.unsafeRunSync()
+
+      assert(result.passthrough == passthrough)
+    }
+  }
+
+  it("should produce one from individual topic, key and value") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+      val toProduce = ("some-key" -> "some-value")
+      val passthrough = "passthrough"
+
+      val result =
+        (for {
+          producer <- KafkaProducer.stream(producerSettings[IO])
+          _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
+          batched <- Stream
+            .eval(producer.produceOne(topic, toProduce._1, toProduce._2, passthrough))
+          result <- Stream.eval(batched)
+        } yield result).compile.lastOrError.unsafeRunSync()
+
+      assert(result.passthrough == passthrough)
+    }
+  }
+
+  it("should be able to produce records with multiple without passthrough") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+      val toProduce = (0 until 10).map(n => s"key-$n" -> s"value->$n").toList
+
+      val produced =
+        (for {
+          producer <- KafkaProducer.stream(producerSettings[IO])
+          records = ProducerRecords(toProduce.map {
+            case (key, value) =>
+              ProducerRecord(topic, key, value)
+          }, ())
+          result <- Stream.eval(producer.produce_(records).flatten)
+        } yield result).compile.lastOrError.unsafeRunSync()
+
+      val records =
+        produced.map {
+          case (record, _) =>
+            record.key -> record.value
+        }.toList
+
+      assert(records == toProduce)
+
+      val consumed =
+        consumeNumberKeyedMessagesFrom[String, String](topic, toProduce.size)
+
+      consumed should contain theSameElementsAs toProduce
+    }
+  }
+
   it("should get metrics") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
