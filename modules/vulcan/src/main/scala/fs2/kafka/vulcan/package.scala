@@ -6,12 +6,10 @@
 
 package fs2.kafka
 
-import _root_.vulcan.Codec
-
 package object vulcan {
 
   /** Alias for `io.confluent.kafka.schemaregistry.client.SchemaRegistryClient`. */
-  type SchemaRegistryClient =
+  type JavaSchemaRegistryClient =
     io.confluent.kafka.schemaregistry.client.SchemaRegistryClient
 
   /** Alias for `io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient`. */
@@ -25,10 +23,4 @@ package object vulcan {
   /** Alias for `io.confluent.kafka.serializers.KafkaAvroSerializer`. */
   type KafkaAvroSerializer =
     io.confluent.kafka.serializers.KafkaAvroSerializer
-
-  def avroDeserializer[A](implicit codec: Codec[A]): AvroDeserializer[A] =
-    new AvroDeserializer(codec)
-
-  def avroSerializer[A](implicit codec: Codec[A]): AvroSerializer[A] =
-    new AvroSerializer(codec)
 }

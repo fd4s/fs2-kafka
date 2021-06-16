@@ -167,8 +167,8 @@ object ConsumerRecord {
   private[this] def deserializeFromBytes[F[_], K, V](
     record: KafkaByteConsumerRecord,
     headers: Headers,
-    keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer[F, V]
+    keyDeserializer: KeyDeserializer[F, K],
+    valueDeserializer: ValueDeserializer[F, V]
   )(implicit F: Apply[F]): F[(K, V)] = {
     val key = keyDeserializer.deserialize(record.topic, headers, record.key)
     val value = valueDeserializer.deserialize(record.topic, headers, record.value)
@@ -177,8 +177,8 @@ object ConsumerRecord {
 
   private[kafka] def fromJava[F[_], K, V](
     record: KafkaByteConsumerRecord,
-    keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer[F, V]
+    keyDeserializer: KeyDeserializer[F, K],
+    valueDeserializer: ValueDeserializer[F, V]
   )(implicit F: Apply[F]): F[ConsumerRecord[K, V]] = {
     val headers = record.headers.asScala
     deserializeFromBytes(record, headers, keyDeserializer, valueDeserializer).map {

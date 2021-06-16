@@ -1,5 +1,6 @@
 package fs2.kafka
 
+import cats.MonadThrow
 import cats.effect.IO
 import cats.laws.discipline._
 
@@ -12,6 +13,24 @@ final class DeserializerSpec extends BaseCatsSpec {
   )
 
   import cats.effect.unsafe.implicits.global
+
+  test("InvariantOps syntax should compile with cats implicits in scope") {
+
+    Deserializer[IO, String].flatMap(Deserializer.const[IO, String])
+    Deserializer[IO, String].product(Deserializer[IO, Int])
+
+    Deserializer[IO, String].forKey.flatMap(Deserializer.const[IO, String])
+    Deserializer[IO, String].forKey.product(Deserializer[IO, Int])
+
+    Deserializer[IO, String].forValue.flatMap(Deserializer.const[IO, String])
+    Deserializer[IO, String].forValue.product(Deserializer[IO, Int])
+  }
+
+  test("instances should be available") {
+    MonadThrow[Deserializer[IO, *]]
+    MonadThrow[KeyDeserializer[IO, *]]
+    MonadThrow[ValueDeserializer[IO, *]]
+  }
 
   test("Deserializer#attempt") {
     forAll { (topic: String, headers: Headers, i: Int) =>
@@ -145,6 +164,36 @@ final class DeserializerSpec extends BaseCatsSpec {
     }
   }
 
+  test("Deserializer#topic (valueSerializer)") {
+    val deserializer =
+      Deserializer.topic {
+        case "topic" => Deserializer[IO, Int].forValue
+        case _       => Deserializer[IO, String].map(_.toInt).suspend.forValue
+      }
+
+    forAll { (i: Int) =>
+      val serialized = Serializer[IO, Int].serialize("topic", Headers.empty, i).unsafeRunSync()
+      val deserialized = deserializer.deserialize("topic", Headers.empty, serialized)
+      deserialized.attempt.unsafeRunSync() shouldBe Right(i)
+    }
+
+    forAll { (topic: String, i: Int) =>
+      whenever(topic != "topic") {
+        val serialized =
+          Serializer[IO, String]
+            .contramap[Int](_.toString)
+            .serialize(topic, Headers.empty, i)
+            .unsafeRunSync()
+        val deserialized =
+          Deserializer[IO, String]
+            .map(_.toInt)
+            .deserialize(topic, Headers.empty, serialized)
+
+        deserialized.attempt.unsafeRunSync() shouldBe Right(i)
+      }
+    }
+  }
+
   test("Deserializer#topic.unknown") {
     val deserializer =
       Deserializer.topic {
@@ -186,7 +235,4 @@ final class DeserializerSpec extends BaseCatsSpec {
     assert(Deserializer[IO, String].toString startsWith "Deserializer$")
   }
 
-  test("Deserializer.Record#toString") {
-    assert(RecordDeserializer[IO, String].toString startsWith "Deserializer.Record$")
-  }
 }

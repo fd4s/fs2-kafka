@@ -58,11 +58,7 @@ object TransactionalKafkaProducer {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Resource[F, TransactionalKafkaProducer[F, K, V]] =
-    (
-      Resource.eval(settings.producerSettings.keySerializer),
-      Resource.eval(settings.producerSettings.valueSerializer),
-      WithProducer(mk, settings)
-    ).mapN { (keySerializer, valueSerializer, withProducer) =>
+    WithProducer(mk, settings).map { (withProducer) =>
       new TransactionalKafkaProducer[F, K, V] {
         override def produce[P](
           records: TransactionalProducerRecords[F, P, K, V]
@@ -90,8 +86,12 @@ object TransactionalKafkaProducer {
                     records.records
                       .flatMap(_.records)
                       .traverse(
-                        KafkaProducer
-                          .produceRecord(keySerializer, valueSerializer, producer, blocking)
+                        KafkaProducer.produceRecord(
+                          settings.producerSettings.keySerializer,
+                          settings.producerSettings.valueSerializer,
+                          producer,
+                          blocking
+                        )
                       )
                       .map(_.sequence)
                       .flatTap { _ =>

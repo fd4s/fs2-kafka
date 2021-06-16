@@ -564,8 +564,6 @@ object KafkaConsumer {
     mk: MkConsumer[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     for {
-      keyDeserializer <- Resource.eval(settings.keyDeserializer)
-      valueDeserializer <- Resource.eval(settings.valueDeserializer)
       id <- Resource.eval(F.delay(new Object().hashCode))
       jitter <- Resource.eval(Jitter.default[F])
       logging <- Resource.eval(Logging.default[F](id))
@@ -583,8 +581,8 @@ object KafkaConsumer {
 
         new KafkaConsumerActor(
           settings = settings,
-          keyDeserializer = keyDeserializer,
-          valueDeserializer = valueDeserializer,
+          keyDeserializer = settings.keyDeserializer,
+          valueDeserializer = settings.valueDeserializer,
           ref = ref,
           requests = requests,
           withConsumer = withConsumer

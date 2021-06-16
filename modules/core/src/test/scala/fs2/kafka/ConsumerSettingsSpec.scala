@@ -1,7 +1,6 @@
 package fs2.kafka
 
 import cats.effect.IO
-import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerConfig
 
@@ -265,29 +264,21 @@ final class ConsumerSettingsSpec extends BaseSpec {
       }
     }
 
-    it("should be able to create with and without deserializer creation effects") {
+    it("should be able to create") {
       val deserializer = Deserializer[IO, String]
-      val recordDeserializer = RecordDeserializer.lift(deserializer)
 
       ConsumerSettings(deserializer, deserializer)
-      ConsumerSettings(recordDeserializer, deserializer)
-      ConsumerSettings(deserializer, recordDeserializer)
-      ConsumerSettings(recordDeserializer, recordDeserializer)
     }
 
-    it("should be able to implicitly create with and without deserializer creation effects") {
-      val deserializerInstance =
-        Deserializer[IO, String]
+    it("should be able to implicitly create") {
+      implicit val deserializerInstance: Deserializer[IO, String] =
+        Deserializer
+          .string[IO]
           .map(identity)
 
-      implicit val deserializer: RecordDeserializer[IO, String] =
-        RecordDeserializer.lift(deserializerInstance)
-
       ConsumerSettings[IO, Int, Int]
-      ConsumerSettings[IO, String, Int].keyDeserializer
-        .unsafeRunSync() shouldBe deserializerInstance
-      ConsumerSettings[IO, Int, String].valueDeserializer
-        .unsafeRunSync() shouldBe deserializerInstance
+      ConsumerSettings[IO, String, Int].keyDeserializer shouldBe deserializerInstance
+      ConsumerSettings[IO, Int, String].valueDeserializer shouldBe deserializerInstance
       ConsumerSettings[IO, String, String]
     }
 

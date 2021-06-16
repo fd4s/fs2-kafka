@@ -42,17 +42,25 @@ val avroSettings =
   }
 ```
 
-We can then create a `Serializer` and `Deserializer` instance for `Person`.
+We use these `AvroSettings` to create a `SchemaRegistryClient`. Here we use `unsafeRunSync`, but this should never be done in production code. Instead the effectful allocation should be composed monadically, as shown below.
 
 ```scala mdoc:silent
-import fs2.kafka.{RecordDeserializer, RecordSerializer}
-import fs2.kafka.vulcan.{avroDeserializer, avroSerializer}
+import fs2.kafka.vulcan.SchemaRegistryClient
+import cats.effect.unsafe.implicits.global
 
-implicit val personSerializer: RecordSerializer[IO, Person] =
-  avroSerializer[Person].using(avroSettings)
+val schemaRegistryClient = SchemaRegistryClient(avroSettings).unsafeRunSync()
+```
 
-implicit val personDeserializer: RecordDeserializer[IO, Person] =
-  avroDeserializer[Person].using(avroSettings)
+We can then create a `ValueSerializer` and `ValueDeserializer` instance for `Person`.
+
+```scala mdoc:silent
+import fs2.kafka.{ValueDeserializer, ValueSerializer}
+
+implicit val personSerializer: ValueSerializer[IO, Person] =
+  schemaRegistryClient.valueSerializer[Person]
+
+implicit val personDeserializer: ValueDeserializer[IO, Person] =
+  schemaRegistryClient.valueDeserializer[Person]
 ```
 
 Finally, we can create settings, passing the `Serializer`s and `Deserializer`s implicitly.
@@ -89,29 +97,18 @@ ProducerSettings(
 ).withBootstrapServers("localhost:9092")
 ```
 
-### Sharing Client
+### Composing 
 
-When creating `AvroSettings` with `SchemaRegistryClientSettings`, one schema registry client will be created per `Serializer` or `Deserializer`. For many cases, this is completely fine, but it's possible to reuse a single client for multiple `Serializer`s and `Deserializer`s.
-
-To share a `SchemaRegistryClient`, we first create it and then pass it to `AvroSettings`.
-
-```scala mdoc:silent
-val avroSettingsSharedClient: IO[AvroSettings[IO]] =
-  SchemaRegistryClientSettings[IO]("http://localhost:8081")
-    .withAuth(Auth.Basic("username", "password"))
-    .createSchemaRegistryClient
-    .map(AvroSettings(_))
-```
 
 We can then create multiple `Serializer`s and `Deserializer`s using the `AvroSettings`.
 
 ```scala mdoc:silent
-avroSettingsSharedClient.map { avroSettings =>
-  val personSerializer: RecordSerializer[IO, Person] =
-    avroSerializer[Person].using(avroSettings)
+AvroSchemaRegistryClient(avroSettings).map { schemaRegistryClient =>
+  val personSerializer: ValueSerializer[IO, Person] =
+    schemaRegistryClient.valueSerializer[Person]
 
-  val personDeserializer: RecordDeserializer[IO, Person] =
-    avroDeserializer[Person].using(avroSettings)
+  val personDeserializer: ValueDeserializer[IO, Person] =
+    schemaRegistryClient.valueDeserializer[Person]
 
   val consumerSettings =
     ConsumerSettings(

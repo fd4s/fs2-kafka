@@ -9,46 +9,20 @@ package fs2.kafka
 import cats.Contravariant
 import cats.effect.Sync
 import cats.implicits._
+
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
-/**
-  * Functional composable Kafka key- and record serializer with
-  * support for effect types.
-  */
-sealed abstract class Serializer[F[_], A] {
+sealed trait KeySerializer[F[_], A] extends GenSerializer[KeySerializer, F, A]
 
-  /**
-    * Attempts to serialize the specified value of type `A` into
-    * bytes. The Kafka topic name, to which the serialized bytes
-    * are going to be sent, and record headers are available.
-    */
-  def serialize(topic: String, headers: Headers, a: A): F[Array[Byte]]
+sealed trait ValueSerializer[F[_], A] extends GenSerializer[ValueSerializer, F, A]
 
-  /**
-    * Creates a new [[Serializer]] which applies the specified
-    * function `f` on a value of type `B`, and then serializes
-    * the result with this [[Serializer]].
-    */
-  def contramap[B](f: B => A): Serializer[F, B]
-
-  /**
-    * Creates a new [[Serializer]] which applies the specified
-    * function `f` on the output bytes of this [[Serializer]].
-    */
-  def mapBytes(f: Array[Byte] => Array[Byte]): Serializer[F, A]
-
-  /**
-    * Creates a new [[Serializer]] which serializes `Some` values
-    * using this [[Serializer]], and serializes `None` as `null`.
-    */
-  def option: Serializer[F, Option[A]]
-
-  /**
-    * Creates a new [[Serializer]] which suspends serialization,
-    * capturing any impure behaviours of this [[Serializer]].
-    */
-  def suspend: Serializer[F, A]
+sealed abstract class Serializer[F[_], A]
+    extends GenSerializer[Serializer, F, A]
+    with KeySerializer[F, A]
+    with ValueSerializer[F, A] {
+  def forKey: KeySerializer[F, A] = this
+  def forValue: ValueSerializer[F, A] = this
 }
 
 object Serializer {
@@ -113,7 +87,9 @@ object Serializer {
     * Creates a new [[Serializer]] which can use different
     * [[Serializer]]s depending on the record headers.
     */
-  def headers[F[_], A](f: Headers => Serializer[F, A])(implicit F: Sync[F]): Serializer[F, A] =
+  def headers[This[f[_], x] >: Serializer[f, x] <: GenSerializer[This, f, x], F[_], A](
+    f: Headers => This[F, A]
+  )(implicit F: Sync[F]): This[F, A] =
     Serializer.instance { (topic, headers, a) =>
       f(headers).serialize(topic, headers, a)
     }
@@ -173,9 +149,9 @@ object Serializer {
     * [[Serializer]]s depending on the Kafka topic name to
     * which the bytes are going to be sent.
     */
-  def topic[F[_], A](
-    f: PartialFunction[String, Serializer[F, A]]
-  )(implicit F: Sync[F]): Serializer[F, A] =
+  def topic[This[f[_], x] >: Serializer[f, x] <: GenSerializer[This, f, x], F[_], A](
+    f: PartialFunction[String, This[F, A]]
+  )(implicit F: Sync[F]): This[F, A] =
     Serializer.instance { (topic, headers, a) =>
       f.applyOrElse(topic, unexpectedTopic)
         .serialize(topic, headers, a)
@@ -201,60 +177,130 @@ object Serializer {
     * The identity [[Serializer]], which does not perform any kind
     * of serialization, simply using the input bytes as the output.
     */
-  implicit def identity[F[_]](implicit F: Sync[F]): Serializer[F, Array[Byte]] =
+  def identity[F[_]](implicit F: Sync[F]): Serializer[F, Array[Byte]] =
     Serializer.lift(bytes => F.pure(bytes))
 
   /**
     * The option [[Serializer]] serializes `None` as `null`, and
     * serializes `Some` values using the serializer for type `A`.
     */
-  implicit def option[F[_], A](
-    implicit serializer: Serializer[F, A]
-  ): Serializer[F, Option[A]] =
+  def option[This[f[_], x] >: Serializer[f, x] <: GenSerializer[This, f, x], F[_], A](
+    implicit serializer: This[F, A]
+  ): This[F, Option[A]] =
     serializer.option
 
-  implicit def contravariant[F[_]]: Contravariant[Serializer[F, *]] =
-    new Contravariant[Serializer[F, *]] {
-      override def contramap[A, B](serializer: Serializer[F, A])(f: B => A): Serializer[F, B] =
-        serializer.contramap(f)
-    }
-
-  implicit def double[F[_]](implicit F: Sync[F]): Serializer[F, Double] =
+  def double[F[_]](implicit F: Sync[F]): Serializer[F, Double] =
     Serializer.delegate {
       (new org.apache.kafka.common.serialization.DoubleSerializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Serializer[Double]]
     }
 
-  implicit def float[F[_]](implicit F: Sync[F]): Serializer[F, Float] =
+  def float[F[_]](implicit F: Sync[F]): Serializer[F, Float] =
     Serializer.delegate {
       (new org.apache.kafka.common.serialization.FloatSerializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Serializer[Float]]
     }
 
-  implicit def int[F[_]](implicit F: Sync[F]): Serializer[F, Int] =
+  def int[F[_]](implicit F: Sync[F]): Serializer[F, Int] =
     Serializer.delegate {
       (new org.apache.kafka.common.serialization.IntegerSerializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Serializer[Int]]
     }
 
-  implicit def long[F[_]](implicit F: Sync[F]): Serializer[F, Long] =
+  def long[F[_]](implicit F: Sync[F]): Serializer[F, Long] =
     Serializer.delegate {
       (new org.apache.kafka.common.serialization.LongSerializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Serializer[Long]]
     }
 
-  implicit def short[F[_]](implicit F: Sync[F]): Serializer[F, Short] =
+  def short[F[_]](implicit F: Sync[F]): Serializer[F, Short] =
     Serializer.delegate {
       (new org.apache.kafka.common.serialization.ShortSerializer)
         .asInstanceOf[org.apache.kafka.common.serialization.Serializer[Short]]
     }
 
-  implicit def string[F[_]](implicit F: Sync[F]): Serializer[F, String] =
+  def string[F[_]](implicit F: Sync[F]): Serializer[F, String] =
     Serializer.string(StandardCharsets.UTF_8)
 
-  implicit def unit[F[_]](implicit F: Sync[F]): Serializer[F, Unit] =
+  def unit[F[_]](implicit F: Sync[F]): Serializer[F, Unit] =
     Serializer.const(null)
 
-  implicit def uuid[F[_]](implicit F: Sync[F]): Serializer[F, UUID] =
+  def uuid[F[_]](implicit F: Sync[F]): Serializer[F, UUID] =
     Serializer.string[F].contramap(_.toString)
+}
+
+/**
+  * Functional composable Kafka key- and record serializer with
+  * support for effect types.
+  *
+  * The `This` type parameter will always be one of `Serializer`, `KeySerializer` or `ValueSerializer`.
+  */
+sealed trait GenSerializer[+This[g[_], x] <: GenSerializer[This, g, x], F[_], A] {
+  self: This[F, A] =>
+
+  /**
+    * Attempts to serialize the specified value of type `A` into
+    * bytes. The Kafka topic name, to which the serialized bytes
+    * are going to be sent, and record headers are available.
+    */
+  def serialize(topic: String, headers: Headers, a: A): F[Array[Byte]]
+
+  /**
+    * Creates a new [[Serializer]] which applies the specified
+    * function `f` on a value of type `B`, and then serializes
+    * the result with this [[Serializer]].
+    */
+  def contramap[B](f: B => A): This[F, B]
+
+  /**
+    * Creates a new [[Serializer]] which applies the specified
+    * function `f` on the output bytes of this [[Serializer]].
+    */
+  def mapBytes(f: Array[Byte] => Array[Byte]): This[F, A]
+
+  /**
+    * Creates a new [[Serializer]] which serializes `Some` values
+    * using this [[Serializer]], and serializes `None` as `null`.
+    */
+  def option: This[F, Option[A]]
+
+  /**
+    * Creates a new [[Serializer]] which suspends serialization,
+    * capturing any impure behaviours of this [[Serializer]].
+    */
+  def suspend: This[F, A]
+}
+
+object GenSerializer {
+
+  implicit def identity[F[_]](implicit F: Sync[F]): Serializer[F, Array[Byte]] =
+    Serializer.identity
+
+  implicit def option[This[f[_], x] >: Serializer[f, x] <: GenSerializer[This, f, x], F[_], A](
+    implicit serializer: This[F, A]
+  ): This[F, Option[A]] =
+    Serializer.option
+
+  implicit def contravariant[This[f[_], x] >: Serializer[f, x] <: GenSerializer[This, f, x], F[_]]
+    : Contravariant[This[F, *]] =
+    new Contravariant[This[F, *]] {
+      override def contramap[A, B](serializer: This[F, A])(f: B => A): This[F, B] =
+        serializer.contramap(f)
+    }
+
+  implicit def double[F[_]](implicit F: Sync[F]): Serializer[F, Double] = Serializer.double
+
+  implicit def float[F[_]](implicit F: Sync[F]): Serializer[F, Float] = Serializer.float
+
+  implicit def int[F[_]](implicit F: Sync[F]): Serializer[F, Int] = Serializer.int
+
+  implicit def long[F[_]](implicit F: Sync[F]): Serializer[F, Long] = Serializer.long
+
+  implicit def short[F[_]](implicit F: Sync[F]): Serializer[F, Short] = Serializer.short
+
+  implicit def string[F[_]](implicit F: Sync[F]): Serializer[F, String] = Serializer.string
+
+  implicit def unit[F[_]](implicit F: Sync[F]): Serializer[F, Unit] = Serializer.unit
+
+  implicit def uuid[F[_]](implicit F: Sync[F]): Serializer[F, UUID] = Serializer.uuid
 }
