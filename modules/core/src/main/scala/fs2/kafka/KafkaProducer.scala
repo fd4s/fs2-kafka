@@ -15,6 +15,8 @@ import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
+import fs2.Chunk
+import cats.Functor
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -55,6 +57,54 @@ abstract class KafkaProducer[F[_], K, V] {
 }
 
 object KafkaProducer {
+
+  implicit class ProducerOps[F[_], K, V](private val producer: KafkaProducer[F, K, V])
+      extends AnyVal {
+
+    /**
+      * Produce a single [[ProducerRecord]] without a passthrough value,
+      * see [[KafkaProducer.produce]] for general semantics.
+      */
+    def produceOne_(record: ProducerRecord[K, V])(implicit F: Functor[F]): F[F[RecordMetadata]] =
+      produceOne(record, ()).map(_.map { res =>
+        res.records.head.get._2 //Should always be present so get is ok
+      })
+
+    /**
+      * Produce a single record to the specified topic using the provided key and value
+      * without a passthrough value, see [[KafkaProducer.produce]] for general semantics.
+      */
+    def produceOne_(topic: String, key: K, value: V)(implicit F: Functor[F]): F[F[RecordMetadata]] =
+      produceOne_(ProducerRecord(topic, key, value))
+
+    /**
+      * Produces the specified [[ProducerRecords]] without a passthrough value,
+      * see [[KafkaProducer.produce]] for general semantics.
+      */
+    def produce_(
+      records: ProducerRecords[K, V, _]
+    )(implicit F: Functor[F]): F[F[Chunk[(ProducerRecord[K, V], RecordMetadata)]]] =
+      producer.produce(records).map(_.map(_.records))
+
+    /**
+      * Produce a single record to the specified topic using the provided key and value,
+      * see [[KafkaProducer.produce]] for general semantics.
+      */
+    def produceOne[P](
+      topic: String,
+      key: K,
+      value: V,
+      passthrough: P
+    ): F[F[ProducerResult[K, V, P]]] =
+      produceOne(ProducerRecord(topic, key, value), passthrough)
+
+    /**
+      * Produce a single [[ProducerRecord]], see [[KafkaProducer.produce]] for general semantics.
+      */
+    def produceOne[P](record: ProducerRecord[K, V], passthrough: P): F[F[ProducerResult[K, V, P]]] =
+      producer.produce(ProducerRecords.one(record, passthrough))
+
+  }
 
   /**
     * [[KafkaProducer.Metrics]] extends [[KafkaProducer]] to provide
