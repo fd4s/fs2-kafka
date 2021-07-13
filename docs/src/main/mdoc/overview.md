@@ -58,10 +58,11 @@ libraryDependencies += "@ORGANIZATION@" %% "@CORE_MODULE_NAME@" % "@LATEST_SNAPS
 
 Refer to the table below for dependencies and version support across modules.
 
-| Module                 | Dependencies                                                                                                                                                      | Scala                               |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| `@CORE_MODULE_NAME@`   | [FS2 @FS2_VERSION@](https://github.com/functional-streams-for-scala/fs2), [Apache Kafka Client @KAFKA_VERSION@](https://github.com/apache/kafka)                  | Scala @CORE_CROSS_SCALA_VERSIONS@   |
-| `@VULCAN_MODULE_NAME@` | [Vulcan @VULCAN_VERSION@](https://github.com/fd4s/vulcan), [Confluent Kafka Avro Serializer @CONFLUENT_VERSION@](https://github.com/confluentinc/schema-registry) | Scala @VULCAN_CROSS_SCALA_VERSIONS@ |
+| Module                 | Dependencies                                                                                                                                                             | Scala                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| `@CORE_MODULE_NAME@`   | [FS2 @FS2_VERSION@](https://github.com/functional-streams-for-scala/fs2), [Apache Kafka Client @KAFKA_VERSION@](https://github.com/apache/kafka)                         | Scala @CORE_CROSS_SCALA_VERSIONS@    |
+| `@VULCAN_MODULE_NAME@` | [Vulcan @VULCAN_VERSION@](https://github.com/fd4s/vulcan), [Confluent Kafka Avro Serializer @CONFLUENT_VERSION@](https://github.com/confluentinc/schema-registry)        | Scala @VULCAN_CROSS_SCALA_VERSIONS@  |
+| `@SCALAPB_MODULE_NAME@` | [ScalaPB @SCALAPB_VERSION@](https://github.com/scalapb/ScalaPB), [Confluent Kafka Avro Serializer @CONFLUENT_VERSION@](https://github.com/confluentinc/schema-registry) | Scala @SCALAPB_CROSS_SCALA_VERSIONS@ |
 
 ## Inspiration
 

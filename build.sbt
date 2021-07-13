@@ -8,6 +8,8 @@ val fs2Version = "3.0.6"
 
 val kafkaVersion = "2.8.0"
 
+val scalapbVersion = "0.11.4"
+
 val testcontainersScalaVersion = "0.39.5"
 
 val vulcanVersion = "1.7.1"
@@ -27,7 +29,7 @@ lazy val `fs2-kafka` = project
     console := (core / Compile / console).value,
     Test / console := (core / Test / console).value
   )
-  .aggregate(core, vulcan)
+  .aggregate(core, vulcan, `fs2-scalapb`)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -65,6 +67,25 @@ lazy val vulcan = project
   )
   .dependsOn(core)
 
+lazy val `fs2-scalapb` = project
+  .in(file("modules/scalapb"))
+  .settings(
+    moduleName := "fs2-kafka-scalapb",
+    name := moduleName.value,
+    dependencySettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "io.confluent" % "kafka-protobuf-serializer" % confluentVersion,
+        "com.thesamet.scalapb" %% "scalapb-runtime" % scalapbVersion,
+        "com.thesamet.scalapb.common-protos" %% "proto-google-common-protos-scalapb_0.11" % "1.18.1-1" % Test
+      )
+    ),
+    publishSettings,
+    mimaSettings,
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(core)
+
 lazy val docs = project
   .in(file("docs"))
   .settings(
@@ -76,7 +97,7 @@ lazy val docs = project
     mdocSettings,
     buildInfoSettings
   )
-  .dependsOn(core, vulcan)
+  .dependsOn(core, vulcan, `fs2-scalapb`)
   .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin, ScalaUnidocPlugin)
 
 lazy val dependencySettings = Seq(
@@ -164,11 +185,18 @@ lazy val buildInfoSettings = Seq(
     BuildInfoKey.map(vulcan / crossScalaVersions) {
       case (k, v) => "vulcan" ++ k.capitalize -> v
     },
+    BuildInfoKey.map(`fs2-scalapb` / moduleName) {
+      case (k, v) => "scalapb" ++ k.capitalize -> v
+    },
+    BuildInfoKey.map(`fs2-scalapb` / crossScalaVersions) {
+      case (k, v) => "scalapb" ++ k.capitalize -> v
+    },
     LocalRootProject / organization,
     core / crossScalaVersions,
     BuildInfoKey("fs2Version" -> fs2Version),
     BuildInfoKey("kafkaVersion" -> kafkaVersion),
     BuildInfoKey("vulcanVersion" -> vulcanVersion),
+    BuildInfoKey("scalapbVersion" -> scalapbVersion),
     BuildInfoKey("confluentVersion" -> confluentVersion)
   )
 )
