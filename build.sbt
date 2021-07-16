@@ -224,6 +224,18 @@ lazy val publishSettings =
         name = "Viktor Lövgren",
         email = "github@vlovgr.se",
         url = url("https://vlovgr.se")
+      ),
+      Developer(
+        id = "bplommer",
+        name = "Ben Plommer",
+        email = "@bplommer",  // actually a twitter handle but whatever ¯\_(ツ)_/¯
+        url = url("https://github.com/bplommer")
+      ),
+      Developer(
+        id = "LMNet",
+        name = "Yuriy Badalyantc",
+        email = "@lmnet89",
+        url = url("https://github.com/LMnet")
       )
     )
   )
