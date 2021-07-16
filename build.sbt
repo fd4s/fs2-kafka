@@ -229,7 +229,7 @@ lazy val publishSettings =
 
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
-    if (publishArtifact.value && !scalaVersion.value.startsWith("3")) {
+    if (publishArtifact.value) {
       Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
     } else Set()
   },
