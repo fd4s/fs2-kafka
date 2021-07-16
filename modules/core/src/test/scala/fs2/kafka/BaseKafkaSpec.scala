@@ -27,7 +27,7 @@ This file contains code derived from the Embedded Kafka library
 package fs2.kafka
 
 import cats.effect.Sync
-import fs2.kafka.internal.converters.collection._
+import scala.jdk.CollectionConverters._
 import java.util.UUID
 
 import scala.util.Failure

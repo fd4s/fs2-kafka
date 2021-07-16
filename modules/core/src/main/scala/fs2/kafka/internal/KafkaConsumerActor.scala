@@ -13,7 +13,8 @@ import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.Chunk
 import fs2.kafka._
-import fs2.kafka.internal.converters.collection._
+import scala.jdk.CollectionConverters._
+import scala.jdk.DurationConverters._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogEntry._
@@ -410,7 +411,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       .map(_.toMap)
 
   private[this] val pollTimeout: Duration =
-    settings.pollTimeout.asJava
+    settings.pollTimeout.toJava
 
   private[this] val poll: F[Unit] = {
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords] =

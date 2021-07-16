@@ -8,7 +8,7 @@ import cats.implicits._
 import cats.effect.unsafe.implicits.global
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import fs2.kafka.internal.converters.collection._
+import scala.jdk.CollectionConverters._
 import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.TimeoutException

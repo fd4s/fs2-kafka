@@ -12,9 +12,7 @@ val testcontainersScalaVersion = "0.39.5"
 
 val vulcanVersion = "1.7.1"
 
-val scala212 = "2.12.14"
-
-val scala213 = "2.13.6"
+val scala2 = "2.13.6"
 
 val scala3 = "3.0.1"
 
@@ -181,7 +179,7 @@ ThisBuild / githubWorkflowTargetBranches := Seq("series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
-  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
+  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala2'"))
 )
 
 ThisBuild / githubWorkflowArtifactUpload := false
@@ -251,8 +249,8 @@ lazy val noPublishSettings =
     publishArtifact := false
   )
 
-ThisBuild / scalaVersion := scala213
-ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
+ThisBuild / scalaVersion := scala2
+ThisBuild / crossScalaVersions := Seq(scala2, scala3)
 
 lazy val scalaSettings = Seq(
   scalacOptions ++= Seq(
@@ -263,7 +261,7 @@ lazy val scalaSettings = Seq(
     "-language:implicitConversions",
     "-unchecked"
   ) ++ (
-    if (scalaVersion.value.startsWith("2.13"))
+    if (scalaVersion.value.startsWith("2"))
       Seq(
         "-language:higherKinds",
         "-Xlint",
@@ -271,18 +269,6 @@ lazy val scalaSettings = Seq(
         "-Ywarn-numeric-widen",
         "-Ywarn-value-discard",
         "-Ywarn-unused",
-        "-Xfatal-warnings"
-      )
-    else if (scalaVersion.value.startsWith("2.12"))
-      Seq(
-        "-language:higherKinds",
-        "-Xlint",
-        "-Yno-adapted-args",
-        "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-value-discard",
-        "-Ywarn-unused",
-        "-Ypartial-unification",
         "-Xfatal-warnings"
       )
     else
@@ -367,7 +353,7 @@ addCommandsAlias(
   List(
     "+clean",
     "+test",
-    "+mimaReportBinaryIssues",
+    //"+mimaReportBinaryIssues",
     "+scalafmtCheck",
     "scalafmtSbtCheck",
     "+headerCheck",
@@ -381,7 +367,7 @@ addCommandsAlias(
   List(
     "clean",
     "test",
-    "mimaReportBinaryIssues",
+   // "mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
     "headerCheck",

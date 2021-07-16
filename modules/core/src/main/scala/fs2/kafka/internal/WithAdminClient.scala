@@ -13,6 +13,7 @@ import fs2.kafka.admin.MkAdminClient
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.common.KafkaFuture
+import scala.jdk.DurationConverters._
 
 private[kafka] sealed abstract class WithAdminClient[F[_]] {
   def apply[A](f: AdminClient => KafkaFuture[A]): F[A]
@@ -32,7 +33,7 @@ private[kafka] object WithAdminClient {
           }
 
         val close =
-          F.blocking(adminClient.close(settings.closeTimeout.asJava))
+          F.blocking(adminClient.close(settings.closeTimeout.toJava))
 
         (withAdminClient, close)
       }
