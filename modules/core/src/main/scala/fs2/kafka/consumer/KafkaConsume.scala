@@ -42,6 +42,10 @@ trait KafkaConsume[F[_], K, V] {
   def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
 
   /**
+    * Same as partitionedStream but topic 'Stream' is tupled with 'TopicPartition'
+    */
+  def signedPartitionedStream: Stream[F, (TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]])]
+  /**
     * `Stream` where each element contains a current assignment. The current
     * assignment is the `Map`, where keys is a `TopicPartition`, and values are
     * streams with records for a particular `TopicPartition`.<br>
