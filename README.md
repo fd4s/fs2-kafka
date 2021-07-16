@@ -12,13 +12,13 @@ If your project uses cats-effect 2 you should instead use the latest release fro
 
 For further details, see the [microsite](https://fd4s.github.io/fs2-kafka/docs/overview).
 
-## Contributing
-
-Pull requests and feedback are welcome. Pull requests should usually target the `series/2.x` branch
-
 ## Integrations
 
 - [Trace4Cats](https://github.com/trace4cats/trace4cats), a distributed tracing system, provides a [module for integrating with fs2-kafka](https://github.com/trace4cats/trace4cats-kafka). 
+
+## Contributing
+
+Pull requests and feedback are welcome. Pull requests should usually target the `series/2.x` branch
 
 ## Adopters
 
