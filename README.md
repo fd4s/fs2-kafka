@@ -1,0 +1,31 @@
+# FS2-Kafka: Functional Kafka Streams for Scala
+
+[![Latest version](https://index.scala-lang.org/fd4s/fs2-kafka/fs2-kafka/latest.svg?style=flat)](https://index.scala-lang.org/fd4s/fs2-kafka/fs2-kafka)
+![License](https://img.shields.io/github/license/fd4s/fs2-kafka)
+[![Gitter](https://img.shields.io/gitter/room/fd4s/fs2-kafka)](https://gitter.im/fd4s/fs2-kafka)
+
+## Getting started
+
+`libraryDependencies += "com.github.fd4s" %% "fs2-kafka" % "2.1.0"`
+
+If your project uses cats-effect 2 you should instead use the latest release from the 1.x series.
+
+For further details, see the [microsite](https://fd4s.github.io/fs2-kafka/docs/overview).
+
+## Contributing
+
+Pull requests and feedback are welcome. Pull requests should usually target the `series/2.x` branch
+
+## Integrations
+
+- [Trace4Cats](https://github.com/trace4cats/trace4cats), a distributed tracing system, provides a [module for integrating with fs2-kafka](https://github.com/trace4cats/trace4cats-kafka). 
+
+## Adopters
+
+FS2-Kafka is used in production by a number of companies, including:
+- [ITV](https://github.com/itv)
+- [OVO Energy](https://github.com/ovotech)
+
+## Code of conduct
+
+All participants are expected to follow the [Scala Code of Conduct](https://www.scala-lang.org/conduct/).
