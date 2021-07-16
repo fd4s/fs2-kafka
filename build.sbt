@@ -229,9 +229,8 @@ lazy val publishSettings =
   )
 
 lazy val mimaSettings = Seq(
-  // remove scala 3 exclusion after releasing for Scala 3.0.0
   mimaPreviousArtifacts := {
-    if (publishArtifact.value && !scalaVersion.value.startsWith("3")) {
+    if (publishArtifact.value) {
       Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
     } else Set()
   },
