@@ -228,7 +228,7 @@ lazy val publishSettings =
       Developer(
         id = "bplommer",
         name = "Ben Plommer",
-        email = "@bplommer",  // actually a twitter handle but whatever ¯\_(ツ)_/¯
+        email = "@bplommer", // actually a twitter handle but whatever ¯\_(ツ)_/¯
         url = url("https://github.com/bplommer")
       ),
       Developer(
