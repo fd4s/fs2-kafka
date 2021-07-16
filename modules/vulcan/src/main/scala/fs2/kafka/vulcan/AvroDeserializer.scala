@@ -17,7 +17,8 @@ final class AvroDeserializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
   def using[F[_]](
-    settings: AvroSettings[F]
+    settings: AvroSettings[F],
+    useJavaResolution: Boolean = true
   )(implicit F: Sync[F]): RecordDeserializer[F, A] =
     codec.schema match {
       case Right(schema) =>
@@ -37,7 +38,11 @@ final class AvroDeserializer[A] private[vulcan] (
                       null
                   }
 
-                  codec.decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
+                  val deserialized =
+                    if (useJavaResolution) deserializer.deserialize(topic, bytes, schema)
+                    else deserializer.deserialize(topic, bytes)
+
+                  codec.decode(deserialized, writerSchema) match {
                     case Right(a)    => F.pure(a)
                     case Left(error) => F.raiseError(error.throwable)
                   }
