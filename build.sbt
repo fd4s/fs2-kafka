@@ -367,7 +367,7 @@ addCommandsAlias(
   List(
     "clean",
     "test",
-   // "mimaReportBinaryIssues",
+    // "mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
     "headerCheck",
