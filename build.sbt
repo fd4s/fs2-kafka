@@ -78,12 +78,11 @@ lazy val `vulcan-testkit` = project
       )
     ),
     publishSettings,
-    mimaSettings,
+    noMimaSettings, // TODO: change to mimaSettings after artifact is released
     scalaSettings,
     testSettings
   )
   .dependsOn(vulcan)
-
 
 lazy val docs = project
   .in(file("docs"))
@@ -249,7 +248,7 @@ lazy val publishSettings =
 
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
-    if (publishArtifact.value && !scalaVersion.value.startsWith("3")) {
+    if (publishArtifact.value) {
       Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
     } else Set()
   },
@@ -274,6 +273,8 @@ lazy val mimaSettings = Seq(
     // format: on
   }
 )
+
+lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
 
 lazy val noPublishSettings =
   publishSettings ++ Seq(
