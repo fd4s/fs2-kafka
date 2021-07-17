@@ -11,7 +11,7 @@ import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
-import fs2.kafka.internal.converters.collection._
+import scala.jdk.CollectionConverters._
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 import fs2.kafka.producer.MkProducer
@@ -151,7 +151,7 @@ object TransactionalKafkaProducer {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
-    Stream.resource(resource(settings)(F, mk))
+    Stream.resource(resource(settings))
 
   def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
     new TransactionalProducerPartiallyApplied
@@ -173,7 +173,7 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
-      TransactionalKafkaProducer.resource(settings)(F, mk)
+      TransactionalKafkaProducer.resource(settings)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -189,7 +189,7 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
-      TransactionalKafkaProducer.stream(settings)(F, mk)
+      TransactionalKafkaProducer.stream(settings)
 
     override def toString: String =
       "TransactionalProducerPartiallyApplied$" + System.identityHashCode(this)

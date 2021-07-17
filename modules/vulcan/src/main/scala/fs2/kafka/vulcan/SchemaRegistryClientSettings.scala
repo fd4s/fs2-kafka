@@ -8,7 +8,7 @@ package fs2.kafka.vulcan
 
 import cats.effect.Sync
 import cats.Show
-import fs2.kafka.internal.converters.collection._
+import scala.jdk.CollectionConverters._
 
 /**
   * Describes how to create a `SchemaRegistryClient` and which

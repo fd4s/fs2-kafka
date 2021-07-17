@@ -8,7 +8,7 @@ package fs2.kafka.consumer
 
 import cats.effect.Sync
 import fs2.kafka.{ConsumerSettings, KafkaByteConsumer}
-import fs2.kafka.internal.converters.collection._
+import scala.jdk.CollectionConverters._
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 /**

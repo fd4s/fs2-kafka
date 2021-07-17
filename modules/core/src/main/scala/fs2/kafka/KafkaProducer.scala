@@ -11,7 +11,7 @@ import cats.effect._
 import cats.implicits._
 import fs2._
 import fs2.kafka.internal._
-import fs2.kafka.internal.converters.collection._
+import scala.jdk.CollectionConverters._
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 import fs2.kafka.producer.MkProducer
@@ -135,7 +135,7 @@ object KafkaProducer {
   def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(implicit F: Async[F], mk: MkProducer[F]): Resource[F, KafkaProducer.Metrics[F, K, V]] =
-    KafkaProducerConnection.resource(settings)(F, mk).evalMap(_.withSerializersFrom(settings))
+    KafkaProducerConnection.resource(settings).evalMap(_.withSerializersFrom(settings))
 
   private[kafka] def from[F[_]: Async, K, V](
     withProducer: WithProducer[F],
@@ -173,7 +173,7 @@ object KafkaProducer {
   def stream[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(implicit F: Async[F], mk: MkProducer[F]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
-    Stream.resource(KafkaProducer.resource(settings)(F, mk))
+    Stream.resource(KafkaProducer.resource(settings))
 
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
@@ -209,7 +209,7 @@ object KafkaProducer {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
-    records => stream(settings)(F, mk).flatMap(pipe(settings, _).apply(records))
+    records => stream(settings).flatMap(pipe(settings, _).apply(records))
 
   /**
     * Produces records in batches using the provided [[KafkaProducer]].
@@ -273,7 +273,7 @@ object KafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Resource[F, KafkaProducer[F, K, V]] =
-      KafkaProducer.resource(settings)(F, mk)
+      KafkaProducer.resource(settings)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -289,7 +289,7 @@ object KafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Stream[F, KafkaProducer[F, K, V]] =
-      KafkaProducer.stream(settings)(F, mk)
+      KafkaProducer.stream(settings)
 
     override def toString: String =
       "ProducerPartiallyApplied$" + System.identityHashCode(this)
