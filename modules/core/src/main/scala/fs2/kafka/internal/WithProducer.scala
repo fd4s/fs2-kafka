@@ -10,7 +10,7 @@ import fs2.kafka.producer.MkProducer
 import cats.effect.{Async, Resource}
 import cats.implicits._
 import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
-import fs2.kafka.internal.syntax._
+import scala.jdk.DurationConverters._
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
   def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A]
@@ -36,7 +36,7 @@ private[kafka] object WithProducer {
     Resource
       .make(
         mk(settings)
-      )(producer => blockingF { producer.close(settings.closeTimeout.asJava) })
+      )(producer => blockingF { producer.close(settings.closeTimeout.toJava) })
       .map(create(_, blockingG))
   }
 
@@ -56,7 +56,7 @@ private[kafka] object WithProducer {
         val initTransactions = withProducer.blocking { _.initTransactions() }
 
         val close = withProducer.blocking {
-          _.close(settings.producerSettings.closeTimeout.asJava)
+          _.close(settings.producerSettings.closeTimeout.toJava)
         }
 
         initTransactions.as((withProducer, close))

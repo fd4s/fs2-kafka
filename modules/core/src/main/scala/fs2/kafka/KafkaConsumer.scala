@@ -14,7 +14,8 @@ import cats.effect.implicits._
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
-import fs2.kafka.internal.converters.collection._
+import scala.jdk.CollectionConverters._
+import scala.jdk.DurationConverters._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
@@ -438,13 +439,13 @@ object KafkaConsumer {
         topic: String,
         timeout: FiniteDuration
       ): F[List[PartitionInfo]] =
-        withConsumer.blocking { _.partitionsFor(topic, timeout.asJava).asScala.toList }
+        withConsumer.blocking { _.partitionsFor(topic, timeout.toJava).asScala.toList }
 
       override def position(partition: TopicPartition): F[Long] =
         withConsumer.blocking { _.position(partition) }
 
       override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
-        withConsumer.blocking { _.position(partition, timeout.asJava) }
+        withConsumer.blocking { _.position(partition, timeout.toJava) }
 
       override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
         subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
@@ -511,7 +512,7 @@ object KafkaConsumer {
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
         withConsumer.blocking {
-          _.beginningOffsets(partitions.asJava, timeout.asJava)
+          _.beginningOffsets(partitions.asJava, timeout.toJava)
             .asInstanceOf[util.Map[TopicPartition, Long]]
             .toMap
         }
@@ -530,7 +531,7 @@ object KafkaConsumer {
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
         withConsumer.blocking {
-          _.endOffsets(partitions.asJava, timeout.asJava)
+          _.endOffsets(partitions.asJava, timeout.toJava)
             .asInstanceOf[util.Map[TopicPartition, Long]]
             .toMap
         }
@@ -617,7 +618,7 @@ object KafkaConsumer {
   def stream[F[_], K, V](
     settings: ConsumerSettings[F, K, V]
   )(implicit F: Async[F], mk: MkConsumer[F]): Stream[F, KafkaConsumer[F, K, V]] =
-    Stream.resource(resource(settings)(F, mk))
+    Stream.resource(resource(settings))
 
   def apply[F[_]]: ConsumerPartiallyApplied[F] =
     new ConsumerPartiallyApplied()
@@ -639,7 +640,7 @@ object KafkaConsumer {
       implicit F: Async[F],
       mk: MkConsumer[F]
     ): Resource[F, KafkaConsumer[F, K, V]] =
-      KafkaConsumer.resource(settings)(F, mk)
+      KafkaConsumer.resource(settings)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -655,7 +656,7 @@ object KafkaConsumer {
       implicit F: Async[F],
       mk: MkConsumer[F]
     ): Stream[F, KafkaConsumer[F, K, V]] =
-      KafkaConsumer.stream(settings)(F, mk)
+      KafkaConsumer.stream(settings)
 
     override def toString: String =
       "ConsumerPartiallyApplied$" + System.identityHashCode(this)
