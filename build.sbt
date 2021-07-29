@@ -234,7 +234,7 @@ lazy val publishSettings =
       Developer(
         id = "LMNet",
         name = "Yuriy Badalyantc",
-        email = "@lmnet89",
+        email = "lmnet89@gmail.com",
         url = url("https://github.com/LMnet")
       )
     )
