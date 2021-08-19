@@ -1,5 +1,5 @@
 ---
-id: quick-example 
+id: quick-example
 title: Quick Example
 ---
 
