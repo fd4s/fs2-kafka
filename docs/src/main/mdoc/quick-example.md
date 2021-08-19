@@ -1,6 +1,5 @@
 ---
-id: quick-example
-title: Quick Example
+id: quick-example title: Quick Example
 ---
 
 Following is an example showing how to:
@@ -31,8 +30,8 @@ object Main extends IOApp {
 
     val stream =
       KafkaConsumer.stream(consumerSettings)
-        .evalTap(_.subscribeTo("topic"))
-        .flatMap(_.stream)
+        .subscribeTo("topic")
+        .stream
         .mapAsync(25) { committable =>
           processRecord(committable.record)
             .map { case (key, value) =>
