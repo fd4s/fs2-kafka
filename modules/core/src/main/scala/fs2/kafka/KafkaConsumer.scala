@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.{FlatMap, Foldable, Reducible}
+import cats.{Foldable, Functor, Reducible}
 import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.effect._
 import cats.effect.concurrent.{Deferred, Ref, TryableDeferred}
@@ -712,7 +712,7 @@ object KafkaConsumer {
    * Extension methods for operating on a `KafkaConsumer` in a `Stream` context without needing
    * to explicitly use operations such as `flatMap` and `evalTap`
    */
-  implicit final class StreamOps[F[_]: FlatMap, K, V](self: Stream[F, KafkaConsumer[F, K, V]]) {
+  implicit final class StreamOps[F[_]: Functor, K, V](self: Stream[F, KafkaConsumer[F, K, V]]) {
 
     /**
       * Subscribes a consumer to the specified topics within the [[Stream]] context.
