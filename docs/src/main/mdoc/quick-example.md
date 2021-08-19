@@ -1,5 +1,6 @@
 ---
-id: quick-example title: Quick Example
+id: quick-example 
+title: Quick Example
 ---
 
 Following is an example showing how to:
