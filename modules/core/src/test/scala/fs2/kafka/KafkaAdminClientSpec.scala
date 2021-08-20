@@ -330,7 +330,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
     KafkaConsumer
       .stream(consumerSettings[IO])
       .evalTap(_.subscribe(topic.r))
-      .flatMap(_.stream)
+      .stream
       .take(produced.size.toLong)
       .map(_.offset)
       .chunks

@@ -12,12 +12,12 @@ import cats.implicits._
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
+import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
-import fs2.kafka.producer.MkProducer
 
-import scala.concurrent.Promise
 import scala.annotation.nowarn
+import scala.concurrent.Promise
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the

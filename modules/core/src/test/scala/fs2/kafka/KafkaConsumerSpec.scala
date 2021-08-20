@@ -48,10 +48,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val consumed =
           KafkaConsumer
             .stream(consumerSettings[IO])
-            .evalTap(_.subscribeTo(topic))
+            .subscribeTo(topic)
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .flatMap(_.stream)
+            .stream
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
             .compile
@@ -71,9 +71,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val consumed =
           KafkaConsumer
             .stream(consumerSettings[IO].withGroupId("test"))
-            .evalTap(_.subscribeTo(topic))
+            .subscribeTo(topic)
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .flatMap(_.stream)
+            .stream
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
 
@@ -106,7 +106,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .evalTap(_.assign(topic, partitions))
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .flatMap(_.stream)
+            .stream
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
 
@@ -129,7 +129,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .stream(consumerSettings[IO].withGroupId("test"))
             .evalTap(_.assign(topic))
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .flatMap(_.stream)
+            .stream
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
 
@@ -152,7 +152,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .stream(consumerSettings[IO].withGroupId("test2"))
             .evalTap(_.assign(topic))
             .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .flatMap(_.stream)
+            .stream
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
 
@@ -207,7 +207,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val consumed =
           KafkaConsumer
             .stream(consumerSettings[IO])
-            .evalTap(_.subscribeTo(topic))
+            .subscribeTo(topic)
             .evalTap(_.terminate)
             .flatTap(_.stream)
             .evalTap(_.awaitTermination)
@@ -226,7 +226,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val consumed =
           KafkaConsumer
             .stream(consumerSettings[IO])
-            .flatMap(_.stream)
+            .stream
             .compile
             .lastOrError
             .attempt
@@ -252,7 +252,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val subscribeRegex =
           KafkaConsumer
             .stream(consumerSettings[IO])
-            .evalTap(_.subscribeTo("topic"))
+            .subscribeTo("topic")
             .evalMap(_.subscribe("".r))
             .compile
             .lastOrError
@@ -289,7 +289,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val assignWithSubscribeName =
           KafkaConsumer
             .stream(consumerSettings[IO])
-            .evalTap(_.subscribeTo(topic))
+            .subscribeTo(topic)
             .evalMap(_.assign(topic, NonEmptySet.fromSetUnsafe(SortedSet(0))))
             .compile
             .lastOrError
@@ -335,8 +335,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               consumerSettings[IO]
                 .withAutoOffsetReset(AutoOffsetReset.None)
             }
-            .evalTap(_.subscribeTo(topic))
-            .flatMap(_.stream)
+            .subscribeTo(topic)
+            .stream
             .compile
             .lastOrError
             .attempt
@@ -362,7 +362,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         KafkaConsumer
           .stream(consumerSettings[IO])
-          .evalTap(_.subscribeTo(topic))
+          .subscribeTo(topic)
           .flatTap { consumer =>
             consumer.stream
               .take(produced.size.toLong)
@@ -475,8 +475,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .flatMap { assignedPartitionsRef =>
               KafkaConsumer
                 .stream(consumerSettings[IO])
-                .evalTap(_.subscribeTo(topic))
-                .flatMap(_.partitionsMapStream.filter(_.nonEmpty).evalMap { assignment =>
+                .subscribeTo(topic)
+                .flatMap(_.partitionsMapStream)
+                .filter(_.nonEmpty)
+                .evalMap { assignment =>
                   assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
                     Stream
                       .emits(assignment.map {
@@ -485,7 +487,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                       }.toList)
                       .covary[IO]
                   }
-                })
+                }
                 .flatten
                 .parJoinUnbounded
                 .interruptWhen(stopSignal)
@@ -546,7 +548,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val stream =
           KafkaConsumer
             .stream(consumerSettings[IO].withGroupId("test"))
-            .evalTap(_.subscribeTo(topic))
+            .subscribeTo(topic)
 
         (for {
           stopSignal <- SignallingRef[IO, Boolean](false)
@@ -577,7 +579,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .parJoinUnbounded
             .concurrently(
               // run second stream to start a rebalance after initial rebalance, default timeout is 3 secs
-              Stream.sleep[IO](5.seconds) >> stream.flatMap(_.stream)
+              Stream.sleep[IO](5.seconds) >> stream.stream
             )
             .interruptWhen(stopSignal)
             .compile
@@ -600,7 +602,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         def run(instance: Int, allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]): IO[Unit] =
           KafkaConsumer
             .stream(consumerSettings[IO].withGroupId("test"))
-            .evalTap(_.subscribeTo(topic))
+            .subscribeTo(topic)
             .flatMap(_.partitionsMapStream)
             .flatMap { assignment =>
               Stream.eval(allAssignments.update { current =>
@@ -660,7 +662,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
             _ <- KafkaConsumer
               .stream(consumerSettings[IO])
-              .evalTap(_.subscribeTo(topic))
+              .subscribeTo(topic)
               .evalMap { consumer =>
                 consumer.assignmentStream
                   .concurrently(consumer.stream)
@@ -712,7 +714,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         (for {
           consumer <- KafkaConsumer
             .stream(consumerSettings[IO])
-            .evalTap(_.subscribeTo(topic))
+            .subscribeTo(topic)
           _ <- Stream.eval(IO.sleep(5.seconds)).concurrently(consumer.stream)
           queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
           _ <- Stream.eval(
@@ -738,7 +740,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         val cons = KafkaConsumer
           .stream(consumerSettings[IO].withGroupId("test"))
-          .evalTap(_.subscribeTo(topic))
+          .subscribeTo(topic)
 
         val topicStream = (for {
           cntRef <- Stream.eval(Ref.of[IO, Int](0))
@@ -844,12 +846,13 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         val run = KafkaConsumer
           .stream(consumerSettings[IO])
-          .evalTap(_.subscribeTo(topic))
+          .subscribeTo(topic)
           .evalTap(_.stopConsuming)
           .evalTap(_ => IO(publishToKafka(topic, produced)))
-          .flatMap(_.stream.evalTap { _ =>
+          .stream
+          .evalTap { _ =>
             IO.raiseError(new RuntimeException("Stream should be empty"))
-          })
+          }
 
         run.compile.drain.unsafeRunSync()
 
@@ -957,7 +960,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
       val createConsumer = KafkaConsumer
         .stream(consumerSettings[IO])
-        .evalTap(_.subscribeTo(topic))
+        .subscribeTo(topic)
 
       val committed = (for {
         consumer <- createConsumer
