@@ -29,7 +29,7 @@ lazy val `fs2-kafka` = project
     console := (core / Compile / console).value,
     Test / console := (core / Test / console).value
   )
-  .aggregate(core, vulcan, `vulcan-testkit`)
+  .aggregate(core, vulcan, `vulcan-testkit-munit`)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -67,10 +67,10 @@ lazy val vulcan = project
   )
   .dependsOn(core)
 
-lazy val `vulcan-testkit` = project
-  .in(file("modules/vulcan-testkit"))
+lazy val `vulcan-testkit-munit` = project
+  .in(file("modules/vulcan-testkit-munit"))
   .settings(
-    moduleName := "fs2-kafka-vulcan-testkit",
+    moduleName := "fs2-kafka-vulcan-testkit-munit",
     name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
