@@ -1,24 +1,24 @@
-val catsEffectVersion = "2.5.1"
+val catsEffectVersion = "2.5.3"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "6.1.1"
+val confluentVersion = "6.2.0"
 
-val fs2Version = "2.5.6"
+val fs2Version = "2.5.9"
 
 val kafkaVersion = "2.8.0"
 
-val testcontainersScalaVersion = "0.39.4"
+val testcontainersScalaVersion = "0.39.5"
 
 val vulcanVersion = "1.7.1"
 
-val munitVersion = "0.7.27"
+val munitVersion = "0.7.28"
 
-val scala212 = "2.12.13"
+val scala212 = "2.12.14"
 
 val scala213 = "2.13.6"
 
-val scala3 = "3.0.0"
+val scala3 = "3.0.1"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -107,7 +107,7 @@ lazy val dependencySettings = Seq(
       .cross(CrossVersion.for3Use2_13),
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.3"
+    "ch.qos.logback" % "logback-classic" % "1.2.5"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
