@@ -735,15 +735,27 @@ object KafkaConsumer {
       self.evalTap(_.subscribeTo(firstTopic, remainingTopics: _*))
 
     /**
+      * A [[Stream]] of records from the allocated [[KafkaConsumer]]. Alias for [[stream]].
+      * See [[KafkaConsume#stream]]
+      */
+    def records: Stream[F, CommittableConsumerRecord[F, K, V]] = stream
+
+    /**
       * A [[Stream]] of records from the allocated [[KafkaConsumer]].
       * See [[KafkaConsume#stream]]
       */
-    def stream: Stream[F, CommittableConsumerRecord[F, K, V]] = self.flatMap(_.stream)
+    def stream: Stream[F, CommittableConsumerRecord[F, K, V]] = self.flatMap(_.records)
+
+    /**
+      * Alias for [[partitionedStream]]. See [[KafkaConsume#partitionedStream]]
+      */
+    def partitionedRecords: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
+      partitionedStream
 
     /**
       * See [[KafkaConsume#partitionedStream]]
       */
     def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
-      self.flatMap(_.partitionedStream)
+      self.flatMap(_.partitionedRecords)
   }
 }
