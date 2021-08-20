@@ -43,8 +43,8 @@ object Main extends IOApp {
       TransactionalKafkaProducer.stream(producerSettings)
         .flatMap { producer =>
           KafkaConsumer.stream(consumerSettings)
-            .evalTap(_.subscribeTo("topic"))
-            .flatMap(_.stream)
+            .subscribeTo("topic")
+            .stream
             .mapAsync(25) { committable =>
               processRecord(committable.record)
                 .map { case (key, value) =>
