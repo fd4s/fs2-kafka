@@ -6,9 +6,7 @@
 
 ## Getting started
 
-`libraryDependencies += "com.github.fd4s" %% "fs2-kafka" % "2.1.0"`
-
-If your project uses cats-effect 2 you should instead use the latest release from the 1.x series.
+For the latest version, see the badge at the top of this page. If your project uses cats-effect 2 you should instead use the latest release from the 1.x series.
 
 For further details, see the [microsite](https://fd4s.github.io/fs2-kafka/docs/overview).
 
