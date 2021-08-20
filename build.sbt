@@ -12,6 +12,8 @@ val testcontainersScalaVersion = "0.39.5"
 
 val vulcanVersion = "1.7.1"
 
+val munitVersion = "0.7.27"
+
 val scala212 = "2.12.14"
 
 val scala213 = "2.13.6"
@@ -27,7 +29,7 @@ lazy val `fs2-kafka` = project
     console := (core / Compile / console).value,
     Test / console := (core / Test / console).value
   )
-  .aggregate(core, vulcan)
+  .aggregate(core, vulcan, `vulcan-testkit-munit`)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -64,6 +66,23 @@ lazy val vulcan = project
     testSettings
   )
   .dependsOn(core)
+
+lazy val `vulcan-testkit-munit` = project
+  .in(file("modules/vulcan-testkit-munit"))
+  .settings(
+    moduleName := "fs2-kafka-vulcan-testkit-munit",
+    name := moduleName.value,
+    dependencySettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "org.scalameta" %% "munit" % munitVersion
+      )
+    ),
+    publishSettings,
+    noMimaSettings, // TODO: change to mimaSettings after artifact is released
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(vulcan)
 
 lazy val docs = project
   .in(file("docs"))
@@ -256,6 +275,8 @@ lazy val mimaSettings = Seq(
     // format: on
   }
 )
+
+lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
 
 lazy val noPublishSettings =
   publishSettings ++ Seq(
