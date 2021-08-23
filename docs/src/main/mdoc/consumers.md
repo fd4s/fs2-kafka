@@ -199,7 +199,7 @@ object ConsumerStreamExample extends IOApp {
     val stream =
       KafkaConsumer.stream(consumerSettings)
         .subscribeTo("topic")
-        .stream
+        .records
 
     stream.compile.drain.as(ExitCode.Success)
   }
@@ -219,7 +219,7 @@ object ConsumerPartitionedStreamExample extends IOApp {
     val stream =
       KafkaConsumer.stream(consumerSettings)
         .subscribeTo("topic")
-        .partitionedStream
+        .partitionedRecords
         .map { partitionStream =>
           partitionStream
             .evalMap { committable =>
@@ -260,7 +260,7 @@ object ConsumerMapAsyncExample extends IOApp {
     val stream =
       KafkaConsumer.stream(consumerSettings)
         .subscribeTo("topic")
-        .stream
+        .records
         .mapAsync(25) { committable =>
           processRecord(committable.record)
         }
@@ -287,7 +287,7 @@ object ConsumerCommitBatchExample extends IOApp {
     val stream =
       KafkaConsumer.stream(consumerSettings)
         .subscribeTo("topic")
-        .stream
+        .records
         .mapAsync(25) { committable =>
           processRecord(committable.record)
             .as(committable.offset)

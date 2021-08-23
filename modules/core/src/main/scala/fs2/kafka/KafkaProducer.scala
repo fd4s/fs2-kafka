@@ -15,6 +15,8 @@ import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
+import fs2.Chunk
+import cats.Functor
 
 import scala.annotation.nowarn
 import scala.concurrent.Promise
