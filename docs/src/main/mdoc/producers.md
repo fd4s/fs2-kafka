@@ -171,7 +171,7 @@ object ProduceExample extends IOApp {
     val stream =
       KafkaConsumer.stream(consumerSettings)
         .subscribeTo("topic")
-        .stream
+        .records
         .map { committable =>
           val key = committable.record.key
           val value = committable.record.value
@@ -199,7 +199,7 @@ object PartitionedProduceExample extends IOApp {
         .flatMap { producer =>
           KafkaConsumer.stream(consumerSettings)
             .subscribeTo("topic")
-            .partitionedStream
+            .partitionedRecords
             .map { partition =>
               partition
                 .map { committable =>
@@ -228,7 +228,7 @@ object KafkaProducerProduceExample extends IOApp {
         .flatMap { producer =>
           KafkaConsumer.stream(consumerSettings)
             .subscribeTo("topic")
-            .stream
+            .records
             .map { committable =>
               val key = committable.record.key
               val value = committable.record.value
@@ -258,7 +258,7 @@ object KafkaProducerProduceFlattenExample extends IOApp {
         .flatMap { producer =>
           KafkaConsumer.stream(consumerSettings)
             .subscribeTo("topic")
-            .stream
+            .records
             .map { committable =>
               val key = committable.record.key
               val value = committable.record.value
