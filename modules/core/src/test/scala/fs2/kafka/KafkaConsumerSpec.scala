@@ -579,7 +579,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .parJoinUnbounded
             .concurrently(
               // run second stream to start a rebalance after initial rebalance, default timeout is 3 secs
-              Stream.sleep(5.seconds) >> stream.records
+              Stream.sleep[IO](5.seconds) >> stream.records
             )
             .interruptWhen(stopSignal)
             .compile
