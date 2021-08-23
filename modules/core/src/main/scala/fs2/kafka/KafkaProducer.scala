@@ -6,10 +6,10 @@
 
 package fs2.kafka
 
-import cats.{Apply, Functor}
 import cats.effect._
 import cats.implicits._
-import fs2._
+import cats.{Apply, Functor}
+import fs2.{Chunk, _}
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
