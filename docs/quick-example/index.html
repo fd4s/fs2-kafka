@@ -56,7 +56,7 @@
             });
         </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Quick Example</h1></header><article><div><span><p>Following is an example showing how to:</p>
 <ul>
-<li>use <code>KafkaConsumer.stream</code> in order to stream records from Kafka,</li>
+<li>use <code>KafkaConsumer#records</code> in order to stream records from Kafka,</li>
 <li>use <code>produce</code> to produce newly created records to Kafka,</li>
 <li>use <code>commitBatchWithin</code> to commit consumed offsets in batches.</li>
 </ul>
@@ -81,8 +81,8 @@
 
     <span class="hljs-keyword">val</span> stream =
       <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
-        .evalTap(_.subscribeTo(<span class="hljs-string">"topic"</span>))
-        .flatMap(_.stream)
+        .subscribeTo(<span class="hljs-string">"topic"</span>)
+        .records
         .mapAsync(<span class="hljs-number">25</span>) { committable =&gt;
           processRecord(committable.record)
             .map { <span class="hljs-keyword">case</span> (key, value) =&gt;
