@@ -31,7 +31,7 @@ trait KafkaConsume[F[_], K, V] {
   /**
     * Alias for [[partitionedStream]]
     */
-  def partitionedRecords: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
+  final def partitionedRecords: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
     partitionedStream
 
   /**
