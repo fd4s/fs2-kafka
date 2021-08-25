@@ -183,7 +183,7 @@ lazy val buildInfoSettings = Seq(
       case (k, v) => "vulcan" ++ k.capitalize -> v
     },
     BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) {
-      case (k, v) => "vulcanTeskkitMunit" ++ k.capitalize -> v
+      case (k, v) => "vulcanTestkitMunit" ++ k.capitalize -> v
     },
     LocalRootProject / organization,
     core / crossScalaVersions,
