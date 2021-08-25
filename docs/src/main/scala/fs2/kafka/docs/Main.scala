@@ -37,6 +37,7 @@ object Main {
           "CORE_CROSS_SCALA_VERSIONS" -> minorVersionsString(coreCrossScalaVersions),
           "VULCAN_MODULE_NAME" -> vulcanModuleName,
           "VULCAN_CROSS_SCALA_VERSIONS" -> minorVersionsString(vulcanCrossScalaVersions),
+          "VULCAN_TESTKIT_MUNIT_MODULE_NAME" -> vulcanTeskkitMunitModuleName,
           "LATEST_VERSION" -> latestVersion,
           "LATEST_SNAPSHOT_VERSION" -> latestSnapshotVersion,
           "LATEST_MAJOR_VERSION" -> majorVersion(latestVersion),
