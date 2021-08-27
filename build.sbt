@@ -115,7 +115,7 @@ lazy val dependencySettings = Seq(
     else
       Seq(
         compilerPlugin(
-          ("org.typelevel" %% "kind-projector" % "0.13.0")
+          ("org.typelevel" %% "kind-projector" % "0.13.1")
             .cross(CrossVersion.full)
         )
       )
