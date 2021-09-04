@@ -8,7 +8,7 @@ package fs2.kafka.vulcan
 
 import _root_.vulcan.Codec
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.functor._
 import fs2.kafka.{RecordSerializer, Serializer}
 
 final class AvroSerializer[A] private[vulcan] (
@@ -23,8 +23,10 @@ final class AvroSerializer[A] private[vulcan] (
           Serializer.instance { (topic, _, a) =>
             F.defer {
               codec.encode(a) match {
-                case Right(value) => F.pure(serializer.serialize(topic, value))
-                case Left(error)  => F.raiseError(error.throwable)
+                case Right(value) =>
+                  settings.schemaRegistryClientRetry
+                    .withRetry(F.delay(serializer.serialize(topic, value)))
+                case Left(error) => F.raiseError(error.throwable)
               }
             }
           }

@@ -6,8 +6,9 @@
 
 package fs2.kafka.vulcan
 
-import cats.effect.Sync
+import cats.effect.Async
 import cats.implicits._
+
 import scala.jdk.CollectionConverters._
 import fs2.kafka.internal.syntax._
 
@@ -80,6 +81,22 @@ sealed abstract class AvroSettings[F[_]] {
   def withProperties(properties: Map[String, String]): AvroSettings[F]
 
   /**
+    * TODO
+    */
+  def schemaRegistryClientRetry: SchemaRegistryClientRetry[F]
+
+  /**
+    * TODO
+    *
+    * Creates a new `AvroSettings` instance with the specified
+    * retry strategy when recoverable Schema Registry client
+    * errors are experienced during serialization/deserialization.
+    */
+  def withSchemaRegistryClientRetry(
+    schemaRegistryClientRetry: SchemaRegistryClientRetry[F]
+  ): AvroSettings[F]
+
+  /**
     * Creates a new `KafkaAvroDeserializer` using the settings
     * contained within this [[AvroSettings]] instance, and the
     * specified `isKey` flag, denoting whether a record key or
@@ -126,8 +143,9 @@ object AvroSettings {
     override val properties: Map[String, String],
     // format: off
     val createAvroDeserializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroDeserializer, SchemaRegistryClient)],
-    val createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
+    val createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)],
     // format: on
+    override val schemaRegistryClientRetry: SchemaRegistryClientRetry[F]
   ) extends AvroSettings[F] {
     override def withAutoRegisterSchemas(autoRegisterSchemas: Boolean): AvroSettings[F] =
       withProperty("auto.register.schemas", autoRegisterSchemas.toString)
@@ -150,6 +168,10 @@ object AvroSettings {
 
     override def withProperties(properties: Map[String, String]): AvroSettings[F] =
       copy(properties = this.properties ++ properties)
+
+    override def withSchemaRegistryClientRetry(
+      schemaRegistryClientRetry: SchemaRegistryClientRetry[F]
+    ): AvroSettings[F] = copy(schemaRegistryClientRetry = schemaRegistryClientRetry)
 
     override def createAvroDeserializer(
       isKey: Boolean
@@ -184,7 +206,7 @@ object AvroSettings {
 
   private[this] def create[F[_]](
     schemaRegistryClient: F[SchemaRegistryClient]
-  )(implicit F: Sync[F]): AvroSettings[F] =
+  )(implicit F: Async[F]): AvroSettings[F] =
     AvroSettingsImpl(
       schemaRegistryClient = schemaRegistryClient,
       properties = Map.empty,
@@ -203,16 +225,17 @@ object AvroSettings {
             serializer.configure(withDefaults(properties), isKey)
             (serializer, schemaRegistryClient)
           }
-        }
+        },
+      schemaRegistryClientRetry = SchemaRegistryClientRetry.Default[F]
     )
 
   def apply[F[_]](
     schemaRegistryClientSettings: SchemaRegistryClientSettings[F]
-  )(implicit F: Sync[F]): AvroSettings[F] =
+  )(implicit F: Async[F]): AvroSettings[F] =
     create(schemaRegistryClientSettings.createSchemaRegistryClient)
 
   def apply[F[_]](
     schemaRegistryClient: SchemaRegistryClient
-  )(implicit F: Sync[F]): AvroSettings[F] =
+  )(implicit F: Async[F]): AvroSettings[F] =
     create(F.pure(schemaRegistryClient))
 }

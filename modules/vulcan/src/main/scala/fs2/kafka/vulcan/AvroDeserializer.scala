@@ -8,9 +8,10 @@ package fs2.kafka.vulcan
 
 import _root_.vulcan.Codec
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.functor._
 import fs2.kafka.{Deserializer, RecordDeserializer}
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
+
 import java.nio.ByteBuffer
 
 final class AvroDeserializer[A] private[vulcan] (
@@ -25,23 +26,26 @@ final class AvroDeserializer[A] private[vulcan] (
           settings.createAvroDeserializer(_).map {
             case (deserializer, schemaRegistryClient) =>
               Deserializer.instance { (topic, _, bytes) =>
-                F.defer {
-                  val writerSchemaId =
-                    ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
+                settings.schemaRegistryClientRetry.withRetry(
+                  F.defer {
+                    val writerSchemaId =
+                      ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
 
-                  val writerSchema = {
-                    val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
-                    if (schema.isInstanceOf[AvroSchema])
-                      schema.asInstanceOf[AvroSchema].rawSchema()
-                    else
-                      null
-                  }
+                    val writerSchema = {
+                      val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
+                      if (schema.isInstanceOf[AvroSchema])
+                        schema.asInstanceOf[AvroSchema].rawSchema()
+                      else
+                        null
+                    }
 
-                  codec.decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
-                    case Right(a)    => F.pure(a)
-                    case Left(error) => F.raiseError(error.throwable)
+                    codec
+                      .decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
+                      case Right(a)    => F.pure(a)
+                      case Left(error) => F.raiseError(error.throwable)
+                    }
                   }
-                }
+                )
               }
           }
 
