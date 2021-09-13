@@ -10,6 +10,8 @@ import cats.effect.Sync
 import cats.implicits._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
+import io.confluent.kafka.schemaregistry.avro.AvroSchema
+import vulcan.Codec
 
 /**
   * Describes how to create a `KafkaAvroDeserializer` and a
@@ -87,6 +89,9 @@ sealed abstract class AvroSettings[F[_]] {
     */
   def createAvroDeserializer(isKey: Boolean): F[(KafkaAvroDeserializer, SchemaRegistryClient)]
 
+  // TODO
+  def registerSchema[A](subject: String)(implicit codec: Codec[A]): F[Int]
+
   /**
     * Creates a new `KafkaAvroSerializer` using the settings
     * contained within this [[AvroSettings]] instance, and the
@@ -118,6 +123,10 @@ sealed abstract class AvroSettings[F[_]] {
     createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
     // format: on
   ): AvroSettings[F]
+
+  def withRegisterSchema(
+    registerSchemaWith: (F[SchemaRegistryClient], String, Codec[_]) => F[Int]
+  ): AvroSettings[F]
 }
 
 object AvroSettings {
@@ -126,7 +135,8 @@ object AvroSettings {
     override val properties: Map[String, String],
     // format: off
     val createAvroDeserializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroDeserializer, SchemaRegistryClient)],
-    val createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
+    val createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)],
+    val registerSchemaWith: (F[SchemaRegistryClient], String, Codec[_]) => F[Int]
     // format: on
   ) extends AvroSettings[F] {
     override def withAutoRegisterSchemas(autoRegisterSchemas: Boolean): AvroSettings[F] =
@@ -161,6 +171,9 @@ object AvroSettings {
     ): F[(KafkaAvroSerializer, SchemaRegistryClient)] =
       createAvroSerializerWith(schemaRegistryClient, isKey, properties)
 
+    override def registerSchema[A](subject: String)(implicit codec: Codec[A]): F[Int] =
+      registerSchemaWith(schemaRegistryClient, subject, codec)
+
     override def withCreateAvroDeserializer(
       // format: off
       createAvroDeserializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroDeserializer, SchemaRegistryClient)]
@@ -174,6 +187,11 @@ object AvroSettings {
       // format: on
     ): AvroSettings[F] =
       copy(createAvroSerializerWith = createAvroSerializerWith)
+
+    override def withRegisterSchema(
+      registerSchemaWith: (F[SchemaRegistryClient], String, Codec[_]) => F[Int]
+    ): AvroSettings[F] =
+      copy(registerSchemaWith = registerSchemaWith)
 
     override def toString: String =
       "AvroSettings$" + System.identityHashCode(this)
@@ -203,7 +221,14 @@ object AvroSettings {
             serializer.configure(withDefaults(properties), isKey)
             (serializer, schemaRegistryClient)
           }
+        },
+      registerSchemaWith = (schemaRegistryClient, subjectName, codec) => {
+        schemaRegistryClient.flatMap { client =>
+          codec.schema.leftMap(_.throwable).liftTo[F].flatMap { schema =>
+            F.delay(client.register(subjectName, new AvroSchema(schema)))
+          }
         }
+      }
     )
 
   def apply[F[_]](
