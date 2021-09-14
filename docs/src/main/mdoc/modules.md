@@ -78,7 +78,7 @@ val producerSettings =
     .withBootstrapServers("localhost:9092")
 ```
 
-If we prefer, we can instead specificy the `Serializer`s and `Deserializer`s explicitly.
+If we prefer, we can instead specify the `Serializer`s and `Deserializer`s explicitly.
 
 ```scala mdoc:silent
 import fs2.kafka.{Deserializer, Serializer}
@@ -94,6 +94,12 @@ ProducerSettings(
   keySerializer = Serializer[IO, String],
   valueSerializer = personSerializer
 ).withBootstrapServers("localhost:9092")
+```
+
+We can also register the schema with the registry server
+```scala mdoc:silent
+avroSettings.registerSchema[String]("person-key") *>
+  avroSettings.registerSchema[Person]("person-value")
 ```
 
 ### Sharing Client
