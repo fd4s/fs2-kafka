@@ -129,6 +129,11 @@ sealed abstract class AvroSettings[F[_]] {
     // format: on
   ): AvroSettings[F]
 
+  /**
+    * Creates a new [[AvroSettings]] instance with the specified
+    * function for registering schemas from settings.
+    * The arguments are [[schemaRegistryClient]], `subject`, and `codec`.
+    */
   def withRegisterSchema(
     registerSchemaWith: (F[SchemaRegistryClient], String, Codec[_]) => F[Int]
   ): AvroSettings[F]
