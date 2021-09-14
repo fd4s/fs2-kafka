@@ -89,7 +89,12 @@ sealed abstract class AvroSettings[F[_]] {
     */
   def createAvroDeserializer(isKey: Boolean): F[(KafkaAvroDeserializer, SchemaRegistryClient)]
 
-  // TODO
+  /**
+    * Register a schema for a given `Codec` for some type `A`,
+    * or return the existing schema id if it already exists.
+    * @param subject The subject name
+    * @return The schema id
+    */
   def registerSchema[A](subject: String)(implicit codec: Codec[A]): F[Int]
 
   /**
