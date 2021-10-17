@@ -95,7 +95,7 @@ lazy val docs = project
     mdocSettings,
     buildInfoSettings
   )
-  .dependsOn(core, vulcan)
+  .dependsOn(core, vulcan, `vulcan-testkit-munit`)
   .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin, ScalaUnidocPlugin)
 
 lazy val dependencySettings = Seq(
@@ -181,6 +181,9 @@ lazy val buildInfoSettings = Seq(
     },
     BuildInfoKey.map(vulcan / crossScalaVersions) {
       case (k, v) => "vulcan" ++ k.capitalize -> v
+    },
+    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) {
+      case (k, v) => "vulcanTestkitMunit" ++ k.capitalize -> v
     },
     LocalRootProject / organization,
     core / crossScalaVersions,
