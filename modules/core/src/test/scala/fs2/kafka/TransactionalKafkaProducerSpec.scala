@@ -8,7 +8,7 @@ import cats.implicits._
 import fs2.{Chunk, Stream}
 import scala.jdk.CollectionConverters._
 import fs2.kafka.producer.MkProducer
-import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
+import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerGroupMetadata, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.InvalidProducerEpochException
 import org.apache.kafka.common.serialization.ByteArraySerializer
@@ -169,12 +169,12 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             ) {
               override def sendOffsetsToTransaction(
                 offsets: util.Map[TopicPartition, OffsetAndMetadata],
-                consumerGroupId: String
+                groupMetadata: ConsumerGroupMetadata
               ): Unit =
                 if (offsets.containsKey(new TopicPartition(topic, 2))) {
                   throw error
                 } else {
-                  super.sendOffsetsToTransaction(offsets, consumerGroupId)
+                  super.sendOffsetsToTransaction(offsets, groupMetadata)
                 }
             }
           }

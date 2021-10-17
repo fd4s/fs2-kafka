@@ -21,7 +21,7 @@ final class ProducerResultSpec extends BaseSpec {
             .withPartition(1)
             .withTimestamp(0L)
             .withHeaders(Headers(Header("key", Array[Byte]()))) ->
-            new RecordMetadata(new TopicPartition("topic", 0), 0L, 0L, 0L, 0L, 0, 0)
+            new RecordMetadata(new TopicPartition("topic", 0), 0L, 0, 0L, 0, 0)
         )
 
       assert {
@@ -32,9 +32,9 @@ final class ProducerResultSpec extends BaseSpec {
       val two: Chunk[(ProducerRecord[String, String], RecordMetadata)] =
         Chunk(
           ProducerRecord("topic", "key", "value").withPartition(0).withTimestamp(0L) ->
-            new RecordMetadata(new TopicPartition("topic", 0), 0L, 0L, 0L, 0L, 0, 0),
+            new RecordMetadata(new TopicPartition("topic", 0), 0L, 0, 0L, 0, 0),
           ProducerRecord("topic", "key", "value").withPartition(1).withTimestamp(0L) ->
-            new RecordMetadata(new TopicPartition("topic", 1), 0L, 0L, 0L, 0L, 0, 0)
+            new RecordMetadata(new TopicPartition("topic", 1), 0L, 0, 0L, 0, 0)
         )
 
       assert {
