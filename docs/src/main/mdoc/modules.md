@@ -9,6 +9,13 @@ The following sections describe the additional modules.
 
 The `@VULCAN_MODULE_NAME@` module provides [Avro](https://avro.apache.org) serialization support using [Vulcan](https://fd4s.github.io/vulcan).
 
+Add it to your project in build.sbt;
+
+```scala
+libraryDependencies += "com.github.fd4s" %% "fs2-kafka-vulcan" % fs2KafkaVersion
+resolvers += "confluent" at "https://packages.confluent.io/maven/",
+```
+
 We start by defining the type we want to serialize or deserialize, and create a `Codec`.
 
 ```scala mdoc:reset-object
