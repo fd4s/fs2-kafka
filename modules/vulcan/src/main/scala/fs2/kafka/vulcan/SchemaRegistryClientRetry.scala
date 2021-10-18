@@ -57,6 +57,6 @@ object SchemaRegistryClientRetry {
     new SchemaRegistryClientRetry[F] {
       override def withRetry[A](action: F[A]): F[A] = action
 
-      override def toString: String = "None"
+      override def toString: String = "RetryPolicy.None"
     }
 }
