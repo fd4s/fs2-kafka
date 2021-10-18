@@ -13,14 +13,26 @@ import org.apache.kafka.common.TopicPartition
 trait KafkaConsume[F[_], K, V] {
 
   /**
+    * Consume from all assigned partitions, producing a stream
+    * of [[CommittableConsumerRecord]]s. Alias for [[stream]].
+    */
+  final def records: Stream[F, CommittableConsumerRecord[F, K, V]] = stream
+
+  /**
     * Alias for `partitionedStream.parJoinUnbounded`.
-    * See [[partitionedStream]] for more information.
+    * See [[partitionedRecords]] for more information.
     *
     * @note you have to first use `subscribe` to subscribe the consumer
     *       before using this `Stream`. If you forgot to subscribe, there
     *       will be a [[NotSubscribedException]] raised in the `Stream`.
     */
   def stream: Stream[F, CommittableConsumerRecord[F, K, V]]
+
+  /**
+    * Alias for [[partitionedStream]]
+    */
+  final def partitionedRecords: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
+    partitionedStream
 
   /**
     * `Stream` where the elements themselves are `Stream`s which continually
@@ -32,7 +44,7 @@ trait KafkaConsume[F[_], K, V] {
     * limit will be the number of assigned partitions.<br>
     * <br>
     * If you do not want to process all partitions in parallel, then you
-    * can use [[stream]] instead, where records for all partitions are in
+    * can use [[records]] instead, where records for all partitions are in
     * a single `Stream`.
     *
     * @note you have to first use `subscribe` to subscribe the consumer
@@ -61,8 +73,8 @@ trait KafkaConsume[F[_], K, V] {
     * @note you have to first use `subscribe` to subscribe the consumer
     *       before using this `Stream`. If you forgot to subscribe, there
     *       will be a [[NotSubscribedException]] raised in the `Stream`.
-    * @see [[stream]]
-    * @see [[partitionedStream]]
+    * @see [[records]]
+    * @see [[partitionedRecords]]
     */
   def partitionsMapStream
     : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]]
@@ -76,7 +88,7 @@ trait KafkaConsume[F[_], K, V] {
     * 2. All currently running streams will continue to run until all in-flight messages will be processed.
     *    It means that streams will be completed when all fetched messages will be processed.<br>
     * <br>
-    * If some of the [[stream]] methods will be called after [[stopConsuming]] call,
+    * If some of the [[records]] methods will be called after [[stopConsuming]] call,
     * these methods will return empty streams.<br>
     * <br>
     * More than one call of [[stopConsuming]] will have no effect.

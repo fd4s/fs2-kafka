@@ -1,20 +1,22 @@
-val catsEffectVersion = "3.1.1"
+val catsEffectVersion = "3.2.9"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "6.2.0"
+val confluentVersion = "6.2.1"
 
-val fs2Version = "3.0.6"
+val fs2Version = "3.1.0"
 
-val kafkaVersion = "2.8.0"
+val kafkaVersion = "2.8.1"
 
-val testcontainersScalaVersion = "0.39.5"
+val testcontainersScalaVersion = "0.39.8"
 
 val vulcanVersion = "1.7.1"
 
+val munitVersion = "0.7.29"
+
 val scala2 = "2.13.6"
 
-val scala3 = "3.0.1"
+val scala3 = "3.0.2"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -25,7 +27,7 @@ lazy val `fs2-kafka` = project
     console := (core / Compile / console).value,
     Test / console := (core / Test / console).value
   )
-  .aggregate(core, vulcan)
+  .aggregate(core, vulcan, `vulcan-testkit-munit`)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -63,6 +65,23 @@ lazy val vulcan = project
   )
   .dependsOn(core)
 
+lazy val `vulcan-testkit-munit` = project
+  .in(file("modules/vulcan-testkit-munit"))
+  .settings(
+    moduleName := "fs2-kafka-vulcan-testkit-munit",
+    name := moduleName.value,
+    dependencySettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "org.scalameta" %% "munit" % munitVersion
+      )
+    ),
+    publishSettings,
+    noMimaSettings, // TODO: change to mimaSettings after artifact is released
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(vulcan)
+
 lazy val docs = project
   .in(file("docs"))
   .settings(
@@ -87,14 +106,14 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.3"
+    "ch.qos.logback" % "logback-classic" % "1.2.6"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
     else
       Seq(
         compilerPlugin(
-          ("org.typelevel" %% "kind-projector" % "0.13.0")
+          ("org.typelevel" %% "kind-projector" % "0.13.2")
             .cross(CrossVersion.full)
         )
       )
@@ -222,6 +241,18 @@ lazy val publishSettings =
         name = "Viktor Lövgren",
         email = "github@vlovgr.se",
         url = url("https://vlovgr.se")
+      ),
+      Developer(
+        id = "bplommer",
+        name = "Ben Plommer",
+        email = "@bplommer", // actually a twitter handle but whatever ¯\_(ツ)_/¯
+        url = url("https://github.com/bplommer")
+      ),
+      Developer(
+        id = "LMNet",
+        name = "Yuriy Badalyantc",
+        email = "lmnet89@gmail.com",
+        url = url("https://github.com/LMnet")
       )
     )
   )
@@ -242,6 +273,8 @@ lazy val mimaSettings = Seq(
     // format: on
   }
 )
+
+lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
 
 lazy val noPublishSettings =
   publishSettings ++ Seq(

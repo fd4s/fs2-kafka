@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.{Foldable, Reducible}
+import cats.{Foldable, Functor, Reducible}
 import cats.data.{NonEmptyList, NonEmptySet, OptionT}
 import cats.effect._
 import cats.effect.std._
@@ -20,8 +20,8 @@ import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.consumer._
-import java.util
 
+import java.util
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
 
@@ -660,6 +660,57 @@ object KafkaConsumer {
 
     override def toString: String =
       "ConsumerPartiallyApplied$" + System.identityHashCode(this)
+  }
+
+  /*
+   * Extension methods for operating on a `KafkaConsumer` in a `Stream` context without needing
+   * to explicitly use operations such as `flatMap` and `evalTap`
+   */
+  implicit final class StreamOps[F[_]: Functor, K, V](self: Stream[F, KafkaConsumer[F, K, V]]) {
+
+    /**
+      * Subscribes a consumer to the specified topics within the [[Stream]] context.
+      * See [[KafkaSubscription#subscribe]].
+      */
+    def subscribe[G[_]: Reducible](topics: G[String]): Stream[F, KafkaConsumer[F, K, V]] =
+      self.evalTap(_.subscribe(topics))
+
+    def subscribe(regex: Regex): Stream[F, KafkaConsumer[F, K, V]] =
+      self.evalTap(_.subscribe(regex))
+
+    /**
+      * Subscribes a consumer to the specified topics within the [[Stream]] context.
+      * See [[KafkaSubscription#subscribe]].
+      */
+    def subscribeTo(
+      firstTopic: String,
+      remainingTopics: String*
+    ): Stream[F, KafkaConsumer[F, K, V]] =
+      self.evalTap(_.subscribeTo(firstTopic, remainingTopics: _*))
+
+    /**
+      * A [[Stream]] of records from the allocated [[KafkaConsumer]]. Alias for [[stream]].
+      * See [[KafkaConsume#stream]]
+      */
+    def records: Stream[F, CommittableConsumerRecord[F, K, V]] = stream
+
+    /**
+      * A [[Stream]] of records from the allocated [[KafkaConsumer]].
+      * See [[KafkaConsume#stream]]
+      */
+    def stream: Stream[F, CommittableConsumerRecord[F, K, V]] = self.flatMap(_.records)
+
+    /**
+      * Alias for [[partitionedStream]]. See [[KafkaConsume#partitionedStream]]
+      */
+    def partitionedRecords: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
+      partitionedStream
+
+    /**
+      * See [[KafkaConsume#partitionedStream]]
+      */
+    def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
+      self.flatMap(_.partitionedRecords)
   }
 
   /*

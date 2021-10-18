@@ -5,7 +5,7 @@ title: Quick Example
 
 Following is an example showing how to:
 
-- use `KafkaConsumer.stream` in order to stream records from Kafka,
+- use `KafkaConsumer#records` in order to stream records from Kafka,
 - use `produce` to produce newly created records to Kafka,
 - use `commitBatchWithin` to commit consumed offsets in batches.
 
@@ -31,8 +31,8 @@ object Main extends IOApp {
 
     val stream =
       KafkaConsumer.stream(consumerSettings)
-        .evalTap(_.subscribeTo("topic"))
-        .flatMap(_.stream)
+        .subscribeTo("topic")
+        .records
         .mapAsync(25) { committable =>
           processRecord(committable.record)
             .map { case (key, value) =>

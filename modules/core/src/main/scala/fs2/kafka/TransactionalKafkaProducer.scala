@@ -6,15 +6,15 @@
 
 package fs2.kafka
 
-import cats.effect.{Async, Outcome, Resource}
 import cats.effect.syntax.all._
+import cats.effect.{Async, Resource, Outcome}
 import cats.syntax.all._
-import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
 import scala.jdk.CollectionConverters._
+import fs2.kafka.producer.MkProducer
+import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
-import fs2.kafka.producer.MkProducer
 
 import scala.annotation.nowarn
 

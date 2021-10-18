@@ -173,14 +173,14 @@ In the example above, we simply create the consumer and then immediately shutdow
 
 ## Topic Subscription
 
-We can use `subscribe` with a non-empty collection of topics, or `subscribeTo` for varargs support. There is also an option to `subscribe` using a `Regex` regular expression for the topic names, in case the exact topic names are not known up-front.
+We can use `subscribe` with a non-empty collection of topics, or `subscribeTo` for varargs support. There is also an option to `subscribe` using a `Regex` regular expression for the topic names, in case the exact topic names are not known up-front. When allocating a consumer in a `Stream` context, these are available as extension methods directly on the `Stream`.
 
 ```scala mdoc:silent
 object ConsumerSubscribeExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
       KafkaConsumer.stream(consumerSettings)
-        .evalTap(_.subscribeTo("topic"))
+        .subscribeTo("topic")
 
     stream.compile.drain.as(ExitCode.Success)
   }
@@ -198,8 +198,8 @@ object ConsumerStreamExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
       KafkaConsumer.stream(consumerSettings)
-        .evalTap(_.subscribeTo("topic"))
-        .flatMap(_.stream)
+        .subscribeTo("topic")
+        .records
 
     stream.compile.drain.as(ExitCode.Success)
   }
@@ -218,8 +218,8 @@ object ConsumerPartitionedStreamExample extends IOApp {
 
     val stream =
       KafkaConsumer.stream(consumerSettings)
-        .evalTap(_.subscribeTo("topic"))
-        .flatMap(_.partitionedStream)
+        .subscribeTo("topic")
+        .partitionedRecords
         .map { partitionStream =>
           partitionStream
             .evalMap { committable =>
@@ -259,8 +259,8 @@ object ConsumerMapAsyncExample extends IOApp {
 
     val stream =
       KafkaConsumer.stream(consumerSettings)
-        .evalTap(_.subscribeTo("topic"))
-        .flatMap(_.stream)
+        .subscribeTo("topic")
+        .records
         .mapAsync(25) { committable =>
           processRecord(committable.record)
         }
@@ -286,8 +286,8 @@ object ConsumerCommitBatchExample extends IOApp {
 
     val stream =
       KafkaConsumer.stream(consumerSettings)
-        .evalTap(_.subscribeTo("topic"))
-        .flatMap(_.stream)
+        .subscribeTo("topic")
+        .records
         .mapAsync(25) { committable =>
           processRecord(committable.record)
             .as(committable.offset)

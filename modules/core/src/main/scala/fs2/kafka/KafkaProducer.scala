@@ -6,18 +6,18 @@
 
 package fs2.kafka
 
-import cats.{Apply, Functor}
 import cats.effect._
 import cats.implicits._
-import fs2._
+import cats.{Apply, Functor}
+import fs2.{Chunk, _}
 import fs2.kafka.internal._
 import scala.jdk.CollectionConverters._
+import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
-import fs2.kafka.producer.MkProducer
 
-import scala.concurrent.Promise
 import scala.annotation.nowarn
+import scala.concurrent.Promise
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
