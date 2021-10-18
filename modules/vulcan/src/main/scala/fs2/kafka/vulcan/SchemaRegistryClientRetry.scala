@@ -50,7 +50,7 @@ object SchemaRegistryClientRetry {
         retry(attempt = 1, action)
       }
 
-      override def toString: String = "Default"
+      override def toString: String = "RetryPolicy.Default"
     }
 
   def None[F[_]]: SchemaRegistryClientRetry[F] =
