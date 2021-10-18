@@ -28,7 +28,7 @@ trait SchemaRegistryClientRetry[F[_]] {
 }
 
 object SchemaRegistryClientRetry {
-  val isRetriable: Throwable => Boolean = {
+  def isRetriable(error: Throwable): Boolean = {
     case _: SerializationException     => true
     case _: IOException                => true
     case apiError: RestClientException => apiError.getErrorCode >= 500
