@@ -25,7 +25,6 @@ import org.apache.kafka.clients.producer.RecordMetadata
   * Use [[ProducerResult#apply]] to create a new [[ProducerResult]].
   */
 sealed abstract class ProducerResult[+P, +K, +V] {
-
   /**
     * The records produced along with respective metadata.
     * Can be empty for passthrough-only.
@@ -41,7 +40,6 @@ object ProducerResult {
     override val records: Chunk[(ProducerRecord[K, V], RecordMetadata)],
     override val passthrough: P
   ) extends ProducerResult[P, K, V] {
-
     override def toString: String =
       if (records.isEmpty)
         s"ProducerResult(<empty>, $passthrough)"

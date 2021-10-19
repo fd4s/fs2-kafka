@@ -30,7 +30,6 @@ import scala.annotation.nowarn
   * Use [[KafkaAdminClient.resource]] or [[KafkaAdminClient.stream]] to create an instance.
   */
 sealed abstract class KafkaAdminClient[F[_]] {
-
   /**
     * Updates the configuration for the specified resources.
     */
@@ -208,7 +207,6 @@ sealed abstract class KafkaAdminClient[F[_]] {
 }
 
 object KafkaAdminClient {
-
   private[this] def alterConfigsWith[F[_], G[_]](
     withAdminClient: WithAdminClient[F],
     configs: Map[ConfigResource, G[AlterConfigOp]]
@@ -258,7 +256,6 @@ object KafkaAdminClient {
     withAdminClient(_.deleteAcls(filters.asJava).all.void)
 
   sealed abstract class DescribeCluster[F[_]] {
-
     /** Lists available nodes in the cluster. */
     def nodes: F[Set[Node]]
 
@@ -315,7 +312,6 @@ object KafkaAdminClient {
     withAdminClient(_.describeAcls(filter).values().map(_.toList))
 
   sealed abstract class ListConsumerGroupOffsetsForPartitions[F[_]] {
-
     /** Lists consumer group offsets on specified partitions for the consumer group. */
     def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]]
   }
@@ -342,7 +338,6 @@ object KafkaAdminClient {
     }
 
   sealed abstract class ListConsumerGroupOffsets[F[_]] {
-
     /** Lists consumer group offsets for the consumer group. */
     def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]]
 
@@ -375,7 +370,6 @@ object KafkaAdminClient {
     }
 
   sealed abstract class ListConsumerGroups[F[_]] {
-
     /** Lists the available consumer group ids. */
     def groupIds: F[List[String]]
 
@@ -398,7 +392,6 @@ object KafkaAdminClient {
     }
 
   sealed abstract class ListTopicsIncludeInternal[F[_]] {
-
     /** Lists topic names. Includes internal topics. */
     def names: F[Set[String]]
 
@@ -430,7 +423,6 @@ object KafkaAdminClient {
     }
 
   sealed abstract class ListTopics[F[_]] {
-
     /** Lists topic names. */
     def names: F[Set[String]]
 
@@ -505,7 +497,6 @@ object KafkaAdminClient {
 
   private def create[F[_]](client: WithAdminClient[F]) =
     new KafkaAdminClient[F] {
-
       override def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
         implicit G: Foldable[G]
       ): F[Unit] =

@@ -28,7 +28,6 @@ import fs2.kafka.internal.syntax._
   * results and specified passthrough value.
   */
 sealed abstract class TransactionalProducerRecords[F[_], +P, +K, +V] {
-
   /** The records to produce and commit. Can be empty for passthrough-only. */
   def records: Chunk[CommittableProducerRecords[F, K, V]]
 

@@ -20,7 +20,6 @@ import fs2.kafka.internal.syntax._
   * Use `AvroSettings.apply` to create an instance.
   */
 sealed abstract class AvroSettings[F[_]] {
-
   /**
     * The `SchemaRegistryClient` to use for the serializers
     * and deserializers created from this [[AvroSettings]].

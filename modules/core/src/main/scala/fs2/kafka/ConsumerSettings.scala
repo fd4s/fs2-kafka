@@ -36,7 +36,6 @@ import scala.concurrent.duration._
   * Use `ConsumerSettings#apply` to create a new instance.
   */
 sealed abstract class ConsumerSettings[F[_], K, V] {
-
   /**
     * The `Deserializer` to use for deserializing record keys.
     */
