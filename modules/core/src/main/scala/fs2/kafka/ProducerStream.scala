@@ -21,7 +21,6 @@ import fs2.Stream
 final class ProducerStream[F[_]] private[kafka] (
   private val F: ConcurrentEffect[F]
 ) extends AnyVal {
-
   /**
     * Creates a new [[KafkaProducer]] in the `Stream` context.
     * This is equivalent to using `KafkaProducer.stream` directly,

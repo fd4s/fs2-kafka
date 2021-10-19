@@ -127,7 +127,6 @@ object KafkaConsumer {
     stopConsumingDeferred: TryableDeferred[F, Unit]
   )(implicit F: Concurrent[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-
       override val fiber: Fiber[F, Unit] = {
         val actorFiber =
           Fiber[F, Unit](actor.join.guaranteeCase {
@@ -551,7 +550,6 @@ object KafkaConsumer {
 
       override def toString: String =
         "KafkaConsumer$" + id
-
     }
 
   @deprecated("use KafkaConsumer.resource", "1.2.0")
@@ -669,7 +667,6 @@ object KafkaConsumer {
 
   private[kafka] final class ConsumerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
-
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can
@@ -713,7 +710,6 @@ object KafkaConsumer {
    * to explicitly use operations such as `flatMap` and `evalTap`
    */
   implicit final class StreamOps[F[_]: Functor, K, V](self: Stream[F, KafkaConsumer[F, K, V]]) {
-
     /**
       * Subscribes a consumer to the specified topics within the [[Stream]] context.
       * See [[KafkaSubscription#subscribe]].

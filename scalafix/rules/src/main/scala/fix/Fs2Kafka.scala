@@ -4,7 +4,6 @@ import scalafix.v1._
 import scala.meta._
 
 class Fs2Kafka extends SemanticRule("Fs2Kafka") {
-
   val packageObjectDeprecations = Map(
     "consumerResource" -> ("KafkaConsumer", "resource"),
     "consumerStream" -> ("KafkaConsumer", "stream"),
@@ -32,7 +31,7 @@ class Fs2Kafka extends SemanticRule("Fs2Kafka") {
     "fs2/kafka/TransactionalKafkaProducer."
   )
 
-  override def fix(implicit doc: SemanticDocument): Patch = {
+  override def fix(implicit doc: SemanticDocument): Patch =
     doc.tree.collect {
       case term @ Term.Select(
             Term.ApplyType(
@@ -60,11 +59,11 @@ class Fs2Kafka extends SemanticRule("Fs2Kafka") {
           ) && !term.symbol.value.contains("(+1)") =>
         packageObjectDeprecations
           .get(name)
-          .map { case (obj, method) =>
-            Patch.replaceTree(term, s"$obj.$method") +
-              Patch.addGlobalImport(Symbol(s"fs2/kafka/$obj#"))
+          .map {
+            case (obj, method) =>
+              Patch.replaceTree(term, s"$obj.$method") +
+                Patch.addGlobalImport(Symbol(s"fs2/kafka/$obj#"))
           }
           .getOrElse(Patch.empty)
     }.asPatch
-  }
 }

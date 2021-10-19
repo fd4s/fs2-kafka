@@ -11,7 +11,6 @@ import cats.effect.Fiber
 import scala.annotation.nowarn
 
 trait KafkaConsumerLifecycle[F[_]] {
-
   /**
     * A `Fiber` that can be used to cancel the underlying consumer, or
     * wait for it to complete. If you're using `KafkaConsumer.stream`,

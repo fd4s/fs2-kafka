@@ -10,7 +10,6 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaCommit[F[_]] {
-
   /**
     * Commit the specified offsets for the specified list of topics and partitions to Kafka.<br>
     * <br>

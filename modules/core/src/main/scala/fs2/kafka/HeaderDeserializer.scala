@@ -19,7 +19,6 @@ import scala.annotation.tailrec
   * Kafka `Deserializer` interface.
   */
 sealed abstract class HeaderDeserializer[A] {
-
   /**
     * Deserializes the header value bytes into a value of type `A`.
     */
@@ -88,7 +87,6 @@ sealed abstract class HeaderDeserializer[A] {
 }
 
 object HeaderDeserializer {
-
   /** Alias for `HeaderDeserializer[Either[Throwable, A]]`. */
   type Attempt[A] = HeaderDeserializer[Either[Throwable, A]]
 

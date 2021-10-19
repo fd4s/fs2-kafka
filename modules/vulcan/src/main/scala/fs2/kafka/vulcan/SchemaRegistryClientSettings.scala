@@ -18,7 +18,6 @@ import fs2.kafka.internal.converters.collection._
   * Use `SchemaRegistryClient#apply` to create an instance.
   */
 sealed abstract class SchemaRegistryClientSettings[F[_]] {
-
   /**
     * The base URL of the schema registry service.
     */
