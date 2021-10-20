@@ -111,6 +111,12 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                   val expected = consumerGroupOffsetsMap - partition0
                   assert(res == expected)
                 }
+              _ <- adminClient
+                .deleteConsumerGroups(consumerGroupIds)
+              _ <- adminClient.listConsumerGroups.groupIds.map { res =>
+                val expected = List.empty
+                assert(res == expected)
+              }
             } yield ()
           }
           .unsafeRunSync()

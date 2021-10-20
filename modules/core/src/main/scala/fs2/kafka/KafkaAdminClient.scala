@@ -165,6 +165,11 @@ sealed abstract class KafkaAdminClient[F[_]] {
   def listConsumerGroups: ListConsumerGroups[F]
 
   /**
+    * Delete consumer groups from the cluster.
+    */
+  def deleteConsumerGroups(groupIds: List[String]): F[Unit]
+
+  /**
     * Lists topics. Returns topic names using:
     *
     * {{{
@@ -478,6 +483,12 @@ object KafkaAdminClient {
   ): F[Unit] =
     withAdminClient(_.deleteConsumerGroupOffsets(groupId, partitions.asJava).all().void)
 
+  private[this] def deleteConsumerGroupsWith[F[_]](
+    withAdminClient: WithAdminClient[F],
+    groupIds: List[String]
+  ): F[Unit] =
+    withAdminClient(_.deleteConsumerGroups(groupIds.asJava).all().void)
+
   /**
     * Creates a new [[KafkaAdminClient]] in the `Resource` context,
     * using the specified [[AdminClientSettings]]. If working in a
@@ -579,6 +590,11 @@ object KafkaAdminClient {
         partitions: Set[TopicPartition]
       ): F[Unit] =
         deleteConsumerGroupOffsetsWith(client, groupId, partitions)
+
+      override def deleteConsumerGroups(
+        groupIds: List[String]
+      ): F[Unit] =
+        deleteConsumerGroupsWith(client, groupIds)
 
       override def toString: String =
         "KafkaAdminClient$" + System.identityHashCode(this)
