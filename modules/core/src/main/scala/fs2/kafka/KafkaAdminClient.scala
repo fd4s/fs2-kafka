@@ -167,7 +167,9 @@ sealed abstract class KafkaAdminClient[F[_]] {
   /**
     * Delete consumer groups from the cluster.
     */
-  def deleteConsumerGroups(groupIds: List[String]): F[Unit]
+  def deleteConsumerGroups[G[_]](groupIds: G[String])(
+    implicit G: Foldable[G]
+  ): F[Unit]
 
   /**
     * Lists topics. Returns topic names using:
@@ -483,10 +485,10 @@ object KafkaAdminClient {
   ): F[Unit] =
     withAdminClient(_.deleteConsumerGroupOffsets(groupId, partitions.asJava).all().void)
 
-  private[this] def deleteConsumerGroupsWith[F[_]](
+  private[this] def deleteConsumerGroupsWith[F[_], G[_]](
     withAdminClient: WithAdminClient[F],
-    groupIds: List[String]
-  ): F[Unit] =
+    groupIds: G[String]
+  )(implicit G: Foldable[G]): F[Unit] =
     withAdminClient(_.deleteConsumerGroups(groupIds.asJava).all().void)
 
   /**
@@ -591,9 +593,9 @@ object KafkaAdminClient {
       ): F[Unit] =
         deleteConsumerGroupOffsetsWith(client, groupId, partitions)
 
-      override def deleteConsumerGroups(
-        groupIds: List[String]
-      ): F[Unit] =
+      override def deleteConsumerGroups[G[_]](
+        groupIds: G[String]
+      )(implicit G: Foldable[G]): F[Unit] =
         deleteConsumerGroupsWith(client, groupIds)
 
       override def toString: String =
