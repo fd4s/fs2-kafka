@@ -107,7 +107,7 @@ lazy val dependencySettings = Seq(
       .cross(CrossVersion.for3Use2_13),
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.5"
+    "ch.qos.logback" % "logback-classic" % "1.2.7"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
