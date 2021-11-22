@@ -7,7 +7,7 @@
 package fs2.kafka.internal
 
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Chunk
 import fs2.kafka.CommittableConsumerRecord
 import fs2.kafka.instances._

@@ -7,7 +7,7 @@
 package fs2.kafka.internal
 
 import cats.effect.{Async, Resource, Sync}
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.AdminClientSettings
 import fs2.kafka.admin.MkAdminClient
 import fs2.kafka.internal.syntax._

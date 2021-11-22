@@ -8,7 +8,7 @@ package fs2.kafka.vulcan
 
 import _root_.vulcan.Codec
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.{Deserializer, RecordDeserializer}
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import java.nio.ByteBuffer

@@ -7,7 +7,7 @@
 package fs2.kafka.internal
 
 import cats.effect.{Async, Resource}
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.consumer.MkConsumer
 import fs2.kafka.{ConsumerSettings, KafkaByteConsumer}
 import fs2.kafka.internal.syntax._
