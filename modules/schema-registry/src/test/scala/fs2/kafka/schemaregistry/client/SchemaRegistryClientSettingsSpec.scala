@@ -1,12 +1,14 @@
-package fs2.kafka.vulcan
+package fs2.kafka.schemaregistry.client
 
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-import cats.syntax.all._
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatestplus.scalacheck._
+import cats.syntax.all._
 
 final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
+
+  val settings: SchemaRegistryClientSettings =
+    SchemaRegistryClientSettings("baseUrl")
+
   describe("SchemaRegistryClientSettings") {
     it("should provide withMaxCacheSize") {
       assert {
@@ -59,15 +61,11 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
         settings.withAuth(Auth.None)
 
       assert {
-        settingsWithAuth.properties
-          .get("basic.auth.credentials.source")
-          .isEmpty
+        !settingsWithAuth.properties.contains("basic.auth.credentials.source")
       }
 
       assert {
-        settingsWithAuth.properties
-          .get("schema.registry.basic.auth.user.info")
-          .isEmpty
+        !settingsWithAuth.properties.contains("schema.registry.basic.auth.user.info")
       }
     }
 
@@ -101,19 +99,6 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
       }
     }
 
-    it("should provide withCreateSchemaRegistryClient") {
-      assert {
-        settings
-          .withCreateSchemaRegistryClient {
-            case _ => IO.raiseError(new RuntimeException)
-          }
-          .createSchemaRegistryClient
-          .attempt
-          .unsafeRunSync()
-          .isLeft
-      }
-    }
-
     it("should provide toString") {
       assert {
         settings.toString == "SchemaRegistryClientSettings(baseUrl = baseUrl, maxCacheSize = 1000)"
@@ -125,8 +110,23 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
         settings.show == "SchemaRegistryClientSettings(baseUrl = baseUrl, maxCacheSize = 1000)"
       }
     }
-  }
 
-  val settings: SchemaRegistryClientSettings[IO] =
-    SchemaRegistryClientSettings("baseUrl")
+    it("should provide Eq") {
+
+      val s1 = SchemaRegistryClientSettings("baseUrl")
+        .withAuth(Auth.Basic("user", "password"))
+        .withMaxCacheSize(100)
+        .withProperties("TEST" -> "FOO")
+
+      val s2 = SchemaRegistryClientSettings("baseUrl")
+        .withAuth(Auth.Basic("user", "password"))
+        .withMaxCacheSize(100)
+        .withProperties("TEST" -> "FOO")
+
+      assert {
+        s1.eqv(s2)
+      }
+    }
+
+  }
 }

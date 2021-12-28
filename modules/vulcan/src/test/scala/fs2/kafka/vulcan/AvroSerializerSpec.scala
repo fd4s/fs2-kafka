@@ -2,12 +2,17 @@ package fs2.kafka.vulcan
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import fs2.kafka.schemaregistry.client.SchemaRegistryClient
 import fs2.kafka.Headers
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
 import vulcan.{AvroError, Codec}
 
 final class AvroSerializerSpec extends AnyFunSpec {
+
+  val avroSettings: AvroSettings[IO] =
+    AvroSettings(SchemaRegistryClient.fromJava[IO](new MockSchemaRegistryClient()))
+
   describe("AvroSerializer") {
     it("can create a serializer") {
       val serializer =
@@ -57,18 +62,4 @@ final class AvroSerializerSpec extends AnyFunSpec {
       }
     }
   }
-
-  val schemaRegistryClient: MockSchemaRegistryClient =
-    new MockSchemaRegistryClient()
-
-  val schemaRegistryClientSettings: SchemaRegistryClientSettings[IO] =
-    SchemaRegistryClientSettings[IO]("baseUrl")
-      .withAuth(Auth.Basic("username", "password"))
-      .withMaxCacheSize(100)
-      .withCreateSchemaRegistryClient { (_, _, _) =>
-        IO.pure(schemaRegistryClient)
-      }
-
-  val avroSettings: AvroSettings[IO] =
-    AvroSettings(schemaRegistryClientSettings)
 }

@@ -2,10 +2,15 @@ package fs2.kafka.vulcan
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import fs2.kafka.schemaregistry.client.SchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatestplus.scalacheck._
 
 final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
+
+  val settings: AvroSettings[IO] =
+    AvroSettings[IO](SchemaRegistryClient[IO]("baseUrl"))
+
   describe("AvroSettings") {
     it("should provide withAutoRegisterSchemas") {
       forAll { (value: Boolean) =>
@@ -118,10 +123,4 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
       }
     }
   }
-
-  val settings: AvroSettings[IO] =
-    AvroSettings(SchemaRegistryClientSettings[IO]("baseUrl"))
-
-  val settingsWithClient: AvroSettings[IO] =
-    AvroSettings(null: SchemaRegistryClient)
 }
