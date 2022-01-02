@@ -1,6 +1,6 @@
 package fs2.kafka
 
-import cats.implicits._
+import cats.syntax.all._
 
 final class ProducerRecordsSpec extends BaseSpec {
   describe("ProducerRecords") {

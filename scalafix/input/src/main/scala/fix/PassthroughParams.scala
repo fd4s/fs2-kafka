@@ -5,7 +5,7 @@ rule = Fs2Kafka
 package fix
 
 import fs2.kafka._
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Chunk
 import cats.effect.IO
 
@@ -35,7 +35,7 @@ class PassthroughParams {
   val result: ProducerResult[String, String, Int] =
     ProducerResult[String, String, Int](Chunk.empty, 42)
 
-  val tRecords: TransactionalProducerRecords[IO, String, String, Int] = 
+  val tRecords: TransactionalProducerRecords[IO, String, String, Int] =
     TransactionalProducerRecords[IO, String, String, Int](Chunk.empty, 42)
 
   TransactionalProducerRecords.one[IO, String, String, Int](???, 42)
