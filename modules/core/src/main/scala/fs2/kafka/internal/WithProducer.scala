@@ -8,7 +8,7 @@ package fs2.kafka.internal
 
 import fs2.kafka.producer.MkProducer
 import cats.effect.{Async, Resource}
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
 

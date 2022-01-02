@@ -1,24 +1,24 @@
-val catsEffectVersion = "3.2.3"
+val catsEffectVersion = "3.2.9"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "6.2.0"
+val confluentVersion = "6.2.2"
 
-val fs2Version = "3.1.0"
+val fs2Version = "3.1.6"
 
-val kafkaVersion = "2.8.0"
+val kafkaVersion = "2.8.1"
 
-val testcontainersScalaVersion = "0.39.6"
+val testcontainersScalaVersion = "0.39.12"
 
 val vulcanVersion = "1.7.1"
 
-val munitVersion = "0.7.28"
+val munitVersion = "0.7.29"
 
-val scala212 = "2.12.14"
+val scala212 = "2.12.15"
 
-val scala213 = "2.13.6"
+val scala213 = "2.13.7"
 
-val scala3 = "3.0.1"
+val scala3 = "3.0.2"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -108,14 +108,14 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.5"
+    "ch.qos.logback" % "logback-classic" % "1.2.10"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
     else
       Seq(
         compilerPlugin(
-          ("org.typelevel" %% "kind-projector" % "0.13.0")
+          ("org.typelevel" %% "kind-projector" % "0.13.2")
             .cross(CrossVersion.full)
         )
       )
@@ -276,6 +276,7 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.copy"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.this"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.apply")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups")
     )
     // format: on
   }

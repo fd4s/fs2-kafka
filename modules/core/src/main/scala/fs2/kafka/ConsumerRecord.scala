@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.{Applicative, Apply, Bitraverse, Eq, Eval, Show, Traverse}
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.ConsumerRecord.{NO_TIMESTAMP, NULL_SIZE}

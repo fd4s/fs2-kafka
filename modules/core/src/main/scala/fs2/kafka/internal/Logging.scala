@@ -7,7 +7,7 @@
 package fs2.kafka.internal
 
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import org.slf4j.LoggerFactory
 
 private[kafka] sealed abstract class Logging[F[_]] {

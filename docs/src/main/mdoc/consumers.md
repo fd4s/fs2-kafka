@@ -9,7 +9,7 @@ The following imports are assumed throughout this page.
 
 ```scala mdoc:silent
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka._
 import scala.concurrent.duration._
 ```
@@ -356,12 +356,12 @@ object WithGracefulShutdownExample extends IOApp {
     }
 
     def handleError(e: Throwable): IO[Unit] = IO(println(e.toString))
-    
+
     for {
       stoppedDeferred <- Deferred[IO, Either[Throwable, Unit]] // [1]
       gracefulShutdownStartedRef <- Ref[IO].of(false) // [2]
       _ <- KafkaConsumer.resource(consumerSettings)
-        .allocated.bracketCase { case (consumer, _) => // [3] 
+        .allocated.bracketCase { case (consumer, _) => // [3]
           run(consumer).attempt.flatMap { result: Either[Throwable, Unit] => // [4]
             gracefulShutdownStartedRef.get.flatMap {
               case true => stoppedDeferred.complete(result) // [5]
