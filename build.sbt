@@ -270,7 +270,8 @@ lazy val mimaSettings = Seq(
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*")
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups")
     )
     // format: on
   }
