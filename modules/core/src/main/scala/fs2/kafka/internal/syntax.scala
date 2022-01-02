@@ -9,7 +9,7 @@ package fs2.kafka.internal
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
 import cats.effect.syntax.all._
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
 import fs2.kafka.internal.converters.collection._

@@ -1,7 +1,7 @@
 package fs2.kafka
 
 import cats.effect.{IO, SyncIO}
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.unsafe.implicits.global
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewPartitions, NewTopic}
 import org.apache.kafka.clients.consumer.OffsetAndMetadata

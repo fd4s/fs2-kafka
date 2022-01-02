@@ -8,7 +8,7 @@ package fs2.kafka.vulcan
 
 import _root_.vulcan.Codec
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.{RecordSerializer, Serializer}
 
 final class AvroSerializer[A] private[vulcan] (

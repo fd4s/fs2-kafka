@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Stream
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer

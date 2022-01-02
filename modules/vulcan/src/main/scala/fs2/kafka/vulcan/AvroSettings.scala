@@ -7,7 +7,7 @@
 package fs2.kafka.vulcan
 
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 

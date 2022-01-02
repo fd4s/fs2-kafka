@@ -19,7 +19,7 @@ resolvers += "confluent" at "https://packages.confluent.io/maven/",
 We start by defining the type we want to serialize or deserialize, and create a `Codec`.
 
 ```scala mdoc:reset-object
-import cats.implicits._
+import cats.syntax.all._
 import vulcan.Codec
 
 final case class Person(name: String, age: Option[Int])
