@@ -8,7 +8,7 @@ package fs2.kafka
 
 import cats.Contravariant
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 

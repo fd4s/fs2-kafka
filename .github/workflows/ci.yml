@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.12.15, 2.13.6, 3.0.2]
+        scala: [2.12.15, 2.13.7, 3.0.2]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -54,7 +54,7 @@ jobs:
 
       - run: sbt ++${{ matrix.scala }} ci
 
-      - if: matrix.scala == '2.13.6'
+      - if: matrix.scala == '2.13.7'
         run: sbt ++${{ matrix.scala }} docs/run
 
   publish:
@@ -64,7 +64,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.6]
+        scala: [2.13.7]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
