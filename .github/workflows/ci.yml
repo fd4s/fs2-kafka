@@ -23,8 +23,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.12.14, 2.13.6, 3.0.1]
-        java: [temurin@11]
+        scala: [2.12.15, 2.13.7, 3.0.1]
+        java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
@@ -56,8 +56,8 @@ jobs:
 
       - run: sbt ++${{ matrix.scala }} ci
 
-      - if: matrix.scala == '2.13.6'
-        run: sbt ++${{ matrix.scala }} docs/run
+      - if: matrix.scala == '2.13.7'
+        run: sbt --client '++${{ matrix.scala }}; docs/run'
 
   publish:
     name: Publish Artifacts
@@ -66,8 +66,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.6]
-        java: [temurin@11]
+        scala: [2.13.7]
+        java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
