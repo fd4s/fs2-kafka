@@ -6,6 +6,10 @@ val confluentVersion = "7.0.1"
 
 val fs2Version = "3.2.4"
 
+val kafkaVersion = "2.8.1"
+
+val testcontainersScalaVersion = "0.39.12"
+
 val vulcanVersion = "1.7.1"
 
 val munitVersion = "0.7.29"
@@ -19,7 +23,19 @@ val scala3 = "3.1.0"
 lazy val `fs2-kafka` = project
   .in(file("."))
   .settings(
+    mimaSettings,
+    scalaSettings,
+    noPublishSettings,
+    console := (core / Compile / console).value,
+    Test / console := (core / Test / console).value
+  )
+  .aggregate(core, vulcan, `vulcan-testkit-munit`)
+
+lazy val core = project
   .in(file("modules/core"))
+  .settings(
+    moduleName := "fs2-kafka",
+    name := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
         "co.fs2" %% "fs2-core" % fs2Version,
