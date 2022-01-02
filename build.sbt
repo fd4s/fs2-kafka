@@ -2,7 +2,7 @@ val catsEffectVersion = "3.2.9"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "6.2.1"
+val confluentVersion = "6.2.2"
 
 val fs2Version = "3.1.6"
 
@@ -16,7 +16,7 @@ val munitVersion = "0.7.29"
 
 val scala212 = "2.12.15"
 
-val scala213 = "2.13.6"
+val scala213 = "2.13.7"
 
 val scala3 = "3.1.0"
 
@@ -108,7 +108,7 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.6"
+    "ch.qos.logback" % "logback-classic" % "1.2.10"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
@@ -270,7 +270,8 @@ lazy val mimaSettings = Seq(
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*")
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups")
     )
     // format: on
   }
