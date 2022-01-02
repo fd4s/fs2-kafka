@@ -8,8 +8,8 @@ package fs2.kafka
 
 import cats.effect._
 import cats.syntax.all._
-import cats.{Apply, Functor}
-import fs2.{Chunk, _}
+import cats.Apply
+import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer

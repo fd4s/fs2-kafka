@@ -84,7 +84,7 @@ object ProducerRecords {
           buf += record
           ()
       }
-      Chunk.buffer(buf)
+      Chunk.array(buf.toArray)
     }
     new ProducerRecordsImpl(chunk, passthrough)
   }
