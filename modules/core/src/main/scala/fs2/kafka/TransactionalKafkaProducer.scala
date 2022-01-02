@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift, ExitCase, Resource}
+import cats.effect.{ConcurrentEffect, ExitCase, Resource}
 import cats.effect.syntax.all._
 import cats.implicits._
 import fs2.{Chunk, Stream}
@@ -67,9 +67,7 @@ object TransactionalKafkaProducer {
   def resource[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
-  ): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
+    implicit F: ConcurrentEffect[F]): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
     (
       Resource.eval(settings.producerSettings.keySerializer),
       Resource.eval(settings.producerSettings.valueSerializer),
@@ -160,9 +158,7 @@ object TransactionalKafkaProducer {
   def stream[F[_], K, V](
     settings: TransactionalProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
-  ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
+    implicit F: ConcurrentEffect[F]): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
     Stream.resource(resource(settings))
 
   /**
@@ -198,9 +194,7 @@ object TransactionalKafkaProducer {
       * }}}
       */
     def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(
-      implicit F: ConcurrentEffect[F],
-      context: ContextShift[F]
-    ): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
+      implicit F: ConcurrentEffect[F]): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
       TransactionalKafkaProducer.resource(settings)
 
     /**
@@ -214,9 +208,7 @@ object TransactionalKafkaProducer {
       * }}}
       */
     def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(
-      implicit F: ConcurrentEffect[F],
-      context: ContextShift[F]
-    ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
+      implicit F: ConcurrentEffect[F]): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
       TransactionalKafkaProducer.stream(settings)
 
     override def toString: String =

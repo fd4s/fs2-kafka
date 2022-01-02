@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift}
+import cats.effect.ConcurrentEffect
 import fs2.Stream
 
 /**
@@ -27,9 +27,7 @@ final class TransactionalProducerStream[F[_]] private[kafka] (
     * This is equivalent to using `TransactionalKafkaProducer.stream` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: TransactionalProducerSettings[F, K, V])(
-    implicit context: ContextShift[F]
-  ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
+  def using[K, V](settings: TransactionalProducerSettings[F, K, V]): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
     TransactionalKafkaProducer.stream(settings)(F, context)
 
   override def toString: String =

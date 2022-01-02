@@ -6,7 +6,6 @@
 
 package fs2.kafka
 
-import cats.effect.Timer
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
@@ -15,6 +14,7 @@ import org.apache.kafka.clients.consumer.{OffsetAndMetadata, RetriableCommitFail
 import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.duration._
+import cats.effect.Temporal
 
 /**
   * [[CommitRecovery]] describes how to recover from exceptions raised
@@ -46,7 +46,7 @@ abstract class CommitRecovery {
   )(
     implicit F: MonadError[F, Throwable],
     jitter: Jitter[F],
-    timer: Timer[F]
+    timer: Temporal[F]
   ): Throwable => F[Unit]
 }
 
@@ -91,7 +91,7 @@ object CommitRecovery {
       )(
         implicit F: MonadError[F, Throwable],
         jitter: Jitter[F],
-        timer: Timer[F]
+        timer: Temporal[F]
       ): Throwable => F[Unit] = {
         def retry(attempt: Int): Throwable => F[Unit] = {
           case retriable: RetriableCommitFailedException =>
@@ -122,7 +122,7 @@ object CommitRecovery {
       )(
         implicit F: MonadError[F, Throwable],
         jitter: Jitter[F],
-        timer: Timer[F]
+        timer: Temporal[F]
       ): Throwable => F[Unit] = F.raiseError
 
       override def toString: String =

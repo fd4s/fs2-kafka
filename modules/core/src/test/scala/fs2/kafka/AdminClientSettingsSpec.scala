@@ -1,9 +1,10 @@
 package fs2.kafka
 
-import cats.effect.{Blocker, IO}
+import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.admin.AdminClientConfig
 import scala.concurrent.duration._
+import cats.effect.Resource
 
 final class AdminClientSettingsSpec extends BaseSpec {
   describe("AdminClientSettings") {
@@ -131,7 +132,7 @@ final class AdminClientSettingsSpec extends BaseSpec {
 
     it("should provide withBlocker") {
       assert {
-        Blocker[IO]
+        Resource.unit[IO]
           .use { blocker =>
             IO {
               settings

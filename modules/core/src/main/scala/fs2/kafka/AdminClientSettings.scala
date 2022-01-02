@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Blocker, Sync}
+import cats.effect.Sync
 import cats.Show
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.security.KafkaCredentialStore
@@ -218,7 +218,7 @@ object AdminClientSettings {
     override val closeTimeout: FiniteDuration,
     val createAdminClientWith: Map[String, String] => F[AdminClient]
   ) extends AdminClientSettings[F] {
-    override def withBlocker(blocker: Blocker): AdminClientSettings[F] =
+    override def withBlocker: AdminClientSettings[F] =
       copy(blocker = Some(blocker))
 
     override def withBootstrapServers(bootstrapServers: String): AdminClientSettings[F] =

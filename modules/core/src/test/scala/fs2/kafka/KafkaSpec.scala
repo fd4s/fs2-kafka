@@ -2,12 +2,12 @@ package fs2.kafka
 
 import cats.ApplicativeError
 import cats.effect.IO
-import cats.effect.concurrent.Ref
 import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.duration._
+import cats.effect.Ref
 
 final class KafkaSpec extends BaseAsyncSpec {
   describe("commitBatchWithin") {
