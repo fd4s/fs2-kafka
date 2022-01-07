@@ -57,10 +57,6 @@
         </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Modules</h1></header><article><div><span><p>The following sections describe the additional modules.</p>
 <h2><a class="anchor" aria-hidden="true" id="vulcan"></a><a href="#vulcan" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Vulcan</h2>
 <p>The <code>fs2-kafka-vulcan</code> module provides <a href="https://avro.apache.org">Avro</a> serialization support using <a href="https://fd4s.github.io/vulcan">Vulcan</a>.</p>
-<p>Add it to your project in build.sbt;</p>
-<pre><code class="hljs css language-scala">libraryDependencies += <span class="hljs-string">"com.github.fd4s"</span> %% <span class="hljs-string">"fs2-kafka-vulcan"</span> % fs2KafkaVersion
-resolvers += <span class="hljs-string">"confluent"</span> at <span class="hljs-string">"https://packages.confluent.io/maven/"</span>,
-</code></pre>
 <p>We start by defining the type we want to serialize or deserialize, and create a <code>Codec</code>.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.implicits._
 <span class="hljs-keyword">import</span> vulcan.<span class="hljs-type">Codec</span>
@@ -172,4 +168,27 @@ resolvers += <span class="hljs-string">"confluent"</span> at <span class="hljs-s
   (consumerSettings, producerSettings)
 }
 </code></pre>
-</span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="/fs2-kafka/docs/admin"><span class="arrow-prev">← </span><span>Admin</span></a><a class="docs-next button" href="/fs2-kafka/docs/technical-details"><span>Technical Details</span><span class="arrow-next"> →</span></a></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#vulcan">Vulcan</a><ul class="toc-headings"><li><a href="#sharing-client">Sharing Client</a></li></ul></li></ul></nav></div><footer class="nav-footer" id="footer"><hr class="separator"/><section class="copyright">Copyright © 2018-2021 OVO Energy Limited.<br/>Icon by <a href="https://www.flaticon.com/authors/franco-averta" rel="noopener">Franco Averta</a>. <a href="https://creativecommons.org/licenses/by/3.0" rel="noopener">CC BY 3.0</a>.</section></footer></div></body></html>
+<h2><a class="anchor" aria-hidden="true" id="vulcan-testkit-munit"></a><a href="#vulcan-testkit-munit" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Vulcan testkit munit</h2>
+<p>The <code>fs2-kafka-vulcan-testkit-munit</code> module provides an <a href="https://scalameta.org/munit/">munit</a> fixture for testing vulcan
+codecs against a <a href="https://docs.confluent.io/platform/current/schema-registry/index.html">schema registry</a></p>
+<p>A usage example:</p>
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> fs2.kafka.vulcan.<span class="hljs-type">SchemaRegistryClientSettings</span>
+<span class="hljs-keyword">import</span> org.apache.avro.<span class="hljs-type">SchemaCompatibility</span>.<span class="hljs-type">SchemaCompatibilityType</span>
+<span class="hljs-keyword">import</span> fs2.kafka.vulcan.testkit.<span class="hljs-type">SchemaSuite</span>
+<span class="hljs-keyword">import</span> vulcan.<span class="hljs-type">Codec</span>
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">MySpec</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">SchemaSuite</span> </span>{
+  <span class="hljs-keyword">val</span> checker = compatibilityChecker(<span class="hljs-type">SchemaRegistryClientSettings</span>(<span class="hljs-string">"https://some-schema-registry:1234"</span>))
+
+  <span class="hljs-keyword">override</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">munitFixtures</span> </span>= <span class="hljs-type">List</span>(checker)
+
+  test(<span class="hljs-string">"my codec is compatible"</span>) {
+    <span class="hljs-keyword">val</span> myCodec: <span class="hljs-type">Codec</span>[<span class="hljs-type">String</span>] = ???
+
+    <span class="hljs-keyword">val</span> compatibility = checker().checkReaderCompatibility(myCodec, <span class="hljs-string">"my-schema-subject"</span>).unsafeRunSync()
+
+    assertEquals(compatibility.getType(), <span class="hljs-type">SchemaCompatibilityType</span>.<span class="hljs-type">COMPATIBLE</span>, compatibility.getResult().getIncompatibilities())
+  }
+}
+</code></pre>
+</span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="/fs2-kafka/docs/admin"><span class="arrow-prev">← </span><span>Admin</span></a><a class="docs-next button" href="/fs2-kafka/docs/technical-details"><span>Technical Details</span><span class="arrow-next"> →</span></a></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#vulcan">Vulcan</a><ul class="toc-headings"><li><a href="#sharing-client">Sharing Client</a></li></ul></li><li><a href="#vulcan-testkit-munit">Vulcan testkit munit</a></li></ul></nav></div><footer class="nav-footer" id="footer"><hr class="separator"/><section class="copyright">Copyright © 2018-2022 OVO Energy Limited.<br/>Icon by <a href="https://www.flaticon.com/authors/franco-averta" rel="noopener">Franco Averta</a>. <a href="https://creativecommons.org/licenses/by/3.0" rel="noopener">CC BY 3.0</a>.</section></footer></div></body></html>
