@@ -160,10 +160,11 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                 Map(cr -> List(new AlterConfigOp(ce, AlterConfigOp.OpType.SET)))
               }.attempt
               _ <- IO(assert(alteredConfigs.isRight))
-              describedConfigs <- adminClient.describeConfigs(List(cr)).attempt
+              describedConfigs <- adminClient.describeConfigs(List(cr))
               _ <- IO(
                 assert(
-                  describedConfigs.toOption.flatMap(_.get(cr)).map(_.contains(ce)).getOrElse(false)
+                  describedConfigs(cr)
+                    .exists(actual => actual.name == ce.name && actual.value == ce.value)
                 )
               )
             } yield ()
@@ -225,7 +226,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
               describedTopics <- adminClient.describeTopics(topic :: Nil)
               _ <- IO(assert(describedTopics.size == 1))
               _ <- IO(
-                assert(describedTopics.headOption.map(_._2.partitions.size == 4).getOrElse(false))
+                assert(describedTopics.headOption.exists(_._2.partitions.size == 4))
               )
               deleteTopics <- adminClient
                 .deleteTopics(List(topic))
