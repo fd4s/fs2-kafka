@@ -146,6 +146,7 @@ codecs against a [schema registry](https://docs.confluent.io/platform/current/sc
 A usage example:
 
 ```scala mdoc:reset
+import cats.effect.unsafe.implicits.global
 import fs2.kafka.vulcan.SchemaRegistryClientSettings
 import org.apache.avro.SchemaCompatibility.SchemaCompatibilityType
 import fs2.kafka.vulcan.testkit.SchemaSuite
