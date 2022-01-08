@@ -1,7 +1,7 @@
 package fs2.kafka
 
 import cats.effect.{IO, SyncIO}
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.unsafe.implicits.global
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewPartitions, NewTopic}
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -111,6 +111,12 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                   val expected = consumerGroupOffsetsMap - partition0
                   assert(res == expected)
                 }
+              _ <- adminClient
+                .deleteConsumerGroups(consumerGroupIds)
+              _ <- adminClient.listConsumerGroups.groupIds.map { res =>
+                val expected = List.empty
+                assert(res == expected)
+              }
             } yield ()
           }
           .unsafeRunSync()

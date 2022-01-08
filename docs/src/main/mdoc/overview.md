@@ -33,6 +33,13 @@ resolvers += "confluent" at "https://packages.confluent.io/maven/"
 libraryDependencies += "@ORGANIZATION@" %% "@VULCAN_MODULE_NAME@" % "@LATEST_VERSION@"
 ```
 
+In order to test vulcan codecs against a [schema registry](https://docs.confluent.io/platform/current/schema-registry/index.html) using 
+[munit](https://scalameta.org/munit/), add the following line to your `build.sbt` file.
+
+```scala
+libraryDependencies += "@ORGANIZATION@" %% "@VULCAN_TESTKIT_MUNIT_MODULE_NAME@" % "@LATEST_VERSION@"
+```
+
 ### Signatures
 
 Stable release artifacts are signed with the [`E97C 64AB 4987 7F74`](https://keys.openpgp.org/search?q=D9A5006CBC771CEAEB0CA118E97C64AB49877F74) key.

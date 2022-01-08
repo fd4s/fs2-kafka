@@ -10,7 +10,7 @@ The following imports are assumed throughout this page.
 
 ```scala mdoc:silent
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Stream
 import fs2.kafka._
 ```

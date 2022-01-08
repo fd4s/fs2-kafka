@@ -76,7 +76,7 @@ lazy val `vulcan-testkit-munit` = project
       )
     ),
     publishSettings,
-    noMimaSettings, // TODO: change to mimaSettings after artifact is released
+    mimaSettings,
     scalaSettings,
     testSettings
   )
@@ -93,7 +93,7 @@ lazy val docs = project
     mdocSettings,
     buildInfoSettings
   )
-  .dependsOn(core, vulcan)
+  .dependsOn(core, vulcan, `vulcan-testkit-munit`)
   .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin, ScalaUnidocPlugin)
 
 lazy val dependencySettings = Seq(
@@ -180,6 +180,9 @@ lazy val buildInfoSettings = Seq(
     },
     BuildInfoKey.map(vulcan / crossScalaVersions) {
       case (k, v) => "vulcan" ++ k.capitalize -> v
+    },
+    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) {
+      case (k, v) => "vulcanTestkitMunit" ++ k.capitalize -> v
     },
     LocalRootProject / organization,
     core / crossScalaVersions,
@@ -268,7 +271,13 @@ lazy val mimaSettings = Seq(
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*")
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.registerSchema"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withRegisterSchema"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.copy"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.apply"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups")
     )
     // format: on
   }

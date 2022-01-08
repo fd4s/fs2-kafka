@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -84,7 +84,7 @@ object ProducerRecords {
           buf += record
           ()
       }
-      Chunk.buffer(buf)
+      Chunk.array(buf.toArray)
     }
     new ProducerRecordsImpl(chunk, passthrough)
   }

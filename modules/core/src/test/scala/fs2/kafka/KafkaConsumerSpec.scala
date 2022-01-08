@@ -4,7 +4,7 @@ import cats.data.NonEmptySet
 import cats.effect.Ref
 import cats.effect.{Fiber, IO}
 import cats.effect.std.Queue
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.unsafe.implicits.global
 import fs2.Stream
 import fs2.concurrent.SignallingRef
