@@ -57,7 +57,7 @@
         </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Consumers</h1></header><article><div><span><p>Consumers support subscribing to topics, record streaming and deserialization, as well as miscellaneous utility functionality, such as seeking to offsets, or checking what the end offsets are for a topic. Consumers make use of the <a href="https://kafka.apache.org/28/javadoc/?org/apache/kafka/clients/consumer/KafkaConsumer.html">Java Kafka consumer</a>, which becomes especially important for <a href="#settings">settings</a>. For consumer implementation details, refer to the <a href="/fs2-kafka/docs/technical-details">technical details</a> section.</p>
 <p>The following imports are assumed throughout this page.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect._
-<span class="hljs-keyword">import</span> cats.implicits._
+<span class="hljs-keyword">import</span> cats.syntax.all._
 <span class="hljs-keyword">import</span> fs2.kafka._
 <span class="hljs-keyword">import</span> scala.concurrent.duration._
 </code></pre>
@@ -150,7 +150,6 @@
 <li><p><code>withCommitRecovery</code> defines how offset commit exceptions are recovered. See <a href="/fs2-kafka/api/fs2/kafka/CommitRecovery$.html#Default:fs2.kafka.CommitRecovery"><code>CommitRecovery.Default</code></a>.</p></li>
 <li><p><code>withCommitTimeout</code> sets the timeout for offset commits. Default is 15 seconds.</p></li>
 <li><p><code>withCreateConsumer</code> changes how the underlying Java Kafka consumer is created. The default merely creates a Java <code>KafkaConsumer</code> instance using set properties, but this function allows overriding the behaviour for e.g. testing purposes.</p></li>
-<li><p><code>withBlocker</code> sets the <code>Blocker</code> on which blocking Java Kafka consumer functions are executed. Unless specified, a default fixed single-thread pool is created as part of consumer initialization, with the thread name using the <code>fs2-kafka-consumer</code> prefix.</p></li>
 <li><p><code>withMaxPrefetchBatches</code> adjusts the maximum number of record batches per topic-partition to prefetch before backpressure is applied. The default is 2, meaning there can be up to 2 record batches per topic-partition waiting to be processed.</p></li>
 <li><p><code>withPollInterval</code> alters how often consumer <code>poll</code> should take place. Default is 50 milliseconds.</p></li>
 <li><p><code>withPollTimeout</code> modifies for how long <code>poll</code> is allowed to block. Default is 50 milliseconds.</p></li>
@@ -299,7 +298,7 @@
 It means that streams will be completed when all fetched messages will be processed.</li>
 </ol>
 <p>We could combine <code>stopConsuming</code> with the custom resource handling and implement a graceful shutdown. Let's try it:</p>
-<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.concurrent.{<span class="hljs-type">Deferred</span>, <span class="hljs-type">Ref</span>}
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">Deferred</span>, <span class="hljs-type">Ref</span>}
 
 <span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">WithGracefulShutdownExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
   <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
@@ -313,12 +312,12 @@ It means that streams will be completed when all fetched messages will be proces
     }
 
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">handleError</span></span>(e: <span class="hljs-type">Throwable</span>): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = <span class="hljs-type">IO</span>(println(e.toString))
-    
+
     <span class="hljs-keyword">for</span> {
       stoppedDeferred &lt;- <span class="hljs-type">Deferred</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Either</span>[<span class="hljs-type">Throwable</span>, <span class="hljs-type">Unit</span>]] <span class="hljs-comment">// [1]</span>
       gracefulShutdownStartedRef &lt;- <span class="hljs-type">Ref</span>[<span class="hljs-type">IO</span>].of(<span class="hljs-literal">false</span>) <span class="hljs-comment">// [2]</span>
       _ &lt;- <span class="hljs-type">KafkaConsumer</span>.resource(consumerSettings)
-        .allocated.bracketCase { <span class="hljs-keyword">case</span> (consumer, _) =&gt; <span class="hljs-comment">// [3] </span>
+        .allocated.bracketCase { <span class="hljs-keyword">case</span> (consumer, _) =&gt; <span class="hljs-comment">// [3]</span>
           run(consumer).attempt.flatMap { result: <span class="hljs-type">Either</span>[<span class="hljs-type">Throwable</span>, <span class="hljs-type">Unit</span>] =&gt; <span class="hljs-comment">// [4]</span>
             gracefulShutdownStartedRef.get.flatMap {
               <span class="hljs-keyword">case</span> <span class="hljs-literal">true</span> =&gt; stoppedDeferred.complete(result) <span class="hljs-comment">// [5]</span>
@@ -327,7 +326,7 @@ It means that streams will be completed when all fetched messages will be proces
           }.uncancelable <span class="hljs-comment">// [7]</span>
         } { <span class="hljs-keyword">case</span> ((consumer, closeConsumer), exitCase) =&gt; <span class="hljs-comment">// [8]</span>
           (exitCase <span class="hljs-keyword">match</span> {
-            <span class="hljs-keyword">case</span> <span class="hljs-type">ExitCase</span>.<span class="hljs-type">Error</span>(e) =&gt; handleError(e) <span class="hljs-comment">// [9]</span>
+            <span class="hljs-keyword">case</span> <span class="hljs-type">Outcome</span>.<span class="hljs-type">Errored</span>(e) =&gt; handleError(e) <span class="hljs-comment">// [9]</span>
             <span class="hljs-keyword">case</span> _ =&gt; <span class="hljs-keyword">for</span> {
               _ &lt;- gracefulShutdownStartedRef.set(<span class="hljs-literal">true</span>) <span class="hljs-comment">// [10]</span>
               _ &lt;- consumer.stopConsuming <span class="hljs-comment">// [11]</span>
