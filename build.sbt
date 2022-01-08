@@ -78,7 +78,7 @@ lazy val `vulcan-testkit-munit` = project
       )
     ),
     publishSettings,
-    noMimaSettings, // TODO: change to mimaSettings after artifact is released
+    mimaSettings,
     scalaSettings,
     testSettings
   )
