@@ -99,6 +99,19 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
       }
     }
 
+    it("should provide withRegisterSchema") {
+      assert {
+        settings
+          .withRegisterSchema {
+            case _ => IO.raiseError(new RuntimeException)
+          }
+          .registerSchema[String]("example-key")
+          .attempt
+          .unsafeRunSync()
+          .isLeft
+      }
+    }
+
     it("should provide toString") {
       assert {
         settings.toString.startsWith("AvroSettings$")
