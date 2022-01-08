@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,14 +7,16 @@
 package fs2.kafka
 
 import cats.effect._
-import cats.implicits._
-import cats.{Apply, Functor}
-import fs2.{Chunk, _}
+import cats.syntax.all._
+import cats.Apply
+import fs2._
 import fs2.kafka.internal._
 import scala.jdk.CollectionConverters._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
+import fs2.Chunk
+import cats.Functor
 
 import scala.annotation.nowarn
 import scala.concurrent.Promise

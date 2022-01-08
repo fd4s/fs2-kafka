@@ -1,6 +1,6 @@
 package fs2.kafka
 
-import cats.implicits._
+import cats.syntax.all._
 import org.apache.kafka.clients.admin.AdminClientConfig
 import scala.concurrent.duration._
 

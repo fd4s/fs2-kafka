@@ -1,17 +1,20 @@
 package fs2.kafka
 
+import cats.Eq
 import cats.effect.IO
 import cats.laws.discipline._
 
 final class DeserializerSpec extends BaseCatsSpec {
+  import cats.effect.unsafe.implicits.global
+
   checkAll(
     "Deserializer[IO, *]", {
-      implicit val ticker = Ticker()
+      // use of Ticker causes an error since CE3.3.0
+      // implicit val ticker = Ticker()
+      implicit def eq[A: Eq]: Eq[IO[A]] = Eq.by(_.attempt.unsafeRunSync())
       MonadErrorTests[Deserializer[IO, *], Throwable].monadError[String, String, String]
     }
   )
-
-  import cats.effect.unsafe.implicits.global
 
   test("Deserializer#attempt") {
     forAll { (topic: String, headers: Headers, i: Int) =>

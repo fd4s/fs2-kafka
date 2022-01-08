@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,7 +8,7 @@ package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import scala.jdk.CollectionConverters._
 import java.util
