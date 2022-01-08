@@ -275,7 +275,7 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withRegisterSchema"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.copy"),
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.apply")
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.apply"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups")
     )
     // format: on
