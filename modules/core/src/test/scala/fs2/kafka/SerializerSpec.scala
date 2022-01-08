@@ -9,14 +9,16 @@ import org.scalacheck.Arbitrary
 import org.scalatest._
 
 final class SerializerSpec extends BaseCatsSpec {
+  import cats.effect.unsafe.implicits.global
+
   checkAll(
     "Serializer[IO, *]", {
-      implicit val ticker = Ticker()
+      // use of Ticker causes an error since CE3.3.0
+      // implicit val ticker = Ticker()
+      implicit val eq: Eq[IO[Array[Byte]]] = Eq.by(_.unsafeRunSync())
       ContravariantTests[Serializer[IO, *]].contravariant[String, String, String]
     }
   )
-
-  import cats.effect.unsafe.implicits.global
 
   test("Serializer#mapBytes") {
     val serializer =
