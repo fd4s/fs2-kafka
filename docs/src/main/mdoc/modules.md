@@ -96,10 +96,12 @@ ProducerSettings(
 ).withBootstrapServers("localhost:9092")
 ```
 
-We can also register the schema with the registry server
+By default, a schema will automatically be registered when used to publish a message. We can disable this behaviour by 
+using `withAutoRegisterSchemas(false)`. We can then use `registerSchema` to manually register the schema with the registry server:
 ```scala mdoc:silent
-avroSettings.registerSchema[String]("person-key") *>
-  avroSettings.registerSchema[Person]("person-value")
+val avroSettingsWithoutAutoRegister = avroSettings.withAutoRegisterSchemas(false)
+avroSettingsWithoutAutoRegister.registerSchema[String]("person-key") *>
+  avroSettingsWithoutAutoRegister.registerSchema[Person]("person-value")
 ```
 
 ### Sharing Client
