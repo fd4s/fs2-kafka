@@ -1,10 +1,10 @@
-val catsEffectVersion = "3.2.9"
+val catsEffectVersion = "3.3.3"
 
 val catsVersion = "2.6.1"
 
 val confluentVersion = "6.2.2"
 
-val fs2Version = "3.1.6"
+val fs2Version = "3.2.4"
 
 val kafkaVersion = "2.8.1"
 
@@ -18,7 +18,7 @@ val scala212 = "2.12.15"
 
 val scala213 = "2.13.7"
 
-val scala3 = "3.0.2"
+val scala3 = "3.1.0"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -95,7 +95,7 @@ lazy val docs = project
     mdocSettings,
     buildInfoSettings
   )
-  .dependsOn(core, vulcan)
+  .dependsOn(core, vulcan, `vulcan-testkit-munit`)
   .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin, ScalaUnidocPlugin)
 
 lazy val dependencySettings = Seq(
@@ -182,6 +182,9 @@ lazy val buildInfoSettings = Seq(
     },
     BuildInfoKey.map(vulcan / crossScalaVersions) {
       case (k, v) => "vulcan" ++ k.capitalize -> v
+    },
+    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) {
+      case (k, v) => "vulcanTestkitMunit" ++ k.capitalize -> v
     },
     LocalRootProject / organization,
     core / crossScalaVersions,

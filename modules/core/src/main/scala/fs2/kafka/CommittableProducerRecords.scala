@@ -72,7 +72,7 @@ object CommittableProducerRecords {
           buf += record
           ()
       }
-      Chunk.buffer(buf)
+      Chunk.array(buf.toArray)
     }
 
     new CommittableProducerRecordsImpl(chunk, offset)

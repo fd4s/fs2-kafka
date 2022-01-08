@@ -145,3 +145,32 @@ avroSettingsSharedClient.map { avroSettings =>
   (consumerSettings, producerSettings)
 }
 ```
+
+## Vulcan testkit munit
+
+The `@VULCAN_TESTKIT_MUNIT_MODULE_NAME@` module provides an [munit](https://scalameta.org/munit/) fixture for testing vulcan 
+codecs against a [schema registry](https://docs.confluent.io/platform/current/schema-registry/index.html)
+
+A usage example:
+
+```scala mdoc:reset
+import cats.effect.unsafe.implicits.global
+import fs2.kafka.vulcan.SchemaRegistryClientSettings
+import org.apache.avro.SchemaCompatibility.SchemaCompatibilityType
+import fs2.kafka.vulcan.testkit.SchemaSuite
+import vulcan.Codec
+
+class MySpec extends SchemaSuite {
+  val checker = compatibilityChecker(SchemaRegistryClientSettings("https://some-schema-registry:1234"))
+
+  override def munitFixtures = List(checker)
+
+  test("my codec is compatible") {
+    val myCodec: Codec[String] = ???
+
+    val compatibility = checker().checkReaderCompatibility(myCodec, "my-schema-subject").unsafeRunSync()
+
+    assertEquals(compatibility.getType(), SchemaCompatibilityType.COMPATIBLE, compatibility.getResult().getIncompatibilities())
+  }
+}
+```
