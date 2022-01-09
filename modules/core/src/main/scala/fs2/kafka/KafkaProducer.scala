@@ -8,7 +8,6 @@ package fs2.kafka
 
 import cats.Apply
 import cats.effect._
-import cats.effect.concurrent.Deferred
 import cats.implicits._
 import fs2._
 import fs2.kafka.internal._
@@ -17,6 +16,7 @@ import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 import fs2.Chunk
 import cats.Functor
+import cats.effect.Deferred
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
@@ -134,9 +134,7 @@ object KafkaProducer {
   def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
-  ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
+    implicit F: ConcurrentEffect[F]): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducerConnection.resource(settings).evalMap(_.withSerializersFrom(settings))
 
   private[kafka] def from[F[_]: ConcurrentEffect, K, V](
@@ -187,9 +185,7 @@ object KafkaProducer {
     * }}}
     */
   def stream[F[_], K, V](settings: ProducerSettings[F, K, V])(
-    implicit F: ConcurrentEffect[F],
-    context: ContextShift[F]
-  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
+    implicit F: ConcurrentEffect[F]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     Stream.resource(KafkaProducer.resource(settings))
 
   /**
@@ -303,9 +299,7 @@ object KafkaProducer {
       * }}}
       */
     def resource[K, V](settings: ProducerSettings[F, K, V])(
-      implicit F: ConcurrentEffect[F],
-      context: ContextShift[F]
-    ): Resource[F, KafkaProducer[F, K, V]] =
+      implicit F: ConcurrentEffect[F]): Resource[F, KafkaProducer[F, K, V]] =
       KafkaProducer.resource(settings)
 
     /**
@@ -319,9 +313,7 @@ object KafkaProducer {
       * }}}
       */
     def stream[K, V](settings: ProducerSettings[F, K, V])(
-      implicit F: ConcurrentEffect[F],
-      context: ContextShift[F]
-    ): Stream[F, KafkaProducer[F, K, V]] =
+      implicit F: ConcurrentEffect[F]): Stream[F, KafkaProducer[F, K, V]] =
       KafkaProducer.stream(settings)
 
     override def toString: String =

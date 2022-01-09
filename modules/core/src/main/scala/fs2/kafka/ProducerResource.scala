@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift, Resource}
+import cats.effect.{ConcurrentEffect, Resource}
 
 /**
   * [[ProducerResource]] provides support for inferring the key and value
@@ -26,9 +26,7 @@ final class ProducerResource[F[_]] private[kafka] (
     * This is equivalent to using `KafkaProducer.resource` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: ProducerSettings[F, K, V])(
-    implicit context: ContextShift[F]
-  ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
+  def using[K, V](settings: ProducerSettings[F, K, V]): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducer.resource(settings)(F, context)
 
   override def toString: String =
