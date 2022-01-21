@@ -7,12 +7,13 @@
 package fs2.kafka
 
 import cats.effect.syntax.all._
-import cats.effect.{Async, Resource, Outcome}
+import cats.effect.{Async, Outcome, Resource}
 import cats.syntax.all._
 import fs2.kafka.internal._
 import scala.jdk.CollectionConverters._
 import fs2.kafka.producer.MkProducer
 import fs2.{Chunk, Stream}
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 
@@ -113,7 +114,7 @@ object TransactionalKafkaProducer {
                         blocking {
                           producer.sendOffsetsToTransaction(
                             batch.offsets.asJava,
-                            groupId
+                            new ConsumerGroupMetadata(groupId)
                           )
                         }
                       }

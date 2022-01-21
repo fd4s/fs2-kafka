@@ -7,6 +7,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord.{NULL_SIZE, NO_TIMESTAMP
 import org.apache.kafka.common.record.TimestampType
 import org.apache.kafka.common.record.TimestampType._
 import org.scalatest._
+import scala.jdk.OptionConverters._
 
 final class ConsumerRecordSpec extends BaseSpec {
   describe("ConsumerRecord#fromJava") {
@@ -18,14 +19,15 @@ final class ConsumerRecordSpec extends BaseSpec {
           new KafkaByteConsumerRecord(
             "topic",
             0,
-            1,
+            1L,
             timestamp,
             timestampType,
-            2,
             3,
             4,
             "key".getBytes,
-            "value".getBytes
+            "value".getBytes,
+            Headers.empty.asJava,
+            none[Integer].toJava
           )
 
         f(
@@ -55,11 +57,12 @@ final class ConsumerRecordSpec extends BaseSpec {
             1,
             NO_TIMESTAMP,
             NO_TIMESTAMP_TYPE,
-            2,
             serializedKeySize,
             4,
             "key".getBytes,
-            "value".getBytes
+            "value".getBytes,
+            Headers.empty.asJava,
+            none[Integer].toJava
           )
 
         f(
@@ -84,11 +87,12 @@ final class ConsumerRecordSpec extends BaseSpec {
             1,
             NO_TIMESTAMP,
             NO_TIMESTAMP_TYPE,
-            2,
             3,
             serializedValueSize,
             "key".getBytes,
-            "value".getBytes
+            "value".getBytes,
+            Headers.empty.asJava,
+            none[Integer].toJava
           )
 
         f(
@@ -113,15 +117,12 @@ final class ConsumerRecordSpec extends BaseSpec {
             1,
             NO_TIMESTAMP,
             NO_TIMESTAMP_TYPE,
-            2,
             3,
             4,
             "key".getBytes,
             "value".getBytes,
             Headers.empty.asJava,
-            if (leaderEpoch.nonEmpty)
-              java.util.Optional.of[java.lang.Integer](leaderEpoch.get)
-            else java.util.Optional.empty()
+            leaderEpoch.map(i => i: Integer).toJava
           )
 
         f(

@@ -8,14 +8,12 @@ package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
-import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import scala.jdk.CollectionConverters._
 import java.util
-import java.util.concurrent.{CancellationException, CompletionException}
 import org.apache.kafka.common.KafkaFuture
-import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
+import org.apache.kafka.common.KafkaFuture.BaseFunction
 import scala.collection.immutable.{ArraySeq, SortedSet}
 
 private[kafka] object syntax {
@@ -165,8 +163,7 @@ private[kafka] object syntax {
   implicit final class KafkaFutureSyntax[A](
     private val future: KafkaFuture[A]
   ) extends AnyVal {
-    private[this] def baseFunction[B](f: A => B): BaseFunction[A, B] =
-      new BaseFunction[A, B] { override def apply(a: A): B = f(a) }
+    private[this] def baseFunction[B](f: A => B): BaseFunction[A, B] = f(_)
 
     def map[B](f: A => B): KafkaFuture[B] =
       future.thenApply(baseFunction(f))
@@ -174,25 +171,8 @@ private[kafka] object syntax {
     def void: KafkaFuture[Unit] =
       map(_ => ())
 
-    def cancelToken[F[_]](implicit F: Async[F]): F[Option[F[Unit]]] =
-      F.blocking { future.cancel(true); () }.start.map(_.cancel.some)
-
-    // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
     def cancelable[F[_]](implicit F: Async[F]): F[A] =
-      F.async { (cb: (Either[Throwable, A] => Unit)) =>
-        F.blocking {
-            future
-              .whenComplete(new BiConsumer[A, Throwable] {
-                override def accept(a: A, t: Throwable): Unit = t match {
-                  case null                                         => cb(a.asRight)
-                  case _: CancellationException                     => ()
-                  case e: CompletionException if e.getCause != null => cb(e.getCause.asLeft)
-                  case e                                            => cb(e.asLeft)
-                }
-              })
-          }
-          .flatMap(_.cancelToken)
-      }
+      F.fromCompletableFuture(F.delay(future.toCompletionStage.toCompletableFuture))
   }
 
   implicit final class KafkaHeadersSyntax(
