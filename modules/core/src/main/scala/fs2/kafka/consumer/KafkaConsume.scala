@@ -58,13 +58,16 @@ trait KafkaConsume[F[_], K, V] {
     * assignment is the `Map`, where keys is a `TopicPartition`, and values are
     * streams with records for a particular `TopicPartition`.<br>
     * <br>
-    * New assignments will be received on each rebalance. On rebalance,
-    * Kafka revoke all previously assigned partitions, and after that assigned
-    * new partitions all at once. `partitionsMapStream` reflects this process
-    * in a streaming manner.<br>
+    * New assignments will be received on each rebalance. By default, Kafka
+    * revokes all previously assigned partitions on rebalance, and a new set of
+    * partitions is then assigned all at once. `partitionsMapStream` reflects
+    * this process in a streaming manner.<br>
     * <br>
-    * Note, that partition streams for revoked partitions will
-    * be closed after the new assignment comes.<br>
+    * Note, that partition streams for revoked partitions will be closed after
+    * the new assignment comes. This is the case also when using Kafka's
+    * `CooperativeStickyAssignor`, partitions that are not revoked will also see
+    * their streams closed, and new streams created with the next assignment
+    * map<br>
     * <br>
     * This is the most generic `Stream` method. If you don't need such control,
     * consider using `partitionedStream` or `stream` methods.
