@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{Blocker, Sync}
+import cats.effect.Sync
 import cats.Show
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.security.KafkaCredentialStore
@@ -427,7 +427,7 @@ object ConsumerSettings {
     override val maxPrefetchBatches: Int,
     val createConsumerWith: Map[String, String] => F[KafkaByteConsumer]
   ) extends ConsumerSettings[F, K, V] {
-    override def withBlocker(blocker: Blocker): ConsumerSettings[F, K, V] =
+    override def withBlocker: ConsumerSettings[F, K, V] =
       copy(blocker = Some(blocker))
 
     override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[F, K, V] =

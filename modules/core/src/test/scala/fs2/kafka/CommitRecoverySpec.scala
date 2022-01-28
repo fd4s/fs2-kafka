@@ -1,13 +1,13 @@
 package fs2.kafka
 
 import cats.data.Chain
-import cats.effect.concurrent.Ref
-import cats.effect.{Clock, IO, Timer}
+import cats.effect.{Clock, IO}
 import cats.syntax.functor._
 import org.apache.kafka.clients.consumer.{OffsetAndMetadata, RetriableCommitFailedException}
 import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.duration.{FiniteDuration, TimeUnit}
+import cats.effect.{ Ref, Temporal }
 
 final class CommitRecoverySpec extends BaseAsyncSpec {
   describe("CommitRecovery#Default") {
@@ -16,7 +16,7 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
         Ref
           .of[IO, Chain[FiniteDuration]](Chain.empty)
           .flatMap { ref =>
-            implicit val timer: Timer[IO] = storeSleepsTimer(ref)
+            implicit val timer: Temporal[IO] = storeSleepsTimer(ref)
             val commit: IO[Unit] = IO.raiseError(new RetriableCommitFailedException("retriable"))
             val offsets = Map(new TopicPartition("topic", 0) -> new OffsetAndMetadata(1))
             val recovery = CommitRecovery.Default.recoverCommitWith(offsets, commit)
@@ -74,8 +74,8 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
   implicit val jitter: Jitter[IO] =
     Jitter.default[IO].unsafeRunSync()
 
-  private def storeSleepsTimer(ref: Ref[IO, Chain[FiniteDuration]]): Timer[IO] =
-    new Timer[IO] {
+  private def storeSleepsTimer(ref: Ref[IO, Chain[FiniteDuration]]): Temporal[IO] =
+    new Temporal[IO] {
       override def clock: Clock[IO] = new Clock[IO] {
         override def realTime(unit: TimeUnit): IO[Long] =
           IO.raiseError(new RuntimeException("clock#realTime"))

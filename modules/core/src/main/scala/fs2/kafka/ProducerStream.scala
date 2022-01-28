@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift}
+import cats.effect.ConcurrentEffect
 import fs2.Stream
 
 /**
@@ -27,9 +27,7 @@ final class ProducerStream[F[_]] private[kafka] (
     * This is equivalent to using `KafkaProducer.stream` directly,
     * except we're able to infer the key and value type.
     */
-  def using[K, V](settings: ProducerSettings[F, K, V])(
-    implicit context: ContextShift[F]
-  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
+  def using[K, V](settings: ProducerSettings[F, K, V]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducer.stream(settings)(F, context)
 
   override def toString: String =

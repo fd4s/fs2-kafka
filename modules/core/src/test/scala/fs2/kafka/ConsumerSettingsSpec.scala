@@ -1,9 +1,10 @@
 package fs2.kafka
 
-import cats.effect.{Blocker, IO}
+import cats.effect.IO
 import cats.implicits._
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import scala.concurrent.duration._
+import cats.effect.Resource
 
 final class ConsumerSettingsSpec extends BaseSpec {
   describe("ConsumerSettings") {
@@ -316,7 +317,7 @@ final class ConsumerSettingsSpec extends BaseSpec {
     )
 
   val settingWithBlocker =
-    Blocker[IO].map { blocker =>
+    Resource.unit[IO].map { blocker =>
       ConsumerSettings[IO, String, String]
         .withBlocker(blocker)
     }

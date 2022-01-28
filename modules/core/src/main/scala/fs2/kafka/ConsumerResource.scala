@@ -6,7 +6,8 @@
 
 package fs2.kafka
 
-import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
+import cats.effect.{ConcurrentEffect, Resource}
+import cats.effect.Temporal
 
 /**
   * [[ConsumerResource]] provides support for inferring the key and value
@@ -27,8 +28,8 @@ final class ConsumerResource[F[_]] private[kafka] (
     * except we're able to infer the key and value type.
     */
   def using[K, V](settings: ConsumerSettings[F, K, V])(
-    implicit context: ContextShift[F],
-    timer: Timer[F]
+    implicit
+    timer: Temporal[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     KafkaConsumer.resource(settings)(F, context, timer)
 

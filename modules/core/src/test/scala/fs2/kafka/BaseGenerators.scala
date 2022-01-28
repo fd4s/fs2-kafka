@@ -14,6 +14,7 @@ import cats.data.Chain
 import cats.laws.discipline.arbitrary._
 import fs2.Chunk
 import org.scalacheck.rng.Seed
+import cats.ApplicativeThrow
 
 trait BaseGenerators {
 
