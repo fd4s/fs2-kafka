@@ -211,18 +211,18 @@ object KafkaConsumer {
 
         def enqueueAssignment(
           streamId: StreamId,
-          assigned: SortedSet[TopicPartition],
-          partitionsMapQueue: PartitionsMapQueue,
-          assignmentRevoked: F[Unit]
+          assigned: Map[TopicPartition, Deferred[F, Unit]],
+          partitionsMapQueue: PartitionsMapQueue
         ): F[Unit] = {
           val assignment: F[PartitionsMap] = if (assigned.isEmpty) {
             F.pure(Map.empty)
           } else {
             assigned.toVector
-              .traverse { partition =>
-                createPartitionStream(streamId, partition, assignmentRevoked).map { stream =>
-                  partition -> stream
-                }
+              .traverse {
+                case (partition, finisher) =>
+                  createPartitionStream(streamId, partition, finisher.get).map { stream =>
+                    partition -> stream
+                  }
               }
               .map(_.toMap)
           }
@@ -239,28 +239,32 @@ object KafkaConsumer {
 
         def onRebalance(
           streamId: StreamId,
-          assignmentRef: Ref[F, SortedSet[TopicPartition]],
-          prevAssignmentFinisherRef: Ref[F, Deferred[F, Unit]],
+          assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
           partitionsMapQueue: PartitionsMapQueue
         ): OnRebalance[F] =
           OnRebalance(
             onRevoked = revoked => {
               for {
-                _ <- assignmentRef.update(_ -- revoked)
-                newFinisher <- Deferred[F, Unit]
-                prevAssignmentFinisher <- prevAssignmentFinisherRef.getAndSet(newFinisher)
-                _ <- prevAssignmentFinisher.complete(())
+                finishers <- assignmentRef.modify(_.partition(entry => !revoked.contains(entry._1)))
+                _ <- finishers.toVector
+                  .traverse {
+                    case (_, finisher) =>
+                      finisher.complete(())
+                  }
               } yield ()
             },
-            onAssigned = assigned => {
+            onAssigned = assignedPartitions => {
               for {
-                assignment <- assignmentRef.updateAndGet(_ ++ assigned)
-                prevAssignmentFinisher <- prevAssignmentFinisherRef.get
+                assignment <- assignedPartitions.toVector
+                  .traverse { partition =>
+                    Deferred[F, Unit].map(partition -> _)
+                  }
+                  .map(_.toMap)
+                _ <- assignmentRef.update(_ ++ assignment)
                 _ <- enqueueAssignment(
                   streamId = streamId,
                   assigned = assignment,
-                  partitionsMapQueue = partitionsMapQueue,
-                  assignmentRevoked = prevAssignmentFinisher.get
+                  partitionsMapQueue = partitionsMapQueue
                 )
               } yield ()
             }
@@ -268,10 +272,9 @@ object KafkaConsumer {
 
         def requestAssignment(
           streamId: StreamId,
-          assignmentRef: Ref[F, SortedSet[TopicPartition]],
-          prevAssignmentFinisherRef: Ref[F, Deferred[F, Unit]],
+          assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
           partitionsMapQueue: PartitionsMapQueue
-        ): F[SortedSet[TopicPartition]] =
+        ): F[Map[TopicPartition, Deferred[F, Unit]]] =
           Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
             val request =
               Request.Assignment[F](
@@ -280,34 +283,36 @@ object KafkaConsumer {
                   onRebalance(
                     streamId,
                     assignmentRef,
-                    prevAssignmentFinisherRef,
                     partitionsMapQueue
                   )
                 )
               )
             val assignment = requests.offer(request) >> deferred.get.rethrow
-            F.race(awaitTermination.attempt, assignment).map {
-              case Left(_)         => SortedSet.empty[TopicPartition]
-              case Right(assigned) => assigned
+            F.race(awaitTermination.attempt, assignment).flatMap {
+              case Left(_) =>
+                F.pure(Map.empty)
+
+              case Right(assigned) =>
+                assigned.toVector
+                  .traverse { partition =>
+                    Deferred[F, Unit].map(partition -> _)
+                  }
+                  .map(_.toMap)
             }
           }
 
         def initialEnqueue(
           streamId: StreamId,
-          assignmentRef: Ref[F, SortedSet[TopicPartition]],
-          prevAssignmentFinisherRef: Ref[F, Deferred[F, Unit]],
+          assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
           partitionsMapQueue: PartitionsMapQueue
         ): F[Unit] =
           for {
-            prevAssignmentFinisher <- prevAssignmentFinisherRef.get
             assigned <- requestAssignment(
               streamId,
               assignmentRef,
-              prevAssignmentFinisherRef,
               partitionsMapQueue
             )
-            assignmentRevoked = prevAssignmentFinisher.get
-            _ <- enqueueAssignment(streamId, assigned, partitionsMapQueue, assignmentRevoked)
+            _ <- enqueueAssignment(streamId, assigned, partitionsMapQueue)
           } yield ()
 
         Stream.eval(stopConsumingDeferred.tryGet).flatMap {
@@ -315,15 +320,12 @@ object KafkaConsumer {
             for {
               partitionsMapQueue <- Stream.eval(Queue.unbounded[F, Option[PartitionsMap]])
               streamId <- Stream.eval(streamIdRef.modify(n => (n + 1, n)))
-              assignmentRef <- Stream.eval(Ref[F].of(SortedSet.empty[TopicPartition]))
-              prevAssignmentFinisher <- Stream.eval(Deferred[F, Unit])
-              prevAssignmentFinisherRef <- Stream.eval(Ref[F].of(prevAssignmentFinisher))
+              assignmentRef <- Stream.eval(Ref[F].of(Map.empty[TopicPartition, Deferred[F, Unit]]))
               _ <- Stream
                 .eval(
                   initialEnqueue(
                     streamId,
                     assignmentRef,
-                    prevAssignmentFinisherRef,
                     partitionsMapQueue
                   )
                 )

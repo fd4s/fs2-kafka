@@ -54,24 +54,26 @@ trait KafkaConsume[F[_], K, V] {
   def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
 
   /**
-    * `Stream` where each element contains a current assignment. The current
-    * assignment is the `Map`, where keys is a `TopicPartition`, and values are
-    * streams with records for a particular `TopicPartition`.<br>
+    * `Stream` where each element contains an assignment. Each assignment is
+    * `Map`, where keys are `TopicPartition`s, and values are record streams for
+    * the `TopicPartition`.<br>
     * <br>
-    * New assignments will be received on each rebalance. By default, Kafka
-    * revokes all previously assigned partitions on rebalance, and a new set of
-    * partitions is then assigned all at once. `partitionsMapStream` reflects
-    * this process in a streaming manner.<br>
+    * With the default assignor, previous partition assignments are revoked at
+    * once, and a new set of partitions assigned to a consumer on each
+    * rebalance. In this case, each returned map contains the full partition
+    * assignment for the consumer. `partitionsMapStream` reflects the assignment
+    * process in a streaming manner.<br>
     * <br>
-    * Note, that partition streams for revoked partitions will be closed after
-    * the new assignment comes. This is the case also when using Kafka's
-    * `CooperativeStickyAssignor`, partitions that are not revoked will also see
-    * their streams closed, and new streams created with the next assignment
-    * map<br>
+    * This may not be the case when a custom assignor is configured in the
+    * consumer. When using the `CooperativeStickyAssignor`, for instance,
+    * partition assignments may be revoked individually. In this case, each
+    * element in the stream will contain only streams for newly assigned
+    * partitions. Streams returned previously will remain active until the
+    * assignment is revoked.<br>
     * <br>
     * This is the most generic `Stream` method. If you don't need such control,
-    * consider using `partitionedStream` or `stream` methods.
-    * They are both based on a `partitionsMapStream`.
+    * consider using `partitionedStream` or `stream` methods. They are both
+    * based on a `partitionsMapStream`.
     *
     * @note you have to first use `subscribe` to subscribe the consumer
     *       before using this `Stream`. If you forgot to subscribe, there

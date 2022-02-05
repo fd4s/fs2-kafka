@@ -614,13 +614,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           assert {
             keys.size.toLong == producedTotal &&
             keys.values.sum == 236 &&
-            consumer1assignments.size == 3 &&
+            consumer1assignments.size == 1 &&
             consumer1assignments(0) == Set(0, 1, 2) &&
-            consumer1assignments(1) == Set(0, 1) &&
-            consumer1assignments(2) == Set(0, 1) &&
             consumer2assignments.size == 1 &&
-            consumer2assignments(0) == Set(2) &&
-            consumer1assignments(1) ++ consumer2assignments(0) == Set(0, 1, 2)
+            consumer2assignments(0) == Set(2)
           }
         }).unsafeRunSync()
       }
