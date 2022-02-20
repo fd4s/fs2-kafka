@@ -9,7 +9,7 @@ import cats.effect.unsafe.implicits.global
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
+import org.apache.kafka.clients.consumer.{ConsumerConfig, CooperativeStickyAssignor, NoOffsetForPartitionException}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.TimeoutException
 import org.scalatest.Assertion
@@ -516,6 +516,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               }
             }
             .takeWhile(_.size < 200)
+            .timeout(20.seconds)
             .compile
             .drain
             .guarantee(stopSignal.set(true))
@@ -535,6 +536,88 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             consumer2assignments.size == 1 &&
             consumer2assignments(0).size < 3 &&
             consumer1assignments(1) ++ consumer2assignments(0) == Set(0, 1, 2)
+          }
+        }).unsafeRunSync()
+      }
+    }
+
+    it("should handle rebalance with CooperativeStickyAssignor") {
+      withTopic { topic =>
+        createCustomTopic(topic, partitions = 3)
+        val produced1 = (0 until 100).map(n => s"key-$n" -> s"value->$n")
+        val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
+        val producedTotal = produced1.size.toLong + produced2.size.toLong
+
+        def startConsumer(
+          consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
+          stopSignal: SignallingRef[IO, Boolean]
+        ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] =
+          Ref[IO]
+            .of(Vector.empty[Set[Int]])
+            .flatMap { assignedPartitionsRef =>
+              KafkaConsumer
+                .stream(
+                  consumerSettings[IO]
+                    .withProperties(
+                      ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[CooperativeStickyAssignor].getName
+                    )
+                )
+                .subscribeTo(topic)
+                .flatMap(_.partitionsMapStream)
+                .filter(_.nonEmpty)
+                .evalMap { assignment =>
+                  assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
+                    Stream
+                      .emits(assignment.map {
+                        case (_, stream) =>
+                          stream.evalMap(consumedQueue.offer)
+                      }.toList)
+                      .covary[IO]
+                  }
+                }
+                .flatten
+                .parJoinUnbounded
+                .interruptWhen(stopSignal)
+                .compile
+                .drain >> assignedPartitionsRef.get
+            }
+            .start
+
+        (for {
+          stopSignal <- SignallingRef[IO, Boolean](false)
+          queue <- Queue.unbounded[IO, CommittableConsumerRecord[IO, String, String]]
+          ref <- Ref.of[IO, Map[String, Int]](Map.empty)
+          fiber1 <- startConsumer(queue, stopSignal)
+          _ <- IO.sleep(5.seconds)
+          _ <- IO(publishToKafka(topic, produced1))
+          fiber2 <- startConsumer(queue, stopSignal)
+          _ <- IO.sleep(5.seconds)
+          _ <- IO(publishToKafka(topic, produced2))
+          _ <- Stream
+            .fromQueueUnterminated(queue)
+            .evalMap { committable =>
+              ref.modify { counts =>
+                val key = committable.record.key
+                val newCounts = counts.updated(key, counts.getOrElse(key, 0) + 1)
+                (newCounts, newCounts)
+              }
+            }
+            .takeWhile(_.size < 200)
+            .timeout(20.seconds)
+            .compile
+            .drain
+            .guarantee(stopSignal.set(true))
+          consumer1assignments <- fiber1.joinWithNever
+          consumer2assignments <- fiber2.joinWithNever
+          keys <- ref.get
+        } yield {
+          assert {
+            keys.size.toLong == producedTotal &&
+            keys.values.sum == 236 &&
+            consumer1assignments.size == 1 &&
+            consumer1assignments(0) == Set(0, 1, 2) &&
+            consumer2assignments.size == 1 &&
+            consumer2assignments(0) == Set(2)
           }
         }).unsafeRunSync()
       }
@@ -698,10 +781,69 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             consumer1Updates(2).isEmpty &&
             consumer1Updates(3).size < 3 &&
             // Startup assignments (zero), initial assignments (< 3)
-            consumer2Updates.length == 2
+            consumer2Updates.length == 2 &&
             consumer2Updates.head.isEmpty &&
             consumer2Updates(1).size < 3 &&
             (consumer1Updates(3) ++ consumer2Updates(1)) == consumer1Updates(1)
+          }))
+        } yield ()).compile.drain.unsafeRunSync()
+      }
+    }
+
+    it("should stream assignment updates to listeners when using CooperativeStickyAssignor") {
+      withTopic { topic =>
+        createCustomTopic(topic, partitions = 3)
+
+        val consumer =
+          for {
+            queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
+            _ <- KafkaConsumer
+              .stream(
+                consumerSettings[IO]
+                  .withProperties(
+                    ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[CooperativeStickyAssignor].getName
+                  )
+
+              )
+              .subscribeTo(topic)
+              .evalMap { consumer =>
+                consumer.assignmentStream
+                  .concurrently(consumer.records)
+                  .evalMap(as => queue.offer(Some(as)))
+                  .compile
+                  .drain
+                  .start
+                  .void
+              }
+          } yield {
+            queue
+          }
+
+        (for {
+          queue1 <- consumer
+          _ <- Stream.eval(IO.sleep(5.seconds))
+          queue2 <- consumer
+          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- Stream.eval(queue1.offer(None))
+          _ <- Stream.eval(queue2.offer(None))
+          consumer1Updates <- Stream.eval(
+            Stream.fromQueueNoneTerminated(queue1).compile.toList
+          )
+          consumer2Updates <- Stream.eval(
+            Stream.fromQueueNoneTerminated(queue2).compile.toList
+          )
+          _ <- Stream.eval(IO(assert {
+            // Startup assignment (zero), initial assignment (all partitions),
+            // minimal revocation when 2nd joins (keep two)
+            consumer1Updates.length == 3 &&
+            consumer1Updates.head.isEmpty &&
+            consumer1Updates(1).size == 3 &&
+            consumer1Updates(2).size == 2 &&
+            // Startup assignments (zero), initial assignments (one)
+            consumer2Updates.length == 2 &&
+            consumer2Updates.head.isEmpty &&
+            consumer2Updates(1).size == 1 &&
+            (consumer1Updates(2) ++ consumer2Updates(1)) == consumer1Updates(1)
           }))
         } yield ()).compile.drain.unsafeRunSync()
       }
