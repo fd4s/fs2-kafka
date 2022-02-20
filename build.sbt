@@ -1,22 +1,20 @@
-val catsEffectVersion = "2.5.3"
+val catsEffectVersion = "2.5.4"
 
-val catsVersion = "2.6.1"
+val confluentVersion = "6.2.2"
 
-val confluentVersion = "6.2.0"
+val fs2Version = "2.5.10"
 
-val fs2Version = "2.5.9"
+val kafkaVersion = "2.8.1"
 
-val kafkaVersion = "2.8.0"
-
-val testcontainersScalaVersion = "0.39.5"
+val testcontainersScalaVersion = "0.40.0"
 
 val vulcanVersion = "1.7.1"
 
 val munitVersion = "0.7.29"
 
-val scala212 = "2.12.14"
+val scala212 = "2.12.15"
 
-val scala213 = "2.13.6"
+val scala213 = "2.13.8"
 
 val scala3 = "3.0.1"
 
@@ -107,14 +105,14 @@ lazy val dependencySettings = Seq(
       .cross(CrossVersion.for3Use2_13),
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.5"
+    "ch.qos.logback" % "logback-classic" % "1.2.10"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
     else
       Seq(
         compilerPlugin(
-          ("org.typelevel" %% "kind-projector" % "0.13.0")
+          ("org.typelevel" %% "kind-projector" % "0.13.2")
             .cross(CrossVersion.full)
         )
       )
