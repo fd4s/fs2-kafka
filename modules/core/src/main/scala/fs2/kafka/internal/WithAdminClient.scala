@@ -6,7 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Blocker, Concurrent, ContextShift, Resource}
+import cats.effect.{Concurrent, Resource}
 import cats.implicits._
 import fs2.kafka.AdminClientSettings
 import fs2.kafka.internal.syntax._
@@ -21,9 +21,7 @@ private[kafka] object WithAdminClient {
   def apply[F[_]](
     settings: AdminClientSettings[F]
   )(
-    implicit F: Concurrent[F],
-    context: ContextShift[F]
-  ): Resource[F, WithAdminClient[F]] = {
+    implicit F: Concurrent[F]): Resource[F, WithAdminClient[F]] = {
     val blockerResource =
       settings.blocker
         .map(Resource.pure[F, Blocker])
