@@ -6,9 +6,10 @@
 
 package fs2.kafka
 
-import cats.MonadError
+import cats.{Applicative, ApplicativeThrow, Apply, FlatMap, Functor, MonadError, MonadThrow}
 import cats.effect.Sync
 import cats.syntax.all._
+
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
@@ -29,40 +30,44 @@ sealed abstract class Deserializer[F[_], A] {
     * Creates a new [[Deserializer]] which applies the specified
     * function to the result of this [[Deserializer]].
     */
-  def map[B](f: A => B): Deserializer[F, B]
+  def map[B](f: A => B)(implicit F: Functor[F]): Deserializer[F, B]
 
   /**
     * Creates a new [[Deserializer]] by first deserializing
     * with this [[Deserializer]] and then using the result
     * as input to the specified function.
     */
-  def flatMap[B](f: A => Deserializer[F, B]): Deserializer[F, B]
+  def flatMap[B](f: A => Deserializer[F, B])(implicit F: FlatMap[F]): Deserializer[F, B]
+
+  def semiflatMap[B](f: A => F[B])(implicit F: FlatMap[F]): Deserializer[F, B]
 
   /**
     * Creates a new [[Deserializer]] which deserializes both using
     * this [[Deserializer]] and that [[Deserializer]], and returns
     * both results in a tuple.
     */
-  def product[B](that: Deserializer[F, B]): Deserializer[F, (A, B)]
+  def product[B](that: Deserializer[F, B])(implicit F: Apply[F]): Deserializer[F, (A, B)]
 
   /**
     * Creates a new [[Deserializer]] which handles errors by
     * turning them into `Either` values.
     */
-  def attempt: Deserializer[F, Either[Throwable, A]]
+  def attempt(implicit F: ApplicativeThrow[F]): Deserializer[F, Either[Throwable, A]]
 
   /**
     * Creates a new [[Deserializer]] which returns `None` when the
     * bytes are `null`, and otherwise returns the result of this
     * [[Deserializer]] wrapped in `Some`.
     */
-  def option: Deserializer[F, Option[A]]
+  def option(implicit F: Applicative[F]): Deserializer[F, Option[A]]
 
   /**
     * Creates a new [[Deserializer]] which suspends deserialization,
     * capturing any impure behaviours of this [[Deserializer]].
     */
-  def suspend: Deserializer[F, A]
+  def suspend(implicit F: Sync[F]): Deserializer[F, A]
+
+  def catchNonFatal(implicit F: MonadThrow[F]): Deserializer[F, A]
 }
 
 object Deserializer {
@@ -75,7 +80,7 @@ object Deserializer {
     * Creates a new [[Deserializer]] which deserializes
     * all bytes to the specified value of type `A`.
     */
-  def const[F[_], A](a: A)(implicit F: Sync[F]): Deserializer[F, A] =
+  def const[F[_], A](a: A)(implicit F: Applicative[F]): Deserializer[F, A] =
     Deserializer.lift(_ => F.pure(a))
 
   /**
@@ -89,7 +94,7 @@ object Deserializer {
     */
   def delegate[F[_], A](
     deserializer: KafkaDeserializer[A]
-  )(implicit F: Sync[F]): Deserializer[F, A] =
+  )(implicit F: Applicative[F]): Deserializer[F, A] =
     Deserializer.instance { (topic, headers, bytes) =>
       F.pure(deserializer.deserialize(topic, headers.asJava, bytes))
     }
@@ -99,7 +104,7 @@ object Deserializer {
     * deserialization with the specified exception `e`.
     */
   def fail[F[_], A](e: Throwable)(
-    implicit F: Sync[F]
+    implicit F: ApplicativeThrow[F]
   ): Deserializer[F, A] =
     Deserializer.lift(_ => F.raiseError(e))
 
@@ -108,14 +113,14 @@ object Deserializer {
     * deserialization with a [[DeserializationException]]
     * using the specified message.
     */
-  def failWith[F[_], A](message: String)(implicit F: Sync[F]): Deserializer[F, A] =
+  def failWith[F[_], A](message: String)(implicit F: ApplicativeThrow[F]): Deserializer[F, A] =
     Deserializer.fail(DeserializationException(message))
 
   /**
     * Creates a new [[Deserializer]] which can use different
     * [[Deserializer]]s depending on the record headers.
     */
-  def headers[F[_], A](f: Headers => Deserializer[F, A])(implicit F: Sync[F]): Deserializer[F, A] =
+  def headers[F[_], A](f: Headers => Deserializer[F, A]): Deserializer[F, A] =
     Deserializer.instance { (topic, headers, bytes) =>
       f(headers).deserialize(topic, headers, bytes)
     }
@@ -127,46 +132,60 @@ object Deserializer {
     */
   def instance[F[_], A](
     f: (String, Headers, Array[Byte]) => F[A]
-  )(implicit F: Sync[F]): Deserializer[F, A] =
+  ): Deserializer[F, A] =
     new Deserializer[F, A] {
       override def deserialize(topic: String, headers: Headers, bytes: Array[Byte]): F[A] =
         f(topic, headers, bytes)
 
-      override def map[B](f: A => B): Deserializer[F, B] =
+      override def map[B](f: A => B)(implicit F: Functor[F]): Deserializer[F, B] =
         Deserializer.instance { (topic, headers, bytes) =>
           deserialize(topic, headers, bytes).map(f)
         }
 
-      override def flatMap[B](f: A => Deserializer[F, B]): Deserializer[F, B] =
+      override def flatMap[B](
+        f: A => Deserializer[F, B]
+      )(implicit F: FlatMap[F]): Deserializer[F, B] =
         Deserializer.instance { (topic, headers, bytes) =>
           deserialize(topic, headers, bytes).flatMap { a =>
             f(a).deserialize(topic, headers, bytes)
           }
         }
 
-      override def product[B](that: Deserializer[F, B]): Deserializer[F, (A, B)] =
+      def semiflatMap[B](f: A => F[B])(implicit F: FlatMap[F]): Deserializer[F, B] =
+        Deserializer.instance(
+          (topic, headers, bytes) => deserialize(topic, headers, bytes).flatMap(f)
+        )
+
+      override def product[B](
+        that: Deserializer[F, B]
+      )(implicit F: Apply[F]): Deserializer[F, (A, B)] =
         Deserializer.instance { (topic, headers, bytes) =>
           val a = deserialize(topic, headers, bytes)
           val b = that.deserialize(topic, headers, bytes)
           a product b
         }
 
-      override def attempt: Deserializer[F, Either[Throwable, A]] =
+      override def attempt(implicit F: ApplicativeThrow[F]): Deserializer[F, Either[Throwable, A]] =
         Deserializer.instance { (topic, headers, bytes) =>
           deserialize(topic, headers, bytes).attempt
         }
 
-      override def option: Deserializer[F, Option[A]] =
+      override def option(implicit F: Applicative[F]): Deserializer[F, Option[A]] =
         Deserializer.instance { (topic, headers, bytes) =>
           if (bytes != null)
             deserialize(topic, headers, bytes).map(Some.apply)
           else
-            F.pure(None)
+            F.pure[Option[A]](None)
         }
 
-      override def suspend: Deserializer[F, A] =
+      override def suspend(implicit F: Sync[F]): Deserializer[F, A] =
         Deserializer.instance { (topic, headers, bytes) =>
           F.defer(deserialize(topic, headers, bytes))
+        }
+
+      override def catchNonFatal(implicit F: MonadThrow[F]): Deserializer[F, A] =
+        Deserializer.instance { (topic, headers, bytes) =>
+          F.catchNonFatal(deserialize(topic, headers, bytes)).flatten
         }
 
       override def toString: String =
@@ -180,8 +199,13 @@ object Deserializer {
     * deserializer needs access to the Kafka topic
     * name or the record headers.
     */
-  def lift[F[_], A](f: Array[Byte] => F[A])(implicit F: Sync[F]): Deserializer[F, A] =
+  def lift[F[_], A](f: Array[Byte] => F[A]): Deserializer[F, A] =
     Deserializer.instance((_, _, bytes) => f(bytes))
+
+  def catchNonFatal[F[_], A](
+    f: Array[Byte] => A
+  )(implicit F: ApplicativeThrow[F]): Deserializer[F, A] =
+    lift(bytes => F.catchNonFatal(f(bytes)))
 
   private[this] def unexpectedTopic[F[_], A](implicit F: Sync[F]): String => Deserializer[F, A] =
     topic => Deserializer.fail(UnexpectedTopicException(topic))
@@ -204,22 +228,22 @@ object Deserializer {
     * values using the specified `Charset`. Note that the
     * default `String` deserializer uses `UTF-8`.
     */
-  def string[F[_]](charset: Charset)(implicit F: Sync[F]): Deserializer[F, String] =
-    Deserializer.lift(bytes => F.pure(new String(bytes, charset)))
+  def string[F[_]](charset: Charset)(implicit F: ApplicativeThrow[F]): Deserializer[F, String] =
+    Deserializer.catchNonFatal(bytes => new String(bytes, charset))
 
   /**
     * Creates a new [[Deserializer]] which deserializes `String`
     * values using the specified `Charset` as `UUID`s. Note that
     * the default `UUID` deserializer uses `UTF-8`.
     */
-  def uuid[F[_]](charset: Charset)(implicit F: Sync[F]): Deserializer[F, UUID] =
-    Deserializer.string[F](charset).map(UUID.fromString).suspend
+  def uuid[F[_]](charset: Charset)(implicit F: MonadThrow[F]): Deserializer[F, UUID] =
+    Deserializer.string[F](charset).semiflatMap(s => F.catchNonFatal(UUID.fromString(s)))
 
   /**
     * The identity [[Deserializer]], which does not perform any kind
     * of deserialization, simply using the input bytes as the output.
     */
-  implicit def identity[F[_]](implicit F: Sync[F]): Deserializer[F, Array[Byte]] =
+  implicit def identity[F[_]](implicit F: Applicative[F]): Deserializer[F, Array[Byte]] =
     Deserializer.lift(bytes => F.pure(bytes))
 
   /**
@@ -228,7 +252,8 @@ object Deserializer {
     * the type `A`, wrapping the result in `Some`.
     */
   implicit def option[F[_], A](
-    implicit deserializer: Deserializer[F, A]
+    implicit deserializer: Deserializer[F, A],
+    F: Applicative[F]
   ): Deserializer[F, Option[A]] =
     deserializer.option
 
@@ -271,52 +296,52 @@ object Deserializer {
         Deserializer.fail(e)
     }
 
-  implicit def double[F[_]](implicit F: Sync[F]): Deserializer[F, Double] =
+  implicit def double[F[_]](implicit F: MonadThrow[F]): Deserializer[F, Double] =
     Deserializer
       .delegate[F, Double] {
         (new org.apache.kafka.common.serialization.DoubleDeserializer)
           .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Double]]
       }
-      .suspend
+      .catchNonFatal
 
-  implicit def float[F[_]](implicit F: Sync[F]): Deserializer[F, Float] =
+  implicit def float[F[_]](implicit F: MonadThrow[F]): Deserializer[F, Float] =
     Deserializer
       .delegate[F, Float] {
         (new org.apache.kafka.common.serialization.FloatDeserializer)
           .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Float]]
       }
-      .suspend
+      .catchNonFatal
 
-  implicit def int[F[_]](implicit F: Sync[F]): Deserializer[F, Int] =
+  implicit def int[F[_]](implicit F: MonadThrow[F]): Deserializer[F, Int] =
     Deserializer
       .delegate[F, Int] {
         (new org.apache.kafka.common.serialization.IntegerDeserializer)
           .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Int]]
       }
-      .suspend
+      .catchNonFatal
 
-  implicit def long[F[_]](implicit F: Sync[F]): Deserializer[F, Long] =
+  implicit def long[F[_]](implicit F: MonadThrow[F]): Deserializer[F, Long] =
     Deserializer
       .delegate[F, Long] {
         (new org.apache.kafka.common.serialization.LongDeserializer)
           .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Long]]
       }
-      .suspend
+      .catchNonFatal
 
-  implicit def short[F[_]](implicit F: Sync[F]): Deserializer[F, Short] =
+  implicit def short[F[_]](implicit F: MonadThrow[F]): Deserializer[F, Short] =
     Deserializer
       .delegate[F, Short] {
         (new org.apache.kafka.common.serialization.ShortDeserializer)
           .asInstanceOf[org.apache.kafka.common.serialization.Deserializer[Short]]
       }
-      .suspend
+      .catchNonFatal
 
-  implicit def string[F[_]](implicit F: Sync[F]): Deserializer[F, String] =
+  implicit def string[F[_]](implicit F: ApplicativeThrow[F]): Deserializer[F, String] =
     Deserializer.string(StandardCharsets.UTF_8)
 
-  implicit def unit[F[_]](implicit F: Sync[F]): Deserializer[F, Unit] =
+  implicit def unit[F[_]](implicit F: Applicative[F]): Deserializer[F, Unit] =
     Deserializer.const(())
 
-  implicit def uuid[F[_]](implicit F: Sync[F]): Deserializer[F, UUID] =
-    Deserializer.string[F].map(UUID.fromString).suspend
+  implicit def uuid[F[_]](implicit F: MonadThrow[F]): Deserializer[F, UUID] =
+    Deserializer.uuid[F](StandardCharsets.UTF_8)
 }
