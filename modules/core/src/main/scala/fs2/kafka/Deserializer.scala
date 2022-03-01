@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.{Applicative, ApplicativeThrow, Apply, FlatMap, Functor, MonadError, MonadThrow}
+import cats.{Applicative, ApplicativeThrow, Apply, FlatMap, Functor, Monad, MonadError, MonadThrow}
 import cats.effect.Sync
 import cats.syntax.all._
 
@@ -228,8 +228,8 @@ object Deserializer {
     * values using the specified `Charset`. Note that the
     * default `String` deserializer uses `UTF-8`.
     */
-  def string[F[_]](charset: Charset)(implicit F: ApplicativeThrow[F]): Deserializer[F, String] =
-    Deserializer.catchNonFatal(bytes => new String(bytes, charset))
+  def string[F[_]](charset: Charset)(implicit F: Applicative[F]): Deserializer[F, String] =
+    Deserializer.lift(bytes => F.pure(new String(bytes, charset)))
 
   /**
     * Creates a new [[Deserializer]] which deserializes `String`
@@ -257,44 +257,55 @@ object Deserializer {
   ): Deserializer[F, Option[A]] =
     deserializer.option
 
-  implicit def monadError[F[_]](implicit F: Sync[F]): MonadError[Deserializer[F, *], Throwable] =
-    new MonadError[Deserializer[F, *], Throwable] {
-      override def pure[A](a: A): Deserializer[F, A] =
-        Deserializer.const(a)
+  implicit def functor[F[_]: Functor]: Functor[Deserializer[F, *]] = new DeserializerFunctor[F]
+  implicit def applicative[F[_]: Applicative]: Applicative[Deserializer[F, *]] =
+    new DeserializerApplicative[F]
+  implicit def monad[F[_]: Monad]: Monad[Deserializer[F, *]] = new DeserializerMonad[F]
+  implicit def monadThrow[F[_]: MonadThrow]: MonadThrow[Deserializer[F, *]] =
+    new DeserializerMonadThrow[F]
 
-      override def map[A, B](
-        deserializer: Deserializer[F, A]
-      )(f: A => B): Deserializer[F, B] =
-        deserializer.map(f)
+  private[kafka] class DeserializerFunctor[F[_]](implicit F: Functor[F])
+      extends Functor[Deserializer[F, *]] {
+    override def map[A, B](fa: Deserializer[F, A])(f: A => B): Deserializer[F, B] = fa.map(f)
+  }
 
-      override def flatMap[A, B](
-        deserializer: Deserializer[F, A]
-      )(f: A => Deserializer[F, B]): Deserializer[F, B] =
-        deserializer.flatMap(f)
+  private[kafka] class DeserializerApplicative[F[_]](implicit F: Applicative[F])
+      extends DeserializerFunctor[F]
+      with Applicative[Deserializer[F, *]] {
+    override def pure[A](x: A): Deserializer[F, A] = Deserializer.const(x)
 
-      override def product[A, B](
-        first: Deserializer[F, A],
-        second: Deserializer[F, B]
-      ): Deserializer[F, (A, B)] =
-        first.product(second)
+    override def ap[A, B](ff: Deserializer[F, A => B])(fa: Deserializer[F, A]): Deserializer[F, B] =
+      fa.product(ff).map { case (a, fab) => fab(a) }
+  }
 
-      override def tailRecM[A, B](a: A)(f: A => Deserializer[F, Either[A, B]]): Deserializer[F, B] =
-        Deserializer.instance { (topic, headers, bytes) =>
-          F.tailRecM(a)(f(_).deserialize(topic, headers, bytes))
+  private[kafka] class DeserializerMonad[F[_]](implicit F: Monad[F])
+      extends DeserializerApplicative[F]
+      with Monad[Deserializer[F, *]] {
+    override def flatMap[A, B](fa: Deserializer[F, A])(
+      f: A => Deserializer[F, B]
+    ): Deserializer[F, B] = fa.flatMap(f)
+
+    override def tailRecM[A, B](a: A)(f: A => Deserializer[F, Either[A, B]]): Deserializer[F, B] =
+      Deserializer.instance { (topic, headers, bytes) =>
+        F.tailRecM(a)(f(_).deserialize(topic, headers, bytes))
+      }
+  }
+
+  private[kafka] class DeserializerMonadThrow[F[_]](implicit F: MonadThrow[F])
+      extends DeserializerMonad[F]
+      with MonadThrow[Deserializer[F, *]] {
+    override def handleErrorWith[A](fa: Deserializer[F, A])(
+      f: Throwable => Deserializer[F, A]
+    ): Deserializer[F, A] =
+      Deserializer.instance { (topic, headers, bytes) =>
+        F.handleErrorWith(fa.deserialize(topic, headers, bytes)) { throwable =>
+          f(throwable).deserialize(topic, headers, bytes)
         }
+      }
 
-      override def handleErrorWith[A](fa: Deserializer[F, A])(
-        f: Throwable => Deserializer[F, A]
-      ): Deserializer[F, A] =
-        Deserializer.instance { (topic, headers, bytes) =>
-          F.handleErrorWith(fa.deserialize(topic, headers, bytes)) { throwable =>
-            f(throwable).deserialize(topic, headers, bytes)
-          }
-        }
-
-      override def raiseError[A](e: Throwable): Deserializer[F, A] =
-        Deserializer.fail(e)
-    }
+    override def raiseError[A](e: Throwable): Deserializer[F, A] =
+      Deserializer.fail(e)
+  }
 
   implicit def double[F[_]](implicit F: MonadThrow[F]): Deserializer[F, Double] =
     Deserializer
@@ -336,7 +347,7 @@ object Deserializer {
       }
       .catchNonFatal
 
-  implicit def string[F[_]](implicit F: ApplicativeThrow[F]): Deserializer[F, String] =
+  implicit def string[F[_]](implicit F: Applicative[F]): Deserializer[F, String] =
     Deserializer.string(StandardCharsets.UTF_8)
 
   implicit def unit[F[_]](implicit F: Applicative[F]): Deserializer[F, Unit] =
