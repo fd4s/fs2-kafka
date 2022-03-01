@@ -28,6 +28,9 @@
       },
       "transactions": {
         "title": "Transactions"
+      },
+      "certificates": {
+        "title": "Certificates"
       }
     },
     "links": {
