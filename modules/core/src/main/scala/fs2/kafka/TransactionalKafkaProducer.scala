@@ -57,7 +57,19 @@ object TransactionalKafkaProducer {
     def metrics: F[Map[MetricName, Metric]]
   }
 
+  /**
+    * [[TransactionalKafkaProducer.WithoutOffsets]] extends [[TransactionalKafkaProducer.Metrics]]
+    * to allow producing of records without corresponding upstream offsets.
+    */
   abstract class WithoutOffsets[F[_], K, V] extends Metrics[F, K, V] {
+
+    /**
+      * Produces the `ProducerRecord`s in the specified [[ProducerRecords]]
+      * in three steps: first a transaction is initialized, then the records are placed
+      * in the buffer of the producer, and lastly the transaction is committed. If errors
+      * or cancellation occurs, the transaction is aborted. The returned effect succeeds
+      * if the whole transaction completes successfully.
+      */
     def produceWithoutOffsets[P](records: ProducerRecords[P, K, V]): F[ProducerResult[P, K, V]]
   }
 
@@ -115,6 +127,11 @@ object TransactionalKafkaProducer {
             }
           }
 
+        override def produceWithoutOffsets[P](
+          records: ProducerRecords[P, K, V]
+        ): F[ProducerResult[P, K, V]] =
+          produceTransaction(records.records, None).map(ProducerResult(_, records.passthrough))
+
         private[this] def produceTransaction[P](
           records: Chunk[ProducerRecord[K, V]],
           sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
@@ -141,11 +158,6 @@ object TransactionalKafkaProducer {
                 }
             }.flatten
           }
-
-        override def produceWithoutOffsets[P](
-          records: ProducerRecords[P, K, V]
-        ): F[ProducerResult[P, K, V]] =
-          produceTransaction(records.records, None).map(ProducerResult(_, records.passthrough))
 
         override def metrics: F[Map[MetricName, Metric]] =
           withProducer.blocking { _.metrics().asScala.toMap }
