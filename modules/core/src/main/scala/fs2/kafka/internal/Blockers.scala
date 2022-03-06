@@ -6,7 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Blocker, Resource, Sync}
+import cats.effect.{Resource, Sync}
 import java.util.concurrent.{Executors, ThreadFactory}
 import scala.concurrent.ExecutionContext
 
