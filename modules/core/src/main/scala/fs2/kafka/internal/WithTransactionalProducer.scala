@@ -43,7 +43,7 @@ private[kafka] object WithTransactionalProducer {
             Deliberately does not use the exclusive access functionality to close the producer. The close method on
             the underlying client waits until the buffer has been flushed to the broker or the timeout is exceeded.
             Because the transactional producer _always_ waits until the buffer is flushed and the transaction
-            committed on the broker before proceeding, upon gaining exclusive access ot the producer the buffer will
+            committed on the broker before proceeding, upon gaining exclusive access to the producer the buffer will
             always be empty. Therefore if we used exclusive access to close the underlying producer, the buffer
             would already be empty and the close timeout setting would be redundant.
 
