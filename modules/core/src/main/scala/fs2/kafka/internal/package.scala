@@ -8,7 +8,7 @@ package fs2.kafka
 
 import cats.effect.{Blocker, ContextShift, Resource, Sync}
 
-private[kafka] package object internal {
+package object internal {
   private[kafka] type ExclusiveAccess[F[_], A] = F[A] => F[A]
 
   private[kafka] def blockingResource[F[_]: Sync: ContextShift](
