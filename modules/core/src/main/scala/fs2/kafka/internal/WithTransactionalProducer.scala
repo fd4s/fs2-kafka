@@ -39,9 +39,19 @@ private[kafka] object WithTransactionalProducer {
 
             val initTransactions = withProducer.blocking { _.initTransactions() }
 
-            val close = withProducer.exclusiveAccess {
-              case (producer, blocking) =>
-                blocking(producer.close(settings.producerSettings.closeTimeout.asJava))
+            /*
+            Deliberately does not use the exclusive access functionality to close the producer. The close method on
+            the underlying client waits until the buffer has been flushed to the broker or the timeout is exceeded.
+            Because the transactional producer _always_ waits until the buffer is flushed and the transaction
+            committed on the broker before proceeding, upon gaining exclusive access ot the producer the buffer will
+            always be empty. Therefore if we used exclusive access to close the underlying producer, the buffer
+            would already be empty and the close timeout setting would be redundant.
+
+            TLDR: not using exclusive access here preserves the behaviour of the underlying close method and timeout
+            setting
+             */
+            val close = withProducer.blocking {
+              _.close(settings.producerSettings.closeTimeout.asJava)
             }
 
             initTransactions.as((withProducer, close))
