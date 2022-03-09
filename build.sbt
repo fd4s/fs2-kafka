@@ -211,7 +211,7 @@ ThisBuild / githubWorkflowPublishTargetBranches :=
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
-    List("ci-release", "docs/docusaurusPublishGhpages"),
+    List("ci-release"),
     env = Map(
       "GIT_DEPLOY_KEY" -> "${{ secrets.GIT_DEPLOY_KEY }}",
       "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
