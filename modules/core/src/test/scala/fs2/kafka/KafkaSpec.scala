@@ -5,7 +5,7 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.effect.Ref
 import fs2.{Chunk, Stream}
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer.{ConsumerGroupMetadata, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.duration._
@@ -35,31 +35,31 @@ final class KafkaSpec extends BaseAsyncSpec {
     CommittableOffset[F](
       new TopicPartition("topic", 0),
       new OffsetAndMetadata(1L),
-      Some("group-1"),
+      Some(new ConsumerGroupMetadata("group-1")),
       commit
     ),
     CommittableOffset[F](
       new TopicPartition("topic", 0),
       new OffsetAndMetadata(2L),
-      Some("group-1"),
+      Some(new ConsumerGroupMetadata("group-1")),
       commit
     ),
     CommittableOffset[F](
       new TopicPartition("topic", 1),
       new OffsetAndMetadata(1L),
-      Some("group-1"),
+      Some(new ConsumerGroupMetadata("group-1")),
       commit
     ),
     CommittableOffset[F](
       new TopicPartition("topic", 1),
       new OffsetAndMetadata(2L),
-      Some("group-1"),
+      Some(new ConsumerGroupMetadata("group-1")),
       commit
     ),
     CommittableOffset[F](
       new TopicPartition("topic", 1),
       new OffsetAndMetadata(3L),
-      Some("group-1"),
+      Some(new ConsumerGroupMetadata("group-1")),
       commit
     )
   )

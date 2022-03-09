@@ -15,6 +15,7 @@ import cats.{Order, Show}
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 
 object instances {
   implicit val fs2KafkaOffsetAndMetadataOrder: Order[OffsetAndMetadata] =
@@ -41,4 +42,7 @@ object instances {
 
   implicit val fs2KafkaTopicPartitionShow: Show[TopicPartition] =
     Show.show(tp => show"${tp.topic}-${tp.partition}")
+
+  implicit val fs2KafkaConsumerGroupMetadataShow: Show[ConsumerGroupMetadata] =
+    Show.fromToString
 }

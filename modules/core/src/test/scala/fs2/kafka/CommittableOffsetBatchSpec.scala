@@ -48,7 +48,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
               CommittableOffset[IO](
                 topicPartition = topicPartition,
                 offsetAndMetadata = newOffsetAndMetadata,
-                consumerGroupId = None,
+                groupMetadata = None,
                 commit = _ => IO.unit
               )
 

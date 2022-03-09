@@ -13,7 +13,6 @@ import fs2.kafka.internal._
 import scala.jdk.CollectionConverters._
 import fs2.kafka.producer.MkProducer
 import fs2.{Chunk, Stream}
-import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
 
@@ -111,16 +110,16 @@ object TransactionalKafkaProducer {
               CommittableOffsetBatch.fromFoldableMap(records.records)(_.offset)
 
             val consumerGroupId =
-              if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
-                F.raiseError(ConsumerGroupException(batch.consumerGroupIds))
-              else F.pure(batch.consumerGroupIds.head)
+              if (batch.consumerGroupIdsMissing || batch.consumerGroups.size != 1)
+                F.raiseError(ConsumerGroupException(batch.consumerGroups))
+              else F.pure(batch.consumerGroups.head)
 
             consumerGroupId.flatMap { groupId =>
               val sendOffsets: (KafkaByteProducer, Blocking[F]) => F[Unit] = (producer, blocking) =>
                 blocking {
                   producer.sendOffsetsToTransaction(
                     batch.offsets.asJava,
-                    new ConsumerGroupMetadata(groupId)
+                    groupId
                   )
                 }
 

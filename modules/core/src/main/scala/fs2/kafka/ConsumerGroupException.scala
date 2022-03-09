@@ -7,6 +7,7 @@
 package fs2.kafka
 
 import org.apache.kafka.common.KafkaException
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 
 /**
   * Indicates that one or more of the following conditions occurred
@@ -15,14 +16,14 @@ import org.apache.kafka.common.KafkaException
   * - There were [[CommittableOffset]]s without a consumer group ID.<br>
   * - There were [[CommittableOffset]]s for multiple consumer group IDs.
   */
-sealed abstract class ConsumerGroupException(groupIds: Set[String])
+sealed abstract class ConsumerGroupException(groupIds: Set[ConsumerGroupMetadata])
     extends KafkaException({
-      val groupIdsString = groupIds.toList.sorted.mkString(", ")
+      val groupIdsString = groupIds.toList.sortBy(_.groupId).mkString(", ")
       s"multiple or missing consumer group ids [$groupIdsString]"
     })
 
 private[kafka] object ConsumerGroupException {
-  def apply(groupIds: Set[String]): ConsumerGroupException =
+  def apply(groupIds: Set[ConsumerGroupMetadata]): ConsumerGroupException =
     new ConsumerGroupException(groupIds) {
       override def toString: String =
         s"fs2.kafka.ConsumerGroupException: $getMessage"

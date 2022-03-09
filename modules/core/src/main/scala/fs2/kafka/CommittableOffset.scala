@@ -7,11 +7,11 @@
 package fs2.kafka
 
 import cats.{ApplicativeError, Eq, Show}
-import cats.instances.string._
 import cats.syntax.show._
 import fs2.kafka.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 
 /**
   * [[CommittableOffset]] represents an [[offsetAndMetadata]] for a
@@ -44,7 +44,7 @@ sealed abstract class CommittableOffset[F[_]] {
     * <br>
     * Required for committing offsets within a transaction.
     */
-  def consumerGroupId: Option[String]
+  def consumerGroupMetadata: Option[ConsumerGroupMetadata]
 
   /**
     * The [[topicPartition]] and [[offsetAndMetadata]] as a `Map`.
@@ -88,12 +88,12 @@ object CommittableOffset {
   def apply[F[_]](
     topicPartition: TopicPartition,
     offsetAndMetadata: OffsetAndMetadata,
-    consumerGroupId: Option[String],
+    groupMetadata: Option[ConsumerGroupMetadata],
     commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
   )(implicit F: ApplicativeError[F, Throwable]): CommittableOffset[F] = {
     val _topicPartition = topicPartition
     val _offsetAndMetadata = offsetAndMetadata
-    val _consumerGroupId = consumerGroupId
+    val _consumerGroupMeadata = groupMetadata
     val _commit = commit
 
     new CommittableOffset[F] {
@@ -103,14 +103,19 @@ object CommittableOffset {
       override val offsetAndMetadata: OffsetAndMetadata =
         _offsetAndMetadata
 
-      override val consumerGroupId: Option[String] =
-        _consumerGroupId
+      override val consumerGroupMetadata: Option[ConsumerGroupMetadata] =
+        _consumerGroupMeadata
 
       override def offsets: Map[TopicPartition, OffsetAndMetadata] =
         Map(_topicPartition -> _offsetAndMetadata)
 
       override def batch: CommittableOffsetBatch[F] =
-        CommittableOffsetBatch(offsets, consumerGroupId.toSet, consumerGroupId.isEmpty, _commit)
+        CommittableOffsetBatch(
+          offsets,
+          consumerGroupMetadata.toSet,
+          consumerGroupMetadata.isEmpty,
+          _commit
+        )
 
       override def commit: F[Unit] =
         _commit(offsets)
@@ -119,7 +124,7 @@ object CommittableOffset {
         _commit
 
       override def toString: String =
-        consumerGroupId match {
+        consumerGroupMetadata match {
           case Some(consumerGroupId) =>
             show"CommittableOffset($topicPartition -> $offsetAndMetadata, $consumerGroupId)"
           case None =>
@@ -136,6 +141,6 @@ object CommittableOffset {
       case (l, r) =>
         l.topicPartition == r.topicPartition &&
           l.offsetAndMetadata == r.offsetAndMetadata &&
-          l.consumerGroupId == r.consumerGroupId
+          l.consumerGroupMetadata == r.consumerGroupMetadata
     }
 }

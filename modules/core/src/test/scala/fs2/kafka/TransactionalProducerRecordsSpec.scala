@@ -5,6 +5,7 @@ import cats.instances.list._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import fs2.Chunk
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 
 class TransactionalProducerRecordsSpec extends BaseSpec {
   describe("TransactionalProducerRecords") {
@@ -15,7 +16,7 @@ class TransactionalProducerRecordsSpec extends BaseSpec {
         CommittableOffset[IO](
           new TopicPartition("topic", 1),
           new OffsetAndMetadata(1),
-          Some("the-group"),
+          Some(new ConsumerGroupMetadata("the-group")),
           _ => IO.unit
         )
 
@@ -38,7 +39,7 @@ class TransactionalProducerRecordsSpec extends BaseSpec {
       val offset = CommittableOffset[IO](
         new TopicPartition("topic", 1),
         new OffsetAndMetadata(1),
-        Some("the-group"),
+        Some(new ConsumerGroupMetadata("the-group")),
         _ => IO.unit
       )
 
