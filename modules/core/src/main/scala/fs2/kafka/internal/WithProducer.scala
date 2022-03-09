@@ -6,11 +6,10 @@
 
 package fs2.kafka.internal
 
-import fs2.kafka.producer.MkProducer
 import cats.effect.{Async, Resource}
-import cats.syntax.all._
-import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
 import fs2.kafka.internal.syntax._
+import fs2.kafka.producer.MkProducer
+import fs2.kafka.{KafkaByteProducer, ProducerSettings}
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
   def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A]
@@ -39,29 +38,6 @@ private[kafka] object WithProducer {
       )(producer => blockingF { producer.close(settings.closeTimeout.asJava) })
       .map(create(_, blockingG))
   }
-
-  def apply[F[_], K, V](
-    mk: MkProducer[F],
-    settings: TransactionalProducerSettings[F, K, V]
-  )(
-    implicit F: Async[F]
-  ): Resource[F, WithProducer[F]] =
-    Resource[F, WithProducer[F]] {
-      mk(settings.producerSettings).flatMap { producer =>
-        val blocking = settings.producerSettings.customBlockingContext
-          .fold(Blocking.fromSync[F])(Blocking.fromExecutionContext)
-
-        val withProducer = create(producer, blocking)
-
-        val initTransactions = withProducer.blocking { _.initTransactions() }
-
-        val close = withProducer.blocking {
-          _.close(settings.producerSettings.closeTimeout.asJava)
-        }
-
-        initTransactions.as((withProducer, close))
-      }
-    }
 
   private def create[F[_]](
     producer: KafkaByteProducer,

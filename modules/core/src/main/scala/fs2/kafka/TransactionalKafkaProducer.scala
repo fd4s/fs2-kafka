@@ -92,7 +92,7 @@ object TransactionalKafkaProducer {
     (
       Resource.eval(settings.producerSettings.keySerializer),
       Resource.eval(settings.producerSettings.valueSerializer),
-      WithProducer(mk, settings)
+      WithTransactionalProducer(mk, settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
         override def produce[P](
@@ -139,7 +139,7 @@ object TransactionalKafkaProducer {
           if (records.isEmpty) F.pure(Chunk.empty)
           else {
 
-            withProducer { (producer, blocking) =>
+            withProducer.exclusiveAccess { (producer, blocking) =>
               blocking(producer.beginTransaction())
                 .bracketCase { _ =>
                   val produce = records
