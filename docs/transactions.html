@@ -61,6 +61,11 @@
 <li><p>Use <code>TransactionalKafkaProducer.stream</code> to create a producer with support for transactions.</p></li>
 <li><p>Create <code>CommittableProducerRecords</code> and wrap them in <code>TransactionalProducerRecords</code>.</p></li>
 </ul>
+<blockquote>
+<p>Note that calls to <code>produce</code> are sequenced in the <code>TransactionalKafkaProducer</code> to ensure that, when used concurrently, transactions don't run into each other resulting in an invalid transaction transition exception.</p>
+<p>Because the <code>TransactionalKafkaProducer</code> waits for the record batch to be flushed and the transaction committed on the broker, this could lead to performance bottlenecks where a single producer is shared among many threads.
+To ensure the performance of <code>TransactionalKafkaProducer</code> aligns with your performance expectations when used concurrently, it is recommended you create a pool of transactional producers.</p>
+</blockquote>
 <p>Following is an example where transactions are used to consume, process, produce, and commit.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">ExitCode</span>, <span class="hljs-type">IO</span>, <span class="hljs-type">IOApp</span>}
 <span class="hljs-keyword">import</span> fs2.kafka._
