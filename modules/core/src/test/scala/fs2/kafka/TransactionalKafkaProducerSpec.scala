@@ -150,6 +150,67 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     }
   }
 
+  it("should not allow concurrent access to a producer during a transaction") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+      val toProduce =
+        Chunk.seq((0 to 1000000).toList.map(n => s"key-$n" -> s"value-$n"))
+
+      val result =
+        (for {
+          producer <- TransactionalKafkaProducer.stream(
+            TransactionalProducerSettings(
+              "id",
+              producerSettings[IO]
+                .withRetries(Int.MaxValue)
+            )
+          )
+          recordsToProduce = toProduce.map {
+            case (key, value) => ProducerRecord(topic, key, value)
+          }
+          offsets = toProduce.mapWithIndex {
+            case (_, i) =>
+              CommittableOffset[IO](
+                new TopicPartition(topic, i % 3),
+                new OffsetAndMetadata(i.toLong),
+                Some("group"),
+                _ => IO.unit
+              )
+          }
+          records = TransactionalProducerRecords(
+            recordsToProduce.zip(offsets).map {
+              case (record, offset) =>
+                CommittableProducerRecords.one(
+                  record,
+                  offset
+                )
+            }
+          )
+          _ <- Stream
+            .eval(producer.produce(records))
+            .concurrently(
+              Stream.eval(
+                producer.produce(
+                  TransactionalProducerRecords.one(
+                    CommittableProducerRecords.one(
+                      ProducerRecord[String, String](topic, "test", "test"),
+                      CommittableOffset[IO](
+                        new TopicPartition(topic, 0),
+                        new OffsetAndMetadata(0),
+                        Some("group"),
+                        _ => IO.unit
+                      )
+                    )
+                  )
+                )
+              )
+            )
+        } yield ()).compile.lastOrError.attempt.unsafeRunSync()
+
+      assert(result == Right(()))
+    }
+  }
+
   it("should abort transactions if committing offsets fails") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
