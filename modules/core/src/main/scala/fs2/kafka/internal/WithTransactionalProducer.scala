@@ -1,0 +1,73 @@
+/*
+ * Copyright 2018-2022 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package fs2.kafka.internal
+
+import cats.effect.concurrent.Semaphore
+import cats.effect.{Concurrent, ContextShift, Resource}
+import cats.implicits._
+import fs2.kafka.internal.syntax._
+import fs2.kafka.{KafkaByteProducer, TransactionalProducerSettings}
+
+private[kafka] sealed abstract class WithTransactionalProducer[F[_]] {
+  def apply[A](f: (KafkaByteProducer, Blocking[F], ExclusiveAccess[F, A]) => F[A]): F[A]
+
+  def exclusiveAccess[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A] = apply {
+    case (producer, blocking, exclusive) => exclusive(f(producer, blocking))
+  }
+
+  def blocking[A](f: KafkaByteProducer => A): F[A] = apply {
+    case (producer, blocking, _) => blocking(f(producer))
+  }
+}
+
+private[kafka] object WithTransactionalProducer {
+  def apply[F[_], K, V](
+    settings: TransactionalProducerSettings[F, K, V]
+  )(
+    implicit F: Concurrent[F],
+    context: ContextShift[F]
+  ): Resource[F, WithTransactionalProducer[F]] =
+    (blockingResource(settings.producerSettings), Resource.eval(Semaphore(1))).tupled.flatMap {
+      case (blocking, accessSemaphore) =>
+        Resource[F, WithTransactionalProducer[F]] {
+          settings.producerSettings.createProducer.flatMap { producer =>
+            val withProducer = create(producer, blocking, accessSemaphore)
+
+            val initTransactions = withProducer.blocking { _.initTransactions() }
+
+            /*
+            Deliberately does not use the exclusive access functionality to close the producer. The close method on
+            the underlying client waits until the buffer has been flushed to the broker or the timeout is exceeded.
+            Because the transactional producer _always_ waits until the buffer is flushed and the transaction
+            committed on the broker before proceeding, upon gaining exclusive access to the producer the buffer will
+            always be empty. Therefore if we used exclusive access to close the underlying producer, the buffer
+            would already be empty and the close timeout setting would be redundant.
+
+            TLDR: not using exclusive access here preserves the behaviour of the underlying close method and timeout
+            setting
+             */
+            val close = withProducer.blocking {
+              _.close(settings.producerSettings.closeTimeout.asJava)
+            }
+
+            initTransactions.as((withProducer, close))
+          }
+
+        }
+    }
+
+  private def create[F[_]](
+    producer: KafkaByteProducer,
+    _blocking: Blocking[F],
+    transactionSemaphore: Semaphore[F]
+  ): WithTransactionalProducer[F] = new WithTransactionalProducer[F] {
+    override def apply[A](
+      f: (KafkaByteProducer, Blocking[F], ExclusiveAccess[F, A]) => F[A]
+    ): F[A] =
+      f(producer, _blocking, transactionSemaphore.withPermit)
+  }
+}

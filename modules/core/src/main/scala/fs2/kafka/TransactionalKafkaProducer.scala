@@ -73,7 +73,7 @@ object TransactionalKafkaProducer {
     (
       Resource.eval(settings.producerSettings.keySerializer),
       Resource.eval(settings.producerSettings.valueSerializer),
-      WithProducer(settings)
+      WithTransactionalProducer(settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer.Metrics[F, K, V] {
         override def produce[P](
@@ -96,7 +96,7 @@ object TransactionalKafkaProducer {
               else F.pure(batch.consumerGroupIds.head)
 
             consumerGroupId.flatMap { groupId =>
-              withProducer { (producer, blocking) =>
+              withProducer.exclusiveAccess { (producer, blocking) =>
                 blocking(producer.beginTransaction())
                   .bracketCase { _ =>
                     records.records
