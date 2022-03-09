@@ -12,6 +12,7 @@ import scala.collection.immutable.SortedSet
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaAssignment[F[_]] {
+
   /**
     * Returns the set of partitions currently assigned to this consumer.
     */

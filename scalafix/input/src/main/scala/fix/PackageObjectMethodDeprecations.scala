@@ -3,7 +3,7 @@ rule = Fs2Kafka
  */
 package fix
 
-import fs2.kafka.{producerResource, _}
+import fs2.kafka.{ producerResource, _ }
 import scala.concurrent.ExecutionContext
 import cats.effect.{ContextShift, IO, Resource, Timer}
 
@@ -23,7 +23,7 @@ object Fs2Kafka {
   producerStream(producerSettings)
 
   produce(producerSettings)
-
+  
   def foo(bar: Any)(baz: Any): Any = ???
   foo(produce(producerSettings))(3)
 
@@ -41,7 +41,7 @@ object Fs2Kafka {
 
   adminClientResource(adminClientSettings)
   adminClientStream(adminClientSettings)
-
+  
   fs2.kafka.consumerResource[IO].using(consumerSettings)
   Resource.liftF(IO(consumerSettings)).flatMap(consumerResource(_))
   Resource.liftF(IO(consumerSettings)).flatMap(consumerResource[IO].using(_))

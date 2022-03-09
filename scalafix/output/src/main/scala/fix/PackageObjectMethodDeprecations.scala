@@ -1,9 +1,9 @@
 package fix
 
-import fs2.kafka.{producerResource, _}
+import fs2.kafka.{ producerResource, _ }
 import scala.concurrent.ExecutionContext
 import cats.effect.{ContextShift, IO, Resource, Timer}
-import fs2.kafka.{KafkaAdminClient, KafkaConsumer, KafkaProducer, TransactionalKafkaProducer}
+import fs2.kafka.{ KafkaAdminClient, KafkaConsumer, KafkaProducer, TransactionalKafkaProducer }
 
 object Fs2Kafka {
   implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
@@ -21,7 +21,7 @@ object Fs2Kafka {
   KafkaProducer.stream(producerSettings)
 
   KafkaProducer.pipe(producerSettings)
-
+  
   def foo(bar: Any)(baz: Any): Any = ???
   foo(KafkaProducer.pipe(producerSettings))(3)
 
@@ -39,7 +39,7 @@ object Fs2Kafka {
 
   KafkaAdminClient.resource(adminClientSettings)
   KafkaAdminClient.stream(adminClientSettings)
-
+  
   KafkaConsumer[IO].resource(consumerSettings)
   Resource.liftF(IO(consumerSettings)).flatMap(KafkaConsumer.resource(_))
   Resource.liftF(IO(consumerSettings)).flatMap(KafkaConsumer[IO].resource(_))

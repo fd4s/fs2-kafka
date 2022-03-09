@@ -17,6 +17,7 @@ import java.util.UUID
   * support for effect types.
   */
 sealed abstract class Deserializer[F[_], A] {
+
   /**
     * Attempts to deserialize the specified bytes into a value of
     * type `A`. The Kafka topic name, from which the serialized

@@ -20,6 +20,7 @@ import cats.effect.{ConcurrentEffect, ContextShift, Resource}
 final class ProducerResource[F[_]] private[kafka] (
   private val F: ConcurrentEffect[F]
 ) extends AnyVal {
+
   /**
     * Creates a new [[KafkaProducer]] in the `Resource` context.
     * This is equivalent to using `KafkaProducer.resource` directly,

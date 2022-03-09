@@ -28,6 +28,7 @@ import scala.concurrent.duration._
   * set it with [[ConsumerSettings#withCommitRecovery]].
   */
 abstract class CommitRecovery {
+
   /**
     * Describes recovery from offset commit exceptions. The `commit`
     * parameter can be used to retry the commit. Note that if more
@@ -50,6 +51,7 @@ abstract class CommitRecovery {
 }
 
 object CommitRecovery {
+
   /**
     * The default [[CommitRecovery]] used in [[ConsumerSettings]] unless
     * a different one has been specified. The default recovery strategy

@@ -20,6 +20,7 @@ import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
 final class ConsumerResource[F[_]] private[kafka] (
   private val F: ConcurrentEffect[F]
 ) extends AnyVal {
+
   /**
     * Creates a new [[KafkaConsumer]] in the `Resource` context.
     * This is equivalent to using `KafkaConsumer.resource` directly,

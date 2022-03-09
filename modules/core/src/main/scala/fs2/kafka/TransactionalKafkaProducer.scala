@@ -24,6 +24,7 @@ import org.apache.kafka.common.{Metric, MetricName}
   * arbitrary passthrough value to be included in the result.
   */
 abstract class TransactionalKafkaProducer[F[_], K, V] {
+
   /**
     * Produces the `ProducerRecord`s in the specified [[TransactionalProducerRecords]]
     * in four steps: first a transaction is initialized, then the records are placed
@@ -38,11 +39,13 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
 }
 
 object TransactionalKafkaProducer {
+
   /**
     * [[TransactionalKafkaProducer.Metrics]] extends [[TransactionalKafkaProducer]] to provide
     * access to the underlying producer metrics.
     */
   abstract class Metrics[F[_], K, V] extends TransactionalKafkaProducer[F, K, V] {
+
     /**
       * Returns producer metrics.
       *
@@ -183,6 +186,7 @@ object TransactionalKafkaProducer {
 
   private[kafka] final class TransactionalProducerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
+
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can

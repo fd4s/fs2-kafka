@@ -51,6 +51,7 @@ private[kafka] object WithProducer {
 
           initTransactions.as((withProducer, close))
         }
+
       }
     }
 

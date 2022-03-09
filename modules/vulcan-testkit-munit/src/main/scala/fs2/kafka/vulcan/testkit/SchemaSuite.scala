@@ -27,6 +27,7 @@ trait CompatibilityChecker[F[_]] {
 }
 
 trait SchemaSuite extends FunSuite {
+
   private def codecAsSchema[A](codec: Codec[A]) = codec.schema.fold(e => fail(e.message), ok => ok)
 
   def compatibilityChecker(
@@ -41,6 +42,7 @@ trait SchemaSuite extends FunSuite {
       checker = clientSettings.createSchemaRegistryClient
         .map { client =>
           new CompatibilityChecker[IO] {
+
             private def registrySchema(subject: String): IO[Schema] =
               for {
                 metadata <- IO.delay(client.getLatestSchemaMetadata(subject))
@@ -72,6 +74,7 @@ trait SchemaSuite extends FunSuite {
                 )
               }
             }
+
           }
         }
         .unsafeRunSync()

@@ -15,6 +15,7 @@ import org.apache.kafka.common.resource.{
 }
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
+
   describe("KafkaAdminClient") {
     it("should support consumer groups-related functionalities") {
       withTopic { topic =>
@@ -327,4 +328,5 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       .lastOrError
       .unsafeRunSync()
   }
+
 }

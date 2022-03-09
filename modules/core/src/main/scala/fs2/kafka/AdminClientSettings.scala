@@ -28,6 +28,7 @@ import scala.concurrent.duration._
   * then apply any desired modifications on top of that instance.
   */
 sealed abstract class AdminClientSettings[F[_]] {
+
   /**
     * The `Blocker` to use for blocking Kafka operations. If not
     * explicitly provided, a default `Blocker` will be created
