@@ -15,6 +15,7 @@ import fs2.kafka.instances._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 
 /**
   * [[CommittableOffsetBatch]] represents a batch of Kafka [[offsets]]
@@ -68,7 +69,7 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
     * IDs, have accidentally been mixed. The set might also be
     * empty if no consumer group IDs have been specified.
     */
-  def consumerGroupIds: Set[String]
+  def consumerGroups: Set[ConsumerGroupMetadata]
 
   /**
     * `true` if any offset in the batch came from a consumer
@@ -98,7 +99,7 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
 object CommittableOffsetBatch {
   private[kafka] def apply[F[_]](
     offsets: Map[TopicPartition, OffsetAndMetadata],
-    consumerGroupIds: Set[String],
+    consumerGroupIds: Set[ConsumerGroupMetadata],
     consumerGroupIdsMissing: Boolean,
     commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
   )(implicit F: ApplicativeError[F, Throwable]): CommittableOffsetBatch[F] = {
@@ -111,15 +112,15 @@ object CommittableOffsetBatch {
       override def updated(that: CommittableOffset[F]): CommittableOffsetBatch[F] =
         CommittableOffsetBatch(
           _offsets.updated(that.topicPartition, that.offsetAndMetadata),
-          that.consumerGroupId.fold(_consumerGroupIds)(_consumerGroupIds + _),
-          _consumerGroupIdsMissing || that.consumerGroupId.isEmpty,
+          that.consumerGroupMetadata.fold(_consumerGroupIds)(_consumerGroupIds + _),
+          _consumerGroupIdsMissing || that.consumerGroupMetadata.isEmpty,
           _commit
         )
 
       override def updated(that: CommittableOffsetBatch[F]): CommittableOffsetBatch[F] =
         CommittableOffsetBatch(
           _offsets ++ that.offsets,
-          _consumerGroupIds ++ that.consumerGroupIds,
+          _consumerGroupIds ++ that.consumerGroups,
           _consumerGroupIdsMissing || that.consumerGroupIdsMissing,
           _commit
         )
@@ -127,7 +128,7 @@ object CommittableOffsetBatch {
       override val offsets: Map[TopicPartition, OffsetAndMetadata] =
         _offsets
 
-      override val consumerGroupIds: Set[String] =
+      override val consumerGroups: Set[ConsumerGroupMetadata] =
         _consumerGroupIds
 
       override val consumerGroupIdsMissing: Boolean =
@@ -186,7 +187,7 @@ object CommittableOffsetBatch {
   ): CommittableOffsetBatch[F] = {
     var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
     var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
-    var consumerGroupIds: Set[String] = Set.empty
+    var consumerGroupIds: Set[ConsumerGroupMetadata] = Set.empty
     var consumerGroupIdsMissing: Boolean = false
     var empty: Boolean = true
 
@@ -199,7 +200,7 @@ object CommittableOffsetBatch {
       }
 
       offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
-      offset.consumerGroupId match {
+      offset.consumerGroupMetadata match {
         case Some(consumerGroupId) => consumerGroupIds = consumerGroupIds + consumerGroupId
         case None                  => consumerGroupIdsMissing = true
       }
@@ -233,7 +234,7 @@ object CommittableOffsetBatch {
   ): CommittableOffsetBatch[F] = {
     var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
     var offsetsMap: Map[TopicPartition, OffsetAndMetadata] = Map.empty
-    var consumerGroupIds: Set[String] = Set.empty
+    var consumerGroupIds: Set[ConsumerGroupMetadata] = Set.empty
     var consumerGroupIdsMissing: Boolean = false
     var empty: Boolean = true
 
@@ -245,7 +246,7 @@ object CommittableOffsetBatch {
         }
 
         offsetsMap = offsetsMap.updated(offset.topicPartition, offset.offsetAndMetadata)
-        offset.consumerGroupId match {
+        offset.consumerGroupMetadata match {
           case Some(consumerGroupId) => consumerGroupIds = consumerGroupIds + consumerGroupId
           case None                  => consumerGroupIdsMissing = true
         }
@@ -275,7 +276,7 @@ object CommittableOffsetBatch {
       override val offsets: Map[TopicPartition, OffsetAndMetadata] =
         Map.empty
 
-      override val consumerGroupIds: Set[String] =
+      override val consumerGroups: Set[ConsumerGroupMetadata] =
         Set.empty
 
       override val consumerGroupIdsMissing: Boolean =

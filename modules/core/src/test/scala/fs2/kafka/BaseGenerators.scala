@@ -3,7 +3,7 @@ package fs2.kafka
 import cats.{ApplicativeError, ApplicativeThrow}
 import cats.effect._
 import cats.syntax.all._
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer.{ConsumerGroupMetadata, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.{Arbitrary, Cogen, Gen}
@@ -61,7 +61,7 @@ trait BaseGenerators {
     } yield CommittableOffset[F](
       topicPartition = topicPartition,
       offsetAndMetadata = offsetAndMetadata,
-      consumerGroupId = groupId,
+      groupMetadata = groupId.map(new ConsumerGroupMetadata(_)),
       commit = _ => F.unit
     )
 
@@ -75,7 +75,7 @@ trait BaseGenerators {
       (Cogen
         .perturb(_: Seed, offset.topicPartition))
         .andThen(Cogen.perturb(_, offset.offsetAndMetadata))
-        .andThen(Cogen.perturb(_, offset.consumerGroupId))
+        .andThen(Cogen.perturb(_, offset.consumerGroupMetadata.map(_.groupId)))
         .apply(seed)
     }
 

@@ -43,7 +43,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             CommittableOffset[IO](
               new TopicPartition(topic, (i % 3).toInt),
               new OffsetAndMetadata(i),
-              Some("group"),
+              Some(new ConsumerGroupMetadata("group")),
               _ => IO.unit
             )
         )
@@ -125,7 +125,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             CommittableOffset[IO](
               new TopicPartition(topic, i % 3),
               new OffsetAndMetadata(i.toLong),
-              Some("group"),
+              Some(new ConsumerGroupMetadata("group")),
               _ => IO.unit
             )
         )
@@ -230,7 +230,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
               CommittableOffset[IO](
                 new TopicPartition(topic, i % 3),
                 new OffsetAndMetadata(i.toLong),
-                Some("group"),
+                Some(new ConsumerGroupMetadata("group")),
                 _ => IO.unit
               )
           }
@@ -254,7 +254,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                       CommittableOffset[IO](
                         new TopicPartition(topic, 0),
                         new OffsetAndMetadata(0),
-                        Some("group"),
+                        Some(new ConsumerGroupMetadata("group")),
                         _ => IO.unit
                       )
                     )
@@ -314,7 +314,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
               CommittableOffset(
                 new TopicPartition(topic, i % 3),
                 new OffsetAndMetadata(i.toLong),
-                Some("group"),
+                Some(new ConsumerGroupMetadata("group")),
                 _ => IO.unit
               )
           }
@@ -381,7 +381,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           offset = CommittableOffset(
             new TopicPartition(topic, 1),
             new OffsetAndMetadata(recordsToProduce.length.toLong),
-            Some("group"),
+            Some(new ConsumerGroupMetadata("group")),
             _ => IO.unit
           )
           records = TransactionalProducerRecords.one(

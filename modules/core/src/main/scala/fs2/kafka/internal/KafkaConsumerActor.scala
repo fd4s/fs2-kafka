@@ -24,13 +24,14 @@ import java.util
 import java.util.regex.Pattern
 
 import org.apache.kafka.clients.consumer.{
-  ConsumerConfig,
   ConsumerRebalanceListener,
-  OffsetAndMetadata
+  OffsetAndMetadata,
+  ConsumerGroupMetadata
 }
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.immutable.SortedSet
+import org.apache.kafka.common.errors.InvalidGroupIdException
 
 /**
   * [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to
@@ -65,8 +66,10 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] type ConsumerRecords =
     Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]]
 
-  private[this] val consumerGroupId: Option[String] =
-    settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG)
+  private[this] def groupMetadata: F[Option[ConsumerGroupMetadata]] =
+    withConsumer.blocking(_.groupMetadata()).map(_.some).recover {
+      case _: InvalidGroupIdException => None
+    }
 
   private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
@@ -381,13 +384,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   private[this] def committableConsumerRecord(
     record: ConsumerRecord[K, V],
-    partition: TopicPartition
+    partition: TopicPartition,
+    groupMetadata: Option[ConsumerGroupMetadata]
   ): CommittableConsumerRecord[F, K, V] =
     CommittableConsumerRecord(
       record = record,
       offset = CommittableOffset(
         topicPartition = partition,
-        consumerGroupId = consumerGroupId,
+        groupMetadata = groupMetadata,
         offsetAndMetadata = new OffsetAndMetadata(
           record.offset + 1L,
           settings.recordMetadata(record)
@@ -397,18 +401,20 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     )
 
   private[this] def records(batch: KafkaByteConsumerRecords): F[ConsumerRecords] =
-    batch.partitions.toVector
-      .traverse { partition =>
-        NonEmptyVector
-          .fromVectorUnsafe(batch.records(partition).toVector)
-          .traverse { record =>
-            ConsumerRecord
-              .fromJava(record, keyDeserializer, valueDeserializer)
-              .map(committableConsumerRecord(_, partition))
-          }
-          .map((partition, _))
-      }
-      .map(_.toMap)
+    groupMetadata.flatMap { groupMetadata =>
+      batch.partitions.toVector
+        .traverse { partition =>
+          NonEmptyVector
+            .fromVectorUnsafe(batch.records(partition).toVector)
+            .traverse { record =>
+              ConsumerRecord
+                .fromJava(record, keyDeserializer, valueDeserializer)
+                .map(committableConsumerRecord(_, partition, groupMetadata))
+            }
+            .map((partition, _))
+        }
+        .map(_.toMap)
+    }
 
   private[this] val pollTimeout: Duration =
     settings.pollTimeout.toJava

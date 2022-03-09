@@ -5,6 +5,7 @@ import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 
 final class CommittableOffsetSpec extends BaseSpec {
   describe("CommittableOffset") {
@@ -16,7 +17,7 @@ final class CommittableOffsetSpec extends BaseSpec {
       CommittableOffset[IO](
         partition,
         offsetAndMetadata,
-        consumerGroupId = None,
+        groupMetadata = None,
         commit = offsets => IO { committed = offsets }
       ).commit.unsafeRunSync()
 
@@ -37,7 +38,12 @@ final class CommittableOffsetSpec extends BaseSpec {
       assert {
         val offsetAndMetadata = new OffsetAndMetadata(0L, "metadata")
         val offset =
-          CommittableOffset[IO](partition, offsetAndMetadata, Some("the-group"), _ => IO.unit)
+          CommittableOffset[IO](
+            partition,
+            offsetAndMetadata,
+            Some(new ConsumerGroupMetadata("the-group")),
+            _ => IO.unit
+          )
 
         offset.toString == "CommittableOffset(topic-0 -> (0, metadata), the-group)" &&
         offset.show == offset.toString
@@ -54,7 +60,12 @@ final class CommittableOffsetSpec extends BaseSpec {
       assert {
         val offsetAndMetadata = new OffsetAndMetadata(0L)
         val offset =
-          CommittableOffset[IO](partition, offsetAndMetadata, Some("the-group"), _ => IO.unit)
+          CommittableOffset[IO](
+            partition,
+            offsetAndMetadata,
+            Some(new ConsumerGroupMetadata("the-group")),
+            _ => IO.unit
+          )
 
         offset.toString == "CommittableOffset(topic-0 -> 0, the-group)" &&
         offset.show == offset.toString

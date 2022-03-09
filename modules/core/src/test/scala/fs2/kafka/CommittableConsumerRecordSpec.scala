@@ -4,6 +4,7 @@ import cats.effect.IO
 import cats.syntax.all._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 
 final class CommittableConsumerRecordSpec extends BaseSpec {
   describe("CommittableConsumerRecord") {
@@ -14,7 +15,7 @@ final class CommittableConsumerRecordSpec extends BaseSpec {
           CommittableOffset[IO](
             topicPartition = new TopicPartition("topic", 0),
             offsetAndMetadata = new OffsetAndMetadata(0L),
-            consumerGroupId = Some("the-group"),
+            groupMetadata = Some(new ConsumerGroupMetadata("the-group")),
             commit = _ => IO.unit
           )
         )
