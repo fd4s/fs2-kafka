@@ -313,7 +313,7 @@ object KafkaAdminClient {
     withAdminClient: WithAdminClient[F],
     topics: G[String]
   )(implicit G: Foldable[G]): F[Map[String, TopicDescription]] =
-    withAdminClient(_.describeTopics(topics.asJava).all.map(_.toMap))
+    withAdminClient(_.describeTopics(topics.asJava).allTopicNames.map(_.toMap))
 
   private[this] def describeAclsWith[F[_]](
     withAdminClient: WithAdminClient[F],
