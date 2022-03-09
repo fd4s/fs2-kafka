@@ -59,6 +59,22 @@ object TransactionalKafkaProducer {
   }
 
   /**
+    * [[TransactionalKafkaProducer.WithoutOffsets]] extends [[TransactionalKafkaProducer.Metrics]]
+    * to allow producing of records without corresponding upstream offsets.
+    */
+  abstract class WithoutOffsets[F[_], K, V] extends Metrics[F, K, V] {
+
+    /**
+      * Produces the `ProducerRecord`s in the specified [[ProducerRecords]]
+      * in three steps: first a transaction is initialized, then the records are placed
+      * in the buffer of the producer, and lastly the transaction is committed. If errors
+      * or cancellation occurs, the transaction is aborted. The returned effect succeeds
+      * if the whole transaction completes successfully.
+      */
+    def produceWithoutOffsets[P](records: ProducerRecords[P, K, V]): F[ProducerResult[P, K, V]]
+  }
+
+  /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context,
     * using the specified [[TransactionalProducerSettings]]. Note that there
     * is another version where `F[_]` is specified explicitly and the key and
@@ -73,20 +89,20 @@ object TransactionalKafkaProducer {
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
-  ): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
+  ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
     (
       Resource.eval(settings.producerSettings.keySerializer),
       Resource.eval(settings.producerSettings.valueSerializer),
-      WithProducer(mk, settings)
+      WithTransactionalProducer(mk, settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
-      new TransactionalKafkaProducer.Metrics[F, K, V] {
+      new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
         override def produce[P](
           records: TransactionalProducerRecords[F, P, K, V]
         ): F[ProducerResult[P, K, V]] =
-          produceTransaction(records)
+          produceTransactionWithOffsets(records)
             .map(ProducerResult(_, records.passthrough))
 
-        private[this] def produceTransaction[P](
+        private[this] def produceTransactionWithOffsets[P](
           records: TransactionalProducerRecords[F, P, K, V]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
           if (records.records.isEmpty) F.pure(Chunk.empty)
@@ -100,32 +116,48 @@ object TransactionalKafkaProducer {
               else F.pure(batch.consumerGroupIds.head)
 
             consumerGroupId.flatMap { groupId =>
-              withProducer { (producer, blocking) =>
-                blocking(producer.beginTransaction())
-                  .bracketCase { _ =>
-                    records.records
-                      .flatMap(_.records)
-                      .traverse(
-                        KafkaProducer
-                          .produceRecord(keySerializer, valueSerializer, producer, blocking)
-                      )
-                      .map(_.sequence)
-                      .flatTap { _ =>
-                        blocking {
-                          producer.sendOffsetsToTransaction(
-                            batch.offsets.asJava,
-                            new ConsumerGroupMetadata(groupId)
-                          )
-                        }
-                      }
-                  } {
-                    case (_, Outcome.Succeeded(_)) =>
-                      blocking(producer.commitTransaction())
-                    case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                      blocking(producer.abortTransaction())
-                  }
-              }.flatten
+              val sendOffsets: (KafkaByteProducer, Blocking[F]) => F[Unit] = (producer, blocking) =>
+                blocking {
+                  producer.sendOffsetsToTransaction(
+                    batch.offsets.asJava,
+                    new ConsumerGroupMetadata(groupId)
+                  )
+                }
+
+              produceTransaction(records.records.flatMap(_.records), Some(sendOffsets))
             }
+          }
+
+        override def produceWithoutOffsets[P](
+          records: ProducerRecords[P, K, V]
+        ): F[ProducerResult[P, K, V]] =
+          produceTransaction(records.records, None).map(ProducerResult(_, records.passthrough))
+
+        private[this] def produceTransaction[P](
+          records: Chunk[ProducerRecord[K, V]],
+          sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
+        ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
+          if (records.isEmpty) F.pure(Chunk.empty)
+          else {
+
+            withProducer.exclusiveAccess { (producer, blocking) =>
+              blocking(producer.beginTransaction())
+                .bracketCase { _ =>
+                  val produce = records
+                    .traverse(
+                      KafkaProducer
+                        .produceRecord(keySerializer, valueSerializer, producer, blocking)
+                    )
+                    .map(_.sequence)
+
+                  sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
+                } {
+                  case (_, Outcome.Succeeded(_)) =>
+                    blocking(producer.commitTransaction())
+                  case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
+                    blocking(producer.abortTransaction())
+                }
+            }.flatten
           }
 
         override def metrics: F[Map[MetricName, Metric]] =
@@ -151,7 +183,7 @@ object TransactionalKafkaProducer {
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
-  ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
+  ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
     Stream.resource(resource(settings))
 
   def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
@@ -173,7 +205,7 @@ object TransactionalKafkaProducer {
     def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Resource[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
+    ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
       TransactionalKafkaProducer.resource(settings)
 
     /**
@@ -189,7 +221,7 @@ object TransactionalKafkaProducer {
     def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Stream[F, TransactionalKafkaProducer.Metrics[F, K, V]] =
+    ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
       TransactionalKafkaProducer.stream(settings)
 
     override def toString: String =
