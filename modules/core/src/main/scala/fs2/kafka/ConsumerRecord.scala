@@ -21,7 +21,6 @@ import org.apache.kafka.common.record.TimestampType.{CREATE_TIME, LOG_APPEND_TIM
   * To create a new instance, use [[ConsumerRecord#apply]]
   */
 sealed abstract class ConsumerRecord[+K, +V] {
-
   /** The topic from which the record has been consumed. */
   def topic: String
 

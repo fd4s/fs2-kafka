@@ -21,7 +21,6 @@ import fs2.Stream
 final class ConsumerStream[F[_]] private[kafka] (
   private val F: ConcurrentEffect[F]
 ) extends AnyVal {
-
   /**
     * Creates a new [[KafkaConsumer]] in the `Stream` context.
     * This is equivalent to using `KafkaConsumer.stream` directly,

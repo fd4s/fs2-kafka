@@ -20,7 +20,6 @@ import cats.effect.{ConcurrentEffect, ContextShift, Resource}
 final class TransactionalProducerResource[F[_]] private[kafka] (
   private val F: ConcurrentEffect[F]
 ) extends AnyVal {
-
   /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context.
     * This is equivalent to using `TransactionalKafkaProducer.resource` directly,
