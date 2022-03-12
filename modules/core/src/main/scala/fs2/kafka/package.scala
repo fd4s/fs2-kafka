@@ -59,13 +59,20 @@ package object kafka {
   ): Pipe[F, CommittableOffset[F], Unit] =
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 
-  type Serializer[F[_], A] = GenSerializer[SerdeType.KeyOrValue, F, A]
-  type KeySerializer[F[_], A] = GenSerializer[SerdeType.Key, F, A]
-  type ValueSerializer[F[_], A] = GenSerializer[SerdeType.Value, F, A]
+  type Serializer[F[_], A] = GenSerializer[KeyOrValue, F, A]
+  type KeySerializer[F[_], A] = GenSerializer[Key, F, A]
+  type ValueSerializer[F[_], A] = GenSerializer[Value, F, A]
   val Serializer: GenSerializer.type = GenSerializer
 
-  type Deserializer[F[_], A] = GenDeserializer[SerdeType.KeyOrValue, F, A]
-  type KeyDeserializer[F[_], A] = GenDeserializer[SerdeType.Key, F, A]
-  type ValueDeserializer[F[_], A] = GenDeserializer[SerdeType.Value, F, A]
+  type Deserializer[F[_], A] = GenDeserializer[KeyOrValue, F, A]
+  type KeyDeserializer[F[_], A] = GenDeserializer[Key, F, A]
+  type ValueDeserializer[F[_], A] = GenDeserializer[Value, F, A]
   val Deserializer: GenDeserializer.type = GenDeserializer
+}
+
+package kafka {
+  sealed trait KeyOrValue
+  sealed trait Key extends KeyOrValue
+  sealed trait Value extends KeyOrValue
+
 }

@@ -12,14 +12,7 @@ import cats.syntax.all._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
-sealed trait SerdeType
-object SerdeType {
-  sealed trait Key extends SerdeType
-  sealed trait Value extends SerdeType
-  sealed trait KeyOrValue extends Key with Value
-}
-
-sealed abstract class GenSerializer[+T <: SerdeType, F[_], A] {
+sealed abstract class GenSerializer[-T <: KeyOrValue, F[_], A] {
   /**
     * Attempts to serialize the specified value of type `A` into
     * bytes. The Kafka topic name, to which the serialized bytes
@@ -180,7 +173,7 @@ object GenSerializer {
     * [[Serializer]]s depending on the Kafka topic name to
     * which the bytes are going to be sent.
     */
-  def topic[T >: SerdeType.KeyOrValue <: SerdeType, F[_], A](
+  def topic[T <: KeyOrValue, F[_], A](
     f: PartialFunction[String, GenSerializer[T, F, A]]
   )(implicit F: Sync[F]): GenSerializer[T, F, A] =
     Serializer.instance[F, A] { (topic, headers, a) =>
@@ -215,12 +208,12 @@ object GenSerializer {
     * The option [[Serializer]] serializes `None` as `null`, and
     * serializes `Some` values using the serializer for type `A`.
     */
-  implicit def option[T <: SerdeType, F[_], A](
+  implicit def option[T <: KeyOrValue, F[_], A](
     implicit serializer: GenSerializer[T, F, A]
   ): GenSerializer[T, F, Option[A]] =
     serializer.option
 
-  implicit def contravariant[T <: SerdeType, F[_]]: Contravariant[GenSerializer[T, F, *]] =
+  implicit def contravariant[T <: KeyOrValue, F[_]]: Contravariant[GenSerializer[T, F, *]] =
     new Contravariant[GenSerializer[T, F, *]] {
       override def contramap[A, B](serializer: GenSerializer[T, F, A])(f: B => A): GenSerializer[T, F, B] =
         serializer.contramap(f)
