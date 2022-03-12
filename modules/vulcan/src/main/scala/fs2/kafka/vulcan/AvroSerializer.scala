@@ -31,8 +31,8 @@ final class AvroSerializer[A] private[vulcan] (
       }
 
     RecordSerializer.instance(
-      forKey = createSerializer(true),
-      forValue = createSerializer(false)
+      forKey = createSerializer(true).widen,
+      forValue = createSerializer(false).widen
     )
   }
 

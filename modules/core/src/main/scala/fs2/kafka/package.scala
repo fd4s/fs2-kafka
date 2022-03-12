@@ -58,4 +58,9 @@ package object kafka {
     implicit F: Temporal[F]
   ): Pipe[F, CommittableOffset[F], Unit] =
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
+
+  type Serializer[F[_], A] = GenSerializer[SerdeType.KeyOrValue, F, A]
+  type KeySerializer[F[_], A] = GenSerializer[SerdeType.Key, F, A]
+  type ValueSerializer[F[_], A] = GenSerializer[SerdeType.Value, F, A]
+  val Serializer: GenSerializer.type = GenSerializer
 }

@@ -141,8 +141,8 @@ object KafkaProducer {
 
   private[kafka] def from[F[_]: Async, K, V](
     withProducer: WithProducer[F],
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V]
   ): KafkaProducer.Metrics[F, K, V] =
     new KafkaProducer.Metrics[F, K, V] {
       override def produce[P](
@@ -178,8 +178,8 @@ object KafkaProducer {
     Stream.resource(KafkaProducer.resource(settings))
 
   private[kafka] def produceRecord[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V],
     producer: KafkaByteProducer,
     blocking: Blocking[F]
   )(
@@ -225,8 +225,8 @@ object KafkaProducer {
     _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
 
   private[this] def serializeToBytes[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V],
     record: ProducerRecord[K, V]
   )(implicit F: Apply[F]): F[(Array[Byte], Array[Byte])] = {
     val keyBytes =
@@ -239,8 +239,8 @@ object KafkaProducer {
   }
 
   private[this] def asJavaRecord[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V],
     record: ProducerRecord[K, V]
   )(implicit F: Apply[F]): F[KafkaByteProducerRecord] =
     serializeToBytes(keySerializer, valueSerializer, record).map {

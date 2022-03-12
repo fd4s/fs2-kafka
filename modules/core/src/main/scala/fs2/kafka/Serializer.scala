@@ -12,12 +12,14 @@ import cats.syntax.all._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
-/**
-  * Functional composable Kafka key- and record serializer with
-  * support for effect types.
-  */
-sealed abstract class Serializer[F[_], A] {
+sealed trait SerdeType
+object SerdeType {
+  sealed trait Key extends SerdeType
+  sealed trait Value extends SerdeType
+  sealed trait KeyOrValue extends Key with Value
+}
 
+sealed abstract class GenSerializer[+T <: SerdeType, F[_], A] {
   /**
     * Attempts to serialize the specified value of type `A` into
     * bytes. The Kafka topic name, to which the serialized bytes
@@ -30,19 +32,19 @@ sealed abstract class Serializer[F[_], A] {
     * function `f` on a value of type `B`, and then serializes
     * the result with this [[Serializer]].
     */
-  def contramap[B](f: B => A): Serializer[F, B]
+  def contramap[B](f: B => A): GenSerializer[T, F, B]
 
   /**
     * Creates a new [[Serializer]] which applies the specified
     * function `f` on the output bytes of this [[Serializer]].
     */
-  def mapBytes(f: Array[Byte] => Array[Byte]): Serializer[F, A]
+  def mapBytes(f: Array[Byte] => Array[Byte]): GenSerializer[T, F, A]
 
   /**
     * Creates a new [[Serializer]] which serializes `Some` values
     * using this [[Serializer]], and serializes `None` as `null`.
     */
-  def option: Serializer[F, Option[A]]
+  def option: GenSerializer[T, F, Option[A]]
 
   /**
     * Creates a new [[Serializer]] which suspends serialization,
@@ -51,7 +53,12 @@ sealed abstract class Serializer[F[_], A] {
   def suspend: Serializer[F, A]
 }
 
-object Serializer {
+/**
+  * Functional composable Kafka key- and record serializer with
+  * support for effect types.
+  */
+object GenSerializer {
+
   def apply[F[_], A](implicit serializer: Serializer[F, A]): Serializer[F, A] = serializer
 
   /** Alias for [[Serializer#identity]]. */
