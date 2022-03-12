@@ -46,8 +46,8 @@ final class AvroDeserializer[A] private[vulcan] (
           }
 
         RecordDeserializer.instance(
-          forKey = createDeserializer(true),
-          forValue = createDeserializer(false)
+          forKey = createDeserializer(true).widen,
+          forValue = createDeserializer(false).widen
         )
 
       case Left(error) =>
