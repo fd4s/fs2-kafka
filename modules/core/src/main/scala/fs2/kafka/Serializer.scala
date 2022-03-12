@@ -180,10 +180,10 @@ object GenSerializer {
     * [[Serializer]]s depending on the Kafka topic name to
     * which the bytes are going to be sent.
     */
-  def topic[F[_], A](
-    f: PartialFunction[String, Serializer[F, A]]
-  )(implicit F: Sync[F]): Serializer[F, A] =
-    Serializer.instance { (topic, headers, a) =>
+  def topic[T >: SerdeType.KeyOrValue <: SerdeType, F[_], A](
+    f: PartialFunction[String, GenSerializer[T, F, A]]
+  )(implicit F: Sync[F]): GenSerializer[T, F, A] =
+    Serializer.instance[F, A] { (topic, headers, a) =>
       f.applyOrElse(topic, unexpectedTopic)
         .serialize(topic, headers, a)
     }
@@ -215,14 +215,14 @@ object GenSerializer {
     * The option [[Serializer]] serializes `None` as `null`, and
     * serializes `Some` values using the serializer for type `A`.
     */
-  implicit def option[F[_], A](
-    implicit serializer: Serializer[F, A]
-  ): Serializer[F, Option[A]] =
+  implicit def option[T <: SerdeType, F[_], A](
+    implicit serializer: GenSerializer[T, F, A]
+  ): GenSerializer[T, F, Option[A]] =
     serializer.option
 
-  implicit def contravariant[F[_]]: Contravariant[Serializer[F, *]] =
-    new Contravariant[Serializer[F, *]] {
-      override def contramap[A, B](serializer: Serializer[F, A])(f: B => A): Serializer[F, B] =
+  implicit def contravariant[T <: SerdeType, F[_]]: Contravariant[GenSerializer[T, F, *]] =
+    new Contravariant[GenSerializer[T, F, *]] {
+      override def contramap[A, B](serializer: GenSerializer[T, F, A])(f: B => A): GenSerializer[T, F, B] =
         serializer.contramap(f)
     }
 
