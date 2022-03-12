@@ -71,8 +71,10 @@ package object kafka {
 }
 
 package kafka {
+
+  /** Phantom types to indicate whether a [[Serializer]]/[[Deserializer]] if for keys, values, or both
+    */
   sealed trait KeyOrValue
   sealed trait Key extends KeyOrValue
   sealed trait Value extends KeyOrValue
-
 }
