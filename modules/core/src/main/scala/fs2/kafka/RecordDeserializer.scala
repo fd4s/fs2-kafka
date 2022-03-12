@@ -25,7 +25,7 @@ sealed abstract class RecordDeserializer[F[_], A] {
     * causing the consumer to fail.
     */
   final def attempt(implicit F: Functor[F]): RecordDeserializer[F, Either[Throwable, A]] =
-    RecordDeserializer.instance(forKey.map((_: KeyDeserializer[F, A]).attempt), forValue.map(_.attempt))
+    RecordDeserializer.instance(forKey.map(_.attempt), forValue.map(_.attempt))
 }
 
 object RecordDeserializer {

@@ -13,6 +13,7 @@ import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
 sealed abstract class GenSerializer[-T <: KeyOrValue, F[_], A] {
+
   /**
     * Attempts to serialize the specified value of type `A` into
     * bytes. The Kafka topic name, to which the serialized bytes
@@ -215,7 +216,9 @@ object GenSerializer {
 
   implicit def contravariant[T <: KeyOrValue, F[_]]: Contravariant[GenSerializer[T, F, *]] =
     new Contravariant[GenSerializer[T, F, *]] {
-      override def contramap[A, B](serializer: GenSerializer[T, F, A])(f: B => A): GenSerializer[T, F, B] =
+      override def contramap[A, B](
+        serializer: GenSerializer[T, F, A]
+      )(f: B => A): GenSerializer[T, F, B] =
         serializer.contramap(f)
     }
 
