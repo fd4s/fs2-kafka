@@ -16,7 +16,7 @@ import java.util.UUID
   * Functional composable Kafka key- and record deserializer with
   * support for effect types.
   */
-sealed abstract class Deserializer[F[_], A] {
+sealed abstract class GenDeserializer[+T <: SerdeType, F[_], A] {
 
   /**
     * Attempts to deserialize the specified bytes into a value of
@@ -29,27 +29,27 @@ sealed abstract class Deserializer[F[_], A] {
     * Creates a new [[Deserializer]] which applies the specified
     * function to the result of this [[Deserializer]].
     */
-  def map[B](f: A => B): Deserializer[F, B]
+  def map[B](f: A => B): GenDeserializer[T, F, B]
 
   /**
     * Creates a new [[Deserializer]] by first deserializing
     * with this [[Deserializer]] and then using the result
     * as input to the specified function.
     */
-  def flatMap[B](f: A => Deserializer[F, B]): Deserializer[F, B]
+  def flatMap[T0 >: T <: SerdeType, B](f: A => GenDeserializer[T0, F, B]): GenDeserializer[T0, F, B]
 
   /**
     * Creates a new [[Deserializer]] which deserializes both using
     * this [[Deserializer]] and that [[Deserializer]], and returns
     * both results in a tuple.
     */
-  def product[B](that: Deserializer[F, B]): Deserializer[F, (A, B)]
+  def product[T0 >: T <: SerdeType, B](that: GenDeserializer[T0, F, B]): GenDeserializer[T0, F, (A, B)]
 
   /**
     * Creates a new [[Deserializer]] which handles errors by
     * turning them into `Either` values.
     */
-  def attempt: Deserializer[F, Either[Throwable, A]]
+  def attempt: GenDeserializer[T, F, Either[Throwable, A]]
 
   /**
     * Creates a new [[Deserializer]] which returns `None` when the
@@ -65,7 +65,7 @@ sealed abstract class Deserializer[F[_], A] {
   def suspend: Deserializer[F, A]
 }
 
-object Deserializer {
+object GenDeserializer {
   def apply[F[_], A](implicit deserializer: Deserializer[F, A]): Deserializer[F, A] = deserializer
 
   /** Alias for [[Deserializer#identity]]. */
@@ -137,14 +137,14 @@ object Deserializer {
           deserialize(topic, headers, bytes).map(f)
         }
 
-      override def flatMap[B](f: A => Deserializer[F, B]): Deserializer[F, B] =
+      override def flatMap[T0 >: SerdeType.KeyOrValue <: SerdeType, B](f: A => GenDeserializer[T0, F, B]): GenDeserializer[T0, F, B] =
         Deserializer.instance { (topic, headers, bytes) =>
           deserialize(topic, headers, bytes).flatMap { a =>
             f(a).deserialize(topic, headers, bytes)
           }
         }
 
-      override def product[B](that: Deserializer[F, B]): Deserializer[F, (A, B)] =
+      override def product[T0 >: SerdeType.KeyOrValue <: SerdeType, B](that: GenDeserializer[T0, F, B]): Deserializer[F, (A, B)] =
         Deserializer.instance { (topic, headers, bytes) =>
           val a = deserialize(topic, headers, bytes)
           val b = that.deserialize(topic, headers, bytes)
@@ -191,9 +191,9 @@ object Deserializer {
     * [[Deserializer]]s depending on the Kafka topic name
     * from which the serialized bytes came.
     */
-  def topic[F[_], A](
-    f: PartialFunction[String, Deserializer[F, A]]
-  )(implicit F: Sync[F]): Deserializer[F, A] =
+  def topic[T >: SerdeType.KeyOrValue <: SerdeType, F[_], A](
+    f: PartialFunction[String, GenDeserializer[T, F, A]]
+  )(implicit F: Sync[F]): GenDeserializer[T, F, A] =
     Deserializer.instance { (topic, headers, bytes) =>
       f.applyOrElse(topic, unexpectedTopic)
         .deserialize(topic, headers, bytes)
@@ -232,42 +232,42 @@ object Deserializer {
   ): Deserializer[F, Option[A]] =
     deserializer.option
 
-  implicit def monadError[F[_]](implicit F: Sync[F]): MonadError[Deserializer[F, *], Throwable] =
-    new MonadError[Deserializer[F, *], Throwable] {
-      override def pure[A](a: A): Deserializer[F, A] =
+  implicit def monadError[T >: SerdeType.KeyOrValue <: SerdeType, F[_]](implicit F: Sync[F]): MonadError[GenDeserializer[T, F, *], Throwable] =
+    new MonadError[GenDeserializer[T, F, *], Throwable] {
+      override def pure[A](a: A): GenDeserializer[T, F, A] =
         Deserializer.const(a)
 
       override def map[A, B](
-        deserializer: Deserializer[F, A]
-      )(f: A => B): Deserializer[F, B] =
+        deserializer: GenDeserializer[T, F, A]
+      )(f: A => B): GenDeserializer[T, F, B] =
         deserializer.map(f)
 
       override def flatMap[A, B](
-        deserializer: Deserializer[F, A]
-      )(f: A => Deserializer[F, B]): Deserializer[F, B] =
+        deserializer: GenDeserializer[T, F, A]
+      )(f: A => GenDeserializer[T, F, B]): GenDeserializer[T, F, B] =
         deserializer.flatMap(f)
 
       override def product[A, B](
-        first: Deserializer[F, A],
-        second: Deserializer[F, B]
-      ): Deserializer[F, (A, B)] =
+        first: GenDeserializer[T, F, A],
+        second: GenDeserializer[T, F, B]
+      ): GenDeserializer[T, F, (A, B)] =
         first.product(second)
 
-      override def tailRecM[A, B](a: A)(f: A => Deserializer[F, Either[A, B]]): Deserializer[F, B] =
+      override def tailRecM[A, B](a: A)(f: A => GenDeserializer[T, F, Either[A, B]]): GenDeserializer[T, F, B] =
         Deserializer.instance { (topic, headers, bytes) =>
           F.tailRecM(a)(f(_).deserialize(topic, headers, bytes))
         }
 
-      override def handleErrorWith[A](fa: Deserializer[F, A])(
-        f: Throwable => Deserializer[F, A]
-      ): Deserializer[F, A] =
+      override def handleErrorWith[A](fa: GenDeserializer[T, F, A])(
+        f: Throwable => GenDeserializer[T, F, A]
+      ): GenDeserializer[T, F, A] =
         Deserializer.instance { (topic, headers, bytes) =>
           F.handleErrorWith(fa.deserialize(topic, headers, bytes)) { throwable =>
             f(throwable).deserialize(topic, headers, bytes)
           }
         }
 
-      override def raiseError[A](e: Throwable): Deserializer[F, A] =
+      override def raiseError[A](e: Throwable): GenDeserializer[T, F, A] =
         Deserializer.fail(e)
     }
 

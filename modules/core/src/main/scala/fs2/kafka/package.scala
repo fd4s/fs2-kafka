@@ -63,4 +63,9 @@ package object kafka {
   type KeySerializer[F[_], A] = GenSerializer[SerdeType.Key, F, A]
   type ValueSerializer[F[_], A] = GenSerializer[SerdeType.Value, F, A]
   val Serializer: GenSerializer.type = GenSerializer
+
+  type Deserializer[F[_], A] = GenDeserializer[SerdeType.KeyOrValue, F, A]
+  type KeyDeserializer[F[_], A] = GenDeserializer[SerdeType.Key, F, A]
+  type ValueDeserializer[F[_], A] = GenDeserializer[SerdeType.Value, F, A]
+  val Deserializer: GenDeserializer.type = GenDeserializer
 }
