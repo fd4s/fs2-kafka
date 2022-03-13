@@ -148,7 +148,7 @@ object KafkaProducer {
         records: ProducerRecords[K, V]
       ): F[F[ProducerResult[K, V]]] =
         withProducer { (producer, blocking) =>
-          records.records
+          records
             .traverse(produceRecord(keySerializer, valueSerializer, producer, blocking))
             .map(_.sequence.map(ProducerResult(_)))
         }
