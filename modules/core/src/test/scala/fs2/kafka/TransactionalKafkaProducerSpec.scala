@@ -74,32 +74,33 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           )
         )
         _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
-        records <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
+        (records, passthrough) <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
           case ((key, value), i) =>
             val record = ProducerRecord(topic, key, value)
 
             makeOffset.fold[
               Either[
-                ProducerRecords[(String, String), String, String],
-                TransactionalProducerRecords[IO, (String, String), String, String]
+                ProducerRecords[String, String],
+                TransactionalProducerRecords[IO, String, String]
               ]
-            ](Left(ProducerRecords.one(record, (key, value))))(
+            ](Left(ProducerRecords.one(record)))(
               offset =>
                 Right(
                   TransactionalProducerRecords.one(
                     CommittableProducerRecords.one(
                       record,
                       offset(i)
-                    ),
-                    (key, value)
+                    )
                   )
                 )
-            )
+            ) -> (key, value)
 
         }
         passthrough <- Stream
-          .eval(records.fold(producer.produceWithoutOffsets, producer.produce))
-          .map(_.passthrough)
+          .eval(
+            records.fold(producer.produceWithoutOffsets, producer.produce).tupleRight(passthrough)
+          )
+          .map(_._2)
           .buffer(toProduce.size)
       } yield passthrough).compile.toVector.unsafeRunSync()
 
@@ -174,25 +175,24 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                     record,
                     offset
                   )
-              },
-              toPassthrough
+              }
             )
-            producer.produce(records)
+            producer.produce(records).tupleRight(toPassthrough)
           case None =>
-            val records = ProducerRecords(recordsToProduce, toPassthrough)
-            producer.produceWithoutOffsets(records)
+            val records = ProducerRecords(recordsToProduce)
+            producer.produceWithoutOffsets(records).tupleRight(toPassthrough)
         }
 
         result <- Stream.eval(produce)
       } yield result).compile.lastOrError.unsafeRunSync()
 
     val records =
-      produced.records.map {
+      produced._1.records.map {
         case (record, _) =>
           record.key -> record.value
       }
 
-    assert(records == toProduce && produced.passthrough == toPassthrough)
+    assert(records == toProduce && produced._2 == toPassthrough)
 
     val consumed = {
       val customConsumerProperties =
@@ -325,10 +325,9 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                   NonEmptyList.one(record),
                   offset
                 )
-            },
-            toPassthrough
+            }
           )
-          result <- Stream.eval(producer.produce(records).attempt)
+          result <- Stream.eval(producer.produce(records).tupleRight(toPassthrough).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       produced shouldBe Left(error)

@@ -29,48 +29,31 @@ import scala.collection.mutable
   * The [[passthrough]] and [[records]] can be retrieved from an
   * existing [[ProducerRecords]] instance.<br>
   */
-sealed abstract class ProducerRecords[+P, +K, +V] {
+sealed abstract class ProducerRecords[+K, +V] {
 
   /** The records to produce. Can be empty for passthrough-only. */
   def records: Chunk[ProducerRecord[K, V]]
-
-  /** The passthrough to emit once all [[records]] have been produced. */
-  def passthrough: P
 }
 
 object ProducerRecords {
-  private[this] final class ProducerRecordsImpl[+P, +K, +V](
-    override val records: Chunk[ProducerRecord[K, V]],
-    override val passthrough: P
-  ) extends ProducerRecords[P, K, V] {
+  private[this] final class ProducerRecordsImpl[+K, +V](
+    override val records: Chunk[ProducerRecord[K, V]]
+  ) extends ProducerRecords[K, V] {
     override def toString: String =
-      if (records.isEmpty) s"ProducerRecords(<empty>, $passthrough)"
-      else records.mkString("ProducerRecords(", ", ", s", $passthrough)")
+      if (records.isEmpty) s"ProducerRecords(<empty>)"
+      else records.mkString("ProducerRecords(", ", ", ")")
   }
-
-  /**
-    * Creates a new [[ProducerRecords]] for producing zero or more
-    * `ProducerRecords`s, then emitting a [[ProducerResult]] with
-    * the results and `Unit` passthrough value.
-    */
-  def apply[F[+_], K, V](
-    records: F[ProducerRecord[K, V]]
-  )(
-    implicit F: Traverse[F]
-  ): ProducerRecords[Unit, K, V] =
-    apply(records, ())
 
   /**
     * Creates a new [[ProducerRecords]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
     */
-  def apply[F[+_], P, K, V](
-    records: F[ProducerRecord[K, V]],
-    passthrough: P
+  def apply[F[+_], K, V](
+    records: F[ProducerRecord[K, V]]
   )(
     implicit F: Traverse[F]
-  ): ProducerRecords[P, K, V] = {
+  ): ProducerRecords[K, V] = {
     val numRecords = F.size(records).toInt
     val chunk = if (numRecords <= 1) {
       F.get(records)(0) match {
@@ -86,37 +69,25 @@ object ProducerRecords {
       }
       Chunk.array(buf.toArray)
     }
-    new ProducerRecordsImpl(chunk, passthrough)
+    new ProducerRecordsImpl(chunk)
   }
-
-  /**
-    * Creates a new [[ProducerRecords]] for producing exactly one
-    * `ProducerRecord`, then emitting a [[ProducerResult]] with
-    * the result and `Unit` passthrough value.
-    */
-  def one[K, V](
-    record: ProducerRecord[K, V]
-  ): ProducerRecords[Unit, K, V] =
-    one(record, ())
 
   /**
     * Creates a new [[ProducerRecords]] for producing exactly one
     * `ProducerRecord`, then emitting a [[ProducerResult]] with
     * the result and specified passthrough value.
     */
-  def one[P, K, V](
-    record: ProducerRecord[K, V],
-    passthrough: P
-  ): ProducerRecords[P, K, V] =
-    new ProducerRecordsImpl(Chunk.singleton(record), passthrough)
+  def one[K, V](
+    record: ProducerRecord[K, V]
+  ): ProducerRecords[K, V] =
+    new ProducerRecordsImpl(Chunk.singleton(record))
 
-  implicit def producerRecordsShow[P, K, V](
+  implicit def producerRecordsShow[K, V](
     implicit
     K: Show[K],
-    V: Show[V],
-    P: Show[P]
-  ): Show[ProducerRecords[P, K, V]] = Show.show { records =>
-    if (records.records.isEmpty) show"ProducerRecords(<empty>, ${records.passthrough})"
-    else records.records.mkStringShow("ProducerRecords(", ", ", s", ${records.passthrough})")
+    V: Show[V]
+  ): Show[ProducerRecords[K, V]] = Show.show { records =>
+    if (records.records.isEmpty) show"ProducerRecords(<empty>})"
+    else records.records.mkStringShow("ProducerRecords(", ", ", ")")
   }
 }

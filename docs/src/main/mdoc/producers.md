@@ -174,7 +174,7 @@ object ProduceExample extends IOApp {
           val key = committable.record.key
           val value = committable.record.value
           val record = ProducerRecord("topic", key, value)
-          ProducerRecords.one(record, committable.offset)
+          ProducerRecords.one(record)
         }
         .through(KafkaProducer.pipe(producerSettings))
 
@@ -204,7 +204,7 @@ object PartitionedProduceExample extends IOApp {
                   val key = committable.record.key
                   val value = committable.record.value
                   val record = ProducerRecord("topic", key, value)
-                  ProducerRecords.one(record, committable.offset)
+                  ProducerRecords.one(record)
                 }
                 .through(KafkaProducer.pipe(producerSettings, producer))
             }
@@ -231,7 +231,7 @@ object KafkaProducerProduceExample extends IOApp {
               val key = committable.record.key
               val value = committable.record.value
               val record = ProducerRecord("topic", key, value)
-              ProducerRecords.one(record, committable.offset)
+              ProducerRecords.one(record)
             }
             .evalMap(producer.produce)
             .groupWithin(500, 15.seconds)
@@ -261,7 +261,7 @@ object KafkaProducerProduceFlattenExample extends IOApp {
               val key = committable.record.key
               val value = committable.record.value
               val record = ProducerRecord("topic", key, value)
-              ProducerRecords.one(record, committable.offset)
+              ProducerRecords.one(record)
             }
             .evalMap { record =>
               producer.produce(record).flatten

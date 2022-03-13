@@ -21,9 +21,6 @@ class TransactionalProducerRecordsSpec extends BaseSpec {
 
       assert {
         TransactionalProducerRecords
-          .one(CommittableProducerRecords.one(record, offset), 123)
-          .toString == "TransactionalProducerRecords(CommittableProducerRecords(ProducerRecord(topic = topic, key = key, value = value), CommittableOffset(topic-1 -> 1, the-group)), 123)" &&
-        TransactionalProducerRecords
           .one(CommittableProducerRecords.one(record, offset))
           .toString == "TransactionalProducerRecords(CommittableProducerRecords(ProducerRecord(topic = topic, key = key, value = value), CommittableOffset(topic-1 -> 1, the-group)), ())"
       }
@@ -44,9 +41,6 @@ class TransactionalProducerRecordsSpec extends BaseSpec {
 
       assert {
         TransactionalProducerRecords
-          .one(CommittableProducerRecords(records, offset), 123)
-          .toString == "TransactionalProducerRecords(CommittableProducerRecords(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2), CommittableOffset(topic-1 -> 1, the-group)), 123)" &&
-        TransactionalProducerRecords
           .one(CommittableProducerRecords(records, offset))
           .toString == "TransactionalProducerRecords(CommittableProducerRecords(ProducerRecord(topic = topic, key = key, value = value), ProducerRecord(topic = topic2, key = key2, value = value2), CommittableOffset(topic-1 -> 1, the-group)), ())"
       }
@@ -54,7 +48,6 @@ class TransactionalProducerRecordsSpec extends BaseSpec {
 
     it("should be able to create with zero records") {
       assert {
-        TransactionalProducerRecords[IO, Int, String, String](Chunk.empty, 123).toString == "TransactionalProducerRecords(<empty>, 123)" &&
         TransactionalProducerRecords[IO, String, String](Chunk.empty).toString == "TransactionalProducerRecords(<empty>, ())"
       }
     }

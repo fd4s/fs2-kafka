@@ -37,11 +37,11 @@ object Main extends IOApp {
           processRecord(committable.record)
             .map { case (key, value) =>
               val record = ProducerRecord("topic", key, value)
-              ProducerRecords.one(record, committable.offset)
+              committable.offset -> ProducerRecords.one(record)
             }
         }
-        .through(KafkaProducer.pipe(producerSettings))
-        .map(_.passthrough)
+        .through(KafkaProducer.pipeWithPassthrough(producerSettings))
+        .map(_._1)
         .through(commitBatchWithin(500, 15.seconds))
 
     stream.compile.drain.as(ExitCode.Success)

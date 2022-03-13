@@ -9,12 +9,6 @@ final class ProducerRecordsSpec extends BaseSpec {
 
       assert {
         ProducerRecords
-          .one[Int, String, String](record, 123)
-          .toString == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
-        ProducerRecords
-          .one[Int, String, String](record, 123)
-          .show == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
-        ProducerRecords
           .one[String, String](record)
           .toString == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), ())" &&
         ProducerRecords
@@ -26,17 +20,8 @@ final class ProducerRecordsSpec extends BaseSpec {
     it("should be able to create with multiple records") {
       val records = List(ProducerRecord("topic", "key", "value"))
       assert {
-        ProducerRecords[List, Int, String, String](records, 123).toString == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
-        ProducerRecords[List, Int, String, String](records, 123).show == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
         ProducerRecords[List, String, String](records).toString == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), ())" &&
         ProducerRecords[List, String, String](records).show == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), ())"
-      }
-    }
-
-    it("should be able to create with passthrough only") {
-      assert {
-        ProducerRecords[List, Int, String, String](Nil, 123).toString == "ProducerRecords(<empty>, 123)" &&
-        ProducerRecords[List, Int, String, String](Nil, 123).show == "ProducerRecords(<empty>, 123)"
       }
     }
   }

@@ -11,8 +11,8 @@ final class ProducerResultSpec extends BaseSpec {
       val empty: Chunk[(ProducerRecord[String, String], RecordMetadata)] = Chunk.empty
 
       assert {
-        ProducerResult(empty, 123).toString == "ProducerResult(<empty>, 123)" &&
-        ProducerResult(empty, 123).show == ProducerResult(empty, 123).toString
+        ProducerResult(empty).toString == "ProducerResult(<empty>)" &&
+        ProducerResult(empty).show == ProducerResult(empty).toString
       }
 
       val one: Chunk[(ProducerRecord[String, String], RecordMetadata)] =
@@ -25,8 +25,8 @@ final class ProducerResultSpec extends BaseSpec {
         )
 
       assert {
-        ProducerResult(one, 123).toString == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value, headers = Headers(key -> [])), 123)" &&
-        ProducerResult(one, 123).show == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value, headers = Headers(key -> [])), 123)"
+        ProducerResult(one).toString == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value, headers = Headers(key -> [])))" &&
+        ProducerResult(one).show == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value, headers = Headers(key -> [])))"
       }
 
       val two: Chunk[(ProducerRecord[String, String], RecordMetadata)] =
@@ -38,8 +38,8 @@ final class ProducerResultSpec extends BaseSpec {
         )
 
       assert {
-        ProducerResult(two, 123).toString == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 0, timestamp = 0, key = key, value = value), topic-1@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value), 123)" &&
-        ProducerResult(two, 123).show == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 0, timestamp = 0, key = key, value = value), topic-1@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value), 123)"
+        ProducerResult(two).toString == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 0, timestamp = 0, key = key, value = value), topic-1@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value), 123)" &&
+        ProducerResult(two).show == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 0, timestamp = 0, key = key, value = value), topic-1@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value), 123)"
       }
     }
   }

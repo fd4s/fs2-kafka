@@ -24,27 +24,23 @@ import org.apache.kafka.clients.producer.RecordMetadata
   * <br>
   * Use [[ProducerResult#apply]] to create a new [[ProducerResult]].
   */
-sealed abstract class ProducerResult[+P, +K, +V] {
+sealed abstract class ProducerResult[+K, +V] {
 
   /**
     * The records produced along with respective metadata.
     * Can be empty for passthrough-only.
     */
   def records: Chunk[(ProducerRecord[K, V], RecordMetadata)]
-
-  /** The passthrough value. */
-  def passthrough: P
 }
 
 object ProducerResult {
-  private[this] final class ProducerResultImpl[+P, +K, +V](
-    override val records: Chunk[(ProducerRecord[K, V], RecordMetadata)],
-    override val passthrough: P
-  ) extends ProducerResult[P, K, V] {
+  private[this] final class ProducerResultImpl[+K, +V](
+    override val records: Chunk[(ProducerRecord[K, V], RecordMetadata)]
+  ) extends ProducerResult[K, V] {
 
     override def toString: String =
       if (records.isEmpty)
-        s"ProducerResult(<empty>, $passthrough)"
+        s"ProducerResult(<empty>)"
       else
         records.mkStringAppend {
           case (append, (record, metadata)) =>
@@ -54,7 +50,7 @@ object ProducerResult {
         }(
           start = "ProducerResult(",
           sep = ", ",
-          end = s", $passthrough)"
+          end = s")"
         )
   }
 
@@ -63,20 +59,18 @@ object ProducerResult {
     * or more `ProducerRecord`s, finally emitting a passthrough
     * value and the `ProducerRecord`s with `RecordMetadata`.
     */
-  def apply[P, K, V](
-    records: Chunk[(ProducerRecord[K, V], RecordMetadata)],
-    passthrough: P
-  ): ProducerResult[P, K, V] =
-    new ProducerResultImpl(records, passthrough)
+  def apply[K, V](
+    records: Chunk[(ProducerRecord[K, V], RecordMetadata)]
+  ): ProducerResult[K, V] =
+    new ProducerResultImpl(records)
 
-  implicit def producerResultShow[P, K, V](
+  implicit def producerResultShow[K, V](
     implicit
     K: Show[K],
-    V: Show[V],
-    P: Show[P]
-  ): Show[ProducerResult[P, K, V]] = Show.show { result =>
+    V: Show[V]
+  ): Show[ProducerResult[K, V]] = Show.show { result =>
     if (result.records.isEmpty)
-      show"ProducerResult(<empty>, ${result.passthrough})"
+      show"ProducerResult(<empty>)"
     else
       result.records.mkStringAppend {
         case (append, (record, metadata)) =>
@@ -86,7 +80,7 @@ object ProducerResult {
       }(
         start = "ProducerResult(",
         sep = ", ",
-        end = show", ${result.passthrough})"
+        end = show")"
       )
   }
 }

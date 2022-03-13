@@ -38,8 +38,8 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
     * transaction completes successfully.
     */
   def produce[P](
-    records: TransactionalProducerRecords[F, P, K, V]
-  ): F[ProducerResult[P, K, V]]
+    records: TransactionalProducerRecords[F, K, V]
+  ): F[ProducerResult[K, V]]
 }
 
 object TransactionalKafkaProducer {
@@ -71,7 +71,7 @@ object TransactionalKafkaProducer {
       * or cancellation occurs, the transaction is aborted. The returned effect succeeds
       * if the whole transaction completes successfully.
       */
-    def produceWithoutOffsets[P](records: ProducerRecords[P, K, V]): F[ProducerResult[P, K, V]]
+    def produceWithoutOffsets(records: ProducerRecords[K, V]): F[ProducerResult[K, V]]
   }
 
   /**
@@ -97,13 +97,13 @@ object TransactionalKafkaProducer {
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
         override def produce[P](
-          records: TransactionalProducerRecords[F, P, K, V]
-        ): F[ProducerResult[P, K, V]] =
+          records: TransactionalProducerRecords[F, K, V]
+        ): F[ProducerResult[K, V]] =
           produceTransactionWithOffsets(records)
-            .map(ProducerResult(_, records.passthrough))
+            .map(ProducerResult(_))
 
         private[this] def produceTransactionWithOffsets[P](
-          records: TransactionalProducerRecords[F, P, K, V]
+          records: TransactionalProducerRecords[F, K, V]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
           if (records.records.isEmpty) F.pure(Chunk.empty)
           else {
@@ -128,10 +128,10 @@ object TransactionalKafkaProducer {
             }
           }
 
-        override def produceWithoutOffsets[P](
-          records: ProducerRecords[P, K, V]
-        ): F[ProducerResult[P, K, V]] =
-          produceTransaction(records.records, None).map(ProducerResult(_, records.passthrough))
+        override def produceWithoutOffsets(
+          records: ProducerRecords[K, V]
+        ): F[ProducerResult[K, V]] =
+          produceTransaction(records.records, None).map(ProducerResult(_))
 
         private[this] def produceTransaction[P](
           records: Chunk[ProducerRecord[K, V]],

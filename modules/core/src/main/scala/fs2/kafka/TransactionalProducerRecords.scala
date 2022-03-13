@@ -27,23 +27,19 @@ import fs2.kafka.internal.syntax._
   * commit exactly one offset, then emit a [[ProducerResult]] with the
   * results and specified passthrough value.
   */
-sealed abstract class TransactionalProducerRecords[F[_], +P, +K, +V] {
+sealed abstract class TransactionalProducerRecords[F[_], +K, +V] {
 
   /** The records to produce and commit. Can be empty for passthrough-only. */
   def records: Chunk[CommittableProducerRecords[F, K, V]]
-
-  /** The passthrough to emit once all [[records]] have been produced and committed. */
-  def passthrough: P
 }
 
 object TransactionalProducerRecords {
-  private[this] final class TransactionalProducerRecordsImpl[F[_], +P, +K, +V](
-    override val records: Chunk[CommittableProducerRecords[F, K, V]],
-    override val passthrough: P
-  ) extends TransactionalProducerRecords[F, P, K, V] {
+  private[this] final class TransactionalProducerRecordsImpl[F[_], +K, +V](
+    override val records: Chunk[CommittableProducerRecords[F, K, V]]
+  ) extends TransactionalProducerRecords[F, K, V] {
     override def toString: String =
-      if (records.isEmpty) s"TransactionalProducerRecords(<empty>, $passthrough)"
-      else records.mkString("TransactionalProducerRecords(", ", ", s", $passthrough)")
+      if (records.isEmpty) s"TransactionalProducerRecords(<empty>)"
+      else records.mkString("TransactionalProducerRecords(", ", ", ")")
   }
 
   /**
@@ -53,55 +49,32 @@ object TransactionalProducerRecords {
     */
   def apply[F[_], K, V](
     records: Chunk[CommittableProducerRecords[F, K, V]]
-  ): TransactionalProducerRecords[F, Unit, K, V] =
-    apply(records, ())
-
-  /**
-    * Creates a new [[TransactionalProducerRecords]] for producing zero or
-    * more [[CommittableProducerRecords]], emitting a [[ProducerResult]]
-    * with the results and specified passthrough value.
-    */
-  def apply[F[_], P, K, V](
-    records: Chunk[CommittableProducerRecords[F, K, V]],
-    passthrough: P
-  ): TransactionalProducerRecords[F, P, K, V] =
-    new TransactionalProducerRecordsImpl(records, passthrough)
-
-  /**
-    * Creates a new [[TransactionalProducerRecords]] for producing exactly
-    * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
-    * with the result and `Unit` passthrough value.
-    */
-  def one[F[_], K, V](
-    record: CommittableProducerRecords[F, K, V]
-  ): TransactionalProducerRecords[F, Unit, K, V] =
-    one(record, ())
+  ): TransactionalProducerRecords[F, K, V] =
+    new TransactionalProducerRecordsImpl(records)
 
   /**
     * Creates a new [[TransactionalProducerRecords]] for producing exactly
     * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the result and specified passthrough value.
     */
-  def one[F[_], P, K, V](
-    record: CommittableProducerRecords[F, K, V],
-    passthrough: P
-  ): TransactionalProducerRecords[F, P, K, V] =
-    apply(Chunk.singleton(record), passthrough)
+  def one[F[_], K, V](
+    record: CommittableProducerRecords[F, K, V]
+  ): TransactionalProducerRecords[F, K, V] =
+    apply(Chunk.singleton(record))
 
   implicit def transactionalProducerRecordsShow[F[_], P, K, V](
     implicit
     K: Show[K],
-    V: Show[V],
-    P: Show[P]
-  ): Show[TransactionalProducerRecords[F, P, K, V]] =
+    V: Show[V]
+  ): Show[TransactionalProducerRecords[F, K, V]] =
     Show.show { records =>
       if (records.records.isEmpty)
-        show"TransactionalProducerRecords(<empty>, ${records.passthrough})"
+        show"TransactionalProducerRecords(<empty>)"
       else
         records.records.mkStringShow(
           "TransactionalProducerRecords(",
           ", ",
-          show", ${records.passthrough})"
+          ")"
         )
     }
 }
