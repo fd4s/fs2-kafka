@@ -202,31 +202,6 @@ object KafkaConsumer {
                     ConsumerRecord
                       .fromJava[F, K, V](rec, keyDes, valueDes)
                       .map(committableConsumerRecord(_, offsetCommit, partition))
-                  // val cr: F[ConsumerRecord[K, V]] = ccr.record.bitraverse(
-                  //   key =>
-                  //     keyDes
-                  //       .deserialize(ccr.offset.topicPartition.topic, ccr.record.headers, key),
-                  //   value =>
-                  //     valueDes
-                  //       .deserialize(ccr.offset.topicPartition.topic, ccr.record.headers, value)
-                  // )
-
-                  //   cr.map(
-                  //     cr =>
-                  //       CommittableConsumerRecord[F, K, V](
-                  //         cr,
-                  //         CommittableOffset(
-                  //           ccr.offset.topicPartition,
-                  //           new OffsetAndMetadata(
-                  //             ccr.offset.offsetAndMetadata.offset(),
-                  //             ccr.offset.offsetAndMetadata.leaderEpoch(),
-                  //             settings.recordMetadata(cr)
-                  //           ),
-                  //           ccr.offset.consumerGroupId,
-                  //           ccr.offset.commitOffsets
-                  //         )
-                  //       )
-                  //   )
                   }
 
                   val enqueueChunk = c.flatMap { chunk =>
