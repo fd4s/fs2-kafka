@@ -6,3 +6,5 @@
 target/
 .metals/
 .vscode/
+.bloop/
+metals.sbt
