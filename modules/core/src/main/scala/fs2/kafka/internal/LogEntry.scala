@@ -9,7 +9,7 @@ package fs2.kafka.internal
 import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
 import cats.syntax.all._
 import fs2.Chunk
-import fs2.kafka.CommittableConsumerRecord
+import fs2.kafka._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogLevel._
@@ -17,6 +17,7 @@ import fs2.kafka.internal.syntax._
 import java.util.regex.Pattern
 import org.apache.kafka.common.TopicPartition
 import scala.collection.immutable.SortedSet
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 
 private[kafka] sealed abstract class LogEntry {
   def level: LogLevel
@@ -63,7 +64,11 @@ private[kafka] object LogEntry {
   final case class StoredFetch[F[_]](
     partition: TopicPartition,
     callback: (
-      (Chunk[CommittableConsumerRecord[F, Array[Byte], Array[Byte]]], FetchCompletedReason)
+      (
+        Chunk[KafkaByteConsumerRecord],
+        Map[TopicPartition, OffsetAndMetadata] => F[Unit],
+        FetchCompletedReason
+      )
     ) => F[Unit],
     state: State[F]
   ) extends LogEntry {
@@ -180,12 +185,12 @@ private[kafka] object LogEntry {
         case (append, (tp, ms)) =>
           append(tp.show)
           append(" -> { first: ")
-          append(ms.head.offset.offsetAndMetadata.show)
+          append(ms.head.offset.show)
           append(", last: ")
-          append(ms.last.offset.offsetAndMetadata.show)
+          append(ms.last.offset.show)
           append(" }")
       }("", ", ", "")
 
   private[this] type Records[F[_]] =
-    Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, _, _]]]
+    Map[TopicPartition, NonEmptyVector[KafkaByteConsumerRecord]]
 }

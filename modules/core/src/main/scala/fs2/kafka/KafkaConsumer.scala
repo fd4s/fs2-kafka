@@ -28,6 +28,7 @@ import scala.annotation.nowarn
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
+import org.apache.kafka.clients.consumer.ConsumerConfig
 
 /**
   * [[KafkaConsumer]] represents a consumer of Kafka records, with the
@@ -136,7 +137,11 @@ object KafkaConsumer {
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
         type PartitionRequest =
-          (Chunk[CommittableConsumerRecord[F, Array[Byte], Array[Byte]]], FetchCompletedReason)
+          (
+            Chunk[KafkaByteConsumerRecord],
+            Map[TopicPartition, OffsetAndMetadata] => F[Unit],
+            FetchCompletedReason
+          )
 
         type PartitionsMap = Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]
         type PartitionsMapQueue = Queue[F, Option[PartitionsMap]]
@@ -163,6 +168,24 @@ object KafkaConsumer {
               .void
             stopReqs <- Deferred[F, Unit]
           } yield Stream.eval {
+            def committableConsumerRecord(
+              record: ConsumerRecord[K, V],
+              offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit],
+              partition: TopicPartition
+            ): CommittableConsumerRecord[F, K, V] =
+              CommittableConsumerRecord(
+                record = record,
+                offset = CommittableOffset(
+                  topicPartition = partition,
+                  consumerGroupId = settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG),
+                  offsetAndMetadata = new OffsetAndMetadata(
+                    record.offset + 1L,
+                    settings.recordMetadata(record)
+                  ),
+                  commit = offsetCommit
+                )
+              )
+
             def fetchPartition(deferred: Deferred[F, PartitionRequest]): F[Unit] = {
               val request = Request.Fetch(
                 partition,
@@ -174,33 +197,36 @@ object KafkaConsumer {
                 case Left(()) =>
                   stopReqs.complete(()).void
 
-                case Right((chunk, reason)) =>
-                  val c = chunk.traverse[F, CommittableConsumerRecord[F, K, V]] { ccr =>
-                    val cr: F[ConsumerRecord[K, V]] = ccr.record.bitraverse(
-                      key =>
-                        keyDes
-                          .deserialize(ccr.offset.topicPartition.topic, ccr.record.headers, key),
-                      value =>
-                        valueDes
-                          .deserialize(ccr.offset.topicPartition.topic, ccr.record.headers, value)
-                    )
+                case Right((chunk, offsetCommit, reason)) =>
+                  val c = chunk.traverse[F, CommittableConsumerRecord[F, K, V]] { rec =>
+                    ConsumerRecord
+                      .fromJava[F, K, V](rec, keyDes, valueDes)
+                      .map(committableConsumerRecord(_, offsetCommit, partition))
+                  // val cr: F[ConsumerRecord[K, V]] = ccr.record.bitraverse(
+                  //   key =>
+                  //     keyDes
+                  //       .deserialize(ccr.offset.topicPartition.topic, ccr.record.headers, key),
+                  //   value =>
+                  //     valueDes
+                  //       .deserialize(ccr.offset.topicPartition.topic, ccr.record.headers, value)
+                  // )
 
-                    cr.map(
-                      cr =>
-                        CommittableConsumerRecord[F, K, V](
-                          cr,
-                          CommittableOffset(
-                            ccr.offset.topicPartition,
-                            new OffsetAndMetadata(
-                              ccr.offset.offsetAndMetadata.offset(),
-                              ccr.offset.offsetAndMetadata.leaderEpoch(),
-                              settings.recordMetadata(cr)
-                            ),
-                            ccr.offset.consumerGroupId,
-                            ccr.offset.commitOffsets
-                          )
-                        )
-                    )
+                  //   cr.map(
+                  //     cr =>
+                  //       CommittableConsumerRecord[F, K, V](
+                  //         cr,
+                  //         CommittableOffset(
+                  //           ccr.offset.topicPartition,
+                  //           new OffsetAndMetadata(
+                  //             ccr.offset.offsetAndMetadata.offset(),
+                  //             ccr.offset.offsetAndMetadata.leaderEpoch(),
+                  //             settings.recordMetadata(cr)
+                  //           ),
+                  //           ccr.offset.consumerGroupId,
+                  //           ccr.offset.commitOffsets
+                  //         )
+                  //       )
+                  //   )
                   }
 
                   val enqueueChunk = c.flatMap { chunk =>
