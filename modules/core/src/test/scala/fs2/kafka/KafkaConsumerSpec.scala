@@ -9,7 +9,11 @@ import cats.effect.unsafe.implicits.global
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.clients.consumer.{ConsumerConfig, CooperativeStickyAssignor, NoOffsetForPartitionException}
+import org.apache.kafka.clients.consumer.{
+  ConsumerConfig,
+  CooperativeStickyAssignor,
+  NoOffsetForPartitionException
+}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.TimeoutException
 import org.scalatest.Assertion
@@ -54,6 +58,31 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .records
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
+            .compile
+            .toVector
+            .unsafeRunSync()
+
+        consumed should contain theSameElementsAs produced
+      }
+    }
+
+    it("should produce empty chunk when configured to do so") {
+      withTopic { topic =>
+        createCustomTopic(topic, partitions = 3)
+        val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
+        publishToKafka(topic, produced)
+
+        val consumed =
+          KafkaConsumer
+            .stream(consumerSettings[IO].withEmitEmptyChunks(true))
+            .subscribeTo(topic)
+            .flatMap(
+              _.partitionedStream.flatMap(
+                _.map(committable => committable.record.key -> committable.record.value).chunks
+                  .takeWhile(_.nonEmpty)
+                  .unchunks
+              )
+            )
             .compile
             .toVector
             .unsafeRunSync()
@@ -559,7 +588,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                 .stream(
                   consumerSettings[IO]
                     .withProperties(
-                      ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[CooperativeStickyAssignor].getName
+                      ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[
+                        CooperativeStickyAssignor
+                      ].getName
                     )
                 )
                 .subscribeTo(topic)
@@ -801,9 +832,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               .stream(
                 consumerSettings[IO]
                   .withProperties(
-                    ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[CooperativeStickyAssignor].getName
+                    ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[
+                      CooperativeStickyAssignor
+                    ].getName
                   )
-
               )
               .subscribeTo(topic)
               .evalMap { consumer =>

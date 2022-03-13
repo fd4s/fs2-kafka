@@ -379,6 +379,10 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     */
   def maxPrefetchBatches: Int
 
+  def emitEmptyChunks: Boolean
+
+  def withEmitEmptyChunks(emitEmptyChunks: Boolean): ConsumerSettings[F, K, V]
+
   /**
     * Creates a new [[ConsumerSettings]] with the specified value
     * for [[maxPrefetchBatches]]. Note that if a value lower than
@@ -405,6 +409,7 @@ object ConsumerSettings {
     override val pollTimeout: FiniteDuration,
     override val commitRecovery: CommitRecovery,
     override val recordMetadata: ConsumerRecord[K, V] => String,
+    override val emitEmptyChunks: Boolean,
     override val maxPrefetchBatches: Int
   ) extends ConsumerSettings[F, K, V] {
     override def withCustomBlockingContext(ec: ExecutionContext): ConsumerSettings[F, K, V] =
@@ -520,6 +525,9 @@ object ConsumerSettings {
     override def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V] =
       copy(maxPrefetchBatches = Math.max(2, maxPrefetchBatches))
 
+    override def withEmitEmptyChunks(emitEmptyChunks: Boolean): ConsumerSettings[F, K, V] =
+      copy(emitEmptyChunks = emitEmptyChunks)
+
     override def withCredentials(
       credentialsStore: KafkaCredentialStore
     ): ConsumerSettings[F, K, V] =
@@ -547,7 +555,8 @@ object ConsumerSettings {
       pollTimeout = 50.millis,
       commitRecovery = CommitRecovery.Default,
       recordMetadata = _ => OffsetFetchResponse.NO_METADATA,
-      maxPrefetchBatches = 2
+      maxPrefetchBatches = 2,
+      emitEmptyChunks = false
     )
 
   def apply[F[_], K, V](
