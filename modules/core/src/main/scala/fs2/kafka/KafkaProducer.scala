@@ -148,11 +148,7 @@ object KafkaProducer {
       override def produce[P](
         records: ProducerRecords[P, K, V]
       ): F[F[ProducerResult[P, K, V]]] =
-        withProducer { (producer, blocking) =>
-          records.records
-            .traverse(produceRecord(keySerializer, valueSerializer, producer, blocking))
-            .map(_.sequence.map(ProducerResult(_, records.passthrough)))
-        }
+        KafkaProducer.produce(withProducer, keySerializer, valueSerializer, records)
 
       override def metrics: F[Map[MetricName, Metric]] =
         withProducer.blocking { _.metrics().asScala.toMap }
@@ -176,6 +172,18 @@ object KafkaProducer {
     settings: ProducerSettings[F, K, V]
   )(implicit F: Async[F], mk: MkProducer[F]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     Stream.resource(KafkaProducer.resource(settings)(F, mk))
+
+  private[kafka] def produce[F[_]: Async, P, K, V](
+    withProducer: WithProducer[F],
+    keySerializer: Serializer[F, K],
+    valueSerializer: Serializer[F, V],
+    records: ProducerRecords[P, K, V]
+  ): F[F[ProducerResult[P, K, V]]] =
+    withProducer { (producer, blocking) =>
+      records.records
+        .traverse(produceRecord(keySerializer, valueSerializer, producer, blocking))
+        .map(_.sequence.map(ProducerResult(_, records.passthrough)))
+    }
 
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: Serializer[F, K],
