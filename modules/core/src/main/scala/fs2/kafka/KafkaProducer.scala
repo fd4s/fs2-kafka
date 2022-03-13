@@ -11,7 +11,6 @@ import cats.syntax.all._
 import cats.Apply
 import fs2._
 import fs2.kafka.internal._
-import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
@@ -139,8 +138,8 @@ object KafkaProducer {
   )(implicit F: Async[F], mk: MkProducer[F]): Resource[F, KafkaProducer.Metrics[F, K, V]] =
     KafkaProducerConnection.resource(settings)(F, mk).evalMap(_.withSerializersFrom(settings))
 
-  private[kafka] def from[F[_]: Async, K, V](
-    withProducer: WithProducer[F],
+  private[kafka] def from[F[_], K, V](
+    connection: KafkaProducerConnection[F],
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
   ): KafkaProducer.Metrics[F, K, V] =
@@ -148,10 +147,10 @@ object KafkaProducer {
       override def produce[P](
         records: ProducerRecords[P, K, V]
       ): F[F[ProducerResult[P, K, V]]] =
-        KafkaProducer.produce(withProducer, keySerializer, valueSerializer, records)
+        connection.produce(records)(keySerializer, valueSerializer)
 
       override def metrics: F[Map[MetricName, Metric]] =
-        withProducer.blocking { _.metrics().asScala.toMap }
+        connection.metrics
 
       override def toString: String =
         "KafkaProducer$" + System.identityHashCode(this)

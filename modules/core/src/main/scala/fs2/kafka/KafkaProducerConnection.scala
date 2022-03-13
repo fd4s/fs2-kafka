@@ -133,7 +133,7 @@ object KafkaProducerConnection {
           keySerializer: Serializer[G, K],
           valueSerializer: Serializer[G, V]
         ): KafkaProducer.Metrics[G, K, V] =
-          KafkaProducer.from(withProducer, keySerializer, valueSerializer)
+          KafkaProducer.from(this, keySerializer, valueSerializer)
 
         override def withSerializersFrom[K, V](
           settings: ProducerSettings[G, K, V]
