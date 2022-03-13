@@ -111,10 +111,10 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         (for {
           producer <- KafkaProducer.stream(producerSettings[IO])
           records = ProducerRecords(Nil)
-          result <- Stream.eval(producer.produce(records).flatten.tupleRight(passthrough))
+          result <- Stream.eval(producer.produce(records).flatten.tupleLeft(passthrough))
         } yield result).compile.lastOrError.unsafeRunSync()
 
-      assert(result._2 == passthrough)
+      assert(result._1 == passthrough)
     }
   }
 
@@ -127,11 +127,11 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         (for {
           producer <- KafkaProducer.stream(producerSettings[IO])
           result <- Stream.eval {
-            producer.produce(ProducerRecords(Nil)).flatten.tupleRight(passthrough)
+            producer.produce(ProducerRecords(Nil)).flatten.tupleLeft(passthrough)
           }
         } yield result).compile.lastOrError.unsafeRunSync()
 
-      assert(result._2 == passthrough)
+      assert(result._1 == passthrough)
     }
   }
 
@@ -191,12 +191,12 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
             .eval(
               producer
                 .produceOne(ProducerRecord(topic, toProduce._1, toProduce._2))
-                .map(_.tupleRight(passthrough))
+                .map(_.tupleLeft(passthrough))
             )
           result <- Stream.eval(batched)
         } yield result).compile.lastOrError.unsafeRunSync()
 
-      assert(result._2 == passthrough)
+      assert(result._1 == passthrough)
     }
   }
 
@@ -212,11 +212,11 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           batched <- Stream
             .eval(producer.produceOne(topic, toProduce._1, toProduce._2))
-            .map(_.tupleRight(passthrough))
+            .map(_.tupleLeft(passthrough))
           result <- Stream.eval(batched)
         } yield result).compile.lastOrError.unsafeRunSync()
 
-      assert(result._2 == passthrough)
+      assert(result._1 == passthrough)
     }
   }
 

@@ -176,22 +176,22 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                     offset
                   )
               }
-            producer.produce(records).tupleRight(toPassthrough)
+            producer.produce(records).tupleLeft(toPassthrough)
           case None =>
             val records = ProducerRecords(recordsToProduce)
-            producer.produceWithoutOffsets(records).tupleRight(toPassthrough)
+            producer.produceWithoutOffsets(records).tupleLeft(toPassthrough)
         }
 
         result <- Stream.eval(produce)
       } yield result).compile.lastOrError.unsafeRunSync()
 
     val records =
-      produced._1.records.map {
+      produced._2.records.map {
         case (record, _) =>
           record.key -> record.value
       }
 
-    assert(records == toProduce && produced._2 == toPassthrough)
+    assert(records == toProduce && produced._1 == toPassthrough)
 
     val consumed = {
       val customConsumerProperties =
@@ -322,7 +322,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 offset
               )
           }
-          result <- Stream.eval(producer.produce(records).tupleRight(toPassthrough).attempt)
+          result <- Stream.eval(producer.produce(records).tupleLeft(toPassthrough).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       produced shouldBe Left(error)
