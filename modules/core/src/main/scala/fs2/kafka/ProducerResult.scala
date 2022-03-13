@@ -80,7 +80,7 @@ object ProducerResult {
       }(
         start = "ProducerResult(",
         sep = ", ",
-        end = show")"
+        end = ")"
       )
   }
 }

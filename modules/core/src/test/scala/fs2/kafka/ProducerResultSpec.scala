@@ -38,8 +38,8 @@ final class ProducerResultSpec extends BaseSpec {
         )
 
       assert {
-        ProducerResult(two).toString == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 0, timestamp = 0, key = key, value = value), topic-1@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value), 123)" &&
-        ProducerResult(two).show == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 0, timestamp = 0, key = key, value = value), topic-1@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value), 123)"
+        ProducerResult(two).toString == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 0, timestamp = 0, key = key, value = value), topic-1@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value))" &&
+        ProducerResult(two).show == "ProducerResult(topic-0@0 -> ProducerRecord(topic = topic, partition = 0, timestamp = 0, key = key, value = value), topic-1@0 -> ProducerRecord(topic = topic, partition = 1, timestamp = 0, key = key, value = value))"
       }
     }
   }
