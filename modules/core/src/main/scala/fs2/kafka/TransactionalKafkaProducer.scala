@@ -103,12 +103,12 @@ object TransactionalKafkaProducer {
             .map(ProducerResult(_))
 
         private[this] def produceTransactionWithOffsets[P](
-          records: TransactionalProducerRecords[F, K, V]
+          records: Chunk[CommittableProducerRecords[F, K, V]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-          if (records.records.isEmpty) F.pure(Chunk.empty)
+          if (records.isEmpty) F.pure(Chunk.empty)
           else {
             val batch =
-              CommittableOffsetBatch.fromFoldableMap(records.records)(_.offset)
+              CommittableOffsetBatch.fromFoldableMap(records)(_.offset)
 
             val consumerGroupId =
               if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
@@ -124,7 +124,7 @@ object TransactionalKafkaProducer {
                   )
                 }
 
-              produceTransaction(records.records.flatMap(_.records), Some(sendOffsets))
+              produceTransaction(records.flatMap(_.records), Some(sendOffsets))
             }
           }
 

@@ -168,7 +168,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             val offsets = toProduce.mapWithIndex {
               case (_, i) => offset(i)
             }
-            val records = TransactionalProducerRecords(
+            val records =
               recordsToProduce.zip(offsets).map {
                 case (record, offset) =>
                   CommittableProducerRecords.one(
@@ -176,7 +176,6 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                     offset
                   )
               }
-            )
             producer.produce(records).tupleRight(toPassthrough)
           case None =>
             val records = ProducerRecords(recordsToProduce)
@@ -234,15 +233,13 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 _ => IO.unit
               )
           }
-          records = TransactionalProducerRecords(
-            recordsToProduce.zip(offsets).map {
-              case (record, offset) =>
-                CommittableProducerRecords.one(
-                  record,
-                  offset
-                )
-            }
-          )
+          records = recordsToProduce.zip(offsets).map {
+            case (record, offset) =>
+              CommittableProducerRecords.one(
+                record,
+                offset
+              )
+          }
           _ <- Stream
             .eval(producer.produce(records))
             .concurrently(
@@ -318,15 +315,13 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 _ => IO.unit
               )
           }
-          records = TransactionalProducerRecords(
-            Chunk.seq(recordsToProduce.zip(offsets)).map {
-              case (record, offset) =>
-                CommittableProducerRecords(
-                  NonEmptyList.one(record),
-                  offset
-                )
-            }
-          )
+          records = Chunk.seq(recordsToProduce.zip(offsets)).map {
+            case (record, offset) =>
+              CommittableProducerRecords(
+                NonEmptyList.one(record),
+                offset
+              )
+          }
           result <- Stream.eval(producer.produce(records).tupleRight(toPassthrough).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 

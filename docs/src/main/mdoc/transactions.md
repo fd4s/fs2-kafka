@@ -58,7 +58,6 @@ object Main extends IOApp {
                 }
             }
             .groupWithin(500, 15.seconds)
-            .map(TransactionalProducerRecords(_))
             .evalMap(producer.produce)
         }
 

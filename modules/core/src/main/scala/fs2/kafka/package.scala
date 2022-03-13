@@ -50,6 +50,8 @@ package object kafka {
 
   type ProducerRecords[K, V] = Chunk[ProducerRecord[K, V]]
 
+  type TransactionalProducerRecords[F[_], +K, +V] = Chunk[CommittableProducerRecords[F, K, V]]
+
   /**
     * Commits offsets in batches of every `n` offsets or time window
     * of length `d`, whichever happens first. If there are no offsets
