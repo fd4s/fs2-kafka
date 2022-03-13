@@ -9,7 +9,11 @@ import cats.effect.unsafe.implicits.global
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.clients.consumer.{ConsumerConfig, CooperativeStickyAssignor, NoOffsetForPartitionException}
+import org.apache.kafka.clients.consumer.{
+  ConsumerConfig,
+  CooperativeStickyAssignor,
+  NoOffsetForPartitionException
+}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.TimeoutException
 import org.scalatest.Assertion
@@ -559,7 +563,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                 .stream(
                   consumerSettings[IO]
                     .withProperties(
-                      ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[CooperativeStickyAssignor].getName
+                      ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[
+                        CooperativeStickyAssignor
+                      ].getName
                     )
                 )
                 .subscribeTo(topic)
@@ -801,9 +807,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               .stream(
                 consumerSettings[IO]
                   .withProperties(
-                    ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[CooperativeStickyAssignor].getName
+                    ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[
+                      CooperativeStickyAssignor
+                    ].getName
                   )
-
               )
               .subscribeTo(topic)
               .evalMap { consumer =>

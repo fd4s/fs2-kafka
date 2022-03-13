@@ -27,7 +27,7 @@ private[kafka] sealed abstract class LogEntry {
 private[kafka] object LogEntry {
   final case class SubscribedTopics[F[_]](
     topics: NonEmptyList[String],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -36,7 +36,7 @@ private[kafka] object LogEntry {
 
   final case class ManuallyAssignedPartitions[F[_]](
     partitions: NonEmptySet[TopicPartition],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -45,7 +45,7 @@ private[kafka] object LogEntry {
 
   final case class SubscribedPattern[F[_]](
     pattern: Pattern,
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -53,17 +53,19 @@ private[kafka] object LogEntry {
   }
 
   final case class Unsubscribed[F[_]](
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
       s"Consumer unsubscribed from all partitions. Current state [$state]."
   }
 
-  final case class StoredFetch[F[_], K, V](
+  final case class StoredFetch[F[_]](
     partition: TopicPartition,
-    callback: ((Chunk[CommittableConsumerRecord[F, K, V]], FetchCompletedReason)) => F[Unit],
-    state: State[F, K, V]
+    callback: (
+      (Chunk[CommittableConsumerRecord[F, Array[Byte], Array[Byte]]], FetchCompletedReason)
+    ) => F[Unit],
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -72,7 +74,7 @@ private[kafka] object LogEntry {
 
   final case class StoredOnRebalance[F[_]](
     onRebalance: OnRebalance[F],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -81,7 +83,7 @@ private[kafka] object LogEntry {
 
   final case class AssignedPartitions[F[_]](
     partitions: SortedSet[TopicPartition],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -90,7 +92,7 @@ private[kafka] object LogEntry {
 
   final case class RevokedPartitions[F[_]](
     partitions: SortedSet[TopicPartition],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -99,7 +101,7 @@ private[kafka] object LogEntry {
 
   final case class CompletedFetchesWithRecords[F[_]](
     records: Records[F],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -108,7 +110,7 @@ private[kafka] object LogEntry {
 
   final case class RevokedFetchesWithRecords[F[_]](
     records: Records[F],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -117,7 +119,7 @@ private[kafka] object LogEntry {
 
   final case class RevokedFetchesWithoutRecords[F[_]](
     partitions: Set[TopicPartition],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -126,7 +128,7 @@ private[kafka] object LogEntry {
 
   final case class RemovedRevokedRecords[F[_]](
     records: Records[F],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -135,7 +137,7 @@ private[kafka] object LogEntry {
 
   final case class StoredRecords[F[_]](
     records: Records[F],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -153,7 +155,7 @@ private[kafka] object LogEntry {
 
   final case class StoredPendingCommit[F[_]](
     commit: Request.Commit[F],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
@@ -162,7 +164,7 @@ private[kafka] object LogEntry {
 
   final case class CommittedPendingCommits[F[_]](
     pendingCommits: Chain[Request.Commit[F]],
-    state: State[F, _, _]
+    state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug
     override def message: String =
