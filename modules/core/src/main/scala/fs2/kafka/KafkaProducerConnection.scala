@@ -8,7 +8,7 @@ package fs2.kafka
 
 import cats.effect._
 import cats.syntax.all._
-import fs2.Stream
+import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
@@ -23,8 +23,13 @@ import org.apache.kafka.common.Metric
   * instances created from an given [[KafkaProducerConnection]] share a single
   * underlying connection.
   */
-sealed abstract class KafkaProducerConnection[F[_]]
-    extends KafkaProducer.Metrics[F, Array[Byte], Array[Byte]] {
+sealed abstract class KafkaProducerConnection[F[_]] {
+
+  def produce[P, K: Serializer[F, *], V: Serializer[F, *]](
+    records: ProducerRecords[P, K, V]
+  ): F[F[ProducerResult[P, K, V]]]
+
+  def metrics: F[Map[MetricName, Metric]]
 
   /**
     * Creates a new [[KafkaProducer]]  using the provided serializers.
@@ -109,13 +114,16 @@ object KafkaProducerConnection {
   ): Resource[F, KafkaProducerConnection[G]] =
     WithProducer(mk, settings).map { withProducer =>
       new KafkaProducerConnection[G] {
-        override def produce[P](
-          records: ProducerRecords[P, Array[Byte], Array[Byte]]
-        ): G[G[ProducerResult[P, Array[Byte], Array[Byte]]]] =
-          KafkaProducer.produce[G, P, Array[Byte], Array[Byte]](
+        override def produce[P, K, V](
+          records: ProducerRecords[P, K, V]
+        )(
+          implicit keySerializer: Serializer[G, K],
+          valueSerializer: Serializer[G, V]
+        ): G[G[ProducerResult[P, K, V]]] =
+          KafkaProducer.produce[G, P, K, V](
             withProducer,
-            Serializer.identity,
-            Serializer.identity,
+            keySerializer,
+            valueSerializer,
             records
           )
 
