@@ -198,8 +198,6 @@ object KafkaProducer {
 
   /**
     * Produces records in batches using the provided [[KafkaProducer]].
-    * The number of records in the same batch is limited using the
-    * [[ProducerSettings#parallelism]] setting.
     */
   def pipe[F[_]: Concurrent, K, V](
     producer: KafkaProducer[F, K, V]

@@ -191,12 +191,12 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
             .eval(
               producer
                 .produceOne(ProducerRecord(topic, toProduce._1, toProduce._2))
-                .map(_.tupleLeft(passthrough))
+                .map(_.as(passthrough))
             )
           result <- Stream.eval(batched)
         } yield result).compile.lastOrError.unsafeRunSync()
 
-      assert(result._1 == passthrough)
+      assert(result == passthrough)
     }
   }
 
@@ -212,11 +212,11 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           batched <- Stream
             .eval(producer.produceOne(topic, toProduce._1, toProduce._2))
-            .map(_.tupleLeft(passthrough))
+            .map(_.as(passthrough))
           result <- Stream.eval(batched)
         } yield result).compile.lastOrError.unsafeRunSync()
 
-      assert(result._1 == passthrough)
+      assert(result == passthrough)
     }
   }
 
