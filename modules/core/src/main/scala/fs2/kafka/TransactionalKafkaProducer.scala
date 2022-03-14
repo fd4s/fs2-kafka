@@ -24,8 +24,9 @@ import scala.annotation.nowarn
   * streams, with the ability to atomically produce `ProducerRecord`s and commit
   * corresponding [[CommittableOffset]]s using [[produce]].<br>
   * <br>
-  * Records are wrapped in [[TransactionalProducerRecords]] which allow an
-  * arbitrary passthrough value to be included in the result.
+  * Records are wrapped in [[TransactionalProducerRecords]], which is a chunk of
+  * [[CommittableProducerRecord]] which wrap zero or more records together with
+  * a [[CommittableOffset]].
   */
 abstract class TransactionalKafkaProducer[F[_], K, V] {
 

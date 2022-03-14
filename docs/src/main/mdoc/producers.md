@@ -185,9 +185,9 @@ object ProduceExample extends IOApp {
 
 In the stream above, we're simply producing the records we receive back to the topic.
 
-The `produce` function creates a `KafkaProducer` and produces records in `ProducerRecords`. Note that `ProducerRecords` support multiple records and a passthrough value, `committable.offset`. Once all records have been produced in the `ProducerRecords`, the passthrough will be emitted.
+The `produce` function creates a `KafkaProducer` and produces records in `ProducerRecords`, which is al alias for `fs2.Chunk`. Once all records have been produced in the `ProducerRecords`, the inner effect will complete with a `ProducerResult`, which is an alias for `Chunk[(ProducerRecord[K, V], RecordMetadata)]`.
 
-If we're producing in multiple places in our stream, we can create the `KafkaProducer` ourselves, and pass it to the `produce` function. Every `produce` allow up to `ProducerSettings#parallelism` instances of `ProducerRecords` to be batched together in the same batch.
+If we're producing in multiple places in our stream, we can create the `KafkaProducer` ourselves, and pass it to the `pipe` function.
 
 ```scala mdoc:silent
 object PartitionedProduceExample extends IOApp {

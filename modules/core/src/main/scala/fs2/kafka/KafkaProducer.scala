@@ -22,11 +22,7 @@ import scala.concurrent.Promise
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
-  * ability to produce `ProducerRecord`s using [[produce]]. Records are
-  * wrapped in [[ProducerRecords]] which allow an arbitrary value, that
-  * is a passthrough, to be included in the result. Most often this is
-  * used for keeping the [[CommittableOffset]]s, in order to commit
-  * offsets, but any value can be used as passthrough value.
+  * ability to produce `ProducerRecord`s using [[produce]].
   */
 abstract class KafkaProducer[F[_], K, V] {
 
@@ -64,8 +60,7 @@ object KafkaProducer {
       extends AnyVal {
 
     /**
-      * Produce a single [[ProducerRecord]] without a passthrough value,
-      * see [[KafkaProducer.produce]] for general semantics.
+      * Produce a single [[ProducerRecord]], see [[KafkaProducer.produce]] for general semantics.
       */
     def produceOne_(record: ProducerRecord[K, V])(implicit F: Functor[F]): F[F[RecordMetadata]] =
       produceOne(record).map(_.map { res =>
@@ -73,8 +68,8 @@ object KafkaProducer {
       })
 
     /**
-      * Produce a single record to the specified topic using the provided key and value
-      * without a passthrough value, see [[KafkaProducer.produce]] for general semantics.
+      * Produce a single record to the specified topic using the provided key and value,
+      * see [[KafkaProducer.produce]] for general semantics.
       */
     def produceOne_(topic: String, key: K, value: V)(implicit F: Functor[F]): F[F[RecordMetadata]] =
       produceOne_(ProducerRecord(topic, key, value))

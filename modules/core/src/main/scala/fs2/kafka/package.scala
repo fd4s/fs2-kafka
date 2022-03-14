@@ -110,8 +110,7 @@ package kafka {
 
     /**
       * Creates a new [[TransactionalProducerRecords]] for producing exactly
-      * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
-      * with the result and specified passthrough value.
+      * one [[CommittableProducerRecords]]
       */
     def one[F[_], K, V](
       record: CommittableProducerRecords[F, K, V]
