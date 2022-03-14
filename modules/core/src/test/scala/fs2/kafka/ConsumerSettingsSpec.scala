@@ -285,8 +285,10 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
       ConsumerSettings[IO, Int, Int]
       ConsumerSettings[IO, String, Int].keyDeserializer
+        .use(IO.pure)
         .unsafeRunSync() shouldBe deserializerInstance
       ConsumerSettings[IO, Int, String].valueDeserializer
+        .use(IO.pure)
         .unsafeRunSync() shouldBe deserializerInstance
       ConsumerSettings[IO, String, String]
     }

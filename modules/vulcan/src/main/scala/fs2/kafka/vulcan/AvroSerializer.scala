@@ -17,7 +17,7 @@ final class AvroSerializer[A] private[vulcan] (
   def using[F[_]](
     settings: AvroSettings[F]
   )(implicit F: Sync[F]): RecordSerializer[F, A] = {
-    def createSerializer(isKey: Boolean) : Resource[F, Serializer[F, A]] =
+    def createSerializer(isKey: Boolean): Resource[F, Serializer[F, A]] =
       Resource
         .make(settings.createAvroSerializer(isKey)) { case (ser, _) => F.delay(ser.close()) }
         .map {

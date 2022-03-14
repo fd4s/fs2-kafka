@@ -26,49 +26,52 @@ final class PackageSpec extends AnyFunSpec {
 
   describe("avroSerializer/avroDeserializer") {
     it("should be able to do roundtrip serialization") {
-      avroSerializer[Test]
-        .using(avroSettings)
-        .forValue
-        .use { serializer =>
-          val test = Test("test")
+      (
+        avroSerializer[Test].using(avroSettings).forValue,
+        avroDeserializer[Test].using(avroSettings).forValue
+      ).parTupled
+        .use {
+          case (serializer, deserializer) =>
+            val test = Test("test")
 
-          for {
-            serialized <- serializer.serialize("topic", Headers.empty, test)
-            deserializer <- avroDeserializer[Test].using(avroSettings).forValue
-            deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
-          } yield assert(deserialized == test)
+            for {
+              serialized <- serializer.serialize("topic", Headers.empty, test)
+              deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
+            } yield assert(deserialized == test)
         }
         .unsafeRunSync()
     }
 
     it("should be able to do roundtrip serialization using compatible schemas") {
-      avroSerializer[Test2]
-        .using(avroSettings)
-        .forValue
-        .use { serializer =>
-          val test2 = Test2("test", 42)
-          for {
+      (
+        avroSerializer[Test2].using(avroSettings).forValue,
+        avroDeserializer[Test].using(avroSettings).forValue
+      ).parTupled
+        .use {
+          case (serializer, deserializer) =>
+            val test2 = Test2("test", 42)
+            for {
 
-            serialized <- serializer.serialize("topic2", Headers.empty, test2)
-            deserializer <- avroDeserializer[Test].using(avroSettings).forValue
-            deserialized <- deserializer.deserialize("topic2", Headers.empty, serialized)
-          } yield assert(deserialized == Test("test"))
+              serialized <- serializer.serialize("topic2", Headers.empty, test2)
+              deserialized <- deserializer.deserialize("topic2", Headers.empty, serialized)
+            } yield assert(deserialized == Test("test"))
         }
         .unsafeRunSync()
     }
 
     it("should error when reader and writer schemas have mismatching logical types") {
-      avroSerializer[Long]
-        .using(avroSettings)
-        .forValue
-        .use { serializer =>
-          val rawLong = 42L
+      (
+        avroSerializer[Long].using(avroSettings).forValue,
+        avroDeserializer[Instant].using(avroSettings).forValue
+      ).parTupled
+        .use {
+          case (serializer, deserializer) =>
+            val rawLong = 42L
 
-          for {
-            serialized <- serializer.serialize("topic3", Headers.empty, rawLong)
-            deserializer <- avroDeserializer[Instant].using(avroSettings).forValue
-            deserialized <- deserializer.deserialize("topic3", Headers.empty, serialized).attempt
-          } yield assert(deserialized.isLeft)
+            for {
+              serialized <- serializer.serialize("topic3", Headers.empty, rawLong)
+              deserialized <- deserializer.deserialize("topic3", Headers.empty, serialized).attempt
+            } yield assert(deserialized.isLeft)
         }
         .unsafeRunSync()
     }
