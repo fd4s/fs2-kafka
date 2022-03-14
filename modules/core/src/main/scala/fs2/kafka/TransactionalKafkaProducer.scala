@@ -92,8 +92,8 @@ object TransactionalKafkaProducer {
     mk: MkProducer[F]
   ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
     (
-      Resource.eval(settings.producerSettings.keySerializer),
-      Resource.eval(settings.producerSettings.valueSerializer),
+      settings.producerSettings.keySerializer,
+      settings.producerSettings.valueSerializer,
       WithTransactionalProducer(mk, settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {

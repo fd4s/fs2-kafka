@@ -12,8 +12,8 @@ final class AvroSerializerSpec extends AnyFunSpec {
       val serializer =
         AvroSerializer[Int].using(avroSettings)
 
-      assert(serializer.forKey.attempt.unsafeRunSync().isRight)
-      assert(serializer.forValue.attempt.unsafeRunSync().isRight)
+      assert(serializer.forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(serializer.forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
     }
 
     it("raises schema errors") {
@@ -27,8 +27,8 @@ final class AvroSerializerSpec extends AnyFunSpec {
       val serializer =
         avroSerializer(codec).using(avroSettings)
 
-      assert(serializer.forKey.attempt.unsafeRunSync().isRight)
-      assert(serializer.forValue.attempt.unsafeRunSync().isRight)
+      assert(serializer.forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(serializer.forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
     }
 
     it("toString") {

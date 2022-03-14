@@ -53,7 +53,7 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     */
   def withSerializersFrom[K, V](
     settings: ProducerSettings[F, K, V]
-  ): F[KafkaProducer.Metrics[F, K, V]]
+  ): Resource[F, KafkaProducer.Metrics[F, K, V]]
 }
 
 object KafkaProducerConnection {
@@ -137,7 +137,7 @@ object KafkaProducerConnection {
 
         override def withSerializersFrom[K, V](
           settings: ProducerSettings[G, K, V]
-        ): G[KafkaProducer.Metrics[G, K, V]] =
+        ): Resource[G, KafkaProducer.Metrics[G, K, V]] =
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
 
       }

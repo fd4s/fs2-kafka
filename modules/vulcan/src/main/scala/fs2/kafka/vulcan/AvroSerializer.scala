@@ -8,8 +8,8 @@ package fs2.kafka.vulcan
 
 import _root_.vulcan.Codec
 import cats.effect.Sync
-import cats.syntax.all._
 import fs2.kafka.{RecordSerializer, Serializer}
+import cats.effect.kernel.Resource
 
 final class AvroSerializer[A] private[vulcan] (
   private val codec: Codec[A]
@@ -17,22 +17,24 @@ final class AvroSerializer[A] private[vulcan] (
   def using[F[_]](
     settings: AvroSettings[F]
   )(implicit F: Sync[F]): RecordSerializer[F, A] = {
-    val createSerializer: Boolean => F[Serializer[F, A]] =
-      settings.createAvroSerializer(_).map {
-        case (serializer, _) =>
-          Serializer.instance { (topic, _, a) =>
-            F.defer {
-              codec.encode(a) match {
-                case Right(value) => F.pure(serializer.serialize(topic, value))
-                case Left(error)  => F.raiseError(error.throwable)
+    def createSerializer(isKey: Boolean) : Resource[F, Serializer[F, A]] =
+      Resource
+        .make(settings.createAvroSerializer(isKey)) { case (ser, _) => F.delay(ser.close()) }
+        .map {
+          case (serializer, _) =>
+            Serializer.instance { (topic, _, a) =>
+              F.defer {
+                codec.encode(a) match {
+                  case Right(value) => F.pure(serializer.serialize(topic, value))
+                  case Left(error)  => F.raiseError(error.throwable)
+                }
               }
             }
-          }
-      }
+        }
 
     RecordSerializer.instance(
-      forKey = createSerializer(true).widen,
-      forValue = createSerializer(false).widen
+      forKey = createSerializer(true),
+      forValue = createSerializer(false)
     )
   }
 
