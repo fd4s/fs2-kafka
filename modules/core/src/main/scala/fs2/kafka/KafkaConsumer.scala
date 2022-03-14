@@ -28,7 +28,6 @@ import scala.annotation.nowarn
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
-import org.apache.kafka.clients.consumer.ConsumerConfig
 
 /**
   * [[KafkaConsumer]] represents a consumer of Kafka records, with the
@@ -170,7 +169,7 @@ object KafkaConsumer {
                 record = record,
                 offset = CommittableOffset(
                   topicPartition = partition,
-                  consumerGroupId = settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG),
+                  consumerGroupId = actor.consumerGroupId,
                   offsetAndMetadata = new OffsetAndMetadata(
                     record.offset + 1L,
                     settings.recordMetadata(record)

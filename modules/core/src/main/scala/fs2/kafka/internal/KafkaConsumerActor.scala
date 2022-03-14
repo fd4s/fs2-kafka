@@ -26,6 +26,7 @@ import org.apache.kafka.clients.consumer.{ConsumerRebalanceListener, OffsetAndMe
 import org.apache.kafka.common.TopicPartition
 
 import scala.collection.immutable.SortedSet
+import org.apache.kafka.clients.consumer.ConsumerConfig
 
 /**
   * [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to
@@ -57,6 +58,9 @@ private[kafka] final class KafkaConsumerActor[F[_]](
 
   private[this] type ConsumerRecords =
     Map[TopicPartition, NonEmptyVector[KafkaByteConsumerRecord]]
+
+  private[kafka] val consumerGroupId: Option[String] =
+    settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG)
 
   private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
