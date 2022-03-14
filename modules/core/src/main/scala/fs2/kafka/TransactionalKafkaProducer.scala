@@ -37,7 +37,7 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
     * occurs, the transaction is aborted. The returned effect succeeds if the whole
     * transaction completes successfully.
     */
-  def produce[P](
+  def produce(
     records: TransactionalProducerRecords[F, K, V]
   ): F[ProducerResult[K, V]]
 }
@@ -96,12 +96,12 @@ object TransactionalKafkaProducer {
       WithTransactionalProducer(mk, settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
-        override def produce[P](
+        override def produce(
           records: TransactionalProducerRecords[F, K, V]
         ): F[ProducerResult[K, V]] =
           produceTransactionWithOffsets(records)
 
-        private[this] def produceTransactionWithOffsets[P](
+        private[this] def produceTransactionWithOffsets(
           records: Chunk[CommittableProducerRecords[F, K, V]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
           if (records.isEmpty) F.pure(Chunk.empty)
@@ -132,7 +132,7 @@ object TransactionalKafkaProducer {
         ): F[ProducerResult[K, V]] =
           produceTransaction(records, None)
 
-        private[this] def produceTransaction[P](
+        private[this] def produceTransaction(
           records: Chunk[ProducerRecord[K, V]],
           sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
