@@ -234,6 +234,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
 }
 
 object ProducerSettings {
+  val DefaultParallelism: Int = 10000
   private[this] final case class ProducerSettingsImpl[F[_], K, V](
     override val keySerializer: F[Serializer[F, K]],
     override val valueSerializer: F[Serializer[F, V]],
@@ -323,7 +324,7 @@ object ProducerSettings {
         ProducerConfig.RETRIES_CONFIG -> "0"
       ),
       closeTimeout = 60.seconds,
-      parallelism = 10000
+      parallelism = DefaultParallelism
     )
 
   def apply[F[_], K, V](

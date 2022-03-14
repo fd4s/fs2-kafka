@@ -212,14 +212,6 @@ object KafkaProducer {
   ): Pipe[F, ProducerRecords[K, V], ProducerResult[K, V]] =
     records => stream(settings).flatMap(pipe(settings, _).apply(records))
 
-  def pipeWithPassthrough[F[_], K, V, P](
-    settings: ProducerSettings[F, K, V]
-  )(
-    implicit F: Async[F],
-    mk: MkProducer[F]
-  ): Pipe[F, (P, ProducerRecords[K, V]), (P, ProducerResult[K, V])] =
-    records => stream(settings).flatMap(pipeWithPassthrough(settings, _).apply(records))
-
   /**
     * Produces records in batches using the provided [[KafkaProducer]].
     * The number of records in the same batch is limited using the
@@ -230,13 +222,6 @@ object KafkaProducer {
     producer: KafkaProducer[F, K, V]
   ): Pipe[F, ProducerRecords[K, V], ProducerResult[K, V]] =
     _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
-
-  def pipeWithPassthrough[F[_]: Concurrent, K, V, P](
-    settings: ProducerSettings[F, K, V],
-    producer: KafkaProducer[F, K, V]
-  ): Pipe[F, (P, ProducerRecords[K, V]), (P, ProducerResult[K, V])] =
-    _.evalMap { case (p, records) => producer.produce(records).map(_.tupleLeft(p)) }
-      .mapAsync(settings.parallelism)(identity)
 
   private[this] def serializeToBytes[F[_], K, V](
     keySerializer: Serializer[F, K],

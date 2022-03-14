@@ -39,10 +39,15 @@ object Main extends IOApp {
               val record = ProducerRecord("topic", key, value)
               committable.offset -> ProducerRecords.one(record)
             }
-        }
-        .through(KafkaProducer.pipeWithPassthrough(producerSettings))
-        .map(_._1)
-        .through(commitBatchWithin(500, 15.seconds))
+        }.through { offsetsAndProducerRecords =>
+          KafkaProducer.stream(producerSettings).flatMap { producer =>
+            offsetsAndProducerRecords.evalMap { 
+              case (offset, producerRecord) => 
+                producer.produce(producerRecord)
+                  .map(_.as(offset))
+              }.parEvalMap(ProducerSettings.DefaultParallelism)(identity)
+          }
+        }.through(commitBatchWithin(500, 15.seconds))
 
     stream.compile.drain.as(ExitCode.Success)
   }
