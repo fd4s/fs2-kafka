@@ -12,7 +12,7 @@ import cats.syntax.all._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
-sealed abstract class GenSerializer[-T <: KeyOrValue, F[_], A] {
+sealed abstract class GenericSerializer[-T <: KeyOrValue, F[_], A] {
 
   /**
     * Attempts to serialize the specified value of type `A` into
@@ -26,19 +26,19 @@ sealed abstract class GenSerializer[-T <: KeyOrValue, F[_], A] {
     * function `f` on a value of type `B`, and then serializes
     * the result with this [[Serializer]].
     */
-  def contramap[B](f: B => A): GenSerializer[T, F, B]
+  def contramap[B](f: B => A): GenericSerializer[T, F, B]
 
   /**
     * Creates a new [[Serializer]] which applies the specified
     * function `f` on the output bytes of this [[Serializer]].
     */
-  def mapBytes(f: Array[Byte] => Array[Byte]): GenSerializer[T, F, A]
+  def mapBytes(f: Array[Byte] => Array[Byte]): GenericSerializer[T, F, A]
 
   /**
     * Creates a new [[Serializer]] which serializes `Some` values
     * using this [[Serializer]], and serializes `None` as `null`.
     */
-  def option: GenSerializer[T, F, Option[A]]
+  def option: GenericSerializer[T, F, Option[A]]
 
   /**
     * Creates a new [[Serializer]] which suspends serialization,
@@ -51,7 +51,7 @@ sealed abstract class GenSerializer[-T <: KeyOrValue, F[_], A] {
   * Functional composable Kafka key- and record serializer with
   * support for effect types.
   */
-object GenSerializer {
+object GenericSerializer {
 
   def apply[F[_], A](implicit serializer: Serializer[F, A]): Serializer[F, A] = serializer
 
@@ -175,8 +175,8 @@ object GenSerializer {
     * which the bytes are going to be sent.
     */
   def topic[T <: KeyOrValue, F[_], A](
-    f: PartialFunction[String, GenSerializer[T, F, A]]
-  )(implicit F: Sync[F]): GenSerializer[T, F, A] =
+    f: PartialFunction[String, GenericSerializer[T, F, A]]
+  )(implicit F: Sync[F]): GenericSerializer[T, F, A] =
     Serializer.instance[F, A] { (topic, headers, a) =>
       f.applyOrElse(topic, unexpectedTopic)
         .serialize(topic, headers, a)
@@ -210,15 +210,15 @@ object GenSerializer {
     * serializes `Some` values using the serializer for type `A`.
     */
   implicit def option[T <: KeyOrValue, F[_], A](
-    implicit serializer: GenSerializer[T, F, A]
-  ): GenSerializer[T, F, Option[A]] =
+    implicit serializer: GenericSerializer[T, F, A]
+  ): GenericSerializer[T, F, Option[A]] =
     serializer.option
 
-  implicit def contravariant[T <: KeyOrValue, F[_]]: Contravariant[GenSerializer[T, F, *]] =
-    new Contravariant[GenSerializer[T, F, *]] {
+  implicit def contravariant[T <: KeyOrValue, F[_]]: Contravariant[GenericSerializer[T, F, *]] =
+    new Contravariant[GenericSerializer[T, F, *]] {
       override def contramap[A, B](
-        serializer: GenSerializer[T, F, A]
-      )(f: B => A): GenSerializer[T, F, B] =
+        serializer: GenericSerializer[T, F, A]
+      )(f: B => A): GenericSerializer[T, F, B] =
         serializer.contramap(f)
     }
 
