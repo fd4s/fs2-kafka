@@ -45,7 +45,7 @@ object Main extends IOApp {
               case (offset, producerRecord) => 
                 producer.produce(producerRecord)
                   .map(_.as(offset))
-              }.parEvalMap(ProducerSettings.DefaultParallelism)(identity)
+            }.parEvalMap(Int.MaxValue)(identity)
           }
         }.through(commitBatchWithin(500, 15.seconds))
 

@@ -206,7 +206,7 @@ object PartitionedProduceExample extends IOApp {
                   val record = ProducerRecord("topic", key, value)
                   ProducerRecords.one(record)
                 }
-                .through(KafkaProducer.pipe(producerSettings, producer))
+                .through(KafkaProducer.pipe(producer))
             }
             .parJoinUnbounded
         }

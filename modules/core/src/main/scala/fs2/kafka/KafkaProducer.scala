@@ -201,8 +201,7 @@ object KafkaProducer {
 
   /**
     * Creates a [[KafkaProducer]] using the provided settings and
-    * produces record in batches, limiting the number of records
-    * in the same batch using [[ProducerSettings#parallelism]].
+    * produces record in batches.
     */
   def pipe[F[_], K, V](
     settings: ProducerSettings[F, K, V]
@@ -210,7 +209,7 @@ object KafkaProducer {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Pipe[F, ProducerRecords[K, V], ProducerResult[K, V]] =
-    records => stream(settings).flatMap(pipe(settings, _).apply(records))
+    records => stream(settings).flatMap(pipe(_).apply(records))
 
   /**
     * Produces records in batches using the provided [[KafkaProducer]].
@@ -218,10 +217,9 @@ object KafkaProducer {
     * [[ProducerSettings#parallelism]] setting.
     */
   def pipe[F[_]: Concurrent, K, V](
-    settings: ProducerSettings[F, K, V],
     producer: KafkaProducer[F, K, V]
   ): Pipe[F, ProducerRecords[K, V], ProducerResult[K, V]] =
-    _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
+    _.evalMap(producer.produce).parEvalMap(Int.MaxValue)(identity)
 
   private[this] def serializeToBytes[F[_], K, V](
     keySerializer: Serializer[F, K],
