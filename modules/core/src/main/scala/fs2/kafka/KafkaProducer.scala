@@ -15,7 +15,6 @@ import scala.jdk.CollectionConverters._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
-import fs2.Chunk
 import cats.Functor
 
 import scala.annotation.nowarn
@@ -70,7 +69,7 @@ object KafkaProducer {
       */
     def produceOne_(record: ProducerRecord[K, V])(implicit F: Functor[F]): F[F[RecordMetadata]] =
       produceOne(record).map(_.map { res =>
-        res.records.head.get._2 //Should always be present so get is ok
+        res.head.get._2 //Should always be present so get is ok
       })
 
     /**
@@ -79,15 +78,6 @@ object KafkaProducer {
       */
     def produceOne_(topic: String, key: K, value: V)(implicit F: Functor[F]): F[F[RecordMetadata]] =
       produceOne_(ProducerRecord(topic, key, value))
-
-    /**
-      * Produces the specified [[ProducerRecords]] without a passthrough value,
-      * see [[KafkaProducer.produce]] for general semantics.
-      */
-    def produce_(
-      records: ProducerRecords[K, V]
-    )(implicit F: Functor[F]): F[F[Chunk[(ProducerRecord[K, V], RecordMetadata)]]] =
-      producer.produce(records).map(_.map(_.records))
 
     /**
       * Produce a single record to the specified topic using the provided key and value,
@@ -150,7 +140,7 @@ object KafkaProducer {
         withProducer { (producer, blocking) =>
           records
             .traverse(produceRecord(keySerializer, valueSerializer, producer, blocking))
-            .map(_.sequence.map(ProducerResult(_)))
+            .map(_.sequence)
         }
 
       override def metrics: F[Map[MetricName, Metric]] =

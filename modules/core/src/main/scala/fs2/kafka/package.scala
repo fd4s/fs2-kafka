@@ -12,6 +12,7 @@ import cats.effect._
 
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
+import org.apache.kafka.clients.producer.RecordMetadata
 
 package object kafka {
   type Id[+A] = A
@@ -55,6 +56,8 @@ package object kafka {
   type ProducerRecords[K, V] = Chunk[ProducerRecord[K, V]]
 
   type TransactionalProducerRecords[F[_], +K, +V] = Chunk[CommittableProducerRecords[F, K, V]]
+
+  type ProducerResult[K, V] = Chunk[(ProducerRecord[K, V], RecordMetadata)]
 
   /**
     * Commits offsets in batches of every `n` offsets or time window

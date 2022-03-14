@@ -88,7 +88,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         } yield result).compile.lastOrError.unsafeRunSync()
 
       val records =
-        produced.records.map {
+        produced.map {
           case (record, _) =>
             record.key -> record.value
         }.toList
@@ -232,7 +232,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
             case (key, value) =>
               ProducerRecord(topic, key, value)
           })
-          result <- Stream.eval(producer.produce_(records).flatten)
+          result <- Stream.eval(producer.produce(records).flatten)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       val records =

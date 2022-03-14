@@ -186,7 +186,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       } yield result).compile.lastOrError.unsafeRunSync()
 
     val records =
-      produced._2.records.map {
+      produced._2.map {
         case (record, _) =>
           record.key -> record.value
       }

@@ -100,7 +100,6 @@ object TransactionalKafkaProducer {
           records: TransactionalProducerRecords[F, K, V]
         ): F[ProducerResult[K, V]] =
           produceTransactionWithOffsets(records)
-            .map(ProducerResult(_))
 
         private[this] def produceTransactionWithOffsets[P](
           records: Chunk[CommittableProducerRecords[F, K, V]]
@@ -131,7 +130,7 @@ object TransactionalKafkaProducer {
         override def produceWithoutOffsets(
           records: ProducerRecords[K, V]
         ): F[ProducerResult[K, V]] =
-          produceTransaction(records, None).map(ProducerResult(_))
+          produceTransaction(records, None)
 
         private[this] def produceTransaction[P](
           records: Chunk[ProducerRecord[K, V]],
