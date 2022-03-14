@@ -585,12 +585,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
 
 private[kafka] object KafkaConsumerActor {
   final case class FetchRequest[F[_]](
-    callback: (
-      (
-        Chunk[KafkaByteConsumerRecord],
-        FetchCompletedReason
-      )
-    ) => F[Unit]
+    callback: ((Chunk[KafkaByteConsumerRecord], FetchCompletedReason)) => F[Unit]
   ) {
     def completeRevoked(
       chunk: Chunk[KafkaByteConsumerRecord]
@@ -626,12 +621,7 @@ private[kafka] object KafkaConsumerActor {
     def withFetch(
       partition: TopicPartition,
       streamId: StreamId,
-      callback: (
-        (
-          Chunk[KafkaByteConsumerRecord],
-          FetchCompletedReason
-        )
-      ) => F[Unit]
+      callback: ((Chunk[KafkaByteConsumerRecord], FetchCompletedReason)) => F[Unit]
     ): (State[F], List[FetchRequest[F]]) = {
       val newFetchRequest =
         FetchRequest(callback)
