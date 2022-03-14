@@ -155,18 +155,12 @@ private[kafka] final class KafkaConsumerActor[F[_]](
   private[this] def fetch(
     partition: TopicPartition,
     streamId: StreamId,
-    callback: (
-      (
-        Chunk[KafkaByteConsumerRecord],
-        Map[TopicPartition, OffsetAndMetadata] => F[Unit],
-        FetchCompletedReason
-      )
-    ) => F[Unit]
+    callback: ((Chunk[KafkaByteConsumerRecord], FetchCompletedReason)) => F[Unit]
   ): F[Unit] = {
     val assigned =
       withConsumer.blocking { _.assignment.contains(partition) }
 
-    def storeFetch =
+    def storeFetch: F[Unit] =
       ref
         .modify { state =>
           val (newState, oldFetch) =
@@ -177,13 +171,13 @@ private[kafka] final class KafkaConsumerActor[F[_]](
           case (newState, oldFetches) =>
             log(StoredFetch(partition, callback, newState)) >>
               oldFetches.traverse_ { fetch =>
-                fetch.completeRevoked(Chunk.empty, offsetCommit) >>
+                fetch.completeRevoked(Chunk.empty) >>
                   log(RevokedPreviousFetch(partition, streamId))
               }
         }
 
     def completeRevoked =
-      callback((Chunk.empty, offsetCommit, FetchCompletedReason.TopicPartitionRevoked))
+      callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
 
     assigned.ifM(storeFetch, completeRevoked)
   }
@@ -265,7 +259,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
         val action = st.fetches.filterKeysStrictList(withRecords).traverse {
           case (partition, partitionFetches) =>
             val records = Chunk.vector(st.records(partition).toVector)
-            partitionFetches.values.toList.traverse(_.completeRevoked(records, offsetCommit))
+            partitionFetches.values.toList.traverse(_.completeRevoked(records))
         } >> logging.log(
           RevokedFetchesWithRecords(st.records.filterKeysStrict(withRecords), newState)
         )
@@ -280,7 +274,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
 
         val action = st.fetches
           .filterKeysStrictValuesList(withoutRecords)
-          .traverse(_.values.toList.traverse(_.completeRevoked(Chunk.empty, offsetCommit))) >>
+          .traverse(_.values.toList.traverse(_.completeRevoked(Chunk.empty))) >>
           logging.log(RevokedFetchesWithoutRecords(withoutRecords, newState))
 
         (newState, action)
@@ -363,7 +357,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
     }
   }
 
-  private[this] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
+  private[kafka] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
       val commit = runCommitAsync(offsets) { cb =>
         requests.offer(Request.Commit(offsets, cb))
@@ -430,7 +424,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
               state.fetches.filterKeysStrictList(canBeCompleted).traverse_ {
                 case (partition, fetches) =>
                   val records = Chunk.vector(allRecords(partition).toVector)
-                  fetches.values.toList.traverse_(_.completeRecords(records, offsetCommit))
+                  fetches.values.toList.traverse_(_.completeRecords(records))
               }
 
             (canBeCompleted.nonEmpty, canBeStored.nonEmpty) match {
@@ -590,22 +584,19 @@ private[kafka] object KafkaConsumerActor {
     callback: (
       (
         Chunk[KafkaByteConsumerRecord],
-        Map[TopicPartition, OffsetAndMetadata] => F[Unit],
         FetchCompletedReason
       )
     ) => F[Unit]
   ) {
     def completeRevoked(
-      chunk: Chunk[KafkaByteConsumerRecord],
-      offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
+      chunk: Chunk[KafkaByteConsumerRecord]
     ): F[Unit] =
-      callback((chunk, offsetCommit, FetchCompletedReason.TopicPartitionRevoked))
+      callback((chunk, FetchCompletedReason.TopicPartitionRevoked))
 
     def completeRecords(
-      chunk: Chunk[KafkaByteConsumerRecord],
-      offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
+      chunk: Chunk[KafkaByteConsumerRecord]
     ): F[Unit] =
-      callback((chunk, offsetCommit, FetchCompletedReason.FetchedRecords))
+      callback((chunk, FetchCompletedReason.FetchedRecords))
 
     override def toString: String =
       "FetchRequest$" + System.identityHashCode(this)
@@ -634,7 +625,6 @@ private[kafka] object KafkaConsumerActor {
       callback: (
         (
           Chunk[KafkaByteConsumerRecord],
-          Map[TopicPartition, OffsetAndMetadata] => F[Unit],
           FetchCompletedReason
         )
       ) => F[Unit]
@@ -781,13 +771,7 @@ private[kafka] object KafkaConsumerActor {
     final case class Fetch[F[_]](
       partition: TopicPartition,
       streamId: StreamId,
-      callback: (
-        (
-          Chunk[KafkaByteConsumerRecord],
-          Map[TopicPartition, OffsetAndMetadata] => F[Unit],
-          FetchCompletedReason
-        )
-      ) => F[Unit]
+      callback: ((Chunk[KafkaByteConsumerRecord], FetchCompletedReason)) => F[Unit]
     ) extends Request[F]
 
     final case class Commit[F[_]](

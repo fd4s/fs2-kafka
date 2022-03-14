@@ -17,7 +17,6 @@ import fs2.kafka.internal.syntax._
 import java.util.regex.Pattern
 import org.apache.kafka.common.TopicPartition
 import scala.collection.immutable.SortedSet
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
 
 private[kafka] sealed abstract class LogEntry {
   def level: LogLevel
@@ -63,13 +62,7 @@ private[kafka] object LogEntry {
 
   final case class StoredFetch[F[_]](
     partition: TopicPartition,
-    callback: (
-      (
-        Chunk[KafkaByteConsumerRecord],
-        Map[TopicPartition, OffsetAndMetadata] => F[Unit],
-        FetchCompletedReason
-      )
-    ) => F[Unit],
+    callback: ((Chunk[KafkaByteConsumerRecord], FetchCompletedReason)) => F[Unit],
     state: State[F]
   ) extends LogEntry {
     override def level: LogLevel = Debug

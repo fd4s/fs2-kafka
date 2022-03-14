@@ -120,8 +120,8 @@ object KafkaConsumer {
     settings: ConsumerSettings[F, K, V],
     keyDes: Deserializer[F, K],
     valueDes: Deserializer[F, V],
-    actor: FakeFiber[F],
-    polls: FakeFiber[F],
+    actor: KafkaConsumerActor[F],
+    fiber: FakeFiber[F],
     streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F],
@@ -129,19 +129,13 @@ object KafkaConsumer {
   )(implicit F: Async[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
-      private val fiber: FakeFiber[F] = actor.combine(polls)
-
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
         type PartitionRequest =
-          (
-            Chunk[KafkaByteConsumerRecord],
-            Map[TopicPartition, OffsetAndMetadata] => F[Unit],
-            FetchCompletedReason
-          )
+          (Chunk[KafkaByteConsumerRecord], FetchCompletedReason)
 
         type PartitionsMap = Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]
         type PartitionsMapQueue = Queue[F, Option[PartitionsMap]]
@@ -170,7 +164,6 @@ object KafkaConsumer {
           } yield Stream.eval {
             def committableConsumerRecord(
               record: ConsumerRecord[K, V],
-              offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit],
               partition: TopicPartition
             ): CommittableConsumerRecord[F, K, V] =
               CommittableConsumerRecord(
@@ -182,7 +175,7 @@ object KafkaConsumer {
                     record.offset + 1L,
                     settings.recordMetadata(record)
                   ),
-                  commit = offsetCommit
+                  commit = actor.offsetCommit
                 )
               )
 
@@ -197,11 +190,11 @@ object KafkaConsumer {
                 case Left(()) =>
                   stopReqs.complete(()).void
 
-                case Right((chunk, offsetCommit, reason)) =>
+                case Right((chunk, reason)) =>
                   val c = chunk.traverse[F, CommittableConsumerRecord[F, K, V]] { rec =>
                     ConsumerRecord
                       .fromJava[F, K, V](rec, keyDes, valueDes)
-                      .map(committableConsumerRecord(_, offsetCommit, partition))
+                      .map(committableConsumerRecord(_, partition))
                   }
 
                   val enqueueChunk = c.flatMap { chunk =>
@@ -649,7 +642,7 @@ object KafkaConsumer {
           withConsumer = withConsumer
         )
       }
-      actor <- startConsumerActor(requests, polls, actor)
+      actorFiber <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
     } yield createKafkaConsumer(
       requests,
@@ -657,7 +650,7 @@ object KafkaConsumer {
       keyDeserializer,
       valueDeserializer,
       actor,
-      polls,
+      actorFiber.combine(polls),
       streamId,
       id,
       withConsumer,
