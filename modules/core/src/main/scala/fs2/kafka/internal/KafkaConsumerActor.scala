@@ -6,7 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.data.{Chain, NonEmptySet, NonEmptyVector, StateT}
+import cats.data.{Chain, NonEmptyVector, StateT}
 import cats.effect._
 import cats.effect.std._
 import cats.effect.syntax.all._
@@ -74,28 +74,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
         dispatcher.unsafeRunSync(assigned(partitions.toSortedSet))
     }
-
-  private[this] def assign(
-    partitions: NonEmptySet[TopicPartition],
-    callback: Either[Throwable, Unit] => F[Unit]
-  ): F[Unit] = {
-    val assign =
-      withConsumer.blocking {
-        _.assign(
-          partitions.toList.asJava
-        )
-      }.attempt
-
-    assign
-      .flatTap {
-        case Left(_) => F.unit
-        case Right(_) =>
-          ref
-            .updateAndGet(_.asSubscribed)
-            .log(ManuallyAssignedPartitions(partitions, _))
-      }
-      .flatMap(callback)
-  }
 
   private[this] def fetch(
     partition: TopicPartition,
@@ -493,7 +471,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     request match {
       case Request.Assignment(callback, onRebalance) => assignment(callback, onRebalance)
       case Request.Poll()                            => poll
-      case Request.Assign(partitions, callback)      => assign(partitions, callback)
       case Request.Fetch(partition, streamId, callback) =>
         fetch(partition, streamId, callback)
       case request @ Request.Commit(_, _)            => commit(request)
@@ -709,11 +686,6 @@ private[kafka] object KafkaConsumerActor {
 
     def poll[F[_]]: Poll[F] =
       pollInstance.asInstanceOf[Poll[F]]
-
-    final case class Assign[F[_]](
-      topicPartitions: NonEmptySet[TopicPartition],
-      callback: Either[Throwable, Unit] => F[Unit]
-    ) extends Request[F, Any, Any]
 
     final case class Fetch[F[_], -K, -V](
       partition: TopicPartition,

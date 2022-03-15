@@ -521,11 +521,15 @@ object KafkaConsumer {
         stopConsumingDeferred.complete(()).attempt.void
 
       override def assign(partitions: NonEmptySet[TopicPartition]): F[Unit] =
-        request { callback =>
-          Request.Assign(
-            topicPartitions = partitions,
-            callback = callback
-          )
+        permit.surround {
+          withConsumer.blocking {
+            _.assign(
+              partitions.toList.asJava
+            )
+          } >> actor.ref
+            .updateAndGet(_.asSubscribed)
+            .log(LogEntry.ManuallyAssignedPartitions(partitions, _))
+
         }
 
       override def assign(topic: String, partitions: NonEmptySet[Int]): F[Unit] =
