@@ -19,7 +19,6 @@ import cats.instances.string._
   * To create a new [[Header]], use [[Header#apply]].
   */
 sealed abstract class Header extends org.apache.kafka.common.header.Header {
-
   /** The header key. */
   override def key: String
 

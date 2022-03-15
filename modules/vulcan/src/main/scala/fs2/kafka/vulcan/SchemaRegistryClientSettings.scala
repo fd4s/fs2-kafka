@@ -18,7 +18,6 @@ import scala.jdk.CollectionConverters._
   * Use `SchemaRegistryClient#apply` to create an instance.
   */
 sealed abstract class SchemaRegistryClientSettings[F[_]] {
-
   /**
     * The base URL of the schema registry service.
     */

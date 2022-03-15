@@ -11,7 +11,6 @@ import fs2.kafka.CommittableConsumerRecord
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaConsume[F[_], K, V] {
-
   /**
     * Consume from all assigned partitions, producing a stream
     * of [[CommittableConsumerRecord]]s. Alias for [[stream]].

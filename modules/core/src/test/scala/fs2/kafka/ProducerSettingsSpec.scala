@@ -170,7 +170,6 @@ final class ProducerSettingsSpec extends BaseSpec {
         )
       }
     }
-
   }
 
   val settings = ProducerSettings[IO, String, String]

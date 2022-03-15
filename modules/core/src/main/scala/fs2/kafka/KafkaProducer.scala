@@ -25,7 +25,6 @@ import scala.concurrent.Promise
   * ability to produce `ProducerRecord`s using [[produce]].
   */
 abstract class KafkaProducer[F[_], K, V] {
-
   /**
     * Produces the specified [[ProducerRecords]] in two steps: the
     * first effect puts the records in the buffer of the producer,
@@ -55,10 +54,8 @@ abstract class KafkaProducer[F[_], K, V] {
 }
 
 object KafkaProducer {
-
   implicit class ProducerOps[F[_], K, V](private val producer: KafkaProducer[F, K, V])
       extends AnyVal {
-
     /**
       * Produce a single [[ProducerRecord]], see [[KafkaProducer.produce]] for general semantics.
       */
@@ -90,7 +87,6 @@ object KafkaProducer {
       */
     def produceOne(record: ProducerRecord[K, V]): F[F[ProducerResult[K, V]]] =
       producer.produce(ProducerRecords.one(record))
-
   }
 
   /**
@@ -98,7 +94,6 @@ object KafkaProducer {
     * access to the underlying producer metrics.
     */
   abstract class Metrics[F[_], K, V] extends KafkaProducer[F, K, V] {
-
     /**
       * Returns producer metrics.
       *
@@ -240,7 +235,6 @@ object KafkaProducer {
 
   private[kafka] final class ProducerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
-
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can

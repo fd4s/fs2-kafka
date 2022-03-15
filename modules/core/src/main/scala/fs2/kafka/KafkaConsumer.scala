@@ -126,7 +126,6 @@ object KafkaConsumer {
     stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-
       private val fiber: FakeFiber[F] = actor.combine(polls)
 
       override def partitionsMapStream
@@ -653,7 +652,6 @@ object KafkaConsumer {
 
   private[kafka] final class ConsumerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
-
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can
@@ -695,7 +693,6 @@ object KafkaConsumer {
    * to explicitly use operations such as `flatMap` and `evalTap`
    */
   implicit final class StreamOps[F[_]: Functor, K, V](self: Stream[F, KafkaConsumer[F, K, V]]) {
-
     /**
       * Subscribes a consumer to the specified topics within the [[Stream]] context.
       * See [[KafkaSubscription#subscribe]].
