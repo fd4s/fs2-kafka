@@ -498,18 +498,23 @@ object KafkaConsumer {
         }.flatten
 
       override def subscribe(regex: Regex): F[Unit] =
-        request { callback =>
-          Request.SubscribePattern(
-            pattern = regex.pattern,
-            callback = callback
-          )
+        permit.surround {
+          withConsumer.blocking {
+            _.subscribe(
+              regex.pattern,
+              actor.consumerRebalanceListener
+            )
+          } >>
+            actor.ref
+              .updateAndGet(_.asSubscribed)
+              .log(LogEntry.SubscribedPattern(regex.pattern, _))
         }
 
       override def unsubscribe: F[Unit] =
-        request { callback =>
-          Request.Unsubscribe(
-            callback = callback
-          )
+        permit.surround {
+          withConsumer.blocking { _.unsubscribe() } >> actor.ref
+            .updateAndGet(_.asUnsubscribed)
+            .log(LogEntry.Unsubscribed(_))
         }
 
       override def stopConsuming: F[Unit] =

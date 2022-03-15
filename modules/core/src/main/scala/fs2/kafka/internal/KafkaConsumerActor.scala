@@ -20,7 +20,6 @@ import fs2.kafka.internal.LogEntry._
 import fs2.kafka.internal.syntax._
 import java.time.Duration
 import java.util
-import java.util.regex.Pattern
 
 import org.apache.kafka.clients.consumer.{
   ConsumerConfig,
@@ -75,46 +74,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
         dispatcher.unsafeRunSync(assigned(partitions.toSortedSet))
     }
-
-  private[this] def subscribe(
-    pattern: Pattern,
-    callback: Either[Throwable, Unit] => F[Unit]
-  ): F[Unit] = {
-    val subscribe =
-      withConsumer.blocking {
-        _.subscribe(
-          pattern,
-          consumerRebalanceListener
-        )
-      }.attempt
-
-    subscribe
-      .flatTap {
-        case Left(_) => F.unit
-        case Right(_) =>
-          ref
-            .updateAndGet(_.asSubscribed)
-            .log(SubscribedPattern(pattern, _))
-      }
-      .flatMap(callback)
-  }
-
-  private[this] def unsubscribe(
-    callback: Either[Throwable, Unit] => F[Unit]
-  ): F[Unit] = {
-    val unsubscribe =
-      withConsumer.blocking { _.unsubscribe() }.attempt
-
-    unsubscribe
-      .flatTap {
-        case Left(_) => F.unit
-        case Right(_) =>
-          ref
-            .updateAndGet(_.asUnsubscribed)
-            .log(Unsubscribed(_))
-      }
-      .flatMap(callback)
-  }
 
   private[this] def assign(
     partitions: NonEmptySet[TopicPartition],
@@ -532,11 +491,9 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   def handle(request: Request[F, K, V]): F[Unit] =
     request match {
-      case Request.Assignment(callback, onRebalance)   => assignment(callback, onRebalance)
-      case Request.Poll()                              => poll
-      case Request.Assign(partitions, callback)        => assign(partitions, callback)
-      case Request.SubscribePattern(pattern, callback) => subscribe(pattern, callback)
-      case Request.Unsubscribe(callback)               => unsubscribe(callback)
+      case Request.Assignment(callback, onRebalance) => assignment(callback, onRebalance)
+      case Request.Poll()                            => poll
+      case Request.Assign(partitions, callback)      => assign(partitions, callback)
       case Request.Fetch(partition, streamId, callback) =>
         fetch(partition, streamId, callback)
       case request @ Request.Commit(_, _)            => commit(request)
@@ -755,15 +712,6 @@ private[kafka] object KafkaConsumerActor {
 
     final case class Assign[F[_]](
       topicPartitions: NonEmptySet[TopicPartition],
-      callback: Either[Throwable, Unit] => F[Unit]
-    ) extends Request[F, Any, Any]
-
-    final case class SubscribePattern[F[_]](
-      pattern: Pattern,
-      callback: Either[Throwable, Unit] => F[Unit]
-    ) extends Request[F, Any, Any]
-
-    final case class Unsubscribe[F[_]](
       callback: Either[Throwable, Unit] => F[Unit]
     ) extends Request[F, Any, Any]
 
