@@ -117,16 +117,17 @@ object KafkaConsumer {
   private def createKafkaConsumer[F[_], K, V](
     requests: QueueSink[F, Request[F, K, V]],
     settings: ConsumerSettings[F, K, V],
-    actor: FakeFiber[F],
+    actor: KafkaConsumerActor[F, K, V],
+    a: FakeFiber[F],
     polls: FakeFiber[F],
     streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F],
     stopConsumingDeferred: Deferred[F, Unit]
-  )(implicit F: Async[F]): KafkaConsumer[F, K, V] =
+  )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
-      private val fiber: FakeFiber[F] = actor.combine(polls)
+      private val fiber: FakeFiber[F] = a.combine(polls)
 
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
@@ -478,12 +479,23 @@ object KafkaConsumer {
         subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
       override def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] =
-        request { callback =>
-          Request.SubscribeTopics(
-            topics = topics.toNonEmptyList,
-            callback = callback
-          )
+        permit.surround {
+          withConsumer.blocking {
+            _.subscribe(
+              topics.toList.asJava,
+              actor.consumerRebalanceListener
+            )
+          } >> actor.ref
+            .updateAndGet(_.asSubscribed)
+            .log(LogEntry.SubscribedTopics(topics.toNonEmptyList, _))
         }
+
+      private def permit: Resource[F, Unit] =
+        Resource.eval {
+          Deferred[F, Resource[F, Unit]].flatMap { permitDef =>
+            requests.offer(Request.Permit(permitDef.complete(_).void)) >> permitDef.get
+          }
+        }.flatten
 
       override def subscribe(regex: Regex): F[Unit] =
         request { callback =>
@@ -618,18 +630,19 @@ object KafkaConsumer {
           withConsumer = withConsumer
         )
       }
-      actor <- startConsumerActor(requests, polls, actor)
+      a <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
     } yield createKafkaConsumer(
       requests,
       settings,
       actor,
+      a,
       polls,
       streamId,
       id,
       withConsumer,
       stopConsumingDeferred
-    )
+    )(F, logging)
 
   /**
     * Creates a new [[KafkaConsumer]] in the `Stream` context,

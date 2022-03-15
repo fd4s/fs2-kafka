@@ -50,7 +50,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[F, K, V],
   keyDeserializer: Deserializer[F, K],
   valueDeserializer: Deserializer[F, V],
-  ref: Ref[F, State[F, K, V]],
+  val ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
   withConsumer: WithConsumer[F]
 )(
@@ -67,7 +67,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   private[this] val consumerGroupId: Option[String] =
     settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG)
 
-  private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
+  val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
       override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
         dispatcher.unsafeRunSync(revoked(partitions.toSortedSet))
@@ -75,29 +75,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
         dispatcher.unsafeRunSync(assigned(partitions.toSortedSet))
     }
-
-  private[this] def subscribe(
-    topics: NonEmptyList[String],
-    callback: Either[Throwable, Unit] => F[Unit]
-  ): F[Unit] = {
-    val subscribe =
-      withConsumer.blocking {
-        _.subscribe(
-          topics.toList.asJava,
-          consumerRebalanceListener
-        )
-      }.attempt
-
-    subscribe
-      .flatTap {
-        case Left(_) => F.unit
-        case Right(_) =>
-          ref
-            .updateAndGet(_.asSubscribed)
-            .log(SubscribedTopics(topics, _))
-      }
-      .flatMap(callback)
-  }
 
   private[this] def subscribe(
     pattern: Pattern,
@@ -557,7 +534,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     request match {
       case Request.Assignment(callback, onRebalance)   => assignment(callback, onRebalance)
       case Request.Poll()                              => poll
-      case Request.SubscribeTopics(topics, callback)   => subscribe(topics, callback)
       case Request.Assign(partitions, callback)        => assign(partitions, callback)
       case Request.SubscribePattern(pattern, callback) => subscribe(pattern, callback)
       case Request.Unsubscribe(callback)               => unsubscribe(callback)
@@ -566,6 +542,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       case request @ Request.Commit(_, _)            => commit(request)
       case request @ Request.ManualCommitAsync(_, _) => manualCommitAsync(request)
       case request @ Request.ManualCommitSync(_, _)  => manualCommitSync(request)
+      case Request.Permit(cb)                        => permit(cb)
+    }
+
+  def permit(callback: Resource[F, Unit] => F[Unit]): F[Unit] =
+    Deferred[F, Unit].flatMap { gate =>
+      callback(Resource.pure(()).onFinalize(gate.complete(()).void)) >> gate.get
     }
 
   private[this] case class RevokedResult(
@@ -756,6 +738,8 @@ private[kafka] object KafkaConsumerActor {
   sealed abstract class Request[F[_], -K, -V]
 
   object Request {
+    final case class Permit[F[_]](callback: Resource[F, Unit] => F[Unit])
+        extends Request[F, Any, Any]
     final case class Assignment[F[_]](
       callback: Either[Throwable, SortedSet[TopicPartition]] => F[Unit],
       onRebalance: Option[OnRebalance[F]]
@@ -768,11 +752,6 @@ private[kafka] object KafkaConsumerActor {
 
     def poll[F[_]]: Poll[F] =
       pollInstance.asInstanceOf[Poll[F]]
-
-    final case class SubscribeTopics[F[_]](
-      topics: NonEmptyList[String],
-      callback: Either[Throwable, Unit] => F[Unit]
-    ) extends Request[F, Any, Any]
 
     final case class Assign[F[_]](
       topicPartitions: NonEmptySet[TopicPartition],
