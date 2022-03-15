@@ -130,8 +130,6 @@ The following settings are specific to the library.
 
 - `withCloseTimeout` controls the timeout when waiting for producer shutdown. Default is 60 seconds.
 
-- `withParallelism` sets the max number of `ProducerRecords` to produce in the same batch when using the `produce` pipe. Default is 100.
-
 - `withCreateProducer` changes how the underlying Java Kafka producer is created. The default merely creates a Java `KafkaProducer` instance using set properties, but this function allows overriding the behaviour for e.g. testing purposes.
 
 ## Producer Creation
@@ -174,7 +172,7 @@ object ProduceExample extends IOApp {
           val key = committable.record.key
           val value = committable.record.value
           val record = ProducerRecord("topic", key, value)
-          ProducerRecords.one(record, committable.offset)
+          ProducerRecords.one(record)
         }
         .through(KafkaProducer.pipe(producerSettings))
 
@@ -185,9 +183,9 @@ object ProduceExample extends IOApp {
 
 In the stream above, we're simply producing the records we receive back to the topic.
 
-The `produce` function creates a `KafkaProducer` and produces records in `ProducerRecords`. Note that `ProducerRecords` support multiple records and a passthrough value, `committable.offset`. Once all records have been produced in the `ProducerRecords`, the passthrough will be emitted.
+The `produce` function creates a `KafkaProducer` and produces records in `ProducerRecords`, which is al alias for `fs2.Chunk`. Once all records have been produced in the `ProducerRecords`, the inner effect will complete with a `ProducerResult`, which is an alias for `Chunk[(ProducerRecord[K, V], RecordMetadata)]`.
 
-If we're producing in multiple places in our stream, we can create the `KafkaProducer` ourselves, and pass it to the `produce` function. Every `produce` allow up to `ProducerSettings#parallelism` instances of `ProducerRecords` to be batched together in the same batch.
+If we're producing in multiple places in our stream, we can create the `KafkaProducer` ourselves, and pass it to the `pipe` function.
 
 ```scala mdoc:silent
 object PartitionedProduceExample extends IOApp {
@@ -204,9 +202,9 @@ object PartitionedProduceExample extends IOApp {
                   val key = committable.record.key
                   val value = committable.record.value
                   val record = ProducerRecord("topic", key, value)
-                  ProducerRecords.one(record, committable.offset)
+                  ProducerRecords.one(record)
                 }
-                .through(KafkaProducer.pipe(producerSettings, producer))
+                .through(KafkaProducer.pipe(producer))
             }
             .parJoinUnbounded
         }
@@ -231,7 +229,7 @@ object KafkaProducerProduceExample extends IOApp {
               val key = committable.record.key
               val value = committable.record.value
               val record = ProducerRecord("topic", key, value)
-              ProducerRecords.one(record, committable.offset)
+              ProducerRecords.one(record)
             }
             .evalMap(producer.produce)
             .groupWithin(500, 15.seconds)
@@ -261,7 +259,7 @@ object KafkaProducerProduceFlattenExample extends IOApp {
               val key = committable.record.key
               val value = committable.record.value
               val record = ProducerRecord("topic", key, value)
-              ProducerRecords.one(record, committable.offset)
+              ProducerRecords.one(record)
             }
             .evalMap { record =>
               producer.produce(record).flatten

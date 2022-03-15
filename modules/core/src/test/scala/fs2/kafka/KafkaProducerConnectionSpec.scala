@@ -26,8 +26,8 @@ final class KafkaProducerConnectionSpec extends BaseKafkaSpec with TypeCheckedTr
           result2 <- Stream.eval(producer2.produce(ProducerRecords.one(producerRecordInt)).flatten)
         } yield (result1, result2)).compile.lastOrError.unsafeRunSync()
 
-      result1.records.toList.map(_._1) should ===(List(producerRecordString))
-      result2.records.toList.map(_._1) should ===(List(producerRecordInt))
+      result1.toList.map(_._1) should ===(List(producerRecordString))
+      result2.toList.map(_._1) should ===(List(producerRecordInt))
 
       val consumed =
         consumeNumberKeyedMessagesFrom[String, String](topic, 2)

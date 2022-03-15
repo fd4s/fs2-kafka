@@ -44,7 +44,7 @@ class Fs2Kafka extends SemanticRule("Fs2Kafka") {
       // ProducerRecords.one[K, V, P] -> ProducerRecords.one[P, K, V]
       case term @ Term.ApplyType(ProducerRecords_one_M(fun), List(k, v, p)) =>
         Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
-      // ProducerResult[K, V, P] -> ProducerResult[P, K, V]
+      // ProducerResult[K, V, P] -> ProducerResult[K, V]
       case term @ Type.Apply(ProducerResult_M(fun), List(k, v, p)) =>
         Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
       case term @ Term.ApplyType(ProducerResult_M(fun), List(k, v, p)) =>

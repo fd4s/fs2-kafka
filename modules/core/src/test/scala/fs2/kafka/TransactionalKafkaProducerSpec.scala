@@ -74,32 +74,33 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           )
         )
         _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
-        records <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
+        (records, passthrough) <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
           case ((key, value), i) =>
             val record = ProducerRecord(topic, key, value)
 
             makeOffset.fold[
               Either[
-                ProducerRecords[(String, String), String, String],
-                TransactionalProducerRecords[IO, (String, String), String, String]
+                ProducerRecords[String, String],
+                TransactionalProducerRecords[IO, String, String]
               ]
-            ](Left(ProducerRecords.one(record, (key, value))))(
+            ](Left(ProducerRecords.one(record)))(
               offset =>
                 Right(
                   TransactionalProducerRecords.one(
                     CommittableProducerRecords.one(
                       record,
                       offset(i)
-                    ),
-                    (key, value)
+                    )
                   )
                 )
-            )
+            ) -> (key, value)
 
         }
         passthrough <- Stream
-          .eval(records.fold(producer.produceWithoutOffsets, producer.produce))
-          .map(_.passthrough)
+          .eval(
+            records.fold(producer.produceWithoutOffsets, producer.produce).tupleRight(passthrough)
+          )
+          .map(_._2)
           .buffer(toProduce.size)
       } yield passthrough).compile.toVector.unsafeRunSync()
 
@@ -167,32 +168,30 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             val offsets = toProduce.mapWithIndex {
               case (_, i) => offset(i)
             }
-            val records = TransactionalProducerRecords(
+            val records =
               recordsToProduce.zip(offsets).map {
                 case (record, offset) =>
                   CommittableProducerRecords.one(
                     record,
                     offset
                   )
-              },
-              toPassthrough
-            )
-            producer.produce(records)
+              }
+            producer.produce(records).tupleLeft(toPassthrough)
           case None =>
-            val records = ProducerRecords(recordsToProduce, toPassthrough)
-            producer.produceWithoutOffsets(records)
+            val records = ProducerRecords(recordsToProduce)
+            producer.produceWithoutOffsets(records).tupleLeft(toPassthrough)
         }
 
         result <- Stream.eval(produce)
       } yield result).compile.lastOrError.unsafeRunSync()
 
     val records =
-      produced.records.map {
+      produced._2.map {
         case (record, _) =>
           record.key -> record.value
       }
 
-    assert(records == toProduce && produced.passthrough == toPassthrough)
+    assert(records == toProduce && produced._1 == toPassthrough)
 
     val consumed = {
       val customConsumerProperties =
@@ -234,15 +233,13 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 _ => IO.unit
               )
           }
-          records = TransactionalProducerRecords(
-            recordsToProduce.zip(offsets).map {
-              case (record, offset) =>
-                CommittableProducerRecords.one(
-                  record,
-                  offset
-                )
-            }
-          )
+          records = recordsToProduce.zip(offsets).map {
+            case (record, offset) =>
+              CommittableProducerRecords.one(
+                record,
+                offset
+              )
+          }
           _ <- Stream
             .eval(producer.produce(records))
             .concurrently(
@@ -318,17 +315,14 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 _ => IO.unit
               )
           }
-          records = TransactionalProducerRecords(
-            Chunk.seq(recordsToProduce.zip(offsets)).map {
-              case (record, offset) =>
-                CommittableProducerRecords(
-                  NonEmptyList.one(record),
-                  offset
-                )
-            },
-            toPassthrough
-          )
-          result <- Stream.eval(producer.produce(records).attempt)
+          records = Chunk.seq(recordsToProduce.zip(offsets)).map {
+            case (record, offset) =>
+              CommittableProducerRecords(
+                NonEmptyList.one(record),
+                offset
+              )
+          }
+          result <- Stream.eval(producer.produce(records).tupleLeft(toPassthrough).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       produced shouldBe Left(error)

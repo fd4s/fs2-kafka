@@ -6,8 +6,13 @@
 
 package fs2
 
+import fs2.Chunk
+import cats.Traverse
 import cats.effect._
+
+import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
+import org.apache.kafka.clients.producer.RecordMetadata
 
 package object kafka {
   type Id[+A] = A
@@ -48,6 +53,12 @@ package object kafka {
   type KafkaByteProducerRecord =
     org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
+  type ProducerRecords[K, V] = Chunk[ProducerRecord[K, V]]
+
+  type TransactionalProducerRecords[F[_], +K, +V] = Chunk[CommittableProducerRecords[F, K, V]]
+
+  type ProducerResult[K, V] = Chunk[(ProducerRecord[K, V], RecordMetadata)]
+
   /**
     * Commits offsets in batches of every `n` offsets or time window
     * of length `d`, whichever happens first. If there are no offsets
@@ -58,4 +69,53 @@ package object kafka {
     implicit F: Temporal[F]
   ): Pipe[F, CommittableOffset[F], Unit] =
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
+}
+package kafka {
+
+  object ProducerRecords {
+
+    def apply[F[+_], K, V](
+      records: F[ProducerRecord[K, V]]
+    )(
+      implicit F: Traverse[F]
+    ): ProducerRecords[K, V] = {
+      val numRecords = F.size(records).toInt
+      if (numRecords <= 1) {
+        F.get(records)(0) match {
+          case None         => Chunk.empty[ProducerRecord[K, V]]
+          case Some(record) => Chunk.singleton(record)
+        }
+      } else {
+        val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](numRecords)
+        F.foldLeft(records, ()) {
+          case (_, record) =>
+            buf += record
+            ()
+        }
+        Chunk.array(buf.toArray)
+      }
+    }
+
+    def one[K, V](record: ProducerRecord[K, V]): ProducerRecords[K, V] =
+      Chunk.singleton(record)
+
+  }
+
+  object TransactionalProducerRecords {
+
+    @deprecated("this is now an identity operation", "3.0.0-M5")
+    def apply[F[_], K, V](
+      chunk: Chunk[CommittableProducerRecords[F, K, V]]
+    ): Chunk[CommittableProducerRecords[F, K, V]] = chunk
+
+    /**
+      * Creates a new [[TransactionalProducerRecords]] for producing exactly
+      * one [[CommittableProducerRecords]]
+      */
+    def one[F[_], K, V](
+      record: CommittableProducerRecords[F, K, V]
+    ): TransactionalProducerRecords[F, K, V] =
+      Chunk.singleton(record)
+
+  }
 }

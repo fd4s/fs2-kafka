@@ -216,18 +216,6 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
-    * The maximum number of [[ProducerRecords]] to produce in the same batch.<br>
-    * <br>
-    * The default value is 10000.
-    */
-  def parallelism: Int
-
-  /**
-    * Creates a new [[ProducerSettings]] with the specified [[parallelism]].
-    */
-  def withParallelism(parallelism: Int): ProducerSettings[F, K, V]
-
-  /**
     * Includes the credentials properties from the provided [[KafkaCredentialStore]]
     */
   def withCredentials(credentialsStore: KafkaCredentialStore): ProducerSettings[F, K, V]
@@ -239,8 +227,7 @@ object ProducerSettings {
     override val valueSerializer: F[Serializer[F, V]],
     override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
-    override val closeTimeout: FiniteDuration,
-    override val parallelism: Int
+    override val closeTimeout: FiniteDuration
   ) extends ProducerSettings[F, K, V] {
     override def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings[F, K, V] =
       copy(customBlockingContext = Some(ec))
@@ -296,9 +283,6 @@ object ProducerSettings {
     override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       copy(closeTimeout = closeTimeout)
 
-    override def withParallelism(parallelism: Int): ProducerSettings[F, K, V] =
-      copy(parallelism = parallelism)
-
     /**
       * Includes the credentials properties from the provided [[KafkaCredentialStore]]
       */
@@ -322,8 +306,7 @@ object ProducerSettings {
       properties = Map(
         ProducerConfig.RETRIES_CONFIG -> "0"
       ),
-      closeTimeout = 60.seconds,
-      parallelism = 10000
+      closeTimeout = 60.seconds
     )
 
   def apply[F[_], K, V](

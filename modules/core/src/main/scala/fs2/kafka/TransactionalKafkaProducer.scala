@@ -24,8 +24,9 @@ import scala.annotation.nowarn
   * streams, with the ability to atomically produce `ProducerRecord`s and commit
   * corresponding [[CommittableOffset]]s using [[produce]].<br>
   * <br>
-  * Records are wrapped in [[TransactionalProducerRecords]] which allow an
-  * arbitrary passthrough value to be included in the result.
+  * Records are wrapped in [[TransactionalProducerRecords]], which is a chunk of
+  * [[CommittableProducerRecord]] which wrap zero or more records together with
+  * a [[CommittableOffset]].
   */
 abstract class TransactionalKafkaProducer[F[_], K, V] {
 
@@ -37,9 +38,9 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
     * occurs, the transaction is aborted. The returned effect succeeds if the whole
     * transaction completes successfully.
     */
-  def produce[P](
-    records: TransactionalProducerRecords[F, P, K, V]
-  ): F[ProducerResult[P, K, V]]
+  def produce(
+    records: TransactionalProducerRecords[F, K, V]
+  ): F[ProducerResult[K, V]]
 }
 
 object TransactionalKafkaProducer {
@@ -71,7 +72,7 @@ object TransactionalKafkaProducer {
       * or cancellation occurs, the transaction is aborted. The returned effect succeeds
       * if the whole transaction completes successfully.
       */
-    def produceWithoutOffsets[P](records: ProducerRecords[P, K, V]): F[ProducerResult[P, K, V]]
+    def produceWithoutOffsets(records: ProducerRecords[K, V]): F[ProducerResult[K, V]]
   }
 
   /**
@@ -96,19 +97,18 @@ object TransactionalKafkaProducer {
       WithTransactionalProducer(mk, settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
-        override def produce[P](
-          records: TransactionalProducerRecords[F, P, K, V]
-        ): F[ProducerResult[P, K, V]] =
+        override def produce(
+          records: TransactionalProducerRecords[F, K, V]
+        ): F[ProducerResult[K, V]] =
           produceTransactionWithOffsets(records)
-            .map(ProducerResult(_, records.passthrough))
 
-        private[this] def produceTransactionWithOffsets[P](
-          records: TransactionalProducerRecords[F, P, K, V]
+        private[this] def produceTransactionWithOffsets(
+          records: Chunk[CommittableProducerRecords[F, K, V]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-          if (records.records.isEmpty) F.pure(Chunk.empty)
+          if (records.isEmpty) F.pure(Chunk.empty)
           else {
             val batch =
-              CommittableOffsetBatch.fromFoldableMap(records.records)(_.offset)
+              CommittableOffsetBatch.fromFoldableMap(records)(_.offset)
 
             val consumerGroupId =
               if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
@@ -124,16 +124,16 @@ object TransactionalKafkaProducer {
                   )
                 }
 
-              produceTransaction(records.records.flatMap(_.records), Some(sendOffsets))
+              produceTransaction(records.flatMap(_.records), Some(sendOffsets))
             }
           }
 
-        override def produceWithoutOffsets[P](
-          records: ProducerRecords[P, K, V]
-        ): F[ProducerResult[P, K, V]] =
-          produceTransaction(records.records, None).map(ProducerResult(_, records.passthrough))
+        override def produceWithoutOffsets(
+          records: ProducerRecords[K, V]
+        ): F[ProducerResult[K, V]] =
+          produceTransaction(records, None)
 
-        private[this] def produceTransaction[P](
+        private[this] def produceTransaction(
           records: Chunk[ProducerRecord[K, V]],
           sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
