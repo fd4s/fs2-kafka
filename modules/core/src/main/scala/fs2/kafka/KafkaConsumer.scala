@@ -384,11 +384,16 @@ object KafkaConsumer {
       private def assignment(
         onRebalance: Option[OnRebalance[F]]
       ): F[SortedSet[TopicPartition]] =
-        request { callback =>
-          Request.Assignment(
-            callback = callback,
-            onRebalance = onRebalance
-          )
+        permit.surround {
+          onRebalance
+            .fold(actor.ref.updateAndGet(_.asStreaming)) { on =>
+              actor.ref.updateAndGet(_.withOnRebalance(on).asStreaming).flatTap { newState =>
+                logging.log(LogEntry.StoredOnRebalance(on, newState))
+              }
+
+            }
+            .ensure(NotSubscribedException())(_.subscribed) >>
+            withConsumer.blocking(_.assignment.toSortedSet)
         }
 
       override def assignmentStream: Stream[F, SortedSet[TopicPartition]] = {

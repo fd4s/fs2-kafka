@@ -255,31 +255,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
   }
 
-  private[this] def assignment(
-    callback: Either[Throwable, SortedSet[TopicPartition]] => F[Unit],
-    onRebalance: Option[OnRebalance[F]]
-  ): F[Unit] = {
-    def resolveDeferred(subscribed: Boolean): F[Unit] = {
-      val result =
-        if (subscribed) withConsumer.blocking(_.assignment.toSortedSet.asRight)
-        else F.pure(Left(NotSubscribedException()))
-
-      result.flatMap(callback)
-    }
-
-    onRebalance match {
-      case Some(on) =>
-        ref.updateAndGet(_.withOnRebalance(on).asStreaming).flatMap { newState =>
-          resolveDeferred(newState.subscribed) >> logging.log(StoredOnRebalance(on, newState))
-        }
-
-      case None =>
-        ref.updateAndGet(_.asStreaming).flatMap { newState =>
-          resolveDeferred(newState.subscribed)
-        }
-    }
-  }
-
   private[this] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
       val commit = runCommitAsync(offsets) { cb =>
@@ -469,7 +444,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   def handle(request: Request[F, K, V]): F[Unit] =
     request match {
-      case Request.Assignment(callback, onRebalance) => assignment(callback, onRebalance)
       case Request.Poll()                            => poll
       case Request.Fetch(partition, streamId, callback) =>
         fetch(partition, streamId, callback)
@@ -674,11 +648,7 @@ private[kafka] object KafkaConsumerActor {
   object Request {
     final case class Permit[F[_]](callback: Resource[F, Unit] => F[Unit])
         extends Request[F, Any, Any]
-    final case class Assignment[F[_]](
-      callback: Either[Throwable, SortedSet[TopicPartition]] => F[Unit],
-      onRebalance: Option[OnRebalance[F]]
-    ) extends Request[F, Any, Any]
-
+        
     final case class Poll[F[_]]() extends Request[F, Any, Any]
 
     private[this] val pollInstance: Poll[Nothing] =
