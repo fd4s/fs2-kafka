@@ -130,7 +130,7 @@ The following settings are specific to the library.
 
 - `withCloseTimeout` controls the timeout when waiting for producer shutdown. Default is 60 seconds.
 
-- `withParallelism` sets the max number of `ProducerRecords` to produce in the same batch when using the `produce` pipe. Default is 100.
+- `withParallelism` sets the max number of `ProducerRecords` to produce in the same batch when using the `produce` pipe. Default is 10000.
 
 - `withCreateProducer` changes how the underlying Java Kafka producer is created. The default merely creates a Java `KafkaProducer` instance using set properties, but this function allows overriding the behaviour for e.g. testing purposes.
 
