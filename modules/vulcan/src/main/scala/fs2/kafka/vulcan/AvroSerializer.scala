@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,7 +8,7 @@ package fs2.kafka.vulcan
 
 import _root_.vulcan.Codec
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.{RecordSerializer, Serializer}
 
 final class AvroSerializer[A] private[vulcan] (
@@ -31,8 +31,8 @@ final class AvroSerializer[A] private[vulcan] (
       }
 
     RecordSerializer.instance(
-      forKey = createSerializer(true),
-      forValue = createSerializer(false)
+      forKey = createSerializer(true).widen,
+      forValue = createSerializer(false).widen
     )
   }
 

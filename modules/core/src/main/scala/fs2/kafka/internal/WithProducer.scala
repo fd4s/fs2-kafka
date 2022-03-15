@@ -1,16 +1,15 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka.internal
 
-import fs2.kafka.producer.MkProducer
 import cats.effect.{Async, Resource}
-import cats.implicits._
-import fs2.kafka.{KafkaByteProducer, ProducerSettings, TransactionalProducerSettings}
+import fs2.kafka.{KafkaByteProducer, ProducerSettings}
 import scala.jdk.DurationConverters._
+import fs2.kafka.producer.MkProducer
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
   def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A]
@@ -39,29 +38,6 @@ private[kafka] object WithProducer {
       )(producer => blockingF { producer.close(settings.closeTimeout.toJava) })
       .map(create(_, blockingG))
   }
-
-  def apply[F[_], K, V](
-    mk: MkProducer[F],
-    settings: TransactionalProducerSettings[F, K, V]
-  )(
-    implicit F: Async[F]
-  ): Resource[F, WithProducer[F]] =
-    Resource[F, WithProducer[F]] {
-      mk(settings.producerSettings).flatMap { producer =>
-        val blocking = settings.producerSettings.customBlockingContext
-          .fold(Blocking.fromSync[F])(Blocking.fromExecutionContext)
-
-        val withProducer = create(producer, blocking)
-
-        val initTransactions = withProducer.blocking { _.initTransactions() }
-
-        val close = withProducer.blocking {
-          _.close(settings.producerSettings.closeTimeout.toJava)
-        }
-
-        initTransactions.as((withProducer, close))
-      }
-    }
 
   private def create[F[_]](
     producer: KafkaByteProducer,

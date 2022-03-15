@@ -1,22 +1,22 @@
-val catsEffectVersion = "3.2.9"
+val catsEffectVersion = "3.3.7"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "6.2.1"
+val confluentVersion = "7.0.1"
 
-val fs2Version = "3.1.0"
+val fs2Version = "3.2.5"
 
-val kafkaVersion = "2.8.1"
+val kafkaVersion = "3.1.0"
 
-val testcontainersScalaVersion = "0.39.8"
+val testcontainersScalaVersion = "0.40.0"
 
-val vulcanVersion = "1.7.1"
+val vulcanVersion = "1.8.0"
 
 val munitVersion = "0.7.29"
 
-val scala2 = "2.13.6"
+val scala2 = "2.13.8"
 
-val scala3 = "3.0.2"
+val scala3 = "3.1.1"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -76,7 +76,7 @@ lazy val `vulcan-testkit-munit` = project
       )
     ),
     publishSettings,
-    noMimaSettings, // TODO: change to mimaSettings after artifact is released
+    mimaSettings,
     scalaSettings,
     testSettings
   )
@@ -93,7 +93,7 @@ lazy val docs = project
     mdocSettings,
     buildInfoSettings
   )
-  .dependsOn(core, vulcan)
+  .dependsOn(core, vulcan, `vulcan-testkit-munit`)
   .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin, ScalaUnidocPlugin)
 
 lazy val dependencySettings = Seq(
@@ -106,7 +106,7 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.6"
+    "ch.qos.logback" % "logback-classic" % "1.2.11"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
@@ -181,6 +181,9 @@ lazy val buildInfoSettings = Seq(
     BuildInfoKey.map(vulcan / crossScalaVersions) {
       case (k, v) => "vulcan" ++ k.capitalize -> v
     },
+    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) {
+      case (k, v) => "vulcanTestkitMunit" ++ k.capitalize -> v
+    },
     LocalRootProject / organization,
     core / crossScalaVersions,
     BuildInfoKey("fs2Version" -> fs2Version),
@@ -209,7 +212,7 @@ ThisBuild / githubWorkflowPublishTargetBranches :=
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
-    List("ci-release", "docs/docusaurusPublishGhpages"),
+    List("ci-release"), // For 3.0 release: List("ci-release", "docs/docusaurusPublishGhpages"),
     env = Map(
       "GIT_DEPLOY_KEY" -> "${{ secrets.GIT_DEPLOY_KEY }}",
       "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
@@ -268,7 +271,13 @@ lazy val mimaSettings = Seq(
     // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*")
+      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.registerSchema"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withRegisterSchema"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.copy"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.apply"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups")
     )
     // format: on
   }

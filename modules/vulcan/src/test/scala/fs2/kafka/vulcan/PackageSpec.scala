@@ -2,7 +2,7 @@ package fs2.kafka.vulcan
 
 import java.time.Instant
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import fs2.kafka._

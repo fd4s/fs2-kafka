@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -22,7 +22,7 @@ trait KafkaConsume[F[_], K, V] {
     * Alias for `partitionedStream.parJoinUnbounded`.
     * See [[partitionedRecords]] for more information.
     *
-    * @note you have to first use `subscribe` to subscribe the consumer
+    * @note you have to first use `subscribe` or `assign` the consumer
     *       before using this `Stream`. If you forgot to subscribe, there
     *       will be a [[NotSubscribedException]] raised in the `Stream`.
     */
@@ -47,30 +47,37 @@ trait KafkaConsume[F[_], K, V] {
     * can use [[records]] instead, where records for all partitions are in
     * a single `Stream`.
     *
-    * @note you have to first use `subscribe` to subscribe the consumer
+    * @note you have to first use `subscribe` or `assign` the consumer
     *       before using this `Stream`. If you forgot to subscribe, there
     *       will be a [[NotSubscribedException]] raised in the `Stream`.
     */
   def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
 
   /**
-    * `Stream` where each element contains a current assignment. The current
-    * assignment is the `Map`, where keys is a `TopicPartition`, and values are
-    * streams with records for a particular `TopicPartition`.<br>
+    * `Stream` where each element contains a `Map` with all newly assigned partitions.
+    * Keys of this `Map` are `TopicPartition`s, and values are record streams for
+    * the particular `TopicPartition`. These streams will be closed only when
+    * a partition is revoked.<br>
     * <br>
-    * New assignments will be received on each rebalance. On rebalance,
-    * Kafka revoke all previously assigned partitions, and after that assigned
-    * new partitions all at once. `partitionsMapStream` reflects this process
-    * in a streaming manner.<br>
+    * With the default assignor, all previous partitions are revoked at
+    * once, and a new set of partitions is assigned to a consumer on each
+    * rebalance. In this case, each returned `Map` contains the full partition
+    * assignment for the consumer. And all streams from the previous assignment are closed.
+    * It means, that `partitionsMapStream` reflects
+    * the default assignment process in a streaming manner.<br>
     * <br>
-    * Note, that partition streams for revoked partitions will
-    * be closed after the new assignment comes.<br>
+    * This may not be the case when a custom assignor is configured in the
+    * consumer. When using the `CooperativeStickyAssignor`, for instance,
+    * partitions may be revoked individually. In this case, each
+    * element in the stream (each`Map`) will contain only streams for newly assigned
+    * partitions. Previously returned streams for partitions that are retained
+    * will remain active. Only streams for revoked partitions will be closed.<br>
     * <br>
     * This is the most generic `Stream` method. If you don't need such control,
-    * consider using `partitionedStream` or `stream` methods.
-    * They are both based on a `partitionsMapStream`.
+    * consider using `partitionedStream` or `stream` methods. They are both
+    * based on a `partitionsMapStream`.
     *
-    * @note you have to first use `subscribe` to subscribe the consumer
+    * @note you have to first use `subscribe` or `assign` to subscribe the consumer
     *       before using this `Stream`. If you forgot to subscribe, there
     *       will be a [[NotSubscribedException]] raised in the `Stream`.
     * @see [[records]]

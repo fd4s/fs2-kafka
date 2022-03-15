@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -49,8 +49,8 @@ import scala.collection.immutable.SortedSet
   */
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[F, K, V],
-  keyDeserializer: Deserializer[F, K],
-  valueDeserializer: Deserializer[F, V],
+  keyDeserializer: KeyDeserializer[F, K],
+  valueDeserializer: ValueDeserializer[F, V],
   ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
   withConsumer: WithConsumer[F]
@@ -313,7 +313,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         val records = withRebalancing.records.keySetStrict
 
         val revokedFetches = revoked intersect fetches
-        val revokedNonFetches = revoked diff fetches
+        val revokedNonFetches = revoked diff revokedFetches
 
         val withRecords = records intersect revokedFetches
         val withoutRecords = revokedFetches diff records

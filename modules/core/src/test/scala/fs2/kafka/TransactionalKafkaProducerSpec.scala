@@ -4,11 +4,11 @@ import java.util
 import cats.data.NonEmptyList
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
+import cats.syntax.all._
 import fs2.{Chunk, Stream}
 import scala.jdk.CollectionConverters._
 import fs2.kafka.producer.MkProducer
-import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
+import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerGroupMetadata, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.InvalidProducerEpochException
 import org.apache.kafka.common.serialization.ByteArraySerializer
@@ -34,68 +34,185 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     }
   }
 
-  it("should be able to produce single records in a transaction") {
+  it("should be able to produce single records with offsets in a transaction") {
     withTopic { topic =>
-      createCustomTopic(topic, partitions = 3)
-      val toProduce = (0 to 10).map(n => s"key-$n" -> s"value-$n")
-
-      val produced =
-        (for {
-          producer <- TransactionalKafkaProducer.stream(
-            TransactionalProducerSettings(
-              "id",
-              producerSettings[IO]
-                .withRetries(Int.MaxValue)
+      testSingle(
+        topic,
+        Some(
+          i =>
+            CommittableOffset[IO](
+              new TopicPartition(topic, (i % 3).toInt),
+              new OffsetAndMetadata(i),
+              Some("group"),
+              _ => IO.unit
             )
-          )
-          _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
-          records <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
-            case ((key, value), i) =>
-              val offset =
-                CommittableOffset[IO](
-                  new TopicPartition(topic, (i % 3).toInt),
-                  new OffsetAndMetadata(i),
-                  Some("group"),
-                  _ => IO.unit
-                )
-
-              TransactionalProducerRecords.one(
-                CommittableProducerRecords.one(
-                  ProducerRecord(topic, key, value),
-                  offset
-                ),
-                (key, value)
-              )
-          }
-          passthrough <- Stream
-            .eval(producer.produce(records))
-            .map(_.passthrough)
-            .buffer(toProduce.size)
-        } yield passthrough).compile.toVector.unsafeRunSync()
-
-      produced should contain theSameElementsAs toProduce
-
-      val consumed = {
-        consumeNumberKeyedMessagesFrom[String, String](
-          topic,
-          produced.size,
-          customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
         )
-      }
-
-      consumed should contain theSameElementsAs produced.toList
+      )
     }
   }
 
-  it("should be able to produce multiple records in a transaction") {
+  it("should be able to produce single records without offsets in a transaction") {
+    withTopic { topic =>
+      testSingle(
+        topic,
+        None
+      )
+    }
+  }
+
+  private def testSingle(topic: String, makeOffset: Option[Long => CommittableOffset[IO]]) = {
+    createCustomTopic(topic, partitions = 3)
+    val toProduce = (0 to 10).map(n => s"key-$n" -> s"value-$n")
+
+    val produced =
+      (for {
+        producer <- TransactionalKafkaProducer.stream(
+          TransactionalProducerSettings(
+            "id",
+            producerSettings[IO]
+              .withRetries(Int.MaxValue)
+          )
+        )
+        _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
+        (records, passthrough) <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
+          case ((key, value), i) =>
+            val record = ProducerRecord(topic, key, value)
+
+            makeOffset.fold[
+              Either[
+                ProducerRecords[String, String],
+                TransactionalProducerRecords[IO, String, String]
+              ]
+            ](Left(ProducerRecords.one(record)))(
+              offset =>
+                Right(
+                  TransactionalProducerRecords.one(
+                    CommittableProducerRecords.one(
+                      record,
+                      offset(i)
+                    )
+                  )
+                )
+            ) -> (key, value)
+
+        }
+        passthrough <- Stream
+          .eval(
+            records.fold(producer.produceWithoutOffsets, producer.produce).tupleRight(passthrough)
+          )
+          .map(_._2)
+          .buffer(toProduce.size)
+      } yield passthrough).compile.toVector.unsafeRunSync()
+
+    produced should contain theSameElementsAs toProduce
+
+    val consumed = {
+      consumeNumberKeyedMessagesFrom[String, String](
+        topic,
+        produced.size,
+        customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+      )
+    }
+
+    consumed should contain theSameElementsAs produced.toList
+  }
+
+  it("should be able to produce multiple records with offsets in a transaction") {
+    withTopic { topic =>
+      testMultiple(
+        topic,
+        Some(
+          i =>
+            CommittableOffset[IO](
+              new TopicPartition(topic, i % 3),
+              new OffsetAndMetadata(i.toLong),
+              Some("group"),
+              _ => IO.unit
+            )
+        )
+      )
+    }
+  }
+
+  it("should be able to produce multiple records without offsets in a transaction") {
+    withTopic { topic =>
+      testMultiple(
+        topic,
+        None
+      )
+    }
+  }
+
+  private def testMultiple(topic: String, makeOffset: Option[Int => CommittableOffset[IO]]) = {
+    createCustomTopic(topic, partitions = 3)
+    val toProduce =
+      Chunk.seq((0 to 100).toList.map(n => s"key-$n" -> s"value-$n"))
+
+    val toPassthrough = "passthrough"
+
+    val produced =
+      (for {
+        producer <- TransactionalKafkaProducer.stream(
+          TransactionalProducerSettings(
+            "id",
+            producerSettings[IO]
+              .withRetries(Int.MaxValue)
+          )
+        )
+        recordsToProduce = toProduce.map {
+          case (key, value) => ProducerRecord(topic, key, value)
+        }
+
+        produce = makeOffset match {
+          case Some(offset) =>
+            val offsets = toProduce.mapWithIndex {
+              case (_, i) => offset(i)
+            }
+            val records =
+              recordsToProduce.zip(offsets).map {
+                case (record, offset) =>
+                  CommittableProducerRecords.one(
+                    record,
+                    offset
+                  )
+              }
+            producer.produce(records).tupleLeft(toPassthrough)
+          case None =>
+            val records = ProducerRecords(recordsToProduce)
+            producer.produceWithoutOffsets(records).tupleLeft(toPassthrough)
+        }
+
+        result <- Stream.eval(produce)
+      } yield result).compile.lastOrError.unsafeRunSync()
+
+    val records =
+      produced._2.map {
+        case (record, _) =>
+          record.key -> record.value
+      }
+
+    assert(records == toProduce && produced._1 == toPassthrough)
+
+    val consumed = {
+      val customConsumerProperties =
+        Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+      consumeNumberKeyedMessagesFrom[String, String](
+        topic,
+        records.size,
+        customProperties = customConsumerProperties
+      )
+    }
+
+    consumed should contain theSameElementsAs records.toList
+  }
+
+  it("should not allow concurrent access to a producer during a transaction") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce =
-        Chunk.seq((0 to 100).toList.map(n => s"key-$n" -> s"value-$n"))
+        Chunk.seq((0 to 1000000).toList.map(n => s"key-$n" -> s"value-$n"))
 
-      val toPassthrough = "passthrough"
-
-      val produced =
+      val result =
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
@@ -116,38 +233,35 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 _ => IO.unit
               )
           }
-          records = TransactionalProducerRecords(
-            recordsToProduce.zip(offsets).map {
-              case (record, offset) =>
-                CommittableProducerRecords.one(
-                  record,
-                  offset
+          records = recordsToProduce.zip(offsets).map {
+            case (record, offset) =>
+              CommittableProducerRecords.one(
+                record,
+                offset
+              )
+          }
+          _ <- Stream
+            .eval(producer.produce(records))
+            .concurrently(
+              Stream.eval(
+                producer.produce(
+                  TransactionalProducerRecords.one(
+                    CommittableProducerRecords.one(
+                      ProducerRecord[String, String](topic, "test", "test"),
+                      CommittableOffset[IO](
+                        new TopicPartition(topic, 0),
+                        new OffsetAndMetadata(0),
+                        Some("group"),
+                        _ => IO.unit
+                      )
+                    )
+                  )
                 )
-            },
-            toPassthrough
-          )
-          result <- Stream.eval(producer.produce(records))
-        } yield result).compile.lastOrError.unsafeRunSync()
+              )
+            )
+        } yield ()).compile.lastOrError.attempt.unsafeRunSync()
 
-      val records =
-        produced.records.map {
-          case (record, _) =>
-            record.key -> record.value
-        }
-
-      assert(records == toProduce && produced.passthrough == toPassthrough)
-
-      val consumed = {
-        val customConsumerProperties =
-          Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
-        consumeNumberKeyedMessagesFrom[String, String](
-          topic,
-          records.size,
-          customProperties = customConsumerProperties
-        )
-      }
-
-      consumed should contain theSameElementsAs records.toList
+      assert(result == Right(()))
     }
   }
 
@@ -169,12 +283,12 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             ) {
               override def sendOffsetsToTransaction(
                 offsets: util.Map[TopicPartition, OffsetAndMetadata],
-                consumerGroupId: String
+                groupMetadata: ConsumerGroupMetadata
               ): Unit =
                 if (offsets.containsKey(new TopicPartition(topic, 2))) {
                   throw error
                 } else {
-                  super.sendOffsetsToTransaction(offsets, consumerGroupId)
+                  super.sendOffsetsToTransaction(offsets, groupMetadata)
                 }
             }
           }
@@ -201,17 +315,14 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 _ => IO.unit
               )
           }
-          records = TransactionalProducerRecords(
-            Chunk.seq(recordsToProduce.zip(offsets)).map {
-              case (record, offset) =>
-                CommittableProducerRecords(
-                  NonEmptyList.one(record),
-                  offset
-                )
-            },
-            toPassthrough
-          )
-          result <- Stream.eval(producer.produce(records).attempt)
+          records = Chunk.seq(recordsToProduce.zip(offsets)).map {
+            case (record, offset) =>
+              CommittableProducerRecords(
+                NonEmptyList.one(record),
+                offset
+              )
+          }
+          result <- Stream.eval(producer.produce(records).tupleLeft(toPassthrough).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       produced shouldBe Left(error)

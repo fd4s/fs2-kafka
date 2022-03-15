@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -72,7 +72,7 @@ object CommittableProducerRecords {
           buf += record
           ()
       }
-      Chunk.buffer(buf)
+      Chunk.array(buf.toArray)
     }
 
     new CommittableProducerRecordsImpl(chunk, offset)

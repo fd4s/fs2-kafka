@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -165,6 +165,13 @@ sealed abstract class KafkaAdminClient[F[_]] {
   def listConsumerGroups: ListConsumerGroups[F]
 
   /**
+    * Delete consumer groups from the cluster.
+    */
+  def deleteConsumerGroups[G[_]](groupIds: G[String])(
+    implicit G: Foldable[G]
+  ): F[Unit]
+
+  /**
     * Lists topics. Returns topic names using:
     *
     * {{{
@@ -306,7 +313,7 @@ object KafkaAdminClient {
     withAdminClient: WithAdminClient[F],
     topics: G[String]
   )(implicit G: Foldable[G]): F[Map[String, TopicDescription]] =
-    withAdminClient(_.describeTopics(topics.asJava).all.map(_.toMap))
+    withAdminClient(_.describeTopics(topics.asJava).allTopicNames.map(_.toMap))
 
   private[this] def describeAclsWith[F[_]](
     withAdminClient: WithAdminClient[F],
@@ -478,6 +485,12 @@ object KafkaAdminClient {
   ): F[Unit] =
     withAdminClient(_.deleteConsumerGroupOffsets(groupId, partitions.asJava).all().void)
 
+  private[this] def deleteConsumerGroupsWith[F[_], G[_]](
+    withAdminClient: WithAdminClient[F],
+    groupIds: G[String]
+  )(implicit G: Foldable[G]): F[Unit] =
+    withAdminClient(_.deleteConsumerGroups(groupIds.asJava).all().void)
+
   /**
     * Creates a new [[KafkaAdminClient]] in the `Resource` context,
     * using the specified [[AdminClientSettings]]. If working in a
@@ -579,6 +592,11 @@ object KafkaAdminClient {
         partitions: Set[TopicPartition]
       ): F[Unit] =
         deleteConsumerGroupOffsetsWith(client, groupId, partitions)
+
+      override def deleteConsumerGroups[G[_]](
+        groupIds: G[String]
+      )(implicit G: Foldable[G]): F[Unit] =
+        deleteConsumerGroupsWith(client, groupIds)
 
       override def toString: String =
         "KafkaAdminClient$" + System.identityHashCode(this)

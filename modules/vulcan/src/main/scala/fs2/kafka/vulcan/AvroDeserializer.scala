@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,7 +8,7 @@ package fs2.kafka.vulcan
 
 import _root_.vulcan.Codec
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import fs2.kafka.{Deserializer, RecordDeserializer}
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import java.nio.ByteBuffer
@@ -46,8 +46,8 @@ final class AvroDeserializer[A] private[vulcan] (
           }
 
         RecordDeserializer.instance(
-          forKey = createDeserializer(true),
-          forValue = createDeserializer(false)
+          forKey = createDeserializer(true).widen,
+          forValue = createDeserializer(false).widen
         )
 
       case Left(error) =>

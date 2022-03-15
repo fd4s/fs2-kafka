@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import fs2.Stream
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
@@ -30,8 +30,8 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     * }}}
     */
   def withSerializers[K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V]
   ): KafkaProducer.Metrics[F, K, V]
 
   /**
@@ -106,8 +106,8 @@ object KafkaProducerConnection {
     WithProducer(mk, settings).map { withProducer =>
       new KafkaProducerConnection[G] {
         override def withSerializers[K, V](
-          keySerializer: Serializer[G, K],
-          valueSerializer: Serializer[G, V]
+          keySerializer: KeySerializer[G, K],
+          valueSerializer: ValueSerializer[G, V]
         ): KafkaProducer.Metrics[G, K, V] =
           KafkaProducer.from(withProducer, keySerializer, valueSerializer)
 
@@ -115,6 +115,7 @@ object KafkaProducerConnection {
           settings: ProducerSettings[G, K, V]
         ): G[KafkaProducer.Metrics[G, K, V]] =
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
+
       }
     }
 

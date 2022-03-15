@@ -1,12 +1,12 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.{Applicative, Apply, Bitraverse, Eq, Eval, Show, Traverse}
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.ConsumerRecord.{NO_TIMESTAMP, NULL_SIZE}
@@ -167,8 +167,8 @@ object ConsumerRecord {
   private[this] def deserializeFromBytes[F[_], K, V](
     record: KafkaByteConsumerRecord,
     headers: Headers,
-    keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer[F, V]
+    keyDeserializer: KeyDeserializer[F, K],
+    valueDeserializer: ValueDeserializer[F, V]
   )(implicit F: Apply[F]): F[(K, V)] = {
     val key = keyDeserializer.deserialize(record.topic, headers, record.key)
     val value = valueDeserializer.deserialize(record.topic, headers, record.value)
@@ -177,8 +177,8 @@ object ConsumerRecord {
 
   private[kafka] def fromJava[F[_], K, V](
     record: KafkaByteConsumerRecord,
-    keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer[F, V]
+    keyDeserializer: KeyDeserializer[F, K],
+    valueDeserializer: ValueDeserializer[F, V]
   )(implicit F: Apply[F]): F[ConsumerRecord[K, V]] = {
     val headers = record.headers.asScala
     deserializeFromBytes(record, headers, keyDeserializer, valueDeserializer).map {

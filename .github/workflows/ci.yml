@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.6, 3.0.2]
+        scala: [2.13.8, 3.1.1]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -54,7 +54,7 @@ jobs:
 
       - run: sbt ++${{ matrix.scala }} ci
 
-      - if: matrix.scala == '2.13.6'
+      - if: matrix.scala == '2.13.8'
         run: sbt ++${{ matrix.scala }} docs/run
 
   publish:
@@ -64,7 +64,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.6]
+        scala: [2.13.8]
         java: [adopt@1.8]
     runs-on: ${{ matrix.os }}
     steps:
@@ -96,4 +96,4 @@ jobs:
           GIT_DEPLOY_KEY: ${{ secrets.GIT_DEPLOY_KEY }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
-        run: sbt ++${{ matrix.scala }} ci-release docs/docusaurusPublishGhpages
+        run: sbt ++${{ matrix.scala }} ci-release

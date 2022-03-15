@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 OVO Energy Limited
+ * Copyright 2018-2022 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,15 +8,11 @@ package fs2.kafka
 
 import cats.Contravariant
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
-/**
-  * Functional composable Kafka key- and record serializer with
-  * support for effect types.
-  */
-sealed abstract class Serializer[F[_], A] {
+sealed abstract class GenericSerializer[-T <: KeyOrValue, F[_], A] {
 
   /**
     * Attempts to serialize the specified value of type `A` into
@@ -30,19 +26,19 @@ sealed abstract class Serializer[F[_], A] {
     * function `f` on a value of type `B`, and then serializes
     * the result with this [[Serializer]].
     */
-  def contramap[B](f: B => A): Serializer[F, B]
+  def contramap[B](f: B => A): GenericSerializer[T, F, B]
 
   /**
     * Creates a new [[Serializer]] which applies the specified
     * function `f` on the output bytes of this [[Serializer]].
     */
-  def mapBytes(f: Array[Byte] => Array[Byte]): Serializer[F, A]
+  def mapBytes(f: Array[Byte] => Array[Byte]): GenericSerializer[T, F, A]
 
   /**
     * Creates a new [[Serializer]] which serializes `Some` values
     * using this [[Serializer]], and serializes `None` as `null`.
     */
-  def option: Serializer[F, Option[A]]
+  def option: GenericSerializer[T, F, Option[A]]
 
   /**
     * Creates a new [[Serializer]] which suspends serialization,
@@ -51,7 +47,12 @@ sealed abstract class Serializer[F[_], A] {
   def suspend: Serializer[F, A]
 }
 
-object Serializer {
+/**
+  * Functional composable Kafka key- and record serializer with
+  * support for effect types.
+  */
+object GenericSerializer {
+
   def apply[F[_], A](implicit serializer: Serializer[F, A]): Serializer[F, A] = serializer
 
   /** Alias for [[Serializer#identity]]. */
@@ -173,10 +174,10 @@ object Serializer {
     * [[Serializer]]s depending on the Kafka topic name to
     * which the bytes are going to be sent.
     */
-  def topic[F[_], A](
-    f: PartialFunction[String, Serializer[F, A]]
-  )(implicit F: Sync[F]): Serializer[F, A] =
-    Serializer.instance { (topic, headers, a) =>
+  def topic[T <: KeyOrValue, F[_], A](
+    f: PartialFunction[String, GenericSerializer[T, F, A]]
+  )(implicit F: Sync[F]): GenericSerializer[T, F, A] =
+    Serializer.instance[F, A] { (topic, headers, a) =>
       f.applyOrElse(topic, unexpectedTopic)
         .serialize(topic, headers, a)
     }
@@ -208,14 +209,16 @@ object Serializer {
     * The option [[Serializer]] serializes `None` as `null`, and
     * serializes `Some` values using the serializer for type `A`.
     */
-  implicit def option[F[_], A](
-    implicit serializer: Serializer[F, A]
-  ): Serializer[F, Option[A]] =
+  implicit def option[T <: KeyOrValue, F[_], A](
+    implicit serializer: GenericSerializer[T, F, A]
+  ): GenericSerializer[T, F, Option[A]] =
     serializer.option
 
-  implicit def contravariant[F[_]]: Contravariant[Serializer[F, *]] =
-    new Contravariant[Serializer[F, *]] {
-      override def contramap[A, B](serializer: Serializer[F, A])(f: B => A): Serializer[F, B] =
+  implicit def contravariant[T <: KeyOrValue, F[_]]: Contravariant[GenericSerializer[T, F, *]] =
+    new Contravariant[GenericSerializer[T, F, *]] {
+      override def contramap[A, B](
+        serializer: GenericSerializer[T, F, A]
+      )(f: B => A): GenericSerializer[T, F, B] =
         serializer.contramap(f)
     }
 

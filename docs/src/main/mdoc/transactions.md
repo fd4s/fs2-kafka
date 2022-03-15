@@ -13,6 +13,11 @@ Kafka transactions are supported through a [`TransactionalKafkaProducer`][transa
 
 - Create `CommittableProducerRecords` and wrap them in `TransactionalProducerRecords`.
 
+> Note that calls to `produce` are sequenced in the `TransactionalKafkaProducer` to ensure that, when used concurrently, transactions don't run into each other resulting in an invalid transaction transition exception.
+>
+> Because the `TransactionalKafkaProducer` waits for the record batch to be flushed and the transaction committed on the broker, this could lead to performance bottlenecks where a single producer is shared among many threads.
+> To ensure the performance of `TransactionalKafkaProducer` aligns with your performance expectations when used concurrently, it is recommended you create a pool of transactional producers.
+
 Following is an example where transactions are used to consume, process, produce, and commit.
 
 ```scala mdoc
@@ -53,7 +58,6 @@ object Main extends IOApp {
                 }
             }
             .groupWithin(500, 15.seconds)
-            .map(TransactionalProducerRecords(_))
             .evalMap(producer.produce)
         }
 

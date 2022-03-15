@@ -19,7 +19,7 @@ resolvers += "confluent" at "https://packages.confluent.io/maven/",
 We start by defining the type we want to serialize or deserialize, and create a `Codec`.
 
 ```scala mdoc:reset-object
-import cats.implicits._
+import cats.syntax.all._
 import vulcan.Codec
 
 final case class Person(name: String, age: Option[Int])
@@ -78,7 +78,7 @@ val producerSettings =
     .withBootstrapServers("localhost:9092")
 ```
 
-If we prefer, we can instead specificy the `Serializer`s and `Deserializer`s explicitly.
+If we prefer, we can instead specify the `Serializer`s and `Deserializer`s explicitly.
 
 ```scala mdoc:silent
 import fs2.kafka.{Deserializer, Serializer}
@@ -94,6 +94,14 @@ ProducerSettings(
   keySerializer = Serializer[IO, String],
   valueSerializer = personSerializer
 ).withBootstrapServers("localhost:9092")
+```
+
+By default, a schema will automatically be registered when used to publish a message. We can disable this behaviour by 
+using `withAutoRegisterSchemas(false)`. We can then use `registerSchema` to manually register the schema with the registry server:
+```scala mdoc:silent
+val avroSettingsWithoutAutoRegister = avroSettings.withAutoRegisterSchemas(false)
+avroSettingsWithoutAutoRegister.registerSchema[String]("person-key") *>
+  avroSettingsWithoutAutoRegister.registerSchema[Person]("person-value")
 ```
 
 ### Sharing Client
@@ -135,5 +143,34 @@ avroSettingsSharedClient.map { avroSettings =>
   ).withBootstrapServers("localhost:9092")
 
   (consumerSettings, producerSettings)
+}
+```
+
+## Vulcan testkit munit
+
+The `@VULCAN_TESTKIT_MUNIT_MODULE_NAME@` module provides an [munit](https://scalameta.org/munit/) fixture for testing vulcan 
+codecs against a [schema registry](https://docs.confluent.io/platform/current/schema-registry/index.html)
+
+A usage example:
+
+```scala mdoc:reset
+import cats.effect.unsafe.implicits.global
+import fs2.kafka.vulcan.SchemaRegistryClientSettings
+import org.apache.avro.SchemaCompatibility.SchemaCompatibilityType
+import fs2.kafka.vulcan.testkit.SchemaSuite
+import vulcan.Codec
+
+class MySpec extends SchemaSuite {
+  val checker = compatibilityChecker(SchemaRegistryClientSettings("https://some-schema-registry:1234"))
+
+  override def munitFixtures = List(checker)
+
+  test("my codec is compatible") {
+    val myCodec: Codec[String] = ???
+
+    val compatibility = checker().checkReaderCompatibility(myCodec, "my-schema-subject").unsafeRunSync()
+
+    assertEquals(compatibility.getType(), SchemaCompatibilityType.COMPATIBLE, compatibility.getResult().getIncompatibilities())
+  }
 }
 ```
