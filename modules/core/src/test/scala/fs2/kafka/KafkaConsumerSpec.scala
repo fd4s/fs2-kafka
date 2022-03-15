@@ -66,6 +66,31 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
+    it("should produce empty chunk when configured to do so") {
+      withTopic { topic =>
+        createCustomTopic(topic, partitions = 3)
+        val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
+        publishToKafka(topic, produced)
+
+        val consumed =
+          KafkaConsumer
+            .stream(consumerSettings[IO].withEmitEmptyChunks(true))
+            .subscribeTo(topic)
+            .flatMap(
+              _.partitionedStream.flatMap(
+                _.map(committable => committable.record.key -> committable.record.value).chunks
+                  .takeWhile(_.nonEmpty)
+                  .unchunks
+              )
+            )
+            .compile
+            .toVector
+            .unsafeRunSync()
+
+        consumed should contain theSameElementsAs produced
+      }
+    }
+
     it("should consume all records with subscribing for several consumers") {
       withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
