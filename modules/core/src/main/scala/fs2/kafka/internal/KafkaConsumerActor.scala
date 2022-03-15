@@ -6,7 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector, StateT}
+import cats.data.{Chain, NonEmptySet, NonEmptyVector, StateT}
 import cats.effect._
 import cats.effect.std._
 import cats.effect.syntax.all._
