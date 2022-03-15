@@ -11,6 +11,7 @@ import scala.concurrent.duration.FiniteDuration
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaTopics[F[_]] {
+
   /**
     * Returns the partitions for the specified topic.
     *

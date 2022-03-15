@@ -17,6 +17,7 @@ import java.util.UUID
   * the Kafka `Serializer` interface.
   */
 sealed abstract class HeaderSerializer[A] {
+
   /**
     * Serializes the specified value of type `A` into bytes.
     */

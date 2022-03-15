@@ -31,7 +31,7 @@ class PassthroughParams {
   val result: ProducerResult[Int, String, String] =
     ProducerResult[Int, String, String](Chunk.empty, 42)
 
-  val tRecords: TransactionalProducerRecords[IO, Int, String, String] =
+  val tRecords: TransactionalProducerRecords[IO, Int, String, String] = 
     TransactionalProducerRecords[IO, Int, String, String](Chunk.empty, 42)
 
   TransactionalProducerRecords.one[IO, Int, String, String](???, 42)

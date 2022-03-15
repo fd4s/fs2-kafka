@@ -30,6 +30,7 @@ import scala.collection.mutable
   * existing [[ProducerRecords]] instance.<br>
   */
 sealed abstract class ProducerRecords[+P, +K, +V] {
+
   /** The records to produce. Can be empty for passthrough-only. */
   def records: Chunk[ProducerRecord[K, V]]
 

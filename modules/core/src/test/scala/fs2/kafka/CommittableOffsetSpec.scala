@@ -61,4 +61,5 @@ final class CommittableOffsetSpec extends BaseSpec {
       }
     }
   }
+
 }
