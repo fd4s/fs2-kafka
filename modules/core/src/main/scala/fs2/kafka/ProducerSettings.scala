@@ -31,12 +31,12 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   /**
     * The `Serializer` to use for serializing record keys.
     */
-  def keySerializer: F[Serializer[F, K]]
+  def keySerializer: F[KeySerializer[F, K]]
 
   /**
     * The `Serializer` to use for serializing record values.
     */
-  def valueSerializer: F[Serializer[F, V]]
+  def valueSerializer: F[ValueSerializer[F, V]]
 
   /**
     * A custom [[ExecutionContext]] to use for blocking Kafka operations.
@@ -223,8 +223,8 @@ sealed abstract class ProducerSettings[F[_], K, V] {
 
 object ProducerSettings {
   private[this] final case class ProducerSettingsImpl[F[_], K, V](
-    override val keySerializer: F[Serializer[F, K]],
-    override val valueSerializer: F[Serializer[F, V]],
+    override val keySerializer: F[KeySerializer[F, K]],
+    override val valueSerializer: F[ValueSerializer[F, V]],
     override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration
@@ -296,8 +296,8 @@ object ProducerSettings {
   }
 
   private[this] def create[F[_], K, V](
-    keySerializer: F[Serializer[F, K]],
-    valueSerializer: F[Serializer[F, V]]
+    keySerializer: F[KeySerializer[F, K]],
+    valueSerializer: F[ValueSerializer[F, V]]
   ): ProducerSettings[F, K, V] =
     ProducerSettingsImpl(
       keySerializer = keySerializer,
@@ -310,8 +310,8 @@ object ProducerSettings {
     )
 
   def apply[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V]
   )(implicit F: Applicative[F]): ProducerSettings[F, K, V] =
     create(
       keySerializer = F.pure(keySerializer),
@@ -320,7 +320,7 @@ object ProducerSettings {
 
   def apply[F[_], K, V](
     keySerializer: RecordSerializer[F, K],
-    valueSerializer: Serializer[F, V]
+    valueSerializer: ValueSerializer[F, V]
   )(implicit F: Applicative[F]): ProducerSettings[F, K, V] =
     create(
       keySerializer = keySerializer.forKey,
@@ -328,7 +328,7 @@ object ProducerSettings {
     )
 
   def apply[F[_], K, V](
-    keySerializer: Serializer[F, K],
+    keySerializer: KeySerializer[F, K],
     valueSerializer: RecordSerializer[F, V]
   )(implicit F: Applicative[F]): ProducerSettings[F, K, V] =
     create(

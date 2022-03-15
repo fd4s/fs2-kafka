@@ -48,7 +48,7 @@ Deserializer.lift(bytes => IO.pure(bytes.dropWhile(_ == 0)))
 To support different deserializers for different topics, use `topic` to pattern match on the topic name.
 
 ```scala mdoc:silent
-Deserializer.topic[IO, String] {
+Deserializer.topic[KeyOrValue, IO, String] {
   case "first"  => Deserializer[IO, String]
   case "second" => Deserializer[IO, Int].map(_.show)
 }

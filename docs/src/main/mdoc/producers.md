@@ -48,7 +48,7 @@ Serializer.lift[IO, String](s => IO.pure(s.getBytes("UTF-8")))
 To support different serializers for different topics, use `topic` to pattern match on the topic name.
 
 ```scala mdoc:silent
-Serializer.topic[IO, Int] {
+Serializer.topic[KeyOrValue, IO, Int] {
   case "first"  => Serializer[IO, String].contramap(_.show)
   case "second" => Serializer[IO, Int]
 }

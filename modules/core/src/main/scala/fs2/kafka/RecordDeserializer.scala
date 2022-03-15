@@ -15,9 +15,9 @@ import cats.{Applicative, Functor}
   * a creation effect.
   */
 sealed abstract class RecordDeserializer[F[_], A] {
-  def forKey: F[Deserializer[F, A]]
+  def forKey: F[KeyDeserializer[F, A]]
 
-  def forValue: F[Deserializer[F, A]]
+  def forValue: F[ValueDeserializer[F, A]]
 
   /**
     * Returns a new [[RecordDeserializer]] instance that will catch deserialization
@@ -34,26 +34,26 @@ object RecordDeserializer {
   ): RecordDeserializer[F, A] =
     deserializer
 
-  def const[F[_], A](
+  def const[F[_]: Functor, A](
     deserializer: => F[Deserializer[F, A]]
   ): RecordDeserializer[F, A] =
     RecordDeserializer.instance(
-      forKey = deserializer,
-      forValue = deserializer
+      forKey = deserializer.widen,
+      forValue = deserializer.widen
     )
 
   def instance[F[_], A](
-    forKey: => F[Deserializer[F, A]],
-    forValue: => F[Deserializer[F, A]]
+    forKey: => F[KeyDeserializer[F, A]],
+    forValue: => F[ValueDeserializer[F, A]]
   ): RecordDeserializer[F, A] = {
     def _forKey = forKey
     def _forValue = forValue
 
     new RecordDeserializer[F, A] {
-      override def forKey: F[Deserializer[F, A]] =
+      override def forKey: F[KeyDeserializer[F, A]] =
         _forKey
 
-      override def forValue: F[Deserializer[F, A]] =
+      override def forValue: F[ValueDeserializer[F, A]] =
         _forValue
 
       override def toString: String =
