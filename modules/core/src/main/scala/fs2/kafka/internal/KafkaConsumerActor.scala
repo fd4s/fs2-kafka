@@ -444,7 +444,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
   def handle(request: Request[F, K, V]): F[Unit] =
     request match {
-      case Request.Poll()                            => poll
+      case Request.Poll() => poll
       case Request.Fetch(partition, streamId, callback) =>
         fetch(partition, streamId, callback)
       case request @ Request.Commit(_, _)            => commit(request)
@@ -648,7 +648,7 @@ private[kafka] object KafkaConsumerActor {
   object Request {
     final case class Permit[F[_]](callback: Resource[F, Unit] => F[Unit])
         extends Request[F, Any, Any]
-        
+
     final case class Poll[F[_]]() extends Request[F, Any, Any]
 
     private[this] val pollInstance: Poll[Nothing] =

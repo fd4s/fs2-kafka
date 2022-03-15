@@ -275,32 +275,29 @@ object KafkaConsumer {
           streamId: StreamId,
           assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
           partitionsMapQueue: PartitionsMapQueue
-        ): F[Map[TopicPartition, Deferred[F, Unit]]] =
-          Deferred[F, Either[Throwable, SortedSet[TopicPartition]]].flatMap { deferred =>
-            val request =
-              Request.Assignment[F](
-                deferred.complete(_).void,
-                Some(
-                  onRebalance(
-                    streamId,
-                    assignmentRef,
-                    partitionsMapQueue
-                  )
-                )
+        ): F[Map[TopicPartition, Deferred[F, Unit]]] = {
+          val assignment = this.assignment(
+            Some(
+              onRebalance(
+                streamId,
+                assignmentRef,
+                partitionsMapQueue
               )
-            val assignment = requests.offer(request) >> deferred.get.rethrow
-            F.race(awaitTermination.attempt, assignment).flatMap {
-              case Left(_) =>
-                F.pure(Map.empty)
+            )
+          )
 
-              case Right(assigned) =>
-                assigned.toVector
-                  .traverse { partition =>
-                    Deferred[F, Unit].map(partition -> _)
-                  }
-                  .map(_.toMap)
-            }
+          F.race(awaitTermination.attempt, assignment).flatMap {
+            case Left(_) =>
+              F.pure(Map.empty)
+
+            case Right(assigned) =>
+              assigned.toVector
+                .traverse { partition =>
+                  Deferred[F, Unit].map(partition -> _)
+                }
+                .map(_.toMap)
           }
+        }
 
         def initialEnqueue(
           streamId: StreamId,
