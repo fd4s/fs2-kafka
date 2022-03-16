@@ -139,13 +139,9 @@ The following settings are specific to the library.
 Once [`ProducerSettings`][producersettings] is defined, use `KafkaProducer.stream` to create a [`KafkaProducer`][kafkaproducer] instance.
 
 ```scala mdoc:silent
-object ProducerExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
-    val stream =
-      KafkaProducer.stream(producerSettings)
-
-    stream.compile.drain.as(ExitCode.Success)
-  }
+object ProducerExample extends IOApp.Simple {
+  val run: IO[Unit] =
+    KafkaProducer.stream(producerSettings).compile.drain
 }
 ```
 
@@ -164,22 +160,19 @@ val consumerSettings =
     .withBootstrapServers("localhost:9092")
     .withGroupId("group")
 
-object ProduceExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
-    val stream =
-      KafkaConsumer.stream(consumerSettings)
-        .subscribeTo("topic")
-        .records
-        .map { committable =>
-          val key = committable.record.key
-          val value = committable.record.value
-          val record = ProducerRecord("topic", key, value)
-          ProducerRecords.one(record, committable.offset)
-        }
-        .through(KafkaProducer.pipe(producerSettings))
-
-    stream.compile.drain.as(ExitCode.Success)
-  }
+object ProduceExample extends IOApp.Simple {
+  val run: IO[Unit] =
+    KafkaConsumer.stream(consumerSettings)
+      .subscribeTo("topic")
+      .records
+      .map { committable =>
+        val key = committable.record.key
+        val value = committable.record.value
+        val record = ProducerRecord("topic", key, value)
+        ProducerRecords.one(record, committable.offset)
+      }
+      .through(KafkaProducer.pipe(producerSettings))
+      .compile.drain
 }
 ```
 
@@ -190,57 +183,50 @@ The `produce` function creates a `KafkaProducer` and produces records in `Produc
 If we're producing in multiple places in our stream, we can create the `KafkaProducer` ourselves, and pass it to the `produce` function. Every `produce` allow up to `ProducerSettings#parallelism` instances of `ProducerRecords` to be batched together in the same batch.
 
 ```scala mdoc:silent
-object PartitionedProduceExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
-    val stream =
-      KafkaProducer.stream(producerSettings)
-        .flatMap { producer =>
-          KafkaConsumer.stream(consumerSettings)
-            .subscribeTo("topic")
-            .partitionedRecords
-            .map { partition =>
-              partition
-                .map { committable =>
-                  val key = committable.record.key
-                  val value = committable.record.value
-                  val record = ProducerRecord("topic", key, value)
-                  ProducerRecords.one(record, committable.offset)
-                }
-                .through(KafkaProducer.pipe(producerSettings, producer))
-            }
-            .parJoinUnbounded
-        }
-
-    stream.compile.drain.as(ExitCode.Success)
-  }
+object PartitionedProduceExample extends IOApp.Simple {
+  val run: IO[Unit] =
+    KafkaProducer.stream(producerSettings)
+      .flatMap { producer =>
+        KafkaConsumer.stream(consumerSettings)
+          .subscribeTo("topic")
+          .partitionedRecords
+          .map { partition =>
+            partition
+              .map { committable =>
+                val key = committable.record.key
+                val value = committable.record.value
+                val record = ProducerRecord("topic", key, value)
+                ProducerRecords.one(record, committable.offset)
+              }
+              .through(KafkaProducer.pipe(producerSettings, producer))
+          }
+          .parJoinUnbounded
+      }
+      .compile.drain
 }
 ```
 
 If we need more control of how records are produced, we can use `KafkaProducer#produce`. The function returns two effects, e.g. `IO[IO[...]]`, where the first effect puts the records in the producer's buffer, and the second effects waits for the records to have been sent.
 
 ```scala mdoc:silent
-object KafkaProducerProduceExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
-    val stream =
-      KafkaProducer.stream(producerSettings)
-        .flatMap { producer =>
-          KafkaConsumer.stream(consumerSettings)
-            .subscribeTo("topic")
-            .records
-            .map { committable =>
-              val key = committable.record.key
-              val value = committable.record.value
-              val record = ProducerRecord("topic", key, value)
-              ProducerRecords.one(record, committable.offset)
-            }
-            .evalMap(producer.produce)
-            .groupWithin(500, 15.seconds)
-            .evalMap(_.sequence)
-        }
-
-
-    stream.compile.drain.as(ExitCode.Success)
-  }
+object KafkaProducerProduceExample extends IOApp.Simple {
+  val run: IO[Unit] =
+    KafkaProducer.stream(producerSettings)
+      .flatMap { producer =>
+        KafkaConsumer.stream(consumerSettings)
+          .subscribeTo("topic")
+          .records
+          .map { committable =>
+            val key = committable.record.key
+            val value = committable.record.value
+            val record = ProducerRecord("topic", key, value)
+            ProducerRecords.one(record, committable.offset)
+          }
+          .evalMap(producer.produce)
+          .groupWithin(500, 15.seconds)
+          .evalMap(_.sequence)
+      }
+      .compile.drain
 }
 ```
 
@@ -249,27 +235,24 @@ The example above puts 500 records in the producer's buffer or however many can 
 Sometimes there is a need to wait for individual `ProducerRecords` to send. In this case, we can `flatten` the result of `produce` to both send the record and wait for the send to complete. Note that this should generally be avoided, as it achieves poor performance.
 
 ```scala mdoc:silent
-object KafkaProducerProduceFlattenExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
-    val stream =
-      KafkaProducer.stream(producerSettings)
-        .flatMap { producer =>
-          KafkaConsumer.stream(consumerSettings)
-            .subscribeTo("topic")
-            .records
-            .map { committable =>
-              val key = committable.record.key
-              val value = committable.record.value
-              val record = ProducerRecord("topic", key, value)
-              ProducerRecords.one(record, committable.offset)
-            }
-            .evalMap { record =>
-              producer.produce(record).flatten
-            }
-        }
-
-
-    stream.compile.drain.as(ExitCode.Success)
+object KafkaProducerProduceFlattenExample extends IOApp.Simple {
+  val run: IO[Unit] = {
+    KafkaProducer.stream(producerSettings)
+      .flatMap { producer =>
+        KafkaConsumer.stream(consumerSettings)
+          .subscribeTo("topic")
+          .records
+          .map { committable =>
+            val key = committable.record.key
+            val value = committable.record.value
+            val record = ProducerRecord("topic", key, value)
+            ProducerRecords.one(record, committable.offset)
+          }
+          .evalMap { record =>
+            producer.produce(record).flatten
+          }
+      }
+      .compile.drain
   }
 }
 ```

@@ -21,12 +21,12 @@ Kafka transactions are supported through a [`TransactionalKafkaProducer`][transa
 Following is an example where transactions are used to consume, process, produce, and commit.
 
 ```scala mdoc
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{IO, IOApp}
 import fs2.kafka._
 import scala.concurrent.duration._
 
-object Main extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] = {
+object Main extends IOApp.Simple {
+  val run: IO[Unit] = {
     def processRecord(record: ConsumerRecord[String, String]): IO[(String, String)] =
       IO.pure(record.key -> record.value)
 
@@ -62,7 +62,7 @@ object Main extends IOApp {
             .evalMap(producer.produce)
         }
 
-    stream.compile.drain.as(ExitCode.Success)
+    stream.compile.drain
   }
 }
 ```
