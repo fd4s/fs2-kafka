@@ -35,13 +35,13 @@ class Fs2Kafka extends SemanticRule("Fs2Kafka") {
       SymbolMatcher.normalized("fs2/kafka/TransactionalProducerRecords.one.")
 
     doc.tree.collect {
-      // ProducerRecords[K, V, P] -> ProducerRecords[P, K, V]
+      // ProducerRecords[K, V, P] -> ProducerRecords[K, V]
       case term @ Type.Apply(ProducerRecords_M(fun), List(k, v, p)) =>
         Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
-      // ProducerRecords[F, K, V, P] -> ProducerRecords[F, P, K, V]
+      // ProducerRecords[F, K, V, P] -> ProducerRecords[F, K, V]
       case term @ Term.ApplyType(ProducerRecords_M(fun), List(f, k, v, p)) =>
         Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
-      // ProducerRecords.one[K, V, P] -> ProducerRecords.one[P, K, V]
+      // ProducerRecords.one[K, V, P] -> ProducerRecords.one[K, V]
       case term @ Term.ApplyType(ProducerRecords_one_M(fun), List(k, v, p)) =>
         Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
       // ProducerResult[K, V, P] -> ProducerResult[K, V]
@@ -49,7 +49,7 @@ class Fs2Kafka extends SemanticRule("Fs2Kafka") {
         Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
       case term @ Term.ApplyType(ProducerResult_M(fun), List(k, v, p)) =>
         Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
-      // TransactionalProducerResult[F, K, V, P] -> TransactionalProducerResult[F, P, K, V]
+      // TransactionalProducerResult[F, K, V, P] -> TransactionalProducerResult[F, K, V]
       case term @ Type.Apply(
             TransactionalProducerRecords_M(fun),
             List(f, k, v, p)
@@ -60,7 +60,7 @@ class Fs2Kafka extends SemanticRule("Fs2Kafka") {
             List(f, k, v, p)
           ) =>
         Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
-      // TransactionalProducerRecords.one[F, K, V, P] -> TransactionalProducerRecords.one[F, P, K, V]
+      // TransactionalProducerRecords.one[F, K, V, P] -> TransactionalProducerRecords.one[F, K, V]
       case term @ Term.ApplyType(
             TransactionalProducerRecords_one_M(fun),
             List(f, k, v, p)

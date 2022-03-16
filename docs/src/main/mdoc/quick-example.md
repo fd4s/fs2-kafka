@@ -10,12 +10,12 @@ Following is an example showing how to:
 - use `commitBatchWithin` to commit consumed offsets in batches.
 
 ```scala mdoc
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{IO, IOApp}
 import fs2.kafka._
 import scala.concurrent.duration._
 
-object Main extends IOApp {
-  override def run(args: List[String]): IO[ExitCode] = {
+object Main extends IOApp.Simple {
+  val run: IO[Unit] = {
     def processRecord(record: ConsumerRecord[String, String]): IO[(String, String)] =
       IO.pure(record.key -> record.value)
 
@@ -49,7 +49,7 @@ object Main extends IOApp {
           }
         }.through(commitBatchWithin(500, 15.seconds))
 
-    stream.compile.drain.as(ExitCode.Success)
+    stream.compile.drain
   }
 }
 ```
