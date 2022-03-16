@@ -7,6 +7,7 @@
 package fs2.kafka.consumer
 
 trait KafkaConsumerLifecycle[F[_]] {
+
   /**
     * Whenever `terminate` is invoked, an attempt will be made to stop the
     * underlying consumer. The `terminate` operation will not wait for the
