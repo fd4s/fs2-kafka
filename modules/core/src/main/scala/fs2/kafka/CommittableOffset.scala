@@ -24,7 +24,6 @@ import org.apache.kafka.common.TopicPartition
   * used to create a new instance.
   */
 sealed abstract class CommittableOffset[F[_]] {
-
   /**
     * The topic and partition for which [[offsetAndMetadata]]
     * can be committed using [[commit]].
@@ -79,7 +78,6 @@ sealed abstract class CommittableOffset[F[_]] {
 }
 
 object CommittableOffset {
-
   /**
     * Creates a new [[CommittableOffset]] with the specified `topicPartition`
     * and `offsetAndMetadata`, along with `commit`, describing how to commit

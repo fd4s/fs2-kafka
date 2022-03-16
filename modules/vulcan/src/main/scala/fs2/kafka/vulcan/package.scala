@@ -9,7 +9,6 @@ package fs2.kafka
 import _root_.vulcan.Codec
 
 package object vulcan {
-
   /** Alias for `io.confluent.kafka.schemaregistry.client.SchemaRegistryClient`. */
   type SchemaRegistryClient =
     io.confluent.kafka.schemaregistry.client.SchemaRegistryClient

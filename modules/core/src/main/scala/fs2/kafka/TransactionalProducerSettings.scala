@@ -21,7 +21,6 @@ import scala.concurrent.duration.FiniteDuration
   * Use [[TransactionalProducerSettings.apply]] to create a new instance.
   */
 sealed abstract class TransactionalProducerSettings[F[_], K, V] {
-
   /**
     * The transactional ID which should be used in transactions.
     * This is the value for the following producer property.

@@ -25,7 +25,6 @@ import scala.concurrent.duration._
   * then apply any desired modifications on top of that instance.
   */
 sealed abstract class AdminClientSettings {
-
   /**
     * Properties which can be provided when creating a Java `KafkaAdminClient`
     * instance. Numerous functions in [[AdminClientSettings]] add properties
@@ -183,7 +182,6 @@ object AdminClientSettings {
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration
   ) extends AdminClientSettings {
-
     override def withBootstrapServers(bootstrapServers: String): AdminClientSettings =
       withProperty(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
 
