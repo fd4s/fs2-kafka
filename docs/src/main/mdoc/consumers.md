@@ -157,13 +157,9 @@ In addition, there are several settings specific to the library.
 Once [`ConsumerSettings`][consumersettings] is defined, use `KafkaConsumer.stream` to create a [`KafkaConsumer`][kafkaconsumer] instance.
 
 ```scala mdoc:silent
-object ConsumerExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
-    val stream =
-      KafkaConsumer.stream(consumerSettings)
-
-    stream.compile.drain.as(ExitCode.Success)
-  }
+object ConsumerExample extends IOApp.Simple {
+  val run: IO[Unit] =
+    KafkaConsumer.stream(consumerSettings).compile.drain
 }
 ```
 
@@ -176,14 +172,11 @@ In the example above, we simply create the consumer and then immediately shutdow
 We can use `subscribe` with a non-empty collection of topics, or `subscribeTo` for varargs support. There is also an option to `subscribe` using a `Regex` regular expression for the topic names, in case the exact topic names are not known up-front. When allocating a consumer in a `Stream` context, these are available as extension methods directly on the `Stream`.
 
 ```scala mdoc:silent
-object ConsumerSubscribeExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
-    val stream =
-      KafkaConsumer.stream(consumerSettings)
-        .subscribeTo("topic")
-
-    stream.compile.drain.as(ExitCode.Success)
-  }
+object ConsumerSubscribeExample extends IOApp.Simple {
+  val run: IO[Unit] =
+    KafkaConsumer.stream(consumerSettings)
+      .subscribeTo("topic")
+      .compile.drain
 }
 ```
 
@@ -194,15 +187,12 @@ Note that only automatic partition assignment is supported. Like in the [consume
 Once subscribed to at least one topic, we can use `stream` for a `Stream` of [`CommittableConsumerRecord`][committableconsumerrecord]s. Each record contains a deserialized [`ConsumerRecord`][consumerrecord], as well as a [`CommittableOffset`][committableoffset] for managing [offset commits](#offset-commits). Streams guarantee records in topic-partition order, but not ordering across partitions. This is the same ordering guarantee that Kafka provides.
 
 ```scala mdoc:silent
-object ConsumerStreamExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
-    val stream =
-      KafkaConsumer.stream(consumerSettings)
-        .subscribeTo("topic")
-        .records
-
-    stream.compile.drain.as(ExitCode.Success)
-  }
+object ConsumerStreamExample extends IOApp.Simple {
+  val run: IO[Unit] =
+    KafkaConsumer.stream(consumerSettings)
+      .subscribeTo("topic")
+      .records
+      .compile.drain
 }
 ```
 
@@ -211,8 +201,8 @@ Note that this is an infinite stream, meaning it will only terminate if it's int
 When using `stream`, records on all assigned partitions end up in the same `Stream`. Depending on how records are processed, we might want to separate records per topic-partition. This exact functionality is provided by `partitionedStream`.
 
 ```scala mdoc:silent
-object ConsumerPartitionedStreamExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
+object ConsumerPartitionedStreamExample extends IOApp.Simple {
+  val run: IO[Unit] = {
     def processRecord(record: ConsumerRecord[String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
@@ -228,7 +218,7 @@ object ConsumerPartitionedStreamExample extends IOApp {
         }
         .parJoinUnbounded
 
-    stream.compile.drain.as(ExitCode.Success)
+    stream.compile.drain
   }
 }
 ```
@@ -252,8 +242,8 @@ Note, that partition streams for revoked partitions will be closed after the new
 When processing of records is independent of each other, as is the case with `processRecord` above, it's often easier and more performant to use `stream` and `mapAsync`, as seen in the example below. Generally, it's crucial to ensure there are no data races between processing of any two records.
 
 ```scala mdoc:silent
-object ConsumerMapAsyncExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
+object ConsumerMapAsyncExample extends IOApp.Simple {
+  val run: IO[Unit] = {
     def processRecord(record: ConsumerRecord[String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
@@ -265,7 +255,7 @@ object ConsumerMapAsyncExample extends IOApp {
           processRecord(committable.record)
         }
 
-    stream.compile.drain.as(ExitCode.Success)
+    stream.compile.drain
   }
 }
 ```
@@ -279,8 +269,8 @@ Offset commits are usually done in batches for performance reasons. We normally 
 We should keep the [`CommittableOffset`][committableoffset] in our `Stream` once we've finished processing the record. For at-least-once delivery, it's essential that offset commits preserve topic-partition ordering, so we have to make sure we keep offsets in the same order as we receive them. There are then several functions available for common batch committing scenarios, like `commitBatch`, `commitBatchOption`, and `commitBatchWithin`.
 
 ```scala mdoc:silent
-object ConsumerCommitBatchExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
+object ConsumerCommitBatchExample extends IOApp.Simple {
+  val run: IO[Unit] = {
     def processRecord(record: ConsumerRecord[String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
@@ -294,7 +284,7 @@ object ConsumerCommitBatchExample extends IOApp {
         }
         .through(commitBatchWithin(500, 15.seconds))
 
-    stream.compile.drain.as(ExitCode.Success)
+    stream.compile.drain
   }
 }
 ```
@@ -312,8 +302,8 @@ If we're sure we need to commit every offset, we can `commit` individual [`Commi
 With the fs2-kafka you could gracefully shutdown a `KafkaConsumer`. Consider this example:
 
 ```scala mdoc:silent
-object NoGracefulShutdownExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
+object NoGracefulShutdownExample extends IOApp.Simple {
+  val run: IO[Unit] = {
     def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
@@ -323,9 +313,7 @@ object NoGracefulShutdownExample extends IOApp {
       }.through(commitBatchWithin(100, 15.seconds)).compile.drain
     }
 
-    KafkaConsumer.resource(consumerSettings).use { consumer =>
-      run(consumer).as(ExitCode.Success)
-    }
+    KafkaConsumer.resource(consumerSettings).use(run)
   }
 }
 ```
@@ -344,8 +332,8 @@ We could combine `stopConsuming` with the custom resource handling and implement
 ```scala mdoc:silent
 import cats.effect.{Deferred, Ref}
 
-object WithGracefulShutdownExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
+object WithGracefulShutdownExample extends IOApp.Simple {
+  val run: IO[Unit] = {
     def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
@@ -383,7 +371,7 @@ object WithGracefulShutdownExample extends IOApp {
             } yield ()
           }).guarantee(closeConsumer) // [15]
         }
-    } yield ExitCode.Success
+    } yield ()
   }
 }
 ```

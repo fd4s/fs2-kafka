@@ -8,11 +8,14 @@ package fs2.kafka
 
 import cats.effect._
 import cats.syntax.all._
-import fs2.Stream
+import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
 
 import scala.annotation.nowarn
+import scala.jdk.CollectionConverters._
+import org.apache.kafka.common.MetricName
+import org.apache.kafka.common.Metric
 
 /**
   * [[KafkaProducerConnection]] represents a connection to a Kafka broker
@@ -21,6 +24,12 @@ import scala.annotation.nowarn
   * underlying connection.
   */
 sealed abstract class KafkaProducerConnection[F[_]] {
+
+  def produce[K: KeySerializer[F, *], V: ValueSerializer[F, *]](
+    records: ProducerRecords[K, V]
+  ): F[F[ProducerResult[K, V]]]
+
+  def metrics: F[Map[MetricName, Metric]]
 
   /**
     * Creates a new [[KafkaProducer]]  using the provided serializers.
@@ -105,11 +114,26 @@ object KafkaProducerConnection {
   ): Resource[F, KafkaProducerConnection[G]] =
     WithProducer(mk, settings).map { withProducer =>
       new KafkaProducerConnection[G] {
+        override def produce[K, V](
+          records: ProducerRecords[K, V]
+        )(
+          implicit keySerializer: KeySerializer[G, K],
+          valueSerializer: ValueSerializer[G, V]
+        ): G[G[ProducerResult[K, V]]] =
+          KafkaProducer.produce[G, K, V](
+            withProducer,
+            keySerializer,
+            valueSerializer,
+            records
+          )
+
+        override def metrics: G[Map[MetricName, Metric]] =
+          withProducer.blocking { _.metrics().asScala.toMap }
         override def withSerializers[K, V](
           keySerializer: KeySerializer[G, K],
           valueSerializer: ValueSerializer[G, V]
         ): KafkaProducer.Metrics[G, K, V] =
-          KafkaProducer.from(withProducer, keySerializer, valueSerializer)
+          KafkaProducer.from(this, keySerializer, valueSerializer)
 
         override def withSerializersFrom[K, V](
           settings: ProducerSettings[G, K, V]

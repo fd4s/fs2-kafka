@@ -137,13 +137,9 @@ The following settings are specific to the library.
 Once [`ProducerSettings`][producersettings] is defined, use `KafkaProducer.stream` to create a [`KafkaProducer`][kafkaproducer] instance.
 
 ```scala mdoc:silent
-object ProducerExample extends IOApp {
-  def run(args: List[String]): IO[ExitCode] = {
-    val stream =
-      KafkaProducer.stream(producerSettings)
-
-    stream.compile.drain.as(ExitCode.Success)
-  }
+object ProducerExample extends IOApp.Simple {
+  val run: IO[Unit] =
+    KafkaProducer.stream(producerSettings).compile.drain
 }
 ```
 
