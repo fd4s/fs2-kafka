@@ -1,6 +1,7 @@
 package fs2.kafka
 
 import cats.effect.IO
+import cats.effect.kernel.Resource
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -140,12 +141,12 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should be able to create with and without serializer creation effects") {
       val serializer = Serializer[IO, String]
-      val recordSerializer = RecordSerializer.lift(serializer)
+      val serializerResource: Resource[IO, Serializer[IO, String]] = Resource.pure(serializer)
 
       ProducerSettings(serializer, serializer)
-      ProducerSettings(recordSerializer, serializer)
-      ProducerSettings(serializer, recordSerializer)
-      ProducerSettings(recordSerializer, recordSerializer)
+      ProducerSettings(serializerResource, serializer)
+      ProducerSettings(serializer, serializerResource)
+      ProducerSettings(serializerResource, serializerResource)
     }
 
     it("should be able to implicitly create with and without serializer creation effects") {
@@ -153,8 +154,8 @@ final class ProducerSettingsSpec extends BaseSpec {
         Serializer[IO, String]
           .mapBytes(identity)
 
-      implicit val serializer: RecordSerializer[IO, String] =
-        RecordSerializer.lift(serializerInstance)
+      implicit val serializer: Resource[IO, Serializer[IO, String]] =
+        Resource.pure(serializerInstance)
 
       ProducerSettings[IO, Int, Int]
       ProducerSettings[IO, String, Int].keySerializer
