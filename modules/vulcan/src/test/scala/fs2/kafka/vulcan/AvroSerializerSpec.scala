@@ -10,7 +10,9 @@ final class AvroSerializerSpec extends AnyFunSpec {
   describe("AvroSerializer") {
     it("can create a serializer") {
       assert(AvroSerializer[Int].forKey(avroSettings).use(IO.pure).attempt.unsafeRunSync().isRight)
-      assert(AvroSerializer[Int].forValue(avroSettings).use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(
+        AvroSerializer[Int].forValue(avroSettings).use(IO.pure).attempt.unsafeRunSync().isRight
+      )
     }
 
     it("raises schema errors") {
@@ -21,8 +23,12 @@ final class AvroSerializerSpec extends AnyFunSpec {
           (_, _) => Left(AvroError("decode"))
         )
 
-      assert(avroSerializer(codec).forKey(avroSettings).use(IO.pure).attempt.unsafeRunSync().isRight)
-      assert(avroSerializer(codec).forValue(avroSettings).use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(
+        avroSerializer(codec).forKey(avroSettings).use(IO.pure).attempt.unsafeRunSync().isRight
+      )
+      assert(
+        avroSerializer(codec).forValue(avroSettings).use(IO.pure).attempt.unsafeRunSync().isRight
+      )
     }
 
     it("toString") {

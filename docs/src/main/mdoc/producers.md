@@ -101,21 +101,12 @@ Note that `close` and `configure` won't be called for the delegates.
 
 ## Settings
 
-In order to create a [`KafkaProducer`][kafkaproducer], we first need to create [`ProducerSettings`][producersettings]. At the very minimum, settings include the effect type to use, and the key and value serializers. More generally, [`ProducerSettings`][producersettings] contain everything necessary to create a [`KafkaProducer`][kafkaproducer]. If serializers are available implicitly for the key and value type, we can use the syntax in the following example.
+In order to create a [`KafkaProducer`][kafkaproducer], we first need to create [`ProducerSettings`][producersettings].
 
 ```scala mdoc:silent
 val producerSettings =
-  ProducerSettings[IO, String, String]
+  ProducerSettings.default
     .withBootstrapServers("localhost:9092")
-```
-
-We can also specify the serializers explicitly when necessary.
-
-```scala mdoc:silent
-ProducerSettings(
-  keySerializer = Serializer[IO, String],
-  valueSerializer = Serializer[IO, String]
-).withBootstrapServers("localhost:9092")
 ```
 
 [`ProducerSettings`][producersettings] provides functions for configuring both the Java Kafka producer and options specific to the library. If functions for configuring certain properties of the Java Kafka producer is missing, we can instead use `withProperty` or `withProperties` together with constants from [`ProducerConfig`][producerconfig]. Available properties for the Java Kafka producer are described in the [documentation](http://kafka.apache.org/documentation/#producerconfigs).
@@ -139,7 +130,15 @@ Once [`ProducerSettings`][producersettings] is defined, use `KafkaProducer.strea
 ```scala mdoc:silent
 object ProducerExample extends IOApp.Simple {
   val run: IO[Unit] =
-    KafkaProducer.stream(producerSettings).compile.drain
+    KafkaProducer.stream[IO, String, String](producerSettings).compile.drain
+}
+```
+
+We can also specify the serializers explicitly when necessary.
+```scala mdoc:silent
+object ProducerExplicitSerializersExample extends IOApp.Simple {
+  val run: IO[Unit] =
+    KafkaProducer[IO].stream(producerSettings, Serializer[IO, String], Serializer[IO, String]).compile.drain
 }
 ```
 
@@ -187,7 +186,7 @@ If we're producing in multiple places in our stream, we can create the `KafkaPro
 object PartitionedProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream(producerSettings)
+      KafkaProducer.stream[IO, String, String](producerSettings)
         .flatMap { producer =>
           KafkaConsumer.stream(consumerSettings)
             .subscribeTo("topic")
@@ -216,7 +215,7 @@ If we need more control of how records are produced, we can use `KafkaProducer#p
 object KafkaProducerProduceExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream(producerSettings)
+      KafkaProducer.stream[IO, String, String](producerSettings)
         .flatMap { producer =>
           KafkaConsumer.stream(consumerSettings)
             .subscribeTo("topic")
@@ -246,7 +245,7 @@ Sometimes there is a need to wait for individual `ProducerRecords` to send. In t
 object KafkaProducerProduceFlattenExample extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream(producerSettings)
+      KafkaProducer.stream[IO, String, String](producerSettings)
         .flatMap { producer =>
           KafkaConsumer.stream(consumerSettings)
             .subscribeTo("topic")

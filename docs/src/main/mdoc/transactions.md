@@ -40,12 +40,12 @@ object Main extends IOApp.Simple {
     val producerSettings =
       TransactionalProducerSettings(
         "transactional-id",
-        ProducerSettings[IO, String, String]
+        ProducerSettings.default
           .withBootstrapServers("localhost:9092")
       )
 
     val stream =
-      TransactionalKafkaProducer.stream(producerSettings)
+      TransactionalKafkaProducer.stream[IO, String, String](producerSettings)
         .flatMap { producer =>
           KafkaConsumer.stream(consumerSettings)
             .subscribeTo("topic")

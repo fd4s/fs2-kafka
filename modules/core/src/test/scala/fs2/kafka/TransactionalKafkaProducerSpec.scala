@@ -20,13 +20,14 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
   describe("creating transactional producers") {
     it("should support defined syntax") {
-      val settings = TransactionalProducerSettings("id", ProducerSettings[IO, String, String])
+      val settings = TransactionalProducerSettings("id", ProducerSettings.default)
+      val stringSerializer = Serializer[IO, String]
 
       TransactionalKafkaProducer.resource[IO, String, String](settings)
-      TransactionalKafkaProducer[IO].resource(settings)
+      TransactionalKafkaProducer[IO].resource(settings, stringSerializer, stringSerializer)
 
       TransactionalKafkaProducer.stream[IO, String, String](settings)
-      TransactionalKafkaProducer[IO].resource(settings)
+      TransactionalKafkaProducer[IO].resource(settings, stringSerializer, stringSerializer)
 
       TransactionalKafkaProducer[IO].toString should startWith(
         "TransactionalProducerPartiallyApplied$"
@@ -66,10 +67,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
     val produced =
       (for {
-        producer <- TransactionalKafkaProducer.stream(
+        producer <- TransactionalKafkaProducer.stream[IO, String, String](
           TransactionalProducerSettings(
             "id",
-            producerSettings[IO]
+            producerSettings
               .withRetries(Int.MaxValue)
           )
         )
@@ -152,10 +153,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
     val produced =
       (for {
-        producer <- TransactionalKafkaProducer.stream(
+        producer <- TransactionalKafkaProducer.stream[IO, String, String](
           TransactionalProducerSettings(
             "id",
-            producerSettings[IO]
+            producerSettings
               .withRetries(Int.MaxValue)
           )
         )
@@ -214,10 +215,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
       val result =
         (for {
-          producer <- TransactionalKafkaProducer.stream(
+          producer <- TransactionalKafkaProducer.stream[IO, String, String](
             TransactionalProducerSettings(
               "id",
-              producerSettings[IO]
+              producerSettings
                 .withRetries(Int.MaxValue)
             )
           )
@@ -274,7 +275,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       val error = new RuntimeException("BOOM")
 
       implicit val mk: MkProducer[IO] = new MkProducer[IO] {
-        def apply[G[_]](settings: ProducerSettings[G, _, _]): IO[KafkaByteProducer] =
+        def apply(settings: ProducerSettings): IO[KafkaByteProducer] =
           IO.delay {
             new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
               (settings.properties: Map[String, AnyRef]).asJava,
@@ -296,10 +297,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
       val produced =
         (for {
-          producer <- TransactionalKafkaProducer.stream(
+          producer <- TransactionalKafkaProducer.stream[IO, String, String](
             TransactionalProducerSettings(
               "id",
-              producerSettings[IO]
+              producerSettings
                 .withRetries(Int.MaxValue)
             )
           )
@@ -346,7 +347,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n")
 
       implicit val mkProducer: MkProducer[IO] = new MkProducer[IO] {
-        def apply[G[_]](settings: ProducerSettings[G, _, _]): IO[KafkaByteProducer] = IO.delay {
+        def apply(settings: ProducerSettings): IO[KafkaByteProducer] = IO.delay {
           new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
             (settings.properties: Map[String, AnyRef]).asJava,
             new ByteArraySerializer,
@@ -362,10 +363,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
       val produced =
         (for {
-          producer <- TransactionalKafkaProducer.stream(
+          producer <- TransactionalKafkaProducer.stream[IO, String, String](
             TransactionalProducerSettings(
               "id",
-              producerSettings[IO]
+              producerSettings
                 .withRetries(Int.MaxValue)
             ).withTransactionTimeout(transactionTimeoutInterval - 250.millis)
           )
@@ -404,11 +405,11 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       createCustomTopic(topic, partitions = 3)
 
       val info =
-        TransactionalKafkaProducer[IO]
-          .stream(
+        TransactionalKafkaProducer
+          .stream[IO, String, String](
             TransactionalProducerSettings(
               transactionalId = "id",
-              producerSettings = producerSettings[IO].withRetries(Int.MaxValue)
+              producerSettings = producerSettings.withRetries(Int.MaxValue)
             )
           )
           .evalMap(_.metrics)

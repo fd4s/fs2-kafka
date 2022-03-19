@@ -1,8 +1,5 @@
 package fs2.kafka
 
-import cats.effect.IO
-import cats.effect.kernel.Resource
-import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
 import org.apache.kafka.clients.producer.ProducerConfig
 
@@ -10,15 +7,11 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 final class ProducerSettingsSpec extends BaseSpec {
-  describe("ProducerSettings") {
-    it("should provide apply") {
-      ProducerSettings[IO, String, String]
-      ProducerSettings(Serializer[IO, String], Serializer[IO, String])
-    }
+  describe("ProducerSettings.default") {
 
     it("should provide withBootstrapServers") {
       assert {
-        settings
+        ProducerSettings.default
           .withBootstrapServers("localhost")
           .properties(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG)
           .contains("localhost")
@@ -27,15 +20,15 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withAcks") {
       assert {
-        settings
+        ProducerSettings.default
           .withAcks(Acks.All)
           .properties(ProducerConfig.ACKS_CONFIG)
           .contains("all") &&
-        settings
+        ProducerSettings.default
           .withAcks(Acks.One)
           .properties(ProducerConfig.ACKS_CONFIG)
           .contains("1") &&
-        settings
+        ProducerSettings.default
           .withAcks(Acks.Zero)
           .properties(ProducerConfig.ACKS_CONFIG)
           .contains("0")
@@ -44,7 +37,7 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withBatchSize") {
       assert {
-        settings
+        ProducerSettings.default
           .withBatchSize(10)
           .properties(ProducerConfig.BATCH_SIZE_CONFIG)
           .contains("10")
@@ -53,7 +46,7 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withClientId") {
       assert {
-        settings
+        ProducerSettings.default
           .withClientId("clientId")
           .properties(ProducerConfig.CLIENT_ID_CONFIG)
           .contains("clientId")
@@ -62,7 +55,7 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withRetries") {
       assert {
-        settings
+        ProducerSettings.default
           .withRetries(10)
           .properties(ProducerConfig.RETRIES_CONFIG)
           .contains("10")
@@ -71,7 +64,7 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withMaxInFlightRequestsPerConnection") {
       assert {
-        settings
+        ProducerSettings.default
           .withMaxInFlightRequestsPerConnection(10)
           .properties(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION)
           .contains("10")
@@ -80,11 +73,11 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withEnableIdempotence") {
       assert {
-        settings
+        ProducerSettings.default
           .withEnableIdempotence(true)
           .properties(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)
           .contains("true") &&
-        settings
+        ProducerSettings.default
           .withEnableIdempotence(false)
           .properties(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)
           .contains("false")
@@ -93,7 +86,7 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withLinger") {
       assert {
-        settings
+        ProducerSettings.default
           .withLinger(10.seconds)
           .properties(ProducerConfig.LINGER_MS_CONFIG)
           .contains("10000")
@@ -102,7 +95,7 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withRequestTimeout") {
       assert {
-        settings
+        ProducerSettings.default
           .withRequestTimeout(10.seconds)
           .properties(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG)
           .contains("10000")
@@ -111,7 +104,7 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withDeliveryTimeout") {
       assert {
-        settings
+        ProducerSettings.default
           .withDeliveryTimeout(10.seconds)
           .properties(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG)
           .contains("10000")
@@ -120,63 +113,35 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withProperty/withProperties") {
       assert {
-        settings.withProperty("a", "b").properties("a").contains("b") &&
-        settings.withProperties("a" -> "b").properties("a").contains("b") &&
-        settings.withProperties(Map("a" -> "b")).properties("a").contains("b")
+        ProducerSettings.default.withProperty("a", "b").properties("a").contains("b") &&
+        ProducerSettings.default.withProperties("a" -> "b").properties("a").contains("b") &&
+        ProducerSettings.default.withProperties(Map("a" -> "b")).properties("a").contains("b")
       }
     }
 
     it("should provide withCloseTimeout") {
-      assert(settings.withCloseTimeout(30.seconds).closeTimeout == 30.seconds)
+      assert(ProducerSettings.default.withCloseTimeout(30.seconds).closeTimeout == 30.seconds)
     }
 
     it("should have a Show instance and matching toString") {
-      val shown = settings.show
+      val shown = ProducerSettings.default.withProperty("foo", "bar").show
 
       assert(
-        shown == "ProducerSettings(closeTimeout = 60 seconds)" &&
-          shown == settings.toString
+        shown == "ProducerSettings.default(closeTimeout = 60 seconds)" &&
+          shown == ProducerSettings.default.toString
       )
-    }
-
-    it("should be able to create with and without serializer creation effects") {
-      val serializer = Serializer[IO, String]
-      val serializerResource: Resource[IO, Serializer[IO, String]] = Resource.pure(serializer)
-
-      ProducerSettings(serializer, serializer)
-      ProducerSettings(serializerResource, serializer)
-      ProducerSettings(serializer, serializerResource)
-      ProducerSettings(serializerResource, serializerResource)
-    }
-
-    it("should be able to implicitly create with and without serializer creation effects") {
-      val serializerInstance =
-        Serializer[IO, String]
-          .mapBytes(identity)
-
-      implicit val serializer: Resource[IO, Serializer[IO, String]] =
-        Resource.pure(serializerInstance)
-
-      ProducerSettings[IO, Int, Int]
-      ProducerSettings[IO, String, Int].keySerializer
-        .use(IO.pure)
-        .unsafeRunSync() shouldBe serializerInstance
-      ProducerSettings[IO, Int, String].valueSerializer
-        .use(IO.pure)
-        .unsafeRunSync() shouldBe serializerInstance
-      ProducerSettings[IO, String, String]
     }
 
     it("should be able to set a custom blocking context") {
       assert {
-        settings.customBlockingContext.isEmpty &&
-        settings.withCustomBlockingContext(ExecutionContext.global).customBlockingContext === Some(
+        ProducerSettings.default.customBlockingContext.isEmpty &&
+        ProducerSettings.default
+          .withCustomBlockingContext(ExecutionContext.global)
+          .customBlockingContext === Some(
           ExecutionContext.global
         )
       }
     }
 
   }
-
-  val settings = ProducerSettings[IO, String, String]
 }

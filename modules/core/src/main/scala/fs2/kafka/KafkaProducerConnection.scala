@@ -7,7 +7,6 @@
 package fs2.kafka
 
 import cats.effect._
-import cats.syntax.all._
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
@@ -25,9 +24,9 @@ import org.apache.kafka.common.Metric
   */
 sealed abstract class KafkaProducerConnection[F[_]] {
 
-  def produce[K: KeySerializer[F, *], V: ValueSerializer[F, *]](
+  def produce[K, V](
     records: ProducerRecords[K, V]
-  ): F[F[ProducerResult[K, V]]]
+  )(implicit serializers: RecordSerializer[F, K, V]): F[F[ProducerResult[K, V]]]
 
   def metrics: F[Map[MetricName, Metric]]
 
@@ -51,9 +50,9 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     * KafkaProducerConnection.stream[F].using(settings).evalMap(_.withSerializersFrom(settings))
     * }}}
     */
-  def withSerializersFrom[K, V](
-    settings: ProducerSettings[F, K, V]
-  ): Resource[F, KafkaProducer.Metrics[F, K, V]]
+  def withSerializers[K, V](
+    implicit serializers: RecordSerializer[F, K, V]
+  ): KafkaProducer.Metrics[F, K, V]
 }
 
 object KafkaProducerConnection {
@@ -67,7 +66,7 @@ object KafkaProducerConnection {
     * }}}
     */
   def stream[F[_]](
-    settings: ProducerSettings[F, _, _]
+    settings: ProducerSettings
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
@@ -78,7 +77,7 @@ object KafkaProducerConnection {
     * the allocating `Stream` and the allocated `KafkaProducerConnection`.
     */
   def streamIn[F[_], G[_]](
-    settings: ProducerSettings[G, _, _]
+    settings: ProducerSettings
   )(
     implicit F: Async[F],
     G: Async[G],
@@ -94,7 +93,7 @@ object KafkaProducerConnection {
     * }}}
     */
   def resource[F[_]](
-    settings: ProducerSettings[F, _, _]
+    settings: ProducerSettings
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
@@ -106,39 +105,39 @@ object KafkaProducerConnection {
     * the allocating `Resource` and the allocated `KafkaProducerConnection`.
     */
   def resourceIn[F[_], G[_]](
-    settings: ProducerSettings[G, _, _]
+    settings: ProducerSettings
   )(
     implicit F: Async[F],
     G: Async[G],
     mk: MkProducer[F]
   ): Resource[F, KafkaProducerConnection[G]] =
-    WithProducer(mk, settings).map { withProducer =>
+    WithProducer[F, G](mk, settings).map { withProducer =>
       new KafkaProducerConnection[G] {
         override def produce[K, V](
           records: ProducerRecords[K, V]
         )(
-          implicit keySerializer: KeySerializer[G, K],
-          valueSerializer: ValueSerializer[G, V]
+          implicit serializers: RecordSerializer[G, K, V]
         ): G[G[ProducerResult[K, V]]] =
           KafkaProducer.produce[G, K, V](
             withProducer,
-            keySerializer,
-            valueSerializer,
             records
           )
 
         override def metrics: G[Map[MetricName, Metric]] =
           withProducer.blocking { _.metrics().asScala.toMap }
+
         override def withSerializers[K, V](
           keySerializer: KeySerializer[G, K],
           valueSerializer: ValueSerializer[G, V]
-        ): KafkaProducer.Metrics[G, K, V] =
-          KafkaProducer.from(this, keySerializer, valueSerializer)
+        ): KafkaProducer.Metrics[G, K, V] = {
+          implicit val recordSerializer = RecordSerializer.instance(keySerializer, valueSerializer)
+          KafkaProducer.from(this)
+        }
 
-        override def withSerializersFrom[K, V](
-          settings: ProducerSettings[G, K, V]
-        ): Resource[G, KafkaProducer.Metrics[G, K, V]] =
-          (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
+        override def withSerializers[K, V](
+          implicit serializers: RecordSerializer[G, K, V]
+        ): KafkaProducer.Metrics[G, K, V] =
+          withSerializers(serializers.forKey, serializers.forValue)
 
       }
     }

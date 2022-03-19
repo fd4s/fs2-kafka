@@ -1,19 +1,20 @@
 ---
-id: modules
-title: Modules
+id: modules title: Modules
 ---
 
 The following sections describe the additional modules.
 
 ## Vulcan
 
-The `@VULCAN_MODULE_NAME@` module provides [Avro](https://avro.apache.org) serialization support using [Vulcan](https://fd4s.github.io/vulcan).
+The `@VULCAN_MODULE_NAME@` module provides [Avro](https://avro.apache.org) serialization support
+using [Vulcan](https://fd4s.github.io/vulcan).
 
 Add it to your project in build.sbt;
 
 ```scala
 libraryDependencies += "com.github.fd4s" %% "fs2-kafka-vulcan" % fs2KafkaVersion
-resolvers += "confluent" at "https://packages.confluent.io/maven/",
+resolvers += "confluent" at "https://packages.confluent.io/maven/"
+,
 ```
 
 We start by defining the type we want to serialize or deserialize, and create a `Codec`.
@@ -66,7 +67,7 @@ implicit val personDeserializer: Resource[IO, ValueDeserializer[IO, Person]] =
 Finally, we can create settings, passing the `Serializer`s and `Deserializer`s implicitly.
 
 ```scala mdoc:silent
-import fs2.kafka.{AutoOffsetReset, ConsumerSettings, ProducerSettings}
+import fs2.kafka._
 
 val consumerSettings =
   ConsumerSettings[IO, String, Person]
@@ -75,8 +76,11 @@ val consumerSettings =
     .withGroupId("group")
 
 val producerSettings =
-  ProducerSettings[IO, String, Person]
-    .withBootstrapServers("localhost:9092")
+  ProducerSettings.default
+    
+personSerializer.flatMap { implicit serializer =>
+  KafkaProducer.resource[IO, String, Person](producerSettings)
+}
 ```
 
 If we prefer, we can instead specify the `Serializer`s and `Deserializer`s explicitly.
@@ -91,14 +95,15 @@ ConsumerSettings(
  .withBootstrapServers("localhost:9092")
  .withGroupId("group")
 
-ProducerSettings(
-  keySerializer = Serializer[IO, String],
-  valueSerializer = personSerializer
-).withBootstrapServers("localhost:9092")
+personSerializer.flatMap { serializer =>
+  KafkaProducer[IO].resource(producerSettings, Serializer[IO, String], serializer)
+}
 ```
 
-By default, a schema will automatically be registered when used to publish a message. We can disable this behaviour by 
-using `withAutoRegisterSchemas(false)`. We can then use `registerSchema` to manually register the schema with the registry server:
+By default, a schema will automatically be registered when used to publish a message. We can disable this behaviour by
+using `withAutoRegisterSchemas(false)`. We can then use `registerSchema` to manually register the schema with the
+registry server:
+
 ```scala mdoc:silent
 val avroSettingsWithoutAutoRegister = avroSettings.withAutoRegisterSchemas(false)
 avroSettingsWithoutAutoRegister.registerSchema[String]("person-key") *>
@@ -107,7 +112,9 @@ avroSettingsWithoutAutoRegister.registerSchema[String]("person-key") *>
 
 ### Sharing Client
 
-When creating `AvroSettings` with `SchemaRegistryClientSettings`, one schema registry client will be created per `Serializer` or `Deserializer`. For many cases, this is completely fine, but it's possible to reuse a single client for multiple `Serializer`s and `Deserializer`s.
+When creating `AvroSettings` with `SchemaRegistryClientSettings`, one schema registry client will be created
+per `Serializer` or `Deserializer`. For many cases, this is completely fine, but it's possible to reuse a single client
+for multiple `Serializer`s and `Deserializer`s.
 
 To share a `SchemaRegistryClient`, we first create it and then pass it to `AvroSettings`.
 
@@ -122,7 +129,7 @@ val avroSettingsSharedClient: IO[AvroSettings[IO]] =
 We can then create multiple `Serializer`s and `Deserializer`s using the `AvroSettings`.
 
 ```scala mdoc:silent
-avroSettingsSharedClient.map { avroSettings =>
+Resource.eval(avroSettingsSharedClient).flatMap { avroSettings =>
   val personSerializer: Resource[IO, ValueSerializer[IO, Person]] =
     avroSerializer[Person].forValue(avroSettings)
 
@@ -130,27 +137,26 @@ avroSettingsSharedClient.map { avroSettings =>
     avroDeserializer[Person].forValue(avroSettings)
 
   val consumerSettings =
-    ConsumerSettings(
-      keyDeserializer = Deserializer[IO, String],
-      valueDeserializer = personDeserializer
-    ).withAutoOffsetReset(AutoOffsetReset.Earliest)
-    .withBootstrapServers("localhost:9092")
-    .withGroupId("group")
+      ConsumerSettings(
+        keyDeserializer = Deserializer[IO, String],
+        valueDeserializer = personDeserializer
+      ).withAutoOffsetReset(AutoOffsetReset.Earliest)
+      .withBootstrapServers("localhost:9092")
+      .withGroupId("group")
 
- val producerSettings =
-  ProducerSettings(
-    keySerializer = Serializer[IO, String],
-    valueSerializer = personSerializer
-  ).withBootstrapServers("localhost:9092")
+  val producer: Resource[IO, KafkaProducer[IO, String, Person]] =
+    personSerializer.flatMap { implicit serializer =>
+      KafkaProducer.resource[IO, String, Person](producerSettings)
+    }
 
-  (consumerSettings, producerSettings)
+  producer.tupleLeft(consumerSettings)
 }
 ```
 
 ## Vulcan testkit munit
 
-The `@VULCAN_TESTKIT_MUNIT_MODULE_NAME@` module provides an [munit](https://scalameta.org/munit/) fixture for testing vulcan 
-codecs against a [schema registry](https://docs.confluent.io/platform/current/schema-registry/index.html)
+The `@VULCAN_TESTKIT_MUNIT_MODULE_NAME@` module provides an [munit](https://scalameta.org/munit/) fixture for testing
+vulcan codecs against a [schema registry](https://docs.confluent.io/platform/current/schema-registry/index.html)
 
 A usage example:
 

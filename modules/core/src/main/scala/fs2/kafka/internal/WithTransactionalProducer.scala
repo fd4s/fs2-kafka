@@ -28,7 +28,7 @@ private[kafka] sealed abstract class WithTransactionalProducer[F[_]] {
 private[kafka] object WithTransactionalProducer {
   def apply[F[_], K, V](
     mk: MkProducer[F],
-    settings: TransactionalProducerSettings[F, K, V]
+    settings: TransactionalProducerSettings
   )(
     implicit F: Async[F]
   ): Resource[F, WithTransactionalProducer[F]] =

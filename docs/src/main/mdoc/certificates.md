@@ -12,16 +12,15 @@ and service certificate. the `properties` field in `KafkaCredentialStore` can th
 any of the `*Settings` classes by using the `withProperties(kafkaCredentialStore.properties)`.
 
 ```scala mdoc
-import cats.effect._
 import fs2.kafka._
 import fs2.kafka.security._
 
-def createKafkaProducerUsingPem[F[_]: Sync, K, V](
+def createProducerSettingsUsingPem(
   caCertificate: String,
   accessKey: String,
   accessCertificate: String
-)(implicit keySer: Serializer[F, K], valSer: Serializer[F, V]): ProducerSettings[F, K, V] =
-  ProducerSettings[F, K, V]
+): ProducerSettings =
+  ProducerSettings.default
     .withCredentials(
       KafkaCredentialStore.fromPemStrings(
         caCertificate,

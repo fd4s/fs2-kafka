@@ -26,7 +26,7 @@ object Main extends IOApp.Simple {
         .withGroupId("group")
 
     val producerSettings =
-      ProducerSettings[IO, String, String]
+      ProducerSettings.default
         .withBootstrapServers("localhost:9092")
 
     val stream =
@@ -40,7 +40,7 @@ object Main extends IOApp.Simple {
               committable.offset -> ProducerRecords.one(record)
             }
         }.through { offsetsAndProducerRecords =>
-          KafkaProducer.stream(producerSettings).flatMap { producer =>
+          KafkaProducer.stream[IO, String, String](producerSettings).flatMap { producer =>
             offsetsAndProducerRecords.evalMap { 
               case (offset, producerRecord) => 
                 producer.produce(producerRecord)

@@ -9,14 +9,14 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
   describe("creating producers") {
     it("should support defined syntax") {
-      val settings =
-        ProducerSettings[IO, String, String]
+      val settings = ProducerSettings.default
+      val stringSerializer = Serializer[IO, String]
 
       KafkaProducer.resource[IO, String, String](settings)
-      KafkaProducer[IO].resource(settings)
+      KafkaProducer[IO].resource(settings, stringSerializer, stringSerializer)
 
       KafkaProducer.stream[IO, String, String](settings)
-      KafkaProducer[IO].stream(settings)
+      KafkaProducer[IO].stream(settings, stringSerializer, stringSerializer)
 
       KafkaProducer[IO].toString should startWith("ProducerPartiallyApplied$")
     }
@@ -29,7 +29,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val produced =
         (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
+          producer <- KafkaProducer.stream[IO, String, String](producerSettings)
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           (records, passthrough) <- Stream.chunk(Chunk.seq(toProduce).map {
             case passthrough @ (key, value) =>
@@ -57,7 +57,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       val toProduce = (0 until 100).map(n => s"key-$n" -> s"value->$n")
 
       (for {
-        producer <- KafkaProducer[IO].stream(producerSettings[IO])
+        producer <- KafkaProducer.stream[IO, String, String](producerSettings)
         records <- Stream.chunk(Chunk.seq(toProduce).map {
           case (key, value) =>
             ProducerRecords.one(ProducerRecord(topic, key, value))
@@ -79,7 +79,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val produced =
         (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
+          producer <- KafkaProducer.stream[IO, String, String](producerSettings)
           records = ProducerRecords(toProduce.map {
             case (key, value) =>
               ProducerRecord(topic, key, value)
@@ -109,7 +109,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val result =
         (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
+          producer <- KafkaProducer.stream[IO, String, String](producerSettings)
           records = ProducerRecords(Nil)
           result <- Stream.eval(producer.produce(records).flatten.tupleLeft(passthrough))
         } yield result).compile.lastOrError.unsafeRunSync()
@@ -125,7 +125,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val result =
         (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
+          producer <- KafkaProducer.stream[IO, String, String](producerSettings)
           result <- Stream.eval {
             producer.produce(ProducerRecords(Nil)).flatten.tupleLeft(passthrough)
           }
@@ -142,7 +142,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val produced =
         (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
+          producer <- KafkaProducer.stream[IO, String, String](producerSettings)
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           batched <- Stream
             .eval(producer.produceOne_(ProducerRecord(topic, toProduce._1, toProduce._2)))
@@ -163,7 +163,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val produced =
         (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
+          producer <- KafkaProducer.stream[IO, String, String](producerSettings)
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           batched <- Stream
             .eval(producer.produceOne_(topic, toProduce._1, toProduce._2))
@@ -185,7 +185,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val result =
         (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
+          producer <- KafkaProducer.stream[IO, String, String](producerSettings)
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           batched <- Stream
             .eval(
@@ -208,7 +208,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val result =
         (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
+          producer <- KafkaProducer.stream[IO, String, String](producerSettings)
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
           batched <- Stream
             .eval(producer.produceOne(topic, toProduce._1, toProduce._2))
@@ -227,7 +227,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val produced =
         (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
+          producer <- KafkaProducer.stream[IO, String, String](producerSettings)
           records = ProducerRecords(toProduce.map {
             case (key, value) =>
               ProducerRecord(topic, key, value)
@@ -256,7 +256,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       val info =
         KafkaProducer
-          .stream(producerSettings[IO])
+          .stream[IO, String, String](producerSettings)
           .evalMap(_.metrics)
 
       val res =

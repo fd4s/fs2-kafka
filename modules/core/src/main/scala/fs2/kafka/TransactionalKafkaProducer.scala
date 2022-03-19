@@ -86,87 +86,86 @@ object TransactionalKafkaProducer {
     * }}}
     */
   def resource[F[_], K, V](
-    settings: TransactionalProducerSettings[F, K, V]
+    settings: TransactionalProducerSettings
   )(
     implicit F: Async[F],
-    mk: MkProducer[F]
+    mk: MkProducer[F],
+    serializers: RecordSerializer[F, K, V]
   ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
-    (
-      settings.producerSettings.keySerializer,
-      settings.producerSettings.valueSerializer,
-      WithTransactionalProducer(mk, settings)
-    ).mapN { (keySerializer, valueSerializer, withProducer) =>
-      new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
-        override def produce(
-          records: TransactionalProducerRecords[F, K, V]
-        ): F[ProducerResult[K, V]] =
-          produceTransactionWithOffsets(records)
+    WithTransactionalProducer(mk, settings)
+      .map { withProducer =>
+        new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
+          override def produce(
+            records: TransactionalProducerRecords[F, K, V]
+          ): F[ProducerResult[K, V]] =
+            produceTransactionWithOffsets(records)
 
-        private[this] def produceTransactionWithOffsets(
-          records: Chunk[CommittableProducerRecords[F, K, V]]
-        ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-          if (records.isEmpty) F.pure(Chunk.empty)
-          else {
-            val batch =
-              CommittableOffsetBatch.fromFoldableMap(records)(_.offset)
+          private[this] def produceTransactionWithOffsets(
+            records: Chunk[CommittableProducerRecords[F, K, V]]
+          ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
+            if (records.isEmpty) F.pure(Chunk.empty)
+            else {
+              val batch =
+                CommittableOffsetBatch.fromFoldableMap(records)(_.offset)
 
-            val consumerGroupId =
-              if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
-                F.raiseError(ConsumerGroupException(batch.consumerGroupIds))
-              else F.pure(batch.consumerGroupIds.head)
+              val consumerGroupId =
+                if (batch.consumerGroupIdsMissing || batch.consumerGroupIds.size != 1)
+                  F.raiseError(ConsumerGroupException(batch.consumerGroupIds))
+                else F.pure(batch.consumerGroupIds.head)
 
-            consumerGroupId.flatMap { groupId =>
-              val sendOffsets: (KafkaByteProducer, Blocking[F]) => F[Unit] = (producer, blocking) =>
-                blocking {
-                  producer.sendOffsetsToTransaction(
-                    batch.offsets.asJava,
-                    new ConsumerGroupMetadata(groupId)
-                  )
-                }
+              consumerGroupId.flatMap { groupId =>
+                val sendOffsets: (KafkaByteProducer, Blocking[F]) => F[Unit] =
+                  (producer, blocking) =>
+                    blocking {
+                      producer.sendOffsetsToTransaction(
+                        batch.offsets.asJava,
+                        new ConsumerGroupMetadata(groupId)
+                      )
+                    }
 
-              produceTransaction(records.flatMap(_.records), Some(sendOffsets))
+                produceTransaction(records.flatMap(_.records), Some(sendOffsets))
+              }
             }
-          }
 
-        override def produceWithoutOffsets(
-          records: ProducerRecords[K, V]
-        ): F[ProducerResult[K, V]] =
-          produceTransaction(records, None)
+          override def produceWithoutOffsets(
+            records: ProducerRecords[K, V]
+          ): F[ProducerResult[K, V]] =
+            produceTransaction(records, None)
 
-        private[this] def produceTransaction(
-          records: Chunk[ProducerRecord[K, V]],
-          sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
-        ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-          if (records.isEmpty) F.pure(Chunk.empty)
-          else {
+          private[this] def produceTransaction(
+            records: Chunk[ProducerRecord[K, V]],
+            sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
+          ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
+            if (records.isEmpty) F.pure(Chunk.empty)
+            else {
 
-            withProducer.exclusiveAccess { (producer, blocking) =>
-              blocking(producer.beginTransaction())
-                .bracketCase { _ =>
-                  val produce = records
-                    .traverse(
-                      KafkaProducer
-                        .produceRecord(keySerializer, valueSerializer, producer, blocking)
-                    )
-                    .map(_.sequence)
+              withProducer.exclusiveAccess { (producer, blocking) =>
+                blocking(producer.beginTransaction())
+                  .bracketCase { _ =>
+                    val produce = records
+                      .traverse(
+                        KafkaProducer
+                          .produceRecord(producer, blocking)
+                      )
+                      .map(_.sequence)
 
-                  sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
-                } {
-                  case (_, Outcome.Succeeded(_)) =>
-                    blocking(producer.commitTransaction())
-                  case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                    blocking(producer.abortTransaction())
-                }
-            }.flatten
-          }
+                    sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
+                  } {
+                    case (_, Outcome.Succeeded(_)) =>
+                      blocking(producer.commitTransaction())
+                    case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
+                      blocking(producer.abortTransaction())
+                  }
+              }.flatten
+            }
 
-        override def metrics: F[Map[MetricName, Metric]] =
-          withProducer.blocking { _.metrics().asScala.toMap }
+          override def metrics: F[Map[MetricName, Metric]] =
+            withProducer.blocking { _.metrics().asScala.toMap }
 
-        override def toString: String =
-          "TransactionalKafkaProducer$" + System.identityHashCode(this)
+          override def toString: String =
+            "TransactionalKafkaProducer$" + System.identityHashCode(this)
+        }
       }
-    }
 
   /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Stream` context,
@@ -179,10 +178,11 @@ object TransactionalKafkaProducer {
     * }}}
     */
   def stream[F[_], K, V](
-    settings: TransactionalProducerSettings[F, K, V]
+    settings: TransactionalProducerSettings
   )(
     implicit F: Async[F],
-    mk: MkProducer[F]
+    mk: MkProducer[F],
+    serializers: RecordSerializer[F, K, V]
   ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
     Stream.resource(resource(settings))
 
@@ -202,11 +202,17 @@ object TransactionalKafkaProducer {
       * KafkaProducer[F].resource(settings)
       * }}}
       */
-    def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(
+    def resource[K, V](
+      settings: TransactionalProducerSettings,
+      keySerializer: KeySerializer[F, K],
+      valueSerializer: ValueSerializer[F, V]
+    )(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
+    ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] = {
+      implicit val serializers = RecordSerializer.instance(keySerializer, valueSerializer)
       TransactionalKafkaProducer.resource(settings)
+    }
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -218,11 +224,17 @@ object TransactionalKafkaProducer {
       * KafkaProducer[F].stream(settings)
       * }}}
       */
-    def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(
+    def stream[K, V](
+      settings: TransactionalProducerSettings,
+      keySerializer: KeySerializer[F, K],
+      valueSerializer: ValueSerializer[F, V]
+    )(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
+    ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] = {
+      implicit val serializers = RecordSerializer.instance(keySerializer, valueSerializer)
       TransactionalKafkaProducer.stream(settings)
+    }
 
     override def toString: String =
       "TransactionalProducerPartiallyApplied$" + System.identityHashCode(this)

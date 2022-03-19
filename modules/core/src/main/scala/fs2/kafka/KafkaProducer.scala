@@ -118,20 +118,23 @@ object KafkaProducer {
     * }}}
     */
   def resource[F[_], K, V](
-    settings: ProducerSettings[F, K, V]
-  )(implicit F: Async[F], mk: MkProducer[F]): Resource[F, KafkaProducer.Metrics[F, K, V]] =
-    KafkaProducerConnection.resource(settings).flatMap(_.withSerializersFrom(settings))
+    settings: ProducerSettings
+  )(
+    implicit F: Async[F],
+    mk: MkProducer[F],
+    serializers: RecordSerializer[F, K, V]
+  ): Resource[F, KafkaProducer.Metrics[F, K, V]] =
+    KafkaProducerConnection.resource(settings).map(_.withSerializers[K, V])
 
-  private[kafka] def from[F[_], K, V](
-    connection: KafkaProducerConnection[F],
-    keySerializer: KeySerializer[F, K],
-    valueSerializer: ValueSerializer[F, V]
+  private[kafka] def from[F[_], K, V](connection: KafkaProducerConnection[F])(
+    implicit
+    serializers: RecordSerializer[F, K, V]
   ): KafkaProducer.Metrics[F, K, V] =
     new KafkaProducer.Metrics[F, K, V] {
       override def produce(
         records: ProducerRecords[K, V]
       ): F[F[ProducerResult[K, V]]] =
-        connection.produce(records)(keySerializer, valueSerializer)
+        connection.produce(records)
 
       override def metrics: F[Map[MetricName, Metric]] =
         connection.metrics
@@ -152,32 +155,33 @@ object KafkaProducer {
     * }}}
     */
   def stream[F[_], K, V](
-    settings: ProducerSettings[F, K, V]
-  )(implicit F: Async[F], mk: MkProducer[F]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
+    settings: ProducerSettings
+  )(
+    implicit F: Async[F],
+    mk: MkProducer[F],
+    serializers: RecordSerializer[F, K, V]
+  ): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     Stream.resource(KafkaProducer.resource(settings))
 
   private[kafka] def produce[F[_]: Async, K, V](
     withProducer: WithProducer[F],
-    keySerializer: KeySerializer[F, K],
-    valueSerializer: ValueSerializer[F, V],
     records: ProducerRecords[K, V]
-  ): F[F[ProducerResult[K, V]]] =
+  )(implicit serializers: RecordSerializer[F, K, V]): F[F[ProducerResult[K, V]]] =
     withProducer { (producer, blocking) =>
       records
-        .traverse(produceRecord(keySerializer, valueSerializer, producer, blocking))
+        .traverse(produceRecord(producer, blocking))
         .map(_.sequence)
     }
 
   private[kafka] def produceRecord[F[_], K, V](
-    keySerializer: KeySerializer[F, K],
-    valueSerializer: ValueSerializer[F, V],
     producer: KafkaByteProducer,
     blocking: Blocking[F]
   )(
-    implicit F: Async[F]
+    implicit F: Async[F],
+    serializers: RecordSerializer[F, K, V]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
     record =>
-      asJavaRecord(keySerializer, valueSerializer, record).flatMap { javaRecord =>
+      asJavaRecord(serializers, record).flatMap { javaRecord =>
         F.delay(Promise[(ProducerRecord[K, V], RecordMetadata)]()).flatMap { promise =>
           blocking {
             producer.send(
@@ -196,10 +200,11 @@ object KafkaProducer {
     * produces record in batches.
     */
   def pipe[F[_], K, V](
-    settings: ProducerSettings[F, K, V]
+    settings: ProducerSettings
   )(
     implicit F: Async[F],
-    mk: MkProducer[F]
+    mk: MkProducer[F],
+    serializers: RecordSerializer[F, K, V]
   ): Pipe[F, ProducerRecords[K, V], ProducerResult[K, V]] =
     records => stream(settings).flatMap(pipe(_).apply(records))
 
@@ -212,25 +217,23 @@ object KafkaProducer {
     _.evalMap(producer.produce).parEvalMap(Int.MaxValue)(identity)
 
   private[this] def serializeToBytes[F[_], K, V](
-    keySerializer: KeySerializer[F, K],
-    valueSerializer: ValueSerializer[F, V],
+    serializers: RecordSerializer[F, K, V],
     record: ProducerRecord[K, V]
   )(implicit F: Apply[F]): F[(Array[Byte], Array[Byte])] = {
     val keyBytes =
-      keySerializer.serialize(record.topic, record.headers, record.key)
+      serializers.forKey.serialize(record.topic, record.headers, record.key)
 
     val valueBytes =
-      valueSerializer.serialize(record.topic, record.headers, record.value)
+      serializers.forValue.serialize(record.topic, record.headers, record.value)
 
     keyBytes.product(valueBytes)
   }
 
   private[this] def asJavaRecord[F[_], K, V](
-    keySerializer: KeySerializer[F, K],
-    valueSerializer: ValueSerializer[F, V],
+    serializers: RecordSerializer[F, K, V],
     record: ProducerRecord[K, V]
   )(implicit F: Apply[F]): F[KafkaByteProducerRecord] =
-    serializeToBytes(keySerializer, valueSerializer, record).map {
+    serializeToBytes(serializers, record).map {
       case (keyBytes, valueBytes) =>
         new KafkaByteProducerRecord(
           record.topic,
@@ -258,11 +261,17 @@ object KafkaProducer {
       * KafkaProducer[F].resource(settings)
       * }}}
       */
-    def resource[K, V](settings: ProducerSettings[F, K, V])(
+    def resource[K, V](
+      settings: ProducerSettings,
+      keySerializer: KeySerializer[F, K],
+      valueSerializer: ValueSerializer[F, V]
+    )(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Resource[F, KafkaProducer[F, K, V]] =
+    ): Resource[F, KafkaProducer[F, K, V]] = {
+      implicit val serializers = RecordSerializer.instance(keySerializer, valueSerializer)
       KafkaProducer.resource(settings)
+    }
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -274,11 +283,18 @@ object KafkaProducer {
       * KafkaProducer[F].stream(settings)
       * }}}
       */
-    def stream[K, V](settings: ProducerSettings[F, K, V])(
+    def stream[K, V](
+      settings: ProducerSettings,
+      keySerializer: KeySerializer[F, K],
+      valueSerializer: ValueSerializer[F, V]
+    )(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Stream[F, KafkaProducer[F, K, V]] =
+    ): Stream[F, KafkaProducer[F, K, V]] = {
+      implicit val serializers = RecordSerializer.instance(keySerializer, valueSerializer)
+
       KafkaProducer.stream(settings)
+    }
 
     override def toString: String =
       "ProducerPartiallyApplied$" + System.identityHashCode(this)

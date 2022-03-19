@@ -12,7 +12,6 @@ import org.apache.kafka.clients.producer.ProducerConfig
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import cats.effect.Resource
 
 /**
   * [[ProducerSettings]] contain settings necessary to create a [[KafkaProducer]].
@@ -27,17 +26,7 @@ import cats.effect.Resource
   * <br>
   * Use `ProducerSettings#apply` to create a new instance.
   */
-sealed abstract class ProducerSettings[F[_], K, V] {
-
-  /**
-    * The `Serializer` to use for serializing record keys.
-    */
-  def keySerializer: Resource[F, KeySerializer[F, K]]
-
-  /**
-    * The `Serializer` to use for serializing record values.
-    */
-  def valueSerializer: Resource[F, ValueSerializer[F, V]]
+sealed trait ProducerSettings {
 
   /**
     * A custom [[ExecutionContext]] to use for blocking Kafka operations.
@@ -53,7 +42,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * If not provided, the default blocking ExecutionContext provided by
     * [[cats.effect.Sync]] will be used. If in doubt, leave this unset.
     */
-  def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings[F, K, V]
+  def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings
 
   /**
     * Properties which can be provided when creating a Java `KafkaProducer`
@@ -71,7 +60,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * ProducerConfig.BOOTSTRAP_SERVERS_CONFIG
     * }}}
     */
-  def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V]
+  def withBootstrapServers(bootstrapServers: String): ProducerSettings
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -83,7 +72,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * ProducerConfig.ACKS_CONFIG
     * }}}
     */
-  def withAcks(acks: Acks): ProducerSettings[F, K, V]
+  def withAcks(acks: Acks): ProducerSettings
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -95,7 +84,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * ProducerConfig.BATCH_SIZE_CONFIG
     * }}}
     */
-  def withBatchSize(batchSize: Int): ProducerSettings[F, K, V]
+  def withBatchSize(batchSize: Int): ProducerSettings
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -106,7 +95,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * ProducerConfig.CLIENT_ID_CONFIG
     * }}}
     */
-  def withClientId(clientId: String): ProducerSettings[F, K, V]
+  def withClientId(clientId: String): ProducerSettings
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -118,7 +107,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * ProducerConfig.RETRIES_CONFIG
     * }}}
     */
-  def withRetries(retries: Int): ProducerSettings[F, K, V]
+  def withRetries(retries: Int): ProducerSettings
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -133,7 +122,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     */
   def withMaxInFlightRequestsPerConnection(
     maxInFlightRequestsPerConnection: Int
-  ): ProducerSettings[F, K, V]
+  ): ProducerSettings
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -145,7 +134,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG
     * }}}
     */
-  def withEnableIdempotence(enableIdempotence: Boolean): ProducerSettings[F, K, V]
+  def withEnableIdempotence(enableIdempotence: Boolean): ProducerSettings
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -157,7 +146,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * ProducerConfig.LINGER_MS_CONFIG
     * }}}
     */
-  def withLinger(linger: FiniteDuration): ProducerSettings[F, K, V]
+  def withLinger(linger: FiniteDuration): ProducerSettings
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -169,7 +158,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG
     * }}}
     */
-  def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings[F, K, V]
+  def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings
 
   /**
     * Returns a new [[ProducerSettings]] instance with the specified
@@ -181,28 +170,28 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG
     * }}}
     */
-  def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[F, K, V]
+  def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings
 
   /**
     * Includes a property with the specified `key` and `value`.
     * The key should be one of the keys in `ProducerConfig`,
     * and the value should be a valid choice for the key.
     */
-  def withProperty(key: String, value: String): ProducerSettings[F, K, V]
+  def withProperty(key: String, value: String): ProducerSettings
 
   /**
     * Includes the specified keys and values as properties. The
     * keys should be part of the `ProducerConfig` keys, and
     * the values should be valid choices for the keys.
     */
-  def withProperties(properties: (String, String)*): ProducerSettings[F, K, V]
+  def withProperties(properties: (String, String)*): ProducerSettings
 
   /**
     * Includes the specified keys and values as properties. The
     * keys should be part of the `ProducerConfig` keys, and
     * the values should be valid choices for the keys.
     */
-  def withProperties(properties: Map[String, String]): ProducerSettings[F, K, V]
+  def withProperties(properties: Map[String, String]): ProducerSettings
 
   /**
     * The time to wait for the Java `KafkaProducer` to shutdown.<br>
@@ -214,95 +203,18 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   /**
     * Creates a new [[ProducerSettings]] with the specified [[closeTimeout]].
     */
-  def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V]
+  def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings
 
   /**
     * Includes the credentials properties from the provided [[KafkaCredentialStore]]
     */
-  def withCredentials(credentialsStore: KafkaCredentialStore): ProducerSettings[F, K, V]
+  def withCredentials(credentialsStore: KafkaCredentialStore): ProducerSettings
 }
 
 object ProducerSettings {
-  private[this] final case class ProducerSettingsImpl[F[_], K, V](
-    override val keySerializer: Resource[F, KeySerializer[F, K]],
-    override val valueSerializer: Resource[F, ValueSerializer[F, V]],
-    override val customBlockingContext: Option[ExecutionContext],
-    override val properties: Map[String, String],
-    override val closeTimeout: FiniteDuration
-  ) extends ProducerSettings[F, K, V] {
-    override def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings[F, K, V] =
-      copy(customBlockingContext = Some(ec))
 
-    override def withBootstrapServers(bootstrapServers: String): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-
-    override def withAcks(acks: Acks): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.ACKS_CONFIG, acks match {
-        case Acks.ZeroAcks => "0"
-        case Acks.OneAcks  => "1"
-        case Acks.AllAcks  => "all"
-      })
-
-    override def withBatchSize(batchSize: Int): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.BATCH_SIZE_CONFIG, batchSize.toString)
-
-    override def withClientId(clientId: String): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.CLIENT_ID_CONFIG, clientId)
-
-    override def withRetries(retries: Int): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.RETRIES_CONFIG, retries.toString)
-
-    override def withMaxInFlightRequestsPerConnection(
-      maxInFlightRequestsPerConnection: Int
-    ): ProducerSettings[F, K, V] =
-      withProperty(
-        ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION,
-        maxInFlightRequestsPerConnection.toString
-      )
-
-    override def withEnableIdempotence(enableIdempotence: Boolean): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, enableIdempotence.toString)
-
-    override def withLinger(linger: FiniteDuration): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.LINGER_MS_CONFIG, linger.toMillis.toString)
-
-    override def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, requestTimeout.toMillis.toString)
-
-    override def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings[F, K, V] =
-      withProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeout.toMillis.toString)
-
-    override def withProperty(key: String, value: String): ProducerSettings[F, K, V] =
-      copy(properties = properties.updated(key, value))
-
-    override def withProperties(properties: (String, String)*): ProducerSettings[F, K, V] =
-      copy(properties = this.properties ++ properties.toMap)
-
-    override def withProperties(properties: Map[String, String]): ProducerSettings[F, K, V] =
-      copy(properties = this.properties ++ properties)
-
-    override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V] =
-      copy(closeTimeout = closeTimeout)
-
-    /**
-      * Includes the credentials properties from the provided [[KafkaCredentialStore]]
-      */
-    override def withCredentials(
-      credentialsStore: KafkaCredentialStore
-    ): ProducerSettings[F, K, V] =
-      withProperties(credentialsStore.properties)
-
-    override def toString: String =
-      s"ProducerSettings(closeTimeout = $closeTimeout)"
-  }
-
-  private[this] def create[F[_], K, V](
-    keySerializer: Resource[F, KeySerializer[F, K]],
-    valueSerializer: Resource[F, ValueSerializer[F, V]]
-  ): ProducerSettings[F, K, V] =
+  val default: ProducerSettings =
     ProducerSettingsImpl(
-      keySerializer = keySerializer,
-      valueSerializer = valueSerializer,
       customBlockingContext = None,
       properties = Map(
         ProducerConfig.RETRIES_CONFIG -> "0"
@@ -310,42 +222,77 @@ object ProducerSettings {
       closeTimeout = 60.seconds
     )
 
-  def apply[F[_], K, V](
-    keySerializer: KeySerializer[F, K],
-    valueSerializer: ValueSerializer[F, V]
-  ): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = Resource.pure(keySerializer),
-      valueSerializer = Resource.pure(valueSerializer)
-    )
+  private[kafka] case class ProducerSettingsImpl(
+    override val customBlockingContext: Option[ExecutionContext],
+    override val properties: Map[String, String],
+    override val closeTimeout: FiniteDuration
+  ) extends ProducerSettings {
+    override def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings =
+      copy(customBlockingContext = Some(ec))
 
-  def apply[F[_], K, V](
-    keySerializer: Resource[F, KeySerializer[F, K]],
-    valueSerializer: ValueSerializer[F, V]
-  ): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = keySerializer,
-      valueSerializer = Resource.pure(valueSerializer)
-    )
+    override def withBootstrapServers(bootstrapServers: String): ProducerSettings =
+      withProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
 
-  def apply[F[_], K, V](
-    keySerializer: KeySerializer[F, K],
-    valueSerializer: Resource[F, ValueSerializer[F, V]]
-  ): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = Resource.pure(keySerializer),
-      valueSerializer = valueSerializer
-    )
+    override def withAcks(acks: Acks): ProducerSettings =
+      withProperty(ProducerConfig.ACKS_CONFIG, acks match {
+        case Acks.ZeroAcks => "0"
+        case Acks.OneAcks  => "1"
+        case Acks.AllAcks  => "all"
+      })
 
-  def apply[F[_], K, V](
-    implicit keySerializer: Resource[F, KeySerializer[F, K]],
-    valueSerializer: Resource[F, ValueSerializer[F, V]]
-  ): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = keySerializer,
-      valueSerializer = valueSerializer
-    )
+    override def withBatchSize(batchSize: Int): ProducerSettings =
+      withProperty(ProducerConfig.BATCH_SIZE_CONFIG, batchSize.toString)
 
-  implicit def producerSettingsShow[F[_], K, V]: Show[ProducerSettings[F, K, V]] =
+    override def withClientId(clientId: String): ProducerSettings =
+      withProperty(ProducerConfig.CLIENT_ID_CONFIG, clientId)
+
+    override def withRetries(retries: Int): ProducerSettings =
+      withProperty(ProducerConfig.RETRIES_CONFIG, retries.toString)
+
+    override def withMaxInFlightRequestsPerConnection(
+      maxInFlightRequestsPerConnection: Int
+    ): ProducerSettings =
+      withProperty(
+        ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION,
+        maxInFlightRequestsPerConnection.toString
+      )
+
+    override def withEnableIdempotence(enableIdempotence: Boolean): ProducerSettings =
+      withProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, enableIdempotence.toString)
+
+    override def withLinger(linger: FiniteDuration): ProducerSettings =
+      withProperty(ProducerConfig.LINGER_MS_CONFIG, linger.toMillis.toString)
+
+    override def withRequestTimeout(requestTimeout: FiniteDuration): ProducerSettings =
+      withProperty(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, requestTimeout.toMillis.toString)
+
+    override def withDeliveryTimeout(deliveryTimeout: FiniteDuration): ProducerSettings =
+      withProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeout.toMillis.toString)
+
+    override def withProperty(key: String, value: String): ProducerSettings =
+      copy(properties = properties.updated(key, value))
+
+    override def withProperties(properties: (String, String)*): ProducerSettings =
+      copy(properties = this.properties ++ properties.toMap)
+
+    override def withProperties(properties: Map[String, String]): ProducerSettings =
+      copy(properties = this.properties ++ properties)
+
+    override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings =
+      copy(closeTimeout = closeTimeout)
+
+    /**
+      * Includes the credentials properties from the provided [[KafkaCredentialStore]]
+      */
+    override def withCredentials(
+      credentialsStore: KafkaCredentialStore
+    ): ProducerSettings =
+      withProperties(credentialsStore.properties)
+
+    override def toString: String =
+      s"ProducerSettings(closeTimeout = $closeTimeout)"
+  }
+
+  implicit val producerSettingsShow: Show[ProducerSettings] =
     Show.fromToString
 }

@@ -23,13 +23,13 @@ import scala.jdk.CollectionConverters._
   * lexical scope.
   */
 trait MkProducer[F[_]] {
-  def apply[G[_]](settings: ProducerSettings[G, _, _]): F[KafkaByteProducer]
+  def apply(settings: ProducerSettings): F[KafkaByteProducer]
 }
 
 object MkProducer {
   implicit def mkProducerForSync[F[_]](implicit F: Sync[F]): MkProducer[F] =
     new MkProducer[F] {
-      def apply[G[_]](settings: ProducerSettings[G, _, _]): F[KafkaByteProducer] = F.delay {
+      def apply(settings: ProducerSettings): F[KafkaByteProducer] = F.delay {
         val byteArraySerializer = new ByteArraySerializer
         new org.apache.kafka.clients.producer.KafkaProducer(
           (settings.properties: Map[String, AnyRef]).asJava,

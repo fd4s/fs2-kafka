@@ -22,7 +22,7 @@ private[kafka] sealed abstract class WithProducer[F[_]] {
 private[kafka] object WithProducer {
   def apply[F[_], G[_]](
     mk: MkProducer[F],
-    settings: ProducerSettings[G, _, _]
+    settings: ProducerSettings
   )(
     implicit F: Async[F],
     G: Async[G]

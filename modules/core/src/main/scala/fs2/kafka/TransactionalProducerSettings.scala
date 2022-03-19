@@ -20,7 +20,7 @@ import scala.concurrent.duration.FiniteDuration
   *
   * Use [[TransactionalProducerSettings.apply]] to create a new instance.
   */
-sealed abstract class TransactionalProducerSettings[F[_], K, V] {
+sealed abstract class TransactionalProducerSettings {
 
   /**
     * The transactional ID which should be used in transactions.
@@ -36,7 +36,7 @@ sealed abstract class TransactionalProducerSettings[F[_], K, V] {
     * The producer settings including transactional properties,
     * as configured by the [[TransactionalProducerSettings]].
     */
-  def producerSettings: ProducerSettings[F, K, V]
+  def producerSettings: ProducerSettings
 
   /**
     * Returns a new [[TransactionalProducerSettings]] instance
@@ -50,17 +50,17 @@ sealed abstract class TransactionalProducerSettings[F[_], K, V] {
     */
   def withTransactionTimeout(
     transactionTimeout: FiniteDuration
-  ): TransactionalProducerSettings[F, K, V]
+  ): TransactionalProducerSettings
 }
 
 object TransactionalProducerSettings {
-  private[this] final case class TransactionalProducerSettingsImpl[F[_], K, V](
+  private[this] final case class TransactionalProducerSettingsImpl(
     override val transactionalId: String,
-    override val producerSettings: ProducerSettings[F, K, V]
-  ) extends TransactionalProducerSettings[F, K, V] {
+    override val producerSettings: ProducerSettings
+  ) extends TransactionalProducerSettings {
     override def withTransactionTimeout(
       transactionTimeout: FiniteDuration
-    ): TransactionalProducerSettings[F, K, V] =
+    ): TransactionalProducerSettings =
       copy(
         producerSettings = producerSettings
           .withProperty(
@@ -73,17 +73,16 @@ object TransactionalProducerSettings {
       s"TransactionalProducerSettings(transactionalId = $transactionalId, producerSettings = $producerSettings)"
   }
 
-  def apply[F[_], K, V](
+  def apply(
     transactionalId: String,
-    producerSettings: ProducerSettings[F, K, V]
-  ): TransactionalProducerSettings[F, K, V] =
+    producerSettings: ProducerSettings
+  ): TransactionalProducerSettings =
     TransactionalProducerSettingsImpl(
       transactionalId = transactionalId,
       producerSettings = producerSettings
         .withProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId)
     )
 
-  implicit def transactionalProducerSettingsShow[F[_], K, V]
-    : Show[TransactionalProducerSettings[F, K, V]] =
+  implicit def transactionalProducerSettingsShow[F[_], K, V]: Show[TransactionalProducerSettings] =
     Show.fromToString
 }

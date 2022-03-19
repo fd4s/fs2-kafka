@@ -136,8 +136,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
       .withProperties(defaultConsumerProperties)
       .withRecordMetadata(_.timestamp.toString)
 
-  final def producerSettings[F[_]](implicit F: Sync[F]): ProducerSettings[F, String, String] =
-    ProducerSettings[F, String, String].withProperties(defaultProducerConfig)
+  final val producerSettings =
+    ProducerSettings.default.withProperties(defaultProducerConfig)
 
   final def withTopic[A](f: String => A): A =
     f(nextTopicName())

@@ -262,6 +262,8 @@ object GenericSerializer {
   implicit def uuid[F[_]](implicit F: Sync[F]): Serializer[F, UUID] =
     Serializer.string[F].contramap(_.toString)
 
+  implicit def nothing[F[_]: Sync]: Serializer[F, Nothing] = failWith("impossible")
+
   implicit def resource[T <: KeyOrValue, F[_], A](
     implicit serializer: GenericSerializer[T, F, A]
   ): Resource[F, GenericSerializer[T, F, A]] = Resource.pure(serializer)
