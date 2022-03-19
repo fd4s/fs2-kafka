@@ -561,31 +561,31 @@ object ConsumerSettings {
     )
 
   def apply[F[_], K, V](
-    keyDeserializer: RecordDeserializer[F, K],
+    keyDeserializer: Resource[F, KeyDeserializer[F, K]],
     valueDeserializer: ValueDeserializer[F, V]
   ): ConsumerSettings[F, K, V] =
     create(
-      keyDeserializer = keyDeserializer.forKey,
+      keyDeserializer = keyDeserializer,
       valueDeserializer = Resource.pure(valueDeserializer)
     )
 
   def apply[F[_], K, V](
     keyDeserializer: KeyDeserializer[F, K],
-    valueDeserializer: RecordDeserializer[F, V]
+    valueDeserializer: Resource[F, ValueDeserializer[F, V]]
   ): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = Resource.pure(keyDeserializer),
-      valueDeserializer = valueDeserializer.forValue
+      valueDeserializer = valueDeserializer
     )
 
   def apply[F[_], K, V](
     implicit
-    keyDeserializer: RecordDeserializer[F, K],
-    valueDeserializer: RecordDeserializer[F, V]
+    keyDeserializer: Resource[F, KeyDeserializer[F, K]],
+    valueDeserializer: Resource[F, ValueDeserializer[F, V]]
   ): ConsumerSettings[F, K, V] =
     create(
-      keyDeserializer = keyDeserializer.forKey,
-      valueDeserializer = valueDeserializer.forValue
+      keyDeserializer = keyDeserializer,
+      valueDeserializer = valueDeserializer
     )
 
   implicit def consumerSettingsShow[F[_], K, V]: Show[ConsumerSettings[F, K, V]] =

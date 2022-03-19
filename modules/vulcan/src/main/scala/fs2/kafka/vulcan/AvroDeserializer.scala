@@ -9,56 +9,56 @@ package fs2.kafka.vulcan
 import _root_.vulcan.Codec
 import cats.effect.Sync
 import cats.effect.Resource
-import fs2.kafka.{Deserializer, RecordDeserializer}
+import fs2.kafka.{Deserializer, KeyDeserializer, ValueDeserializer}
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
+
 import java.nio.ByteBuffer
 
 final class AvroDeserializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
-  def using[F[_]](
-    settings: AvroSettings[F]
-  )(implicit F: Sync[F]): RecordDeserializer[F, A] =
+  private def createDeserializer[F[_]](
+    settings: AvroSettings[F],
+    isKey: Boolean
+  )(implicit F: Sync[F]): Resource[F, Deserializer[F, A]] =
     codec.schema match {
       case Right(schema) =>
-        def createDeserializer(isKey: Boolean): Resource[F, Deserializer[F, A]] =
-          Resource
-            .make(settings.createAvroDeserializer(isKey)) {
-              case (deserializer, _) => F.delay(deserializer.close())
-            }
-            .map {
-              case (deserializer, schemaRegistryClient) =>
-                Deserializer.instance { (topic, _, bytes) =>
-                  F.defer {
-                    val writerSchemaId =
-                      ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
+        Resource
+          .make(settings.createAvroDeserializer(isKey)) {
+            case (deserializer, _) => F.delay(deserializer.close())
+          }
+          .map {
+            case (deserializer, schemaRegistryClient) =>
+              Deserializer.instance { (topic, _, bytes) =>
+                F.defer {
+                  val writerSchemaId =
+                    ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
 
-                    val writerSchema = {
-                      val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
-                      if (schema.isInstanceOf[AvroSchema])
-                        schema.asInstanceOf[AvroSchema].rawSchema()
-                      else
-                        null
-                    }
+                  val writerSchema = {
+                    val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
+                    if (schema.isInstanceOf[AvroSchema])
+                      schema.asInstanceOf[AvroSchema].rawSchema()
+                    else
+                      null
+                  }
 
-                    codec.decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
-                      case Right(a)    => F.pure(a)
-                      case Left(error) => F.raiseError(error.throwable)
-                    }
+                  codec.decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
+                    case Right(a)    => F.pure(a)
+                    case Left(error) => F.raiseError(error.throwable)
                   }
                 }
-            }
-
-        RecordDeserializer.instance(
-          forKey = createDeserializer(true),
-          forValue = createDeserializer(false)
-        )
+              }
+          }
 
       case Left(error) =>
-        RecordDeserializer.const {
-          Resource.raiseError(error.throwable)
-        }
+        Resource.raiseError(error.throwable)
     }
+
+  def forKey[F[_]: Sync](settings: AvroSettings[F]): Resource[F, KeyDeserializer[F, A]] =
+    createDeserializer(settings, isKey = true)
+
+  def forValue[F[_]: Sync](settings: AvroSettings[F]): Resource[F, ValueDeserializer[F, A]] =
+    createDeserializer(settings, isKey = true)
 
   override def toString: String =
     "AvroDeserializer$" + System.identityHashCode(this)

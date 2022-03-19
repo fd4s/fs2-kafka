@@ -9,11 +9,13 @@ import vulcan.{AvroError, Codec}
 final class AvroDeserializerSpec extends AnyFunSpec {
   describe("AvroDeserializer") {
     it("can create a deserializer") {
-      val deserializer =
-        AvroDeserializer[Int].using(avroSettings)
 
-      assert(deserializer.forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
-      assert(deserializer.forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(
+        AvroDeserializer[Int].forKey(avroSettings).use(IO.pure).attempt.unsafeRunSync().isRight
+      )
+      assert(
+        AvroDeserializer[Int].forValue(avroSettings).use(IO.pure).attempt.unsafeRunSync().isRight
+      )
     }
 
     it("raises schema errors") {
@@ -24,11 +26,12 @@ final class AvroDeserializerSpec extends AnyFunSpec {
           (_, _) => Left(AvroError("decode"))
         )
 
-      val deserializer =
-        avroDeserializer(codec).using(avroSettings)
-
-      assert(deserializer.forKey.use(IO.pure).attempt.unsafeRunSync().isLeft)
-      assert(deserializer.forValue.use(IO.pure).attempt.unsafeRunSync().isLeft)
+      assert(
+        avroDeserializer(codec).forKey(avroSettings).use(IO.pure).attempt.unsafeRunSync().isLeft
+      )
+      assert(
+        avroDeserializer(codec).forValue(avroSettings).use(IO.pure).attempt.unsafeRunSync().isLeft
+      )
     }
 
     it("toString") {
