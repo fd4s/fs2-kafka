@@ -51,7 +51,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   /** Creates a new `ConsumerSettings` instance that replaces the serializers with those provided.
     * Note that this will remove any custom `recordMetadata` configuration.
     **/
-  def withDeserializersAndRecordMetadata[K0, V0](
+  def withDeserializers[K0, V0](
     keyDeserializer: F[Deserializer[F, K0]],
     valueDeserializer: F[Deserializer[F, V0]]
   ): ConsumerSettings[F, K0, V0]
@@ -539,7 +539,7 @@ object ConsumerSettings {
     override def toString: String =
       s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery)"
 
-    override def withDeserializersAndRecordMetadata[K0, V0](
+    override def withDeserializers[K0, V0](
       keyDeserializer: F[Deserializer[F, K0]],
       valueDeserializer: F[Deserializer[F, V0]]
     ): ConsumerSettings[F, K0, V0] =
