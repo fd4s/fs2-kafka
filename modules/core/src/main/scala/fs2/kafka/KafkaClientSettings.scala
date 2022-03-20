@@ -66,6 +66,18 @@ private[kafka] trait KafkaClientSettings[Self <: KafkaClientSettings[Self]] { se
     withProperty(CommonClientConfigs.CLIENT_ID_CONFIG, clientId)
 
   /**
+    * Returns a new `Settings` instance with the specified
+    * client rack. This is equivalent to setting the following
+    * property using the [[withProperty]] function.
+    *
+    * {{{
+    * CommonClientConfigs.CLIENT_RACK_CONFIG
+    * }}}
+    */
+  final def withClientRack(clientRack: String): Self =
+    withProperty(CommonClientConfigs.CLIENT_RACK_CONFIG, clientRack)
+
+  /**
     * Includes the credentials properties from the provided [[KafkaCredentialStore]]
     */
   final def withCredentials(credentialsStore: KafkaCredentialStore): Self =
@@ -87,7 +99,8 @@ private[kafka] trait KafkaClientSettings[Self <: KafkaClientSettings[Self]] { se
   /**
     * The time to wait for the Java client to shutdown.<br>
     * <br>
-    * The default value is 60 seconds.
+    * The default value is 60 seconds for [[ConsumerSettings]], 20 seconds for [[ProducerSettings]],
+    * and 2 seconds for [[AdminClientSettings]].
     */
   def closeTimeout: FiniteDuration
 

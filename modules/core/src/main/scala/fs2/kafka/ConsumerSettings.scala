@@ -7,7 +7,6 @@
 package fs2.kafka
 
 import cats.{Applicative, Show}
-import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
 
@@ -35,7 +34,8 @@ import scala.concurrent.duration._
   * <br>
   * Use `ConsumerSettings#apply` to create a new instance.
   */
-sealed abstract class ConsumerSettings[F[_], K, V] {
+sealed abstract class ConsumerSettings[F[_], K, V]
+    extends KafkaClientSettings[ConsumerSettings[F, K, V]] {
 
   /**
     * The `Deserializer` to use for deserializing record keys.
@@ -66,24 +66,6 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   def withCustomBlockingContext(ec: ExecutionContext): ConsumerSettings[F, K, V]
 
   /**
-    * Properties which can be provided when creating a Java `KafkaConsumer`
-    * instance. Numerous functions in [[ConsumerSettings]] add properties
-    * here if the settings are used by the Java `KafkaConsumer`.
-    */
-  def properties: Map[String, String]
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * bootstrap servers. This is equivalent to setting the following
-    * property using the [[withProperty]] function.
-    *
-    * {{{
-    * ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG
-    * }}}
-    */
-  def withBootstrapServers(bootstrapServers: String): ConsumerSettings[F, K, V]
-
-  /**
     * Returns a new [[ConsumerSettings]] instance with the specified
     * auto offset reset. This is equivalent to setting the following
     * property using the [[withProperty]] function, except you can
@@ -94,17 +76,6 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * }}}
     */
   def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): ConsumerSettings[F, K, V]
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * client id. This is equivalent to setting the following property
-    * using the [[withProperty]] function.
-    *
-    * {{{
-    * ConsumerConfig.CLIENT_ID_CONFIG
-    * }}}
-    */
-  def withClientId(clientId: String): ConsumerSettings[F, K, V]
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
@@ -204,18 +175,6 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
 
   /**
     * Returns a new [[ConsumerSettings]] instance with the specified
-    * request timeout. This is equivalent to setting the following
-    * property using the [[withProperty]] function, except you can
-    * specify it with a `FiniteDuration` instead of a `String`.
-    *
-    * {{{
-    * ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG
-    * }}}
-    */
-  def withRequestTimeout(requestTimeout: FiniteDuration): ConsumerSettings[F, K, V]
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
     * default api timeout. This is equivalent to setting the following
     * property using the [[withProperty]] function, except you can
     * specify it with a `FiniteDuration` instead of a `String`.
@@ -249,50 +208,6 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * }}}
     */
   def withAllowAutoCreateTopics(allowAutoCreateTopics: Boolean): ConsumerSettings[F, K, V]
-
-  /**
-    * Returns a new [[ConsumerSettings]] instance with the specified
-    * client rack. This is equivalent to setting the following
-    * property using the [[withProperty]] function.
-    *
-    * {{{
-    * ConsumerConfig.CLIENT_RACK_CONFIG
-    * }}}
-    */
-  def withClientRack(clientRack: String): ConsumerSettings[F, K, V]
-
-  /**
-    * Includes a property with the specified `key` and `value`.
-    * The key should be one of the keys in `ConsumerConfig`,
-    * and the value should be a valid choice for the key.
-    */
-  def withProperty(key: String, value: String): ConsumerSettings[F, K, V]
-
-  /**
-    * Includes the specified keys and values as properties. The
-    * keys should be part of the `ConsumerConfig` keys, and
-    * the values should be valid choices for the keys.
-    */
-  def withProperties(properties: (String, String)*): ConsumerSettings[F, K, V]
-
-  /**
-    * Includes the specified keys and values as properties. The
-    * keys should be part of the `ConsumerConfig` keys, and
-    * the values should be valid choices for the keys.
-    */
-  def withProperties(properties: Map[String, String]): ConsumerSettings[F, K, V]
-
-  /**
-    * The time to wait for the Java `KafkaConsumer` to shutdown.<br>
-    * <br>
-    * The default value is 20 seconds.
-    */
-  def closeTimeout: FiniteDuration
-
-  /**
-    * Creates a new [[ConsumerSettings]] with the specified [[closeTimeout]].
-    */
-  def withCloseTimeout(closeTimeout: FiniteDuration): ConsumerSettings[F, K, V]
 
   /**
     * The time to wait for offset commits to complete. If an offset commit
@@ -386,11 +301,6 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * instead be set to `2` and not the specified value.
     */
   def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V]
-
-  /**
-    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
-    */
-  def withCredentials(credentialsStore: KafkaCredentialStore): ConsumerSettings[F, K, V]
 }
 
 object ConsumerSettings {
@@ -410,9 +320,6 @@ object ConsumerSettings {
     override def withCustomBlockingContext(ec: ExecutionContext): ConsumerSettings[F, K, V] =
       copy(customBlockingContext = Some(ec))
 
-    override def withBootstrapServers(bootstrapServers: String): ConsumerSettings[F, K, V] =
-      withProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-
     override def withAutoOffsetReset(autoOffsetReset: AutoOffsetReset): ConsumerSettings[F, K, V] =
       withProperty(
         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
@@ -422,9 +329,6 @@ object ConsumerSettings {
           case AutoOffsetReset.NoneOffsetReset     => "none"
         }
       )
-
-    override def withClientId(clientId: String): ConsumerSettings[F, K, V] =
-      withProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientId)
 
     override def withGroupId(groupId: String): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId)
@@ -457,12 +361,6 @@ object ConsumerSettings {
         autoCommitInterval.toMillis.toString
       )
 
-    override def withRequestTimeout(requestTimeout: FiniteDuration): ConsumerSettings[F, K, V] =
-      withProperty(
-        ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG,
-        requestTimeout.toMillis.toString
-      )
-
     override def withDefaultApiTimeout(
       defaultApiTimeout: FiniteDuration
     ): ConsumerSettings[F, K, V] =
@@ -484,15 +382,6 @@ object ConsumerSettings {
       allowAutoCreateTopics: Boolean
     ): ConsumerSettings[F, K, V] =
       withProperty(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, allowAutoCreateTopics.toString)
-
-    override def withClientRack(clientRack: String): ConsumerSettings[F, K, V] =
-      withProperty(ConsumerConfig.CLIENT_RACK_CONFIG, clientRack)
-
-    override def withProperty(key: String, value: String): ConsumerSettings[F, K, V] =
-      copy(properties = properties.updated(key, value))
-
-    override def withProperties(properties: (String, String)*): ConsumerSettings[F, K, V] =
-      copy(properties = this.properties ++ properties.toMap)
 
     override def withProperties(properties: Map[String, String]): ConsumerSettings[F, K, V] =
       copy(properties = this.properties ++ properties)
@@ -519,11 +408,6 @@ object ConsumerSettings {
 
     override def withMaxPrefetchBatches(maxPrefetchBatches: Int): ConsumerSettings[F, K, V] =
       copy(maxPrefetchBatches = Math.max(2, maxPrefetchBatches))
-
-    override def withCredentials(
-      credentialsStore: KafkaCredentialStore
-    ): ConsumerSettings[F, K, V] =
-      withProperties(credentialsStore.properties)
 
     override def toString: String =
       s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery)"
