@@ -368,6 +368,12 @@ object ProducerSettings {
       valueSerializer = valueSerializer.forValue
     )
 
+  def apply[F[_], K, V](
+    implicit keySerializer: RecordSerializer[F, K],
+    valueSerializer: RecordSerializer[F, V]
+  ): ProducerSettings[F, K, V] =
+    create(keySerializer = keySerializer.forKey, valueSerializer = valueSerializer.forValue)
+
   /**
     * Create a `ProducerSettings` instance using placeholder serializers that serialize nothing.
     * These can be subsequently replaced using `withSerializers`, allowing configuration of
