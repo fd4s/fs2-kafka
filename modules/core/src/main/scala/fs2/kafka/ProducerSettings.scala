@@ -44,7 +44,7 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     */
   def withSerializers[K1, V1](
     keySerializer: F[Serializer[F, K1]],
-    valueSerializer: F[Serializer[F, V]]
+    valueSerializer: F[Serializer[F, V1]]
   ): ProducerSettings[F, K1, V1]
 
   /**
@@ -321,7 +321,7 @@ object ProducerSettings {
 
     override def withSerializers[K1, V1](
       keySerializer: F[Serializer[F, K1]],
-      valueSerializer: F[Serializer[F, V]]
+      valueSerializer: F[Serializer[F, V1]]
     ): ProducerSettings[F, K1, V1] =
       copy(keySerializer = keySerializer, valueSerializer = valueSerializer)
   }
@@ -375,7 +375,7 @@ object ProducerSettings {
     */
   def nothing[F[_]](implicit F: Sync[F]): ProducerSettings[F, Nothing, Nothing] = {
     val nothingSerializer = F.pure(Serializer.fail[F, Nothing](new AssertionError("impossible")))
-    create(
+    create[F, Nothing, Nothing](
       keySerializer = nothingSerializer,
       valueSerializer = nothingSerializer
     )
