@@ -157,47 +157,37 @@
 </ul>
 <h2><a class="anchor" aria-hidden="true" id="consumer-creation"></a><a href="#consumer-creation" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Consumer Creation</h2>
 <p>Once <a href="/fs2-kafka/api/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a> is defined, use <code>KafkaConsumer.stream</code> to create a <a href="/fs2-kafka/api/fs2/kafka/KafkaConsumer.html"><code>KafkaConsumer</code></a> instance.</p>
-<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
-    <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
-
-    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
-  }
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
+    <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings).compile.drain
 }
 </code></pre>
 <p>There is also <code>KafkaConsumer.resource</code> for when it's preferable to work with <code>Resource</code>. Both these functions create an underlying Java Kafka consumer and start work in the background to support record streaming. In addition, they both also guarantee resource cleanup (closing the Kafka consumer and stopping background work).</p>
 <p>In the example above, we simply create the consumer and then immediately shutdown after resource cleanup. <a href="/fs2-kafka/api/fs2/kafka/KafkaConsumer.html"><code>KafkaConsumer</code></a> supports much of the Java Kafka consumer functionality in addition to record streaming, but for streaming records, we first have to subscribe to a topic.</p>
 <h2><a class="anchor" aria-hidden="true" id="topic-subscription"></a><a href="#topic-subscription" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Topic Subscription</h2>
 <p>We can use <code>subscribe</code> with a non-empty collection of topics, or <code>subscribeTo</code> for varargs support. There is also an option to <code>subscribe</code> using a <code>Regex</code> regular expression for the topic names, in case the exact topic names are not known up-front. When allocating a consumer in a <code>Stream</code> context, these are available as extension methods directly on the <code>Stream</code>.</p>
-<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerSubscribeExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
-    <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
-        .subscribeTo(<span class="hljs-string">"topic"</span>)
-
-    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
-  }
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerSubscribeExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
+    <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
+      .subscribeTo(<span class="hljs-string">"topic"</span>)
+      .compile.drain
 }
 </code></pre>
 <p>Note that only automatic partition assignment is supported. Like in the <a href="#consumer-creation">consumer creation</a> section, the example above only creates a consumer (guaranteeing resource cleanup) and subscribes to a topic. No records are yet streamed from the topic, for which we'll have to use <code>stream</code> or <code>partitionedStream</code>.</p>
 <h2><a class="anchor" aria-hidden="true" id="record-streaming"></a><a href="#record-streaming" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Record Streaming</h2>
 <p>Once subscribed to at least one topic, we can use <code>stream</code> for a <code>Stream</code> of <a href="/fs2-kafka/api/fs2/kafka/CommittableConsumerRecord.html"><code>CommittableConsumerRecord</code></a>s. Each record contains a deserialized <a href="/fs2-kafka/api/fs2/kafka/ConsumerRecord.html"><code>ConsumerRecord</code></a>, as well as a <a href="/fs2-kafka/api/fs2/kafka/CommittableOffset.html"><code>CommittableOffset</code></a> for managing <a href="#offset-commits">offset commits</a>. Streams guarantee records in topic-partition order, but not ordering across partitions. This is the same ordering guarantee that Kafka provides.</p>
-<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerStreamExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
-    <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
-        .subscribeTo(<span class="hljs-string">"topic"</span>)
-        .records
-
-    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
-  }
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerStreamExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
+    <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
+      .subscribeTo(<span class="hljs-string">"topic"</span>)
+      .records
+      .compile.drain
 }
 </code></pre>
 <p>Note that this is an infinite stream, meaning it will only terminate if it's interrupted, errors, or if we turn it into a finite stream (using e.g. <code>take</code>). It's usually desired that consumer streams keep running indefinitely, so that incoming records get processed quickly — one notable exception being when testing streams. Also, you could gracefully stop stream using <code>stopConsuming</code> method. More info about it in the <a href="#graceful-shutdown">graceful shutdown</a> section.</p>
 <p>When using <code>stream</code>, records on all assigned partitions end up in the same <code>Stream</code>. Depending on how records are processed, we might want to separate records per topic-partition. This exact functionality is provided by <code>partitionedStream</code>.</p>
-<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerPartitionedStreamExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerPartitionedStreamExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
       <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
 
@@ -213,7 +203,7 @@
         }
         .parJoinUnbounded
 
-    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+    stream.compile.drain
   }
 }
 </code></pre>
@@ -226,8 +216,8 @@
 <p>New assignments will be received on each rebalance. On rebalance, Kafka revoke all previously assigned partitions, and after that assigned new partitions all at once. <code>partitionsMapStream</code> reflects this process in a streaming manner. It means that you could use <code>partitionsMapStream</code> for some custom rebalance handling.</p>
 <p>Note, that partition streams for revoked partitions will be closed after the new assignment comes.</p>
 <p>When processing of records is independent of each other, as is the case with <code>processRecord</code> above, it's often easier and more performant to use <code>stream</code> and <code>mapAsync</code>, as seen in the example below. Generally, it's crucial to ensure there are no data races between processing of any two records.</p>
-<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerMapAsyncExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerMapAsyncExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
       <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
 
@@ -239,7 +229,7 @@
           processRecord(committable.record)
         }
 
-    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+    stream.compile.drain
   }
 }
 </code></pre>
@@ -247,8 +237,8 @@
 <p>Offsets commits are managed manually, which is important for ensuring at-least-once delivery. This means that, by <a href="#default-settings">default</a>, automatic offset commits are disabled. If you're sure you don't need at-least-once delivery, you can re-enable automatic offset commits using <code>withEnableAutoCommit</code> on <a href="/fs2-kafka/api/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a>, and then ignore the <a href="/fs2-kafka/api/fs2/kafka/CommittableOffset.html"><code>CommittableOffset</code></a> part of <a href="/fs2-kafka/api/fs2/kafka/CommittableConsumerRecord.html"><code>CommittableConsumerRecord</code></a>, keeping only the <a href="/fs2-kafka/api/fs2/kafka/ConsumerRecord.html"><code>ConsumerRecord</code></a>.</p>
 <p>Offset commits are usually done in batches for performance reasons. We normally don't need to commit every offset, but only the last processed offset. There is a trade-off in how much reprocessing we have to do when we restart versus the performance implication of committing more frequently. Depending on our situation, we'll then choose an appropriate frequency for offset commits.</p>
 <p>We should keep the <a href="/fs2-kafka/api/fs2/kafka/CommittableOffset.html"><code>CommittableOffset</code></a> in our <code>Stream</code> once we've finished processing the record. For at-least-once delivery, it's essential that offset commits preserve topic-partition ordering, so we have to make sure we keep offsets in the same order as we receive them. There are then several functions available for common batch committing scenarios, like <code>commitBatch</code>, <code>commitBatchOption</code>, and <code>commitBatchWithin</code>.</p>
-<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerCommitBatchExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerCommitBatchExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
       <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
 
@@ -262,7 +252,7 @@
         }
         .through(commitBatchWithin(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
 
-    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+    stream.compile.drain
   }
 }
 </code></pre>
@@ -272,8 +262,8 @@
 <p>If we're sure we need to commit every offset, we can <code>commit</code> individual <a href="/fs2-kafka/api/fs2/kafka/CommittableOffset.html"><code>CommittableOffset</code></a>s. Note there is a substantial performance implication to committing every offset, and it should be avoided when possible. The approach also limits parallelism, since offset commits need to preserve topic-partition ordering.</p>
 <h2><a class="anchor" aria-hidden="true" id="graceful-shutdown"></a><a href="#graceful-shutdown" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Graceful shutdown</h2>
 <p>With the fs2-kafka you could gracefully shutdown a <code>KafkaConsumer</code>. Consider this example:</p>
-<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">NoGracefulShutdownExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">NoGracefulShutdownExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">CommittableConsumerRecord</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
       <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
 
@@ -283,9 +273,7 @@
       }.through(commitBatchWithin(<span class="hljs-number">100</span>, <span class="hljs-number">15.</span>seconds)).compile.drain
     }
 
-    <span class="hljs-type">KafkaConsumer</span>.resource(consumerSettings).use { consumer =&gt;
-      run(consumer).as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
-    }
+    <span class="hljs-type">KafkaConsumer</span>.resource(consumerSettings).use(run)
   }
 }
 </code></pre>
@@ -300,8 +288,8 @@ It means that streams will be completed when all fetched messages will be proces
 <p>We could combine <code>stopConsuming</code> with the custom resource handling and implement a graceful shutdown. Let's try it:</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">Deferred</span>, <span class="hljs-type">Ref</span>}
 
-<span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">WithGracefulShutdownExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
-  <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+<span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">WithGracefulShutdownExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">CommittableConsumerRecord</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
       <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
 
@@ -339,7 +327,7 @@ It means that streams will be completed when all fetched messages will be proces
             } <span class="hljs-keyword">yield</span> ()
           }).guarantee(closeConsumer) <span class="hljs-comment">// [15]</span>
         }
-    } <span class="hljs-keyword">yield</span> <span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>
+    } <span class="hljs-keyword">yield</span> ()
   }
 }
 </code></pre>

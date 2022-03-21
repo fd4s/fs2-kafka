@@ -67,12 +67,12 @@
 To ensure the performance of <code>TransactionalKafkaProducer</code> aligns with your performance expectations when used concurrently, it is recommended you create a pool of transactional producers.</p>
 </blockquote>
 <p>Following is an example where transactions are used to consume, process, produce, and commit.</p>
-<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">ExitCode</span>, <span class="hljs-type">IO</span>, <span class="hljs-type">IOApp</span>}
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">IO</span>, <span class="hljs-type">IOApp</span>}
 <span class="hljs-keyword">import</span> fs2.kafka._
 <span class="hljs-keyword">import</span> scala.concurrent.duration._
 
-<span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">Main</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span> </span>{
-  <span class="hljs-keyword">override</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(args: <span class="hljs-type">List</span>[<span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">ExitCode</span>] = {
+<span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">Main</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[(<span class="hljs-type">String</span>, <span class="hljs-type">String</span>)] =
       <span class="hljs-type">IO</span>.pure(record.key -&gt; record.value)
 
@@ -108,7 +108,7 @@ To ensure the performance of <code>TransactionalKafkaProducer</code> aligns with
             .evalMap(producer.produce)
         }
 
-    stream.compile.drain.as(<span class="hljs-type">ExitCode</span>.<span class="hljs-type">Success</span>)
+    stream.compile.drain
   }
 }
 </code></pre>
