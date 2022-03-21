@@ -8,6 +8,7 @@ package fs2.kafka
 
 import cats.effect.Sync
 import cats.{Applicative, Show}
+import cats.syntax.all._
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.producer.ProducerConfig
 
@@ -43,8 +44,8 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * Replace the serializers with those provided in the arguments.
     */
   def withSerializers[K1, V1](
-    keySerializer: F[Serializer[F, K1]],
-    valueSerializer: F[Serializer[F, V1]]
+    keySerializer: F[KeySerializer[F, K1]],
+    valueSerializer: F[ValueSerializer[F, V1]]
   ): ProducerSettings[F, K1, V1]
 
   /**
@@ -304,8 +305,8 @@ object ProducerSettings {
       s"ProducerSettings(closeTimeout = $closeTimeout)"
 
     override def withSerializers[K1, V1](
-      keySerializer: F[Serializer[F, K1]],
-      valueSerializer: F[Serializer[F, V1]]
+      keySerializer: F[KeySerializer[F, K1]],
+      valueSerializer: F[ValueSerializer[F, V1]]
     ): ProducerSettings[F, K1, V1] =
       copy(keySerializer = keySerializer, valueSerializer = valueSerializer)
   }
@@ -365,8 +366,8 @@ object ProducerSettings {
   def nothing[F[_]](implicit F: Sync[F]): ProducerSettings[F, Nothing, Nothing] = {
     val nothingSerializer = F.pure(Serializer.fail[F, Nothing](new AssertionError("impossible")))
     create[F, Nothing, Nothing](
-      keySerializer = nothingSerializer,
-      valueSerializer = nothingSerializer
+      keySerializer = nothingSerializer.widen,
+      valueSerializer = nothingSerializer.widen
     )
   }
 
