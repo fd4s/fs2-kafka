@@ -6,6 +6,7 @@
 
 package fs2.kafka
 
+import cats.effect.Sync
 import cats.{Applicative, Show}
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -46,6 +47,14 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * The `Deserializer` to use for deserializing record values.
     */
   def valueDeserializer: F[Deserializer[F, V]]
+
+  /** Creates a new `ConsumerSettings` instance that replaces the serializers with those provided.
+    * Note that this will remove any custom `recordMetadata` configuration.
+    **/
+  def withDeserializers[K0, V0](
+    keyDeserializer: F[Deserializer[F, K0]],
+    valueDeserializer: F[Deserializer[F, V0]]
+  ): ConsumerSettings[F, K0, V0]
 
   /**
     * A custom `ExecutionContext` to use for blocking Kafka operations. If not
@@ -360,6 +369,8 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
 
   /**
     * Creates a new [[ConsumerSettings]] with the specified [[recordMetadata]].
+    * Note that replacing the serializers via `withSerializers` will reset
+    * this to the default.
     */
   def withRecordMetadata(recordMetadata: ConsumerRecord[K, V] => String): ConsumerSettings[F, K, V]
 
@@ -527,6 +538,16 @@ object ConsumerSettings {
 
     override def toString: String =
       s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery)"
+
+    override def withDeserializers[K0, V0](
+      keyDeserializer: F[Deserializer[F, K0]],
+      valueDeserializer: F[Deserializer[F, V0]]
+    ): ConsumerSettings[F, K0, V0] =
+      copy(
+        keyDeserializer = keyDeserializer,
+        valueDeserializer = valueDeserializer,
+        recordMetadata = _ => OffsetFetchResponse.NO_METADATA
+      )
   }
 
   private[this] def create[F[_], K, V](
@@ -585,6 +606,17 @@ object ConsumerSettings {
     create(
       keyDeserializer = keyDeserializer.forKey,
       valueDeserializer = valueDeserializer.forValue
+    )
+
+  /**
+    * Create a `ConsumerSettings` instance using placeholder deserializers that return unit.
+    * These can be subsequently replaced using `withDeserializers`, allowing configuration of
+    * deserializers to be decoupled from other configuration.
+    */
+  def unit[F[_]](implicit F: Sync[F]): ConsumerSettings[F, Unit, Unit] =
+    create(
+      keyDeserializer = F.pure(Deserializer.unit),
+      valueDeserializer = F.pure(Deserializer.unit)
     )
 
   implicit def consumerSettingsShow[F[_], K, V]: Show[ConsumerSettings[F, K, V]] =
