@@ -271,7 +271,7 @@ object KafkaConsumer {
                 finishers <- assignmentRef.modify { assignmentState =>
                   val (rev, retained) =
                     assignmentState.partition(entry => revoked.contains(entry._1))
-                  retained -> (rev, retained)
+                  (retained, (rev, retained))
                 }
                 _ <- finishers._1.toVector
                   .traverse {
@@ -279,7 +279,10 @@ object KafkaConsumer {
                       finisher.complete(())
                   }
                 event = AssignmentEvent
-                  .Revoked(SortedSet.from(finishers._1.keySet), SortedSet.from(finishers._2.keySet))
+                  .Revoked(
+                    SortedSet.newBuilder[TopicPartition].++=(finishers._1.keySet).result,
+                    SortedSet.newBuilder[TopicPartition].++=(finishers._2.keySet).result
+                  )
                 _ <- F.ifM(isStopped)(F.unit, partitionsMapQueue.offer(Some(event)))
               } yield ()
             },
@@ -294,7 +297,7 @@ object KafkaConsumer {
                 _ <- enqueueAssignment(
                   streamId = streamId,
                   assigned = assignment,
-                  retained = SortedSet.from(retained.keySet),
+                  retained = SortedSet.newBuilder[TopicPartition].++=(retained.keySet).result(),
                   partitionsMapQueue = partitionsMapQueue
                 )
               } yield ()
