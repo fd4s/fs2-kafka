@@ -268,20 +268,12 @@ object KafkaConsumer {
           OnRebalance(
             onRevoked = revoked => {
               for {
-                finishers <- assignmentRef.modify { assignmentState =>
-                  val (rev, retained) =
-                    assignmentState.partition(entry => revoked.contains(entry._1))
-                  (retained, (rev, retained))
-                }
-                _ <- finishers._1.toVector
-                  .traverse {
-                    case (_, finisher) =>
-                      finisher.complete(())
-                  }
+                finishers <- assignmentRef.modify(_.partition(entry => !revoked.contains(entry._1)))
+                _ <- finishers.toVector
+                  .traverse { case (_, finisher) => finisher.complete(()) }
                 event = AssignmentEvent
                   .Revoked(
-                    SortedSet.newBuilder[TopicPartition].++=(finishers._1.keySet).result(),
-                    SortedSet.newBuilder[TopicPartition].++=(finishers._2.keySet).result()
+                    SortedSet.newBuilder[TopicPartition].++=(finishers.keySet).result()
                   )
                 _ <- F.ifM(isStopped)(F.unit, partitionsMapQueue.offer(Some(event)))
               } yield ()

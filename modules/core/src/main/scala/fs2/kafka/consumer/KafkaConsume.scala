@@ -21,8 +21,7 @@ object AssignmentEvent {
   ) extends AssignmentEvent[F, K, V]
 
   final case class Revoked(
-    revokedPartitions: SortedSet[TopicPartition],
-    retainedPartitions: SortedSet[TopicPartition]
+    revokedPartitions: SortedSet[TopicPartition]
   ) extends AssignmentEvent[fs2.Pure, Nothing, Nothing]
 }
 
