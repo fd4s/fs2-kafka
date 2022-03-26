@@ -12,6 +12,7 @@ import cats.effect._
 import cats.effect.std._
 import cats.effect.implicits._
 import cats.syntax.all._
+import fs2.kafka.consumer.AssignmentEvent.Assigned
 import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
@@ -128,16 +129,14 @@ object KafkaConsumer {
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
-      override def partitionsMapStream
-        : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
+      override def assignmentEvents: Stream[F, AssignmentEvent[F, K, V]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
         type PartitionRequest =
           (Chunk[KafkaByteConsumerRecord], FetchCompletedReason)
 
-        type PartitionsMap = Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]
-        type PartitionsMapQueue = Queue[F, Option[PartitionsMap]]
+        type PartitionsMapQueue = Queue[F, Option[AssignmentEvent[F, K, V]]]
 
         def createPartitionStream(
           streamId: StreamId,
@@ -234,14 +233,28 @@ object KafkaConsumer {
               }
           }.flatten
 
+        def enqueueRevoked(
+          revoked: SortedSet[TopicPartition],
+          retained: SortedSet[TopicPartition],
+          partitionsMapQueue: PartitionsMapQueue
+        ): F[Unit] =
+          stopConsumingDeferred.tryGet.flatMap {
+            case None =>
+              val event =
+                AssignmentEvent.Revoked(revoked, retained)
+
+              partitionsMapQueue.offer(Some(event))
+            case Some(()) =>
+              F.unit
+          }
+
         def enqueueAssignment(
           streamId: StreamId,
           assigned: Map[TopicPartition, Deferred[F, Unit]],
+          retained: SortedSet[TopicPartition],
           partitionsMapQueue: PartitionsMapQueue
         ): F[Unit] = {
-          val assignment: F[PartitionsMap] = if (assigned.isEmpty) {
-            F.pure(Map.empty)
-          } else {
+          val assignment: F[Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
             assigned.toVector
               .traverse {
                 case (partition, finisher) =>
@@ -255,7 +268,10 @@ object KafkaConsumer {
           assignment.flatMap { assignment =>
             stopConsumingDeferred.tryGet.flatMap {
               case None =>
-                partitionsMapQueue.offer(Some(assignment))
+                val event =
+                  AssignmentEvent.Assigned(assignment, retained)
+
+                partitionsMapQueue.offer(Some(event))
               case Some(()) =>
                 F.unit
             }
@@ -270,12 +286,21 @@ object KafkaConsumer {
           OnRebalance(
             onRevoked = revoked => {
               for {
-                finishers <- assignmentRef.modify(_.partition(entry => !revoked.contains(entry._1)))
-                _ <- finishers.toVector
+                finishers <- assignmentRef.modify { assignmentState =>
+                  val (rev, retained) =
+                    assignmentState.partition(entry => revoked.contains(entry._1))
+                  retained -> (rev, retained)
+                }
+                _ <- finishers._1.toVector
                   .traverse {
                     case (_, finisher) =>
                       finisher.complete(())
                   }
+                _ <- enqueueRevoked(
+                  SortedSet.from(finishers._1.keySet),
+                  SortedSet.from(finishers._2.keySet),
+                  partitionsMapQueue
+                )
               } yield ()
             },
             onAssigned = assignedPartitions => {
@@ -285,10 +310,11 @@ object KafkaConsumer {
                     Deferred[F, Unit].map(partition -> _)
                   }
                   .map(_.toMap)
-                _ <- assignmentRef.update(_ ++ assignment)
+                retained <- assignmentRef.getAndUpdate(_ ++ assignment)
                 _ <- enqueueAssignment(
                   streamId = streamId,
                   assigned = assignment,
+                  retained = SortedSet.from(retained.keySet),
                   partitionsMapQueue = partitionsMapQueue
                 )
               } yield ()
@@ -334,13 +360,14 @@ object KafkaConsumer {
               assignmentRef,
               partitionsMapQueue
             )
-            _ <- enqueueAssignment(streamId, assigned, partitionsMapQueue)
+            _ <- enqueueAssignment(streamId, assigned, SortedSet.empty, partitionsMapQueue)
           } yield ()
 
         Stream.eval(stopConsumingDeferred.tryGet).flatMap {
           case None =>
             for {
-              partitionsMapQueue <- Stream.eval(Queue.unbounded[F, Option[PartitionsMap]])
+              partitionsMapQueue <- Stream
+                .eval(Queue.unbounded[F, Option[AssignmentEvent[F, K, V]]])
               streamId <- Stream.eval(streamIdRef.modify(n => (n + 1, n)))
               assignmentRef <- Stream.eval(Ref[F].of(Map.empty[TopicPartition, Deferred[F, Unit]]))
               _ <- Stream
@@ -360,9 +387,15 @@ object KafkaConsumer {
             } yield out
 
           case Some(()) =>
-            Stream.empty.covaryAll[F, PartitionsMap]
+            Stream.empty.covaryAll[F, AssignmentEvent[F, K, V]]
         }
       }
+
+      override def partitionsMapStream
+        : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] =
+        assignmentEvents.collect {
+          case a: Assigned[F, K, V] => a.newlyAssignedPartitions
+        }
 
       override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
         partitionsMapStream.flatMap { partitionsMap =>
@@ -619,6 +652,7 @@ object KafkaConsumer {
       override def terminate: F[Unit] = fiber.cancel
 
       override def awaitTermination: F[Unit] = fiber.join
+
     }
 
   /**
