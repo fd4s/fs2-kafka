@@ -129,6 +129,8 @@ object KafkaConsumer {
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
+      private def isStopped: F[Boolean] = stopConsumingDeferred.tryGet.map(_.nonEmpty)
+
       override def assignmentEvents: Stream[F, AssignmentEvent[F, K, V]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
@@ -233,21 +235,6 @@ object KafkaConsumer {
               }
           }.flatten
 
-        def enqueueRevoked(
-          revoked: SortedSet[TopicPartition],
-          retained: SortedSet[TopicPartition],
-          partitionsMapQueue: PartitionsMapQueue
-        ): F[Unit] =
-          stopConsumingDeferred.tryGet.flatMap {
-            case None =>
-              val event =
-                AssignmentEvent.Revoked(revoked, retained)
-
-              partitionsMapQueue.offer(Some(event))
-            case Some(()) =>
-              F.unit
-          }
-
         def enqueueAssignment(
           streamId: StreamId,
           assigned: Map[TopicPartition, Deferred[F, Unit]],
@@ -266,15 +253,10 @@ object KafkaConsumer {
           }
 
           assignment.flatMap { assignment =>
-            stopConsumingDeferred.tryGet.flatMap {
-              case None =>
-                val event =
-                  AssignmentEvent.Assigned(assignment, retained)
-
-                partitionsMapQueue.offer(Some(event))
-              case Some(()) =>
-                F.unit
-            }
+            isStopped.ifM(F.unit, {
+              val event = AssignmentEvent.Assigned(assignment, retained)
+              partitionsMapQueue.offer(Some(event))
+            })
           }
         }
 
@@ -296,11 +278,9 @@ object KafkaConsumer {
                     case (_, finisher) =>
                       finisher.complete(())
                   }
-                _ <- enqueueRevoked(
-                  SortedSet.from(finishers._1.keySet),
-                  SortedSet.from(finishers._2.keySet),
-                  partitionsMapQueue
-                )
+                event = AssignmentEvent
+                  .Revoked(SortedSet.from(finishers._1.keySet), SortedSet.from(finishers._2.keySet))
+                _ <- F.ifM(isStopped)(F.unit, partitionsMapQueue.offer(Some(event)))
               } yield ()
             },
             onAssigned = assignedPartitions => {
