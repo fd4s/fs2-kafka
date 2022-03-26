@@ -280,8 +280,8 @@ object KafkaConsumer {
                   }
                 event = AssignmentEvent
                   .Revoked(
-                    SortedSet.newBuilder[TopicPartition].++=(finishers._1.keySet).result,
-                    SortedSet.newBuilder[TopicPartition].++=(finishers._2.keySet).result
+                    SortedSet.newBuilder[TopicPartition].++=(finishers._1.keySet).result(),
+                    SortedSet.newBuilder[TopicPartition].++=(finishers._2.keySet).result()
                   )
                 _ <- F.ifM(isStopped)(F.unit, partitionsMapQueue.offer(Some(event)))
               } yield ()
