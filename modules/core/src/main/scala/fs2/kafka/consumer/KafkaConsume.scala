@@ -16,8 +16,7 @@ sealed trait AssignmentEvent[+F[_], +K, +V]
 
 object AssignmentEvent {
   final case class Assigned[F[_], K, V](
-    newlyAssignedPartitions: Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]],
-    retainedPartitions: SortedSet[TopicPartition]
+    newlyAssignedPartitions: Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]
   ) extends AssignmentEvent[F, K, V]
 
   final case class Revoked(

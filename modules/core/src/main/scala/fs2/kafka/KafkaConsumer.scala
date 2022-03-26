@@ -238,7 +238,6 @@ object KafkaConsumer {
         def enqueueAssignment(
           streamId: StreamId,
           assigned: Map[TopicPartition, Deferred[F, Unit]],
-          retained: SortedSet[TopicPartition],
           partitionsMapQueue: PartitionsMapQueue
         ): F[Unit] = {
           val assignment: F[Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
@@ -254,7 +253,7 @@ object KafkaConsumer {
 
           assignment.flatMap { assignment =>
             isStopped.ifM(F.unit, {
-              val event = AssignmentEvent.Assigned(assignment, retained)
+              val event = AssignmentEvent.Assigned(assignment)
               partitionsMapQueue.offer(Some(event))
             })
           }
@@ -285,11 +284,10 @@ object KafkaConsumer {
                     Deferred[F, Unit].map(partition -> _)
                   }
                   .map(_.toMap)
-                retained <- assignmentRef.getAndUpdate(_ ++ assignment)
+                _ <- assignmentRef.update(_ ++ assignment)
                 _ <- enqueueAssignment(
                   streamId = streamId,
                   assigned = assignment,
-                  retained = SortedSet.newBuilder[TopicPartition].++=(retained.keySet).result(),
                   partitionsMapQueue = partitionsMapQueue
                 )
               } yield ()
@@ -335,7 +333,7 @@ object KafkaConsumer {
               assignmentRef,
               partitionsMapQueue
             )
-            _ <- enqueueAssignment(streamId, assigned, SortedSet.empty, partitionsMapQueue)
+            _ <- enqueueAssignment(streamId, assigned, partitionsMapQueue)
           } yield ()
 
         Stream.eval(stopConsumingDeferred.tryGet).flatMap {
