@@ -26,7 +26,7 @@ object AssignmentEvent {
 
 trait KafkaConsume[F[_], K, V] {
 
-  def assignmentEvents: Stream[F, AssignmentEvent[F, K, V]]
+  def assignmentEventStream: Stream[F, AssignmentEvent[F, K, V]]
 
   /**
     * Consume from all assigned partitions, producing a stream

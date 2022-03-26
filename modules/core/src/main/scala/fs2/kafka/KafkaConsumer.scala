@@ -12,7 +12,6 @@ import cats.effect._
 import cats.effect.std._
 import cats.effect.implicits._
 import cats.syntax.all._
-import fs2.kafka.consumer.AssignmentEvent.Assigned
 import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
@@ -131,7 +130,7 @@ object KafkaConsumer {
 
       private def isStopped: F[Boolean] = stopConsumingDeferred.tryGet.map(_.nonEmpty)
 
-      override def assignmentEvents: Stream[F, AssignmentEvent[F, K, V]] = {
+      override def assignmentEventStream: Stream[F, AssignmentEvent[F, K, V]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
@@ -366,16 +365,15 @@ object KafkaConsumer {
 
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] =
-        assignmentEvents.collect {
-          case a: Assigned[F, K, V] => a.newlyAssignedPartitions
+        assignmentEventStream.collect {
+          case a: AssignmentEvent.Assigned[F, K, V] => a.newlyAssignedPartitions
         }
 
       override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
-        partitionsMapStream.flatMap { partitionsMap =>
-          Stream.emits(partitionsMap.toVector.map {
-            case (_, partitionStream) =>
-              partitionStream
-          })
+        assignmentEventStream.flatMap {
+          case a: AssignmentEvent.Assigned[F, K, V] =>
+            Stream.fromIterator(a.newlyAssignedPartitions.valuesIterator, Int.MaxValue)
+          case AssignmentEvent.Revoked(_) => Stream.empty
         }
 
       override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
