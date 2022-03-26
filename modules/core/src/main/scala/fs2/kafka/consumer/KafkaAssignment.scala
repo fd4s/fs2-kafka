@@ -7,6 +7,7 @@
 package fs2.kafka.consumer
 
 import fs2._
+import fs2.kafka.instances._
 import cats.data.NonEmptySet
 import scala.collection.immutable.SortedSet
 import org.apache.kafka.common.TopicPartition
@@ -63,7 +64,8 @@ trait KafkaAssignment[F[_]] {
     *
     * @see org.apache.kafka.clients.consumer.KafkaConsumer#assign
     */
-  def assign(topic: String, partitions: NonEmptySet[Int]): F[Unit]
+  def assign(topic: String, partitions: NonEmptySet[Int]): F[Unit] =
+    assign(partitions.map(new TopicPartition(topic, _)))
 
   /**
     * Manually assigns all partitions for the specified topic to the consumer.
