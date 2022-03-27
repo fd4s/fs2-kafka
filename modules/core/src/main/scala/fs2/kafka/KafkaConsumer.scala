@@ -210,7 +210,7 @@ object KafkaConsumer {
                   callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
 
                 assigned.ifM(storeFetch, completeRevoked)
-              }) >> deferred.get // TODO: fiber leak - use Supervisor
+              }) >> deferred.get
 
               F.race(shutdown, fetch).flatMap {
                 case Left(()) =>
