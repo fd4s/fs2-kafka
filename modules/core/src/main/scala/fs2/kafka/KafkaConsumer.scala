@@ -501,6 +501,17 @@ object KafkaConsumer {
       override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
         withConsumer.blocking { _.position(partition, timeout.asJava) }
 
+      override def committed(
+        partitions: Set[TopicPartition]
+      ): F[Map[TopicPartition, OffsetAndMetadata]] =
+        withConsumer.blocking(_.committed(partitions.asJava).toMap)
+
+      override def committed(
+        partitions: Set[TopicPartition],
+        timeout: FiniteDuration
+      ): F[Map[TopicPartition, OffsetAndMetadata]] =
+        withConsumer.blocking(_.committed(partitions.asJava, timeout.asJava).toMap)
+
       override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
         subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
