@@ -388,12 +388,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
       case request @ Request.Commit(_, _)            => commit(request)
       case request @ Request.ManualCommitAsync(_, _) => manualCommitAsync(request)
       case request @ Request.ManualCommitSync(_, _)  => manualCommitSync(request)
-      case Request.Permit(cb)                        => permit(cb)
-    }
-
-  def permit(callback: Resource[F, Unit] => F[Unit]): F[Unit] =
-    Deferred[F, Unit].flatMap { gate =>
-      callback(Resource.pure(()).onFinalize(gate.complete(()).void)) >> gate.get
+      case Request.WithPermit(fa, cb)                => fa.attempt >>= cb
     }
 
   private[this] case class RevokedResult(
@@ -413,9 +408,8 @@ private[kafka] final class KafkaConsumerActor[F[_]](
       log: CommittedPendingCommits[F]
     ) {
       def commit: F[Unit] =
-        commits.foldLeft(F.unit) {
-          case (acc, commitRequest) =>
-            acc >> commitAsync(commitRequest.offsets, commitRequest.callback)
+        commits.traverse { commitRequest =>
+          commitAsync(commitRequest.offsets, commitRequest.callback)
         } >> logging.log(log)
     }
 
@@ -588,7 +582,8 @@ private[kafka] object KafkaConsumerActor {
   sealed abstract class Request[F[_]]
 
   object Request {
-    final case class Permit[F[_]](callback: Resource[F, Unit] => F[Unit]) extends Request[F]
+    final case class WithPermit[F[_], A](fa: F[A], callback: Either[Throwable, A] => F[Unit])
+        extends Request[F]
 
     final case class Poll[F[_]]() extends Request[F]
 

@@ -125,8 +125,7 @@ object KafkaConsumer {
     streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F],
-    stopConsumingDeferred: Deferred[F, Unit],
-    supervisor: Supervisor[F]
+    stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
@@ -184,7 +183,7 @@ object KafkaConsumer {
               val callback: PartitionResult => F[Unit] =
                 deferred.complete(_).void
 
-              val fetch: F[PartitionResult] = supervisor.supervise(permit.surround {
+              val fetch: F[PartitionResult] = withPermit {
                 val assigned =
                   withConsumer.blocking {
                     _.assignment.contains(partition)
@@ -206,7 +205,7 @@ object KafkaConsumer {
                   callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
 
                 assigned.ifM(storeFetch, completeRevoked)
-              }) >> deferred.get
+              } >> deferred.get
 
               F.race(shutdown, fetch).flatMap {
                 case Left(()) =>
@@ -417,7 +416,7 @@ object KafkaConsumer {
       private def assignment(
         onRebalance: Option[OnRebalance[F]]
       ): F[SortedSet[TopicPartition]] =
-        permit.surround {
+        withPermit {
           onRebalance
             .fold(actor.ref.updateAndGet(_.asStreaming)) { on =>
               actor.ref.updateAndGet(_.withOnRebalance(on).asStreaming).flatTap { newState =>
@@ -517,7 +516,7 @@ object KafkaConsumer {
         subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
       override def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] =
-        permit.surround {
+        withPermit {
           withConsumer.blocking {
             _.subscribe(
               topics.toList.asJava,
@@ -528,15 +527,14 @@ object KafkaConsumer {
             .log(LogEntry.SubscribedTopics(topics.toNonEmptyList, _))
         }
 
-      private def permit: Resource[F, Unit] =
-        Resource.eval {
-          Deferred[F, Resource[F, Unit]].flatMap { permitDef =>
-            requests.offer(Request.Permit(permitDef.complete(_).void)) >> permitDef.get
-          }
-        }.flatten
+      private def withPermit[A](fa: F[A]): F[A] = F.deferred[Either[Throwable, A]].flatMap {
+        deferred =>
+          requests
+            .offer(Request.WithPermit(fa, deferred.complete(_: Either[Throwable, A]).void)) >> deferred.get.rethrow
+      }
 
       override def subscribe(regex: Regex): F[Unit] =
-        permit.surround {
+        withPermit {
           withConsumer.blocking {
             _.subscribe(
               regex.pattern,
@@ -549,7 +547,7 @@ object KafkaConsumer {
         }
 
       override def unsubscribe: F[Unit] =
-        permit.surround {
+        withPermit {
           withConsumer.blocking { _.unsubscribe() } >> actor.ref
             .updateAndGet(_.asUnsubscribed)
             .log(LogEntry.Unsubscribed(_))
@@ -559,7 +557,7 @@ object KafkaConsumer {
         stopConsumingDeferred.complete(()).attempt.void
 
       override def assign(partitions: NonEmptySet[TopicPartition]): F[Unit] =
-        permit.surround {
+        withPermit {
           withConsumer.blocking {
             _.assign(
               partitions.toList.asJava
@@ -677,7 +675,6 @@ object KafkaConsumer {
       }
       actorFiber <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
-      supervisor <- Supervisor[F]
     } yield createKafkaConsumer(
       requests,
       settings,
@@ -688,8 +685,7 @@ object KafkaConsumer {
       streamId,
       id,
       withConsumer,
-      stopConsumingDeferred,
-      supervisor
+      stopConsumingDeferred
     )(F, logging)
 
   /**
