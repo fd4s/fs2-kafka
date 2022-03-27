@@ -45,13 +45,11 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 private[kafka] final class KafkaConsumerActor[F[_]](
   settings: ConsumerSettings[F, _, _],
   val ref: Ref[F, State[F]],
-  requests: Queue[F, Request[F]],
   withConsumer: WithConsumer[F]
 )(
   implicit F: Async[F],
   dispatcher: Dispatcher[F],
-  logging: Logging[F],
-  jitter: Jitter[F]
+  logging: Logging[F]
 ) {
   import logging._
 
@@ -201,18 +199,6 @@ private[kafka] final class KafkaConsumerActor[F[_]](
           onRevoked
       }
   }
-
-  val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
-    offsets => {
-      val commit = runCommitAsync(offsets) { cb =>
-        requests.offer(Request.Commit(offsets, cb))
-      }
-
-      commit.handleErrorWith {
-        settings.commitRecovery
-          .recoverCommitWith(offsets, commit)
-      }
-    }
 
   private[this] def records(batch: KafkaByteConsumerRecords): ConsumerRecords =
     batch.partitions.toVector.map { partition =>

@@ -125,9 +125,23 @@ object KafkaConsumer {
     streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F],
-    stopConsumingDeferred: Deferred[F, Unit]
+    stopConsumingDeferred: Deferred[F, Unit],
+    jitter: Jitter[F]
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
+
+      private val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
+        offsets => {
+          val commit = actor.runCommitAsync(offsets) { cb =>
+            requests.offer(Request.Commit(offsets, cb))
+          }
+
+          commit.handleErrorWith {
+            implicit val _jitter: Jitter[F] = jitter
+            settings.commitRecovery
+              .recoverCommitWith(offsets, commit)
+          }
+        }
 
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
@@ -175,7 +189,7 @@ object KafkaConsumer {
                     record.offset + 1L,
                     settings.recordMetadata(record)
                   ),
-                  commit = actor.offsetCommit
+                  commit = offsetCommit
                 )
               )
 
@@ -674,14 +688,12 @@ object KafkaConsumer {
       stopConsumingDeferred <- Resource.eval(Deferred[F, Unit])
       withConsumer <- WithConsumer(mk, settings)
       actor = {
-        implicit val jitter0: Jitter[F] = jitter
         implicit val logging0: Logging[F] = logging
         implicit val dispatcher0: Dispatcher[F] = dispatcher
 
         new KafkaConsumerActor[F](
           settings = settings,
           ref = ref,
-          requests = requests,
           withConsumer = withConsumer
         )
       }
@@ -697,7 +709,8 @@ object KafkaConsumer {
       streamId,
       id,
       withConsumer,
-      stopConsumingDeferred
+      stopConsumingDeferred,
+      jitter
     )(F, logging)
 
   /**
