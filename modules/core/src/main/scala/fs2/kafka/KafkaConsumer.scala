@@ -125,7 +125,8 @@ object KafkaConsumer {
     streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F],
-    stopConsumingDeferred: Deferred[F, Unit]
+    stopConsumingDeferred: Deferred[F, Unit],
+    supervisor: Supervisor[F]
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
@@ -183,7 +184,7 @@ object KafkaConsumer {
               val callback: PartitionResult => F[Unit] =
                 deferred.complete(_).void
 
-              val fetch: F[PartitionResult] = permit.surround {
+              val fetch: F[PartitionResult] = supervisor.supervise(permit.surround {
                 val assigned =
                   withConsumer.blocking {
                     _.assignment.contains(partition)
@@ -209,7 +210,7 @@ object KafkaConsumer {
                   callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
 
                 assigned.ifM(storeFetch, completeRevoked)
-              }.start >> deferred.get // TODO: fiber leak - use Supervisor
+              }) >> deferred.get // TODO: fiber leak - use Supervisor
 
               F.race(shutdown, fetch).flatMap {
                 case Left(()) =>
@@ -680,6 +681,7 @@ object KafkaConsumer {
       }
       actorFiber <- startConsumerActor(requests, polls, actor)
       polls <- startPollScheduler(polls, settings.pollInterval)
+      supervisor <- Supervisor[F]
     } yield createKafkaConsumer(
       requests,
       settings,
@@ -690,7 +692,8 @@ object KafkaConsumer {
       streamId,
       id,
       withConsumer,
-      stopConsumingDeferred
+      stopConsumingDeferred,
+      supervisor
     )(F, logging)
 
   /**
