@@ -426,8 +426,8 @@ object KafkaConsumer {
             // We need to start this action in a separate fiber without waiting for the result,
             // because commitAsync could be resolved only with the poll consumer call.
             // Which could be done only when the current request is processed.
-            res.start.void >> deferred.get.rethrow
-          }
+            res.start.void
+          } >> deferred.get.rethrow
         }
 
       override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
