@@ -70,36 +70,6 @@ private[kafka] final class KafkaConsumerActor[F[_]](
         dispatcher.unsafeRunSync(assigned(partitions.toSortedSet))
     }
 
-  private[this] def fetch(
-    partition: TopicPartition,
-    streamId: StreamId,
-    callback: ((Chunk[KafkaByteConsumerRecord], FetchCompletedReason)) => F[Unit]
-  ): F[Unit] = {
-    val assigned =
-      withConsumer.blocking { _.assignment.contains(partition) }
-
-    def storeFetch: F[Unit] =
-      ref
-        .modify { state =>
-          val (newState, oldFetch) =
-            state.withFetch(partition, streamId, callback)
-          (newState, (newState, oldFetch))
-        }
-        .flatMap {
-          case (newState, oldFetches) =>
-            log(StoredFetch(partition, callback, newState)) >>
-              oldFetches.traverse_ { fetch =>
-                fetch.completeRevoked(Chunk.empty) >>
-                  log(RevokedPreviousFetch(partition, streamId))
-              }
-        }
-
-    def completeRevoked =
-      callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
-
-    assigned.ifM(storeFetch, completeRevoked)
-  }
-
   private[this] def commitAsync(
     offsets: Map[TopicPartition, OffsetAndMetadata],
     callback: Either[Throwable, Unit] => Unit
@@ -414,9 +384,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
 
   def handle(request: Request[F]): F[Unit] =
     request match {
-      case Request.Poll() => poll
-      case Request.Fetch(partition, streamId, callback) =>
-        fetch(partition, streamId, callback)
+      case Request.Poll()                            => poll
       case request @ Request.Commit(_, _)            => commit(request)
       case request @ Request.ManualCommitAsync(_, _) => manualCommitAsync(request)
       case request @ Request.ManualCommitSync(_, _)  => manualCommitSync(request)
@@ -629,12 +597,6 @@ private[kafka] object KafkaConsumerActor {
 
     def poll[F[_]]: Poll[F] =
       pollInstance.asInstanceOf[Poll[F]]
-
-    final case class Fetch[F[_]](
-      partition: TopicPartition,
-      streamId: StreamId,
-      callback: ((Chunk[KafkaByteConsumerRecord], FetchCompletedReason)) => F[Unit]
-    ) extends Request[F]
 
     final case class Commit[F[_]](
       offsets: Map[TopicPartition, OffsetAndMetadata],

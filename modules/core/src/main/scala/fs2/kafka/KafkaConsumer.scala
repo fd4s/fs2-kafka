@@ -19,6 +19,7 @@ import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.consumer._
+import fs2.kafka.internal.LogEntry.{RevokedPreviousFetch, StoredFetch}
 
 import java.util
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -133,7 +134,7 @@ object KafkaConsumer {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
-        type PartitionRequest =
+        type PartitionResult =
           (Chunk[KafkaByteConsumerRecord], FetchCompletedReason)
 
         type PartitionsMap = Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]
@@ -178,13 +179,36 @@ object KafkaConsumer {
                 )
               )
 
-            def fetchPartition(deferred: Deferred[F, PartitionRequest]): F[Unit] = {
-              val request = Request.Fetch(
-                partition,
-                streamId,
-                deferred.complete(_: PartitionRequest).void
-              )
-              val fetch = requests.offer(request) >> deferred.get
+            def fetchPartition: F[Unit] = F.deferred[PartitionResult].flatMap { deferred =>
+              val callback: PartitionResult => F[Unit] =
+                deferred.complete(_).void
+
+              val fetch: F[PartitionResult] = permit.surround {
+                val assigned =
+                  withConsumer.blocking { _.assignment.contains(partition) }
+
+                def storeFetch: F[Unit] =
+                  actor.ref
+                    .modify { state =>
+                      val (newState, oldFetch) =
+                        state.withFetch(partition, streamId, callback)
+                      (newState, (newState, oldFetch))
+                    }
+                    .flatMap {
+                      case (newState, oldFetches) =>
+                        logging.log(StoredFetch(partition, callback, newState)) >>
+                          oldFetches.traverse_ { fetch =>
+                            fetch.completeRevoked(Chunk.empty) >>
+                              logging.log(RevokedPreviousFetch(partition, streamId))
+                          }
+                    }
+
+                def completeRevoked: F[Unit] =
+                  callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
+
+                assigned.ifM(storeFetch, completeRevoked) >> deferred.get
+              }
+
               F.race(shutdown, fetch).flatMap {
                 case Left(()) =>
                   stopReqs.complete(()).void
@@ -211,7 +235,7 @@ object KafkaConsumer {
               .repeatEval {
                 stopReqs.tryGet.flatMap {
                   case None =>
-                    Deferred[F, PartitionRequest] >>= fetchPartition
+                    fetchPartition
 
                   case Some(()) =>
                     // Prevent issuing additional requests after partition is
