@@ -191,20 +191,16 @@ object KafkaConsumer {
                   }
 
                 def storeFetch: F[Unit] =
-                  actor.ref
-                    .modify { state =>
-                      val (newState, oldFetch) =
-                        state.withFetch(partition, streamId, callback)
-                      (newState, (newState, oldFetch))
-                    }
-                    .flatMap {
-                      case (newState, oldFetches) =>
-                        logging.log(StoredFetch(partition, callback, newState)) >>
-                          oldFetches.traverse_ { fetch =>
-                            fetch.completeRevoked(Chunk.empty) >>
-                              logging.log(RevokedPreviousFetch(partition, streamId))
-                          }
-                    }
+                  actor.ref.modify { state =>
+                    val (newState, oldFetches) =
+                      state.withFetch(partition, streamId, callback)
+                    newState ->
+                      (logging.log(StoredFetch(partition, callback, newState)) >>
+                        oldFetches.traverse_ { fetch =>
+                          fetch.completeRevoked(Chunk.empty) >>
+                            logging.log(RevokedPreviousFetch(partition, streamId))
+                        })
+                  }.flatten
 
                 def completeRevoked: F[Unit] =
                   callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
