@@ -70,7 +70,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
         dispatcher.unsafeRunSync(assigned(partitions.toSortedSet))
     }
 
-  private[this] def commitAsync(
+  def commitAsync(
     offsets: Map[TopicPartition, OffsetAndMetadata],
     callback: Either[Throwable, Unit] => Unit
   ): F[Unit] =
@@ -96,12 +96,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
         case None      => commitAsync(request.offsets, request.callback)
       }
 
-  private[this] def manualCommitSync(request: Request.ManualCommitSync[F]): F[Unit] = {
-    val commit = withConsumer.blocking(_.commitSync(request.offsets.asJava))
-    commit.attempt >>= request.callback
-  }
-
-  private[this] def runCommitAsync(
+  def runCommitAsync(
     offsets: Map[TopicPartition, OffsetAndMetadata]
   )(
     k: (Either[Throwable, Unit] => Unit) => F[Unit]
@@ -115,19 +110,6 @@ private[kafka] final class KafkaConsumerActor[F[_]](
           offsets
         )
       })
-
-  private[this] def manualCommitAsync(request: Request.ManualCommitAsync[F]): F[Unit] = {
-    val commit = runCommitAsync(request.offsets) { cb =>
-      commitAsync(request.offsets, cb)
-    }
-
-    val res = commit.attempt >>= request.callback
-
-    // We need to start this action in a separate fiber without waiting for the result,
-    // because commitAsync could be resolved only with the poll consumer call.
-    // Which could be done only when the current request is processed.
-    res.start.void
-  }
 
   private[this] def assigned(assigned: SortedSet[TopicPartition]): F[Unit] =
     ref
@@ -384,11 +366,9 @@ private[kafka] final class KafkaConsumerActor[F[_]](
 
   def handle(request: Request[F]): F[Unit] =
     request match {
-      case Request.Poll()                            => poll
-      case request @ Request.Commit(_, _)            => commit(request)
-      case request @ Request.ManualCommitAsync(_, _) => manualCommitAsync(request)
-      case request @ Request.ManualCommitSync(_, _)  => manualCommitSync(request)
-      case Request.Permit(cb)                        => permit(cb)
+      case Request.Poll()                 => poll
+      case request @ Request.Commit(_, _) => commit(request)
+      case Request.Permit(cb)             => permit(cb)
     }
 
   def permit(callback: Resource[F, Unit] => F[Unit]): F[Unit] =
@@ -601,16 +581,6 @@ private[kafka] object KafkaConsumerActor {
     final case class Commit[F[_]](
       offsets: Map[TopicPartition, OffsetAndMetadata],
       callback: Either[Throwable, Unit] => Unit
-    ) extends Request[F]
-
-    final case class ManualCommitAsync[F[_]](
-      offsets: Map[TopicPartition, OffsetAndMetadata],
-      callback: Either[Throwable, Unit] => F[Unit]
-    ) extends Request[F]
-
-    final case class ManualCommitSync[F[_]](
-      offsets: Map[TopicPartition, OffsetAndMetadata],
-      callback: Either[Throwable, Unit] => F[Unit]
     ) extends Request[F]
   }
 }

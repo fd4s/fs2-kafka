@@ -400,28 +400,26 @@ object KafkaConsumer {
         partitionedStream.parJoinUnbounded
 
       override def commitAsync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
-        request { callback =>
-          Request.ManualCommitAsync(
-            callback = callback,
-            offsets = offsets
-          )
+        F.deferred[Either[Throwable, Unit]].flatMap { deferred =>
+          permit.surround {
+
+            val commit = actor.runCommitAsync(offsets) { cb =>
+              actor.commitAsync(offsets, cb)
+            }
+
+            val res = commit.attempt >>= deferred.complete
+
+            // We need to start this action in a separate fiber without waiting for the result,
+            // because commitAsync could be resolved only with the poll consumer call.
+            // Which could be done only when the current request is processed.
+            res.start.void >> deferred.get.rethrow
+          }
         }
 
       override def commitSync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit] =
-        request { callback =>
-          Request.ManualCommitSync(
-            callback = callback,
-            offsets = offsets
-          )
+        permit.surround {
+          withConsumer.blocking(_.commitSync(offsets.asJava))
         }
-
-      private[this] def request[A](
-        request: (Either[Throwable, A] => F[Unit]) => Request[F]
-      ): F[A] =
-        Deferred[F, Either[Throwable, A]].flatMap { deferred =>
-          requests.offer(request(deferred.complete(_).void)) >>
-            F.race(awaitTermination.as(ConsumerShutdownException()), deferred.get.rethrow)
-        }.rethrow
 
       override def assignment: F[SortedSet[TopicPartition]] =
         assignment(Option.empty)
