@@ -28,11 +28,10 @@ package fs2.kafka
 
 import cats.effect.Sync
 import fs2.kafka.internal.converters.collection._
+
 import java.util.UUID
-
 import scala.util.Failure
-import com.dimafeng.testcontainers.{KafkaContainer, ForEachTestContainer}
-
+import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer}
 import org.apache.kafka.clients.producer.{
@@ -44,19 +43,21 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 import scala.concurrent.duration._
 import org.apache.kafka.clients.admin.NewTopic
+
 import scala.util.Try
 import org.apache.kafka.clients.admin.AdminClient
-
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
 import org.apache.kafka.common.{KafkaException, TopicPartition}
+
 import scala.collection.mutable.ListBuffer
 import java.util.concurrent.TimeoutException
 import org.apache.kafka.common.serialization.StringSerializer
+
 import java.util.concurrent.TimeUnit
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.Args
 
-abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
+abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
   final val adminClientCloseTimeout: FiniteDuration = 2.seconds
   final val transactionTimeoutInterval: FiniteDuration = 1.second

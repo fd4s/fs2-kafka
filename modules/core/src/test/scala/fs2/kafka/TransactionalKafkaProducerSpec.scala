@@ -68,7 +68,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       (for {
         producer <- TransactionalKafkaProducer.stream(
           TransactionalProducerSettings(
-            "id",
+            s"id-$topic",
             producerSettings[IO]
               .withRetries(Int.MaxValue)
           )
@@ -153,7 +153,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       (for {
         producer <- TransactionalKafkaProducer.stream(
           TransactionalProducerSettings(
-            "id",
+            s"id-$topic",
             producerSettings[IO]
               .withRetries(Int.MaxValue)
           )
@@ -217,7 +217,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
-              "id",
+              s"id-$topic",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             )
@@ -301,7 +301,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
-              "id",
+              s"id-$topic",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             )
@@ -370,7 +370,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
-              "id",
+              s"id-$topic",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             ).withTransactionTimeout(transactionTimeoutInterval - 250.millis)
@@ -413,7 +413,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         TransactionalKafkaProducer[IO]
           .stream(
             TransactionalProducerSettings(
-              transactionalId = "id",
+              transactionalId = s"id-$topic",
               producerSettings = producerSettings[IO].withRetries(Int.MaxValue)
             )
           )
