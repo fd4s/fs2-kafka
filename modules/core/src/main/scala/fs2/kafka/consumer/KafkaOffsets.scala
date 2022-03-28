@@ -85,6 +85,9 @@ trait KafkaOffsets[F[_]] {
     * Timeout is determined by `default.api.timeout.ms`, which
     * is set using [[ConsumerSettings#withDefaultApiTimeout]].
     */
-  def committed(partitions: Set[TopicPartition], timeout: FiniteDuration): F[Map[TopicPartition, OffsetAndMetadata]]
+  def committed(
+    partitions: Set[TopicPartition],
+    timeout: FiniteDuration
+  ): F[Map[TopicPartition, OffsetAndMetadata]]
 
 }
