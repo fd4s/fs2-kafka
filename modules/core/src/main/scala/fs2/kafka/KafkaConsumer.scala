@@ -19,6 +19,7 @@ import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
 import fs2.kafka.consumer._
+import fs2.kafka.internal.LogEntry.{RevokedPreviousFetch, StoredFetch}
 
 import java.util
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -133,17 +134,17 @@ object KafkaConsumer {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
-        type PartitionRequest =
+        type PartitionResult =
           (Chunk[KafkaByteConsumerRecord], FetchCompletedReason)
 
         type PartitionsMap = Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]
         type PartitionsMapQueue = Queue[F, Option[PartitionsMap]]
 
-        def createPartitionStream(
+        def partitionStream(
           streamId: StreamId,
           partition: TopicPartition,
           assignmentRevoked: F[Unit]
-        ): F[Stream[F, CommittableConsumerRecord[F, K, V]]] =
+        ): Stream[F, CommittableConsumerRecord[F, K, V]] = Stream.force {
           for {
             chunks <- chunkQueue
             dequeueDone <- Deferred[F, Unit]
@@ -178,13 +179,34 @@ object KafkaConsumer {
                 )
               )
 
-            def fetchPartition(deferred: Deferred[F, PartitionRequest]): F[Unit] = {
-              val request = Request.Fetch(
-                partition,
-                streamId,
-                deferred.complete(_: PartitionRequest).void
-              )
-              val fetch = requests.offer(request) >> deferred.get
+            def fetchPartition: F[Unit] = F.deferred[PartitionResult].flatMap { deferred =>
+              val callback: PartitionResult => F[Unit] =
+                deferred.complete(_).void
+
+              val fetch: F[PartitionResult] = withPermit {
+                val assigned =
+                  withConsumer.blocking {
+                    _.assignment.contains(partition)
+                  }
+
+                def storeFetch: F[Unit] =
+                  actor.ref.modify { state =>
+                    val (newState, oldFetches) =
+                      state.withFetch(partition, streamId, callback)
+                    newState ->
+                      (logging.log(StoredFetch(partition, callback, newState)) >>
+                        oldFetches.traverse_ { fetch =>
+                          fetch.completeRevoked(Chunk.empty) >>
+                            logging.log(RevokedPreviousFetch(partition, streamId))
+                        })
+                  }.flatten
+
+                def completeRevoked: F[Unit] =
+                  callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
+
+                assigned.ifM(storeFetch, completeRevoked)
+              } >> deferred.get
+
               F.race(shutdown, fetch).flatMap {
                 case Left(()) =>
                   stopReqs.complete(()).void
@@ -211,7 +233,7 @@ object KafkaConsumer {
               .repeatEval {
                 stopReqs.tryGet.flatMap {
                   case None =>
-                    Deferred[F, PartitionRequest] >>= fetchPartition
+                    fetchPartition
 
                   case Some(()) =>
                     // Prevent issuing additional requests after partition is
@@ -233,34 +255,23 @@ object KafkaConsumer {
                   .onFinalize(dequeueDone.complete(()).void)
               }
           }.flatten
+        }
 
         def enqueueAssignment(
           streamId: StreamId,
           assigned: Map[TopicPartition, Deferred[F, Unit]],
           partitionsMapQueue: PartitionsMapQueue
-        ): F[Unit] = {
-          val assignment: F[PartitionsMap] = if (assigned.isEmpty) {
-            F.pure(Map.empty)
-          } else {
-            assigned.toVector
-              .traverse {
+        ): F[Unit] =
+          stopConsumingDeferred.tryGet.flatMap {
+            case None =>
+              val assignment: PartitionsMap = assigned.map {
                 case (partition, finisher) =>
-                  createPartitionStream(streamId, partition, finisher.get).map { stream =>
-                    partition -> stream
-                  }
+                  partition -> partitionStream(streamId, partition, finisher.get)
               }
-              .map(_.toMap)
+              partitionsMapQueue.offer(Some(assignment))
+            case Some(()) =>
+              F.unit
           }
-
-          assignment.flatMap { assignment =>
-            stopConsumingDeferred.tryGet.flatMap {
-              case None =>
-                partitionsMapQueue.offer(Some(assignment))
-              case Some(()) =>
-                F.unit
-            }
-          }
-        }
 
         def onRebalance(
           streamId: StreamId,
@@ -405,7 +416,7 @@ object KafkaConsumer {
       private def assignment(
         onRebalance: Option[OnRebalance[F]]
       ): F[SortedSet[TopicPartition]] =
-        permit.surround {
+        withPermit {
           onRebalance
             .fold(actor.ref.updateAndGet(_.asStreaming)) { on =>
               actor.ref.updateAndGet(_.withOnRebalance(on).asStreaming).flatTap { newState =>
@@ -496,7 +507,7 @@ object KafkaConsumer {
         withConsumer.blocking { _.position(partition, timeout.asJava) }
 
       override def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] =
-        permit.surround {
+        withPermit {
           withConsumer.blocking {
             _.subscribe(
               topics.toList.asJava,
@@ -507,15 +518,14 @@ object KafkaConsumer {
             .log(LogEntry.SubscribedTopics(topics.toNonEmptyList, _))
         }
 
-      private def permit: Resource[F, Unit] =
-        Resource.eval {
-          Deferred[F, Resource[F, Unit]].flatMap { permitDef =>
-            requests.offer(Request.Permit(permitDef.complete(_).void)) >> permitDef.get
-          }
-        }.flatten
+      private def withPermit[A](fa: F[A]): F[A] = F.deferred[Either[Throwable, A]].flatMap {
+        deferred =>
+          requests
+            .offer(Request.WithPermit(fa, deferred.complete(_: Either[Throwable, A]).void)) >> deferred.get.rethrow
+      }
 
       override def subscribe(regex: Regex): F[Unit] =
-        permit.surround {
+        withPermit {
           withConsumer.blocking {
             _.subscribe(
               regex.pattern,
@@ -528,7 +538,7 @@ object KafkaConsumer {
         }
 
       override def unsubscribe: F[Unit] =
-        permit.surround {
+        withPermit {
           withConsumer.blocking { _.unsubscribe() } >> actor.ref
             .updateAndGet(_.asUnsubscribed)
             .log(LogEntry.Unsubscribed(_))
@@ -538,7 +548,7 @@ object KafkaConsumer {
         stopConsumingDeferred.complete(()).attempt.void
 
       override def assign(partitions: NonEmptySet[TopicPartition]): F[Unit] =
-        permit.surround {
+        withPermit {
           withConsumer.blocking {
             _.assign(
               partitions.toList.asJava
