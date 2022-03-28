@@ -83,6 +83,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
           transactionTimeoutInterval.toMillis.toString
         )
         .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
         .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
         .setDockerImageName(s"$imageName:$imageVersion")
 
