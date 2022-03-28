@@ -7,7 +7,6 @@
 package fs2.kafka.consumer
 
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import cats.Foldable
 import scala.concurrent.duration.FiniteDuration
 
@@ -73,21 +72,5 @@ trait KafkaOffsets[F[_]] {
     * Returns the offset of the next record that will be fetched.
     */
   def position(partition: TopicPartition, timeout: FiniteDuration): F[Long]
-
-  /**
-    * Returns the last committed offsets for the given partitions.
-    */
-  def committed(partitions: Set[TopicPartition]): F[Map[TopicPartition, OffsetAndMetadata]]
-
-  /**
-    * Returns the last committed offsets for the given partitions.<br>
-    * <br>
-    * Timeout is determined by `default.api.timeout.ms`, which
-    * is set using [[ConsumerSettings#withDefaultApiTimeout]].
-    */
-  def committed(
-    partitions: Set[TopicPartition],
-    timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndMetadata]]
 
 }

@@ -71,7 +71,7 @@ import scala.util.matching.Regex
 sealed abstract class KafkaConsumer[F[_], K, V]
     extends KafkaConsume[F, K, V]
     with KafkaAssignment[F]
-    with KafkaOffsets[F]
+    with KafkaOffsetsV2[F]
     with KafkaSubscription[F]
     with KafkaTopics[F]
     with KafkaCommit[F]
@@ -505,6 +505,25 @@ object KafkaConsumer {
 
       override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
         withConsumer.blocking { _.position(partition, timeout.asJava) }
+
+      override def committed(
+        partitions: Set[TopicPartition]
+      ): F[Map[TopicPartition, OffsetAndMetadata]] =
+        withConsumer.blocking {
+          _.committed(partitions.asJava)
+            .asInstanceOf[util.Map[TopicPartition, OffsetAndMetadata]]
+            .toMap
+        }
+
+      override def committed(
+        partitions: Set[TopicPartition],
+        timeout: FiniteDuration
+      ): F[Map[TopicPartition, OffsetAndMetadata]] =
+        withConsumer.blocking {
+          _.committed(partitions.asJava, timeout.asJava)
+            .asInstanceOf[util.Map[TopicPartition, OffsetAndMetadata]]
+            .toMap
+        }
 
       override def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] =
         withPermit {
