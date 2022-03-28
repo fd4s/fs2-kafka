@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.{Foldable, Functor, Reducible}
-import cats.data.{NonEmptyList, NonEmptySet, OptionT}
+import cats.data.{NonEmptySet, OptionT}
 import cats.effect._
 import cats.effect.std._
 import cats.effect.implicits._
@@ -468,16 +468,10 @@ object KafkaConsumer {
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
         withConsumer.blocking { _.seek(partition, offset) }
 
-      override def seekToBeginning: F[Unit] =
-        seekToBeginning(List.empty[TopicPartition])
-
       override def seekToBeginning[G[_]](partitions: G[TopicPartition])(
         implicit G: Foldable[G]
       ): F[Unit] =
         withConsumer.blocking { _.seekToBeginning(partitions.asJava) }
-
-      override def seekToEnd: F[Unit] =
-        seekToEnd(List.empty[TopicPartition])
 
       override def seekToEnd[G[_]](
         partitions: G[TopicPartition]
@@ -500,28 +494,6 @@ object KafkaConsumer {
 
       override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
         withConsumer.blocking { _.position(partition, timeout.asJava) }
-
-      override def committed(
-        partitions: Set[TopicPartition]
-      ): F[Map[TopicPartition, OffsetAndMetadata]] =
-        withConsumer.blocking {
-          _.committed(partitions.asJava)
-            .asInstanceOf[util.Map[TopicPartition, OffsetAndMetadata]]
-            .toMap
-        }
-
-      override def committed(
-        partitions: Set[TopicPartition],
-        timeout: FiniteDuration
-      ): F[Map[TopicPartition, OffsetAndMetadata]] =
-        withConsumer.blocking {
-          _.committed(partitions.asJava, timeout.asJava)
-            .asInstanceOf[util.Map[TopicPartition, OffsetAndMetadata]]
-            .toMap
-        }
-
-      override def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
-        subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
       override def subscribe[G[_]](topics: G[String])(implicit G: Reducible[G]): F[Unit] =
         permit.surround {
@@ -576,9 +548,6 @@ object KafkaConsumer {
             .log(LogEntry.ManuallyAssignedPartitions(partitions, _))
 
         }
-
-      override def assign(topic: String, partitions: NonEmptySet[Int]): F[Unit] =
-        assign(partitions.map(new TopicPartition(topic, _)))
 
       override def assign(topic: String): F[Unit] =
         for {
