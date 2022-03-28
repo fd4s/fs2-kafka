@@ -128,16 +128,16 @@ object KafkaConsumer {
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
-      override def partitionsMapStream
-        : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
+      private def isStopped: F[Boolean] = stopConsumingDeferred.tryGet.map(_.nonEmpty)
+
+      override def assignmentEventStream: Stream[F, AssignmentEvent[F, K, V]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
         type PartitionRequest =
           (Chunk[KafkaByteConsumerRecord], FetchCompletedReason)
 
-        type PartitionsMap = Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]
-        type PartitionsMapQueue = Queue[F, Option[PartitionsMap]]
+        type PartitionsMapQueue = Queue[F, Option[AssignmentEvent[F, K, V]]]
 
         def createPartitionStream(
           streamId: StreamId,
@@ -239,9 +239,7 @@ object KafkaConsumer {
           assigned: Map[TopicPartition, Deferred[F, Unit]],
           partitionsMapQueue: PartitionsMapQueue
         ): F[Unit] = {
-          val assignment: F[PartitionsMap] = if (assigned.isEmpty) {
-            F.pure(Map.empty)
-          } else {
+          val assignment: F[Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
             assigned.toVector
               .traverse {
                 case (partition, finisher) =>
@@ -253,12 +251,10 @@ object KafkaConsumer {
           }
 
           assignment.flatMap { assignment =>
-            stopConsumingDeferred.tryGet.flatMap {
-              case None =>
-                partitionsMapQueue.offer(Some(assignment))
-              case Some(()) =>
-                F.unit
-            }
+            isStopped.ifM(F.unit, {
+              val event = AssignmentEvent.Assigned(assignment)
+              partitionsMapQueue.offer(Some(event))
+            })
           }
         }
 
@@ -272,10 +268,12 @@ object KafkaConsumer {
               for {
                 finishers <- assignmentRef.modify(_.partition(entry => !revoked.contains(entry._1)))
                 _ <- finishers.toVector
-                  .traverse {
-                    case (_, finisher) =>
-                      finisher.complete(())
-                  }
+                  .traverse { case (_, finisher) => finisher.complete(()) }
+                event = AssignmentEvent
+                  .Revoked(
+                    SortedSet.newBuilder[TopicPartition].++=(finishers.keySet).result()
+                  )
+                _ <- F.ifM(isStopped)(F.unit, partitionsMapQueue.offer(Some(event)))
               } yield ()
             },
             onAssigned = assignedPartitions => {
@@ -340,7 +338,8 @@ object KafkaConsumer {
         Stream.eval(stopConsumingDeferred.tryGet).flatMap {
           case None =>
             for {
-              partitionsMapQueue <- Stream.eval(Queue.unbounded[F, Option[PartitionsMap]])
+              partitionsMapQueue <- Stream
+                .eval(Queue.unbounded[F, Option[AssignmentEvent[F, K, V]]])
               streamId <- Stream.eval(streamIdRef.modify(n => (n + 1, n)))
               assignmentRef <- Stream.eval(Ref[F].of(Map.empty[TopicPartition, Deferred[F, Unit]]))
               _ <- Stream
@@ -360,16 +359,21 @@ object KafkaConsumer {
             } yield out
 
           case Some(()) =>
-            Stream.empty.covaryAll[F, PartitionsMap]
+            Stream.empty.covaryAll[F, AssignmentEvent[F, K, V]]
         }
       }
 
+      override def partitionsMapStream
+        : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] =
+        assignmentEventStream.collect {
+          case a: AssignmentEvent.Assigned[F, K, V] => a.newlyAssignedPartitions
+        }
+
       override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
-        partitionsMapStream.flatMap { partitionsMap =>
-          Stream.emits(partitionsMap.toVector.map {
-            case (_, partitionStream) =>
-              partitionStream
-          })
+        assignmentEventStream.flatMap {
+          case a: AssignmentEvent.Assigned[F, K, V] =>
+            Stream.fromIterator(a.newlyAssignedPartitions.valuesIterator, Int.MaxValue)
+          case AssignmentEvent.Revoked(_) => Stream.empty
         }
 
       override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
@@ -607,6 +611,7 @@ object KafkaConsumer {
       override def terminate: F[Unit] = fiber.cancel
 
       override def awaitTermination: F[Unit] = fiber.join
+
     }
 
   /**

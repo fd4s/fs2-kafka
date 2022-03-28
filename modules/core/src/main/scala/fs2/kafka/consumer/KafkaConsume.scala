@@ -10,7 +10,23 @@ import fs2._
 import fs2.kafka.CommittableConsumerRecord
 import org.apache.kafka.common.TopicPartition
 
+import scala.collection.immutable.SortedSet
+
+sealed trait AssignmentEvent[+F[_], +K, +V]
+
+object AssignmentEvent {
+  final case class Assigned[F[_], K, V](
+    newlyAssignedPartitions: Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]
+  ) extends AssignmentEvent[F, K, V]
+
+  final case class Revoked(
+    revokedPartitions: SortedSet[TopicPartition]
+  ) extends AssignmentEvent[fs2.Pure, Nothing, Nothing]
+}
+
 trait KafkaConsume[F[_], K, V] {
+
+  def assignmentEventStream: Stream[F, AssignmentEvent[F, K, V]]
 
   /**
     * Consume from all assigned partitions, producing a stream
