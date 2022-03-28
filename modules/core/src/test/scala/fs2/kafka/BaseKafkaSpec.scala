@@ -74,7 +74,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
     case _ => "confluentinc/cp-kafka"
   }
 
-  override val container: KafkaContainer = new KafkaContainer() {}
+  override val container: KafkaContainer = new KafkaContainer()
     .configure { container =>
       container
         .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
