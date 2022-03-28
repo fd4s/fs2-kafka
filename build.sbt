@@ -99,10 +99,8 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    ("com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion)
-      .cross(CrossVersion.for3Use2_13),
-    ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
-      .cross(CrossVersion.for3Use2_13),
+    "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
+    "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
