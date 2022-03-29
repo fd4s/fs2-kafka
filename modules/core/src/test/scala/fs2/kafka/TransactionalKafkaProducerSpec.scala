@@ -63,12 +63,12 @@ object TransactionalKafkaProducerSpec extends BaseWeaverSpec with EitherValues {
   private def testSingle(
     topic: String,
     makeOffset: Option[Long => CommittableOffset[IO]]
-  ): IO[Expectations] = IO {
-    createCustomTopic(topic, partitions = 3)
-    val toProduce = (0 to 10).map(n => s"key-$n" -> s"value-$n")
+  ): IO[Expectations] =
+    for {
+      _ <- IO.blocking(createCustomTopic(topic, partitions = 3))
+      toProduce = (0 to 10).map(n => s"key-$n" -> s"value-$n")
 
-    val produced =
-      (for {
+      produced <- (for {
         producer <- TransactionalKafkaProducer.stream(
           TransactionalProducerSettings(
             s"id-$topic",
@@ -76,7 +76,6 @@ object TransactionalKafkaProducerSpec extends BaseWeaverSpec with EitherValues {
               .withRetries(Int.MaxValue)
           )
         )
-        _ <- Stream.eval(IO(expect(producer.toString.startsWith("TransactionalKafkaProducer$"))))
         records <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
           case ((key, value), i) =>
             val record = ProducerRecord(topic, key, value)
@@ -104,20 +103,17 @@ object TransactionalKafkaProducerSpec extends BaseWeaverSpec with EitherValues {
           .eval(records.fold(producer.produceWithoutOffsets, producer.produce))
           .map(_.passthrough)
           .buffer(toProduce.size)
-      } yield passthrough).compile.toVector.unsafeRunSync()
+      } yield passthrough).compile.toVector
 
-    expect(produced === toProduce.toVector)
+      consumed <- IO.blocking {
+        consumeNumberKeyedMessagesFrom[String, String](
+          topic,
+          produced.size,
+          customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+        )
+      }
 
-    val consumed = {
-      consumeNumberKeyedMessagesFrom[String, String](
-        topic,
-        produced.size,
-        customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
-      )
-    }
-
-    expect(consumed.toSet === produced.toSet)
-  }
+    } yield expect(produced === toProduce.toVector) and expect(consumed.toSet === produced.toSet)
 
   test("should be able to produce multiple records with offsets in a transaction") {
     withTopic { topic =>
@@ -148,15 +144,14 @@ object TransactionalKafkaProducerSpec extends BaseWeaverSpec with EitherValues {
   private def testMultiple(
     topic: String,
     makeOffset: Option[Int => CommittableOffset[IO]]
-  ): IO[Expectations] = IO {
-    createCustomTopic(topic, partitions = 3)
-    val toProduce =
-      Chunk.seq((0 to 100).toList.map(n => s"key-$n" -> s"value-$n"))
+  ): IO[Expectations] =
+    for {
+      _ <- IO.blocking(createCustomTopic(topic, partitions = 3))
+      toProduce = Chunk.seq((0 to 100).toList.map(n => s"key-$n" -> s"value-$n"))
 
-    val toPassthrough = "passthrough"
+      toPassthrough = "passthrough"
 
-    val produced =
-      (for {
+      produced <- (for {
         producer <- TransactionalKafkaProducer.stream(
           TransactionalProducerSettings(
             s"id-$topic",
@@ -190,28 +185,26 @@ object TransactionalKafkaProducerSpec extends BaseWeaverSpec with EitherValues {
         }
 
         result <- Stream.eval(produce)
-      } yield result).compile.lastOrError.unsafeRunSync()
+      } yield result).compile.lastOrError
 
-    val records =
-      produced.records.map {
+      records = produced.records.map {
         case (record, _) =>
           record.key -> record.value
       }
 
-    expect(records == toProduce && produced.passthrough == toPassthrough)
+      consumed <- IO.blocking {
+        val customConsumerProperties =
+          Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
+        consumeNumberKeyedMessagesFrom[String, String](
+          topic,
+          records.size,
+          customProperties = customConsumerProperties
+        )
+      }
 
-    val consumed = {
-      val customConsumerProperties =
-        Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
-      consumeNumberKeyedMessagesFrom[String, String](
-        topic,
-        records.size,
-        customProperties = customConsumerProperties
-      )
-    }
-
-    expect(consumed.toSet === records.toList.toSet)
-  }
+    } yield expect(records === toProduce) and
+      expect(produced.passthrough == toPassthrough) and
+      expect(consumed.toSet === records.toList.toSet)
 
   test("should not allow concurrent access to a producer during a transaction") {
     IO {
