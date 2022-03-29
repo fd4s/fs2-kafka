@@ -38,7 +38,8 @@ lazy val core = project
       libraryDependencies ++= Seq(
         "co.fs2" %% "fs2-core" % fs2Version,
         "org.typelevel" %% "cats-effect" % catsEffectVersion,
-        "org.apache.kafka" % "kafka-clients" % kafkaVersion
+        "org.apache.kafka" % "kafka-clients" % kafkaVersion,
+        "com.disneystreaming" %% "weaver-cats" % "0.7.11" % Test
       )
     ),
     publishSettings,
