@@ -20,68 +20,59 @@ import org.scalatest.Assertion
 
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
-
-final class KafkaConsumerSpec extends BaseKafkaSpec {
+object ConsumerSpec2 extends BaseWeaverSpec {
 
   type Consumer = KafkaConsumer[IO, String, String]
 
   type ConsumerStream = Stream[IO, CommittableConsumerRecord[IO, String, String]]
 
-  describe("creating consumers") {
-    it("should support defined syntax") {
-      val settings =
-        ConsumerSettings[IO, String, String]
+  test("should support defined syntax") {
+    val settings =
+      ConsumerSettings[IO, String, String]
 
-      KafkaConsumer.resource[IO, String, String](settings)
-      KafkaConsumer[IO].resource(settings)
+    KafkaConsumer.resource[IO, String, String](settings)
+    KafkaConsumer[IO].resource(settings)
 
-      KafkaConsumer.stream[IO, String, String](settings)
-      KafkaConsumer[IO].stream(settings)
+    KafkaConsumer.stream[IO, String, String](settings)
+    KafkaConsumer[IO].stream(settings)
 
-      KafkaConsumer[IO].toString should startWith("ConsumerPartiallyApplied$")
-    }
+    IO(expect(KafkaConsumer[IO].toString.startsWith("ConsumerPartiallyApplied$")))
   }
 
-  describe("KafkaConsumer#stream") {
-    it("should consume all records with subscribe") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-        val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
+  test("should consume all records with subscribe") {
+    withTopic(3) { topic =>
+      val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
+      for {
+        _ <- IO.blocking(publishToKafka(topic, produced))
+        consumed <- KafkaConsumer
+          .stream(consumerSettings[IO])
+          .subscribeTo(topic)
+          .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+          .records
+          .map(committable => committable.record.key -> committable.record.value)
+          .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
+          .compile
+          .toVector
 
-        val consumed =
-          KafkaConsumer
-            .stream(consumerSettings[IO])
-            .subscribeTo(topic)
-            .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .records
-            .map(committable => committable.record.key -> committable.record.value)
-            .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
-            .compile
-            .toVector
-            .unsafeRunSync()
-
-        consumed should contain theSameElementsAs produced
-      }
+      } yield assert(consumed.toSet === produced.toSet)
     }
+  }
+  test("should consume all records at least once with subscribing for several consumers") {
+    withTopic(partitions = 3) { topic =>
+      val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
 
-    it("should consume all records at least once with subscribing for several consumers") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-        val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
+      for {
+        _ <- IO.blocking(publishToKafka(topic, produced))
 
-        val consumed =
-          KafkaConsumer
-            .stream(consumerSettings[IO].withGroupId("test"))
-            .subscribeTo(topic)
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .records
-            .map(committable => committable.record.key -> committable.record.value)
-            .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
+        consumed = KafkaConsumer
+          .stream(consumerSettings[IO].withGroupId("test"))
+          .subscribeTo(topic)
+          .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+          .records
+          .map(committable => committable.record.key -> committable.record.value)
+          .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
 
-        val res = fs2
+        res <- fs2
           .Stream(
             consumed,
             consumed
@@ -89,39 +80,39 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .parJoinUnbounded
           .compile
           .toVector
-          .unsafeRunSync()
 
         // duplication is currently possible.
-        res.distinct should contain theSameElementsAs produced
-
-      }
+      } yield expect(res.toSet === produced.toSet)
     }
+  }
 
-    it("should consume records with assign by partitions") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-        val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
+  test("should consume records with assign by partitions") {
+    withTopic(3) { topic =>
+      val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
 
-        val partitions = NonEmptySet.fromSetUnsafe(SortedSet(0, 1, 2))
+      for {
+        _ <- IO.blocking(publishToKafka(topic, produced))
 
-        val consumed =
-          KafkaConsumer
-            .stream(consumerSettings[IO].withGroupId("test2"))
-            .evalTap(_.assign(topic, partitions))
-            .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .records
-            .map(committable => committable.record.key -> committable.record.value)
-            .interruptAfter(10.seconds)
+        partitions = NonEmptySet.fromSetUnsafe(SortedSet(0, 1, 2))
 
-        val res =
-          consumed.compile.toVector
-            .unsafeRunSync()
+        consumed = KafkaConsumer
+          .stream(consumerSettings[IO].withGroupId("test2"))
+          .evalTap(_.assign(topic, partitions))
+          .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+          .records
+          .map(committable => committable.record.key -> committable.record.value)
+          .interruptAfter(10.seconds)
 
-        res should contain theSameElementsAs produced
-      }
+        res <- consumed.compile.toVector
+      } yield expect(res.toSet === produced.toSet)
     }
+  }
+
+}
+
+final class KafkaConsumerSpec extends BaseKafkaSpec {
+
+  describe("KafkaConsumer#stream") {
 
     it("should consume all records with assign without partitions") {
       withTopic { topic =>

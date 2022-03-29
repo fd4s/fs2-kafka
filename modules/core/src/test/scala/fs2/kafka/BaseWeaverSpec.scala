@@ -46,7 +46,7 @@ import org.apache.kafka.common.serialization.{
   StringSerializer
 }
 import org.apache.kafka.common.{KafkaException, TopicPartition}
-import weaver.IOSuite
+import weaver.{Expectations, IOSuite}
 
 import java.util.UUID
 import java.util.concurrent.{TimeUnit, TimeoutException}
@@ -150,6 +150,11 @@ abstract class BaseWeaverSpec extends IOSuite {
 
   final def withTopic[A](f: String => A): A =
     f(nextTopicName())
+
+  final def withTopic(partitions: Int)(f: String => IO[Expectations]): IO[Expectations] =
+    IO(nextTopicName()).flatMap { topic =>
+      IO.blocking(createCustomTopic(topic, partitions = partitions)) >> f(topic)
+    }
 
   final def withKafkaConsumer(
     nativeSettings: Map[String, AnyRef]
