@@ -19,6 +19,7 @@ import org.apache.kafka.common.errors.TimeoutException
 import org.scalatest.Assertion
 import weaver.Expectations
 
+import java.util.UUID
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 object ConsumerSpec2 extends BaseWeaverSpec {
@@ -221,6 +222,228 @@ object ConsumerSpec2 extends BaseWeaverSpec {
         .compile
         .toVector
     } yield expect(consumed.sorted === produced.drop(readOffset.toInt).toVector.sorted)
+  }
+
+  // partitionsmapstream
+  test("should handle rebalance") {
+    withTopic(3) { topic =>
+      val produced1 = (0 until 100).map(n => s"key-$n" -> s"value->$n")
+      val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
+      val producedTotal = produced1.size.toLong + produced2.size.toLong
+
+      val settings = consumerSettings[IO].withProperties(
+        ConsumerConfig.GROUP_ID_CONFIG -> UUID.randomUUID().toString
+      )
+
+      def startConsumer(
+        consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
+        stopSignal: SignallingRef[IO, Boolean]
+      ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] =
+        Ref[IO]
+          .of(Vector.empty[Set[Int]])
+          .flatMap { assignedPartitionsRef =>
+            KafkaConsumer
+              .stream(settings)
+              .subscribeTo(topic)
+              .flatMap(_.partitionsMapStream)
+              .filter(_.nonEmpty)
+              .evalMap { assignment =>
+                assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
+                  Stream
+                    .emits(assignment.map {
+                      case (_, stream) =>
+                        stream.evalMap(consumedQueue.offer)
+                    }.toList)
+                    .covary[IO]
+                }
+              }
+              .flatten
+              .parJoinUnbounded
+              .interruptWhen(stopSignal)
+              .compile
+              .drain >> assignedPartitionsRef.get
+          }
+          .start
+
+      for {
+        stopSignal <- SignallingRef[IO, Boolean](false)
+        queue <- Queue.unbounded[IO, CommittableConsumerRecord[IO, String, String]]
+        ref <- Ref.of[IO, Map[String, Int]](Map.empty)
+        fiber1 <- startConsumer(queue, stopSignal)
+        _ <- IO.sleep(5.seconds)
+        _ <- IO(publishToKafka(topic, produced1))
+        fiber2 <- startConsumer(queue, stopSignal)
+        _ <- IO.sleep(5.seconds)
+        _ <- IO(publishToKafka(topic, produced2))
+        _ <- Stream
+          .fromQueueUnterminated(queue)
+          .evalMap { committable =>
+            ref.modify { counts =>
+              val key = committable.record.key
+              val newCounts = counts.updated(key, counts.getOrElse(key, 0) + 1)
+              (newCounts, newCounts)
+            }
+          }
+          .takeWhile(_.size < 200)
+          .timeout(20.seconds)
+          .compile
+          .drain
+          .guarantee(stopSignal.set(true))
+        consumer1assignments <- fiber1.joinWithNever
+        consumer2assignments <- fiber2.joinWithNever
+        keys <- ref.get
+      } yield {
+        assert {
+          keys.size.toLong == producedTotal && {
+            keys == (0 until 200).map { n =>
+              s"key-$n" -> (if (n < 100) 2 else 1)
+            }.toMap
+          }
+        } and
+          assert(consumer1assignments.size == 2) and
+          assert(consumer1assignments(0) == Set(0, 1, 2)) and
+          assert(consumer1assignments(1).size < 3) and
+          assert(consumer2assignments.size == 1) and
+          assert(consumer2assignments(0).size < 3) and
+          assert(consumer1assignments(1) ++ consumer2assignments(0) == Set(0, 1, 2))
+      }
+    }
+  }
+
+  test("should handle rebalance with CooperativeStickyAssignor") {
+    withTopic(3) { topic =>
+      val produced1 = (0 until 100).map(n => s"key-$n" -> s"value->$n")
+      val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
+      val producedTotal = produced1.size.toLong + produced2.size.toLong
+
+      val settings = consumerSettings[IO].withProperties(
+        ConsumerConfig.GROUP_ID_CONFIG -> UUID.randomUUID().toString
+      )
+
+      def startConsumer(
+        consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
+        stopSignal: SignallingRef[IO, Boolean]
+      ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] =
+        Ref[IO]
+          .of(Vector.empty[Set[Int]])
+          .flatMap { assignedPartitionsRef =>
+            KafkaConsumer
+              .stream(
+                settings
+                  .withProperties(
+                    ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[
+                      CooperativeStickyAssignor
+                    ].getName
+                  )
+              )
+              .subscribeTo(topic)
+              .flatMap(_.partitionsMapStream)
+              .filter(_.nonEmpty)
+              .evalMap { assignment =>
+                assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
+                  Stream
+                    .emits(assignment.map {
+                      case (_, stream) =>
+                        stream.evalMap(consumedQueue.offer)
+                    }.toList)
+                    .covary[IO]
+                }
+              }
+              .flatten
+              .parJoinUnbounded
+              .interruptWhen(stopSignal)
+              .compile
+              .drain >> assignedPartitionsRef.get
+          }
+          .start
+
+      for {
+        stopSignal <- SignallingRef[IO, Boolean](false)
+        queue <- Queue.unbounded[IO, CommittableConsumerRecord[IO, String, String]]
+        ref <- Ref.of[IO, Map[String, Int]](Map.empty)
+        fiber1 <- startConsumer(queue, stopSignal)
+        _ <- IO.sleep(5.seconds)
+        _ <- IO(publishToKafka(topic, produced1))
+        fiber2 <- startConsumer(queue, stopSignal)
+        _ <- IO.sleep(5.seconds)
+        _ <- IO(publishToKafka(topic, produced2))
+        _ <- Stream
+          .fromQueueUnterminated(queue)
+          .evalMap { committable =>
+            ref.modify { counts =>
+              val key = committable.record.key
+              val newCounts = counts.updated(key, counts.getOrElse(key, 0) + 1)
+              (newCounts, newCounts)
+            }
+          }
+          .takeWhile(_.size < 200)
+          .timeout(20.seconds)
+          .compile
+          .drain
+          .guarantee(stopSignal.set(true))
+        consumer1assignments <- fiber1.joinWithNever
+        consumer2assignments <- fiber2.joinWithNever
+        keys <- ref.get
+      } yield expect(keys.size.toLong === producedTotal) and
+        expect(keys.values.sum === 236) and
+        expect(consumer1assignments.size === 1) and
+        expect(consumer1assignments(0) === Set(0, 1, 2)) and
+        expect(consumer2assignments.size === 1) and
+        expect(consumer2assignments(0) === Set(2))
+    }
+  }
+
+  test("should close all old streams on rebalance") {
+    withTopic { topic =>
+      val numPartitions = 3
+      createCustomTopic(topic, partitions = numPartitions)
+
+      val settings = consumerSettings[IO].withGroupId(UUID.randomUUID().toString)
+
+      val stream =
+        KafkaConsumer
+          .stream(settings)
+          .subscribeTo(topic)
+
+      for {
+        stopSignal <- SignallingRef[IO, Boolean](false)
+        closedStreamsRef <- Ref[IO].of(Vector.empty[Int])
+        assignmentNumRef <- Ref[IO].of(1)
+        _ <- stream
+          .flatMap(_.partitionsMapStream)
+          .filter(_.nonEmpty)
+          .evalMap { assignment =>
+            assignmentNumRef.getAndUpdate(_ + 1).map { assignmentNum =>
+              if (assignmentNum == 1) {
+                Stream
+                  .emits(assignment.map {
+                    case (partition, partitionStream) =>
+                      partitionStream.onFinalize {
+                        closedStreamsRef.update(_ :+ partition.partition())
+                      }
+                  }.toList)
+                  .covary[IO]
+              } else if (assignmentNum == 2) {
+                Stream.eval(stopSignal.set(true)) >> Stream.empty.covary[IO]
+              } else {
+                Stream.empty.covary[IO]
+              }
+            }
+          }
+          .flatten
+          .parJoinUnbounded
+          .concurrently(
+            // run second stream to start a rebalance after initial rebalance, default timeout is 3 secs
+            Stream.sleep[IO](5.seconds) >> stream.records
+          )
+          .interruptWhen(stopSignal)
+          .compile
+          .drain
+        closedStreams <- closedStreamsRef.get
+      } yield {
+        assert(closedStreams.toSet == Set(0, 1, 2))
+      }
+    }
   }
 
 }
@@ -447,222 +670,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
   }
 
   describe("KafkaConsumer#partitionsMapStream") {
-    it("should handle rebalance") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-        val produced1 = (0 until 100).map(n => s"key-$n" -> s"value->$n")
-        val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
-        val producedTotal = produced1.size.toLong + produced2.size.toLong
-
-        def startConsumer(
-          consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
-          stopSignal: SignallingRef[IO, Boolean]
-        ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] =
-          Ref[IO]
-            .of(Vector.empty[Set[Int]])
-            .flatMap { assignedPartitionsRef =>
-              KafkaConsumer
-                .stream(consumerSettings[IO])
-                .subscribeTo(topic)
-                .flatMap(_.partitionsMapStream)
-                .filter(_.nonEmpty)
-                .evalMap { assignment =>
-                  assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
-                    Stream
-                      .emits(assignment.map {
-                        case (_, stream) =>
-                          stream.evalMap(consumedQueue.offer)
-                      }.toList)
-                      .covary[IO]
-                  }
-                }
-                .flatten
-                .parJoinUnbounded
-                .interruptWhen(stopSignal)
-                .compile
-                .drain >> assignedPartitionsRef.get
-            }
-            .start
-
-        (for {
-          stopSignal <- SignallingRef[IO, Boolean](false)
-          queue <- Queue.unbounded[IO, CommittableConsumerRecord[IO, String, String]]
-          ref <- Ref.of[IO, Map[String, Int]](Map.empty)
-          fiber1 <- startConsumer(queue, stopSignal)
-          _ <- IO.sleep(5.seconds)
-          _ <- IO(publishToKafka(topic, produced1))
-          fiber2 <- startConsumer(queue, stopSignal)
-          _ <- IO.sleep(5.seconds)
-          _ <- IO(publishToKafka(topic, produced2))
-          _ <- Stream
-            .fromQueueUnterminated(queue)
-            .evalMap { committable =>
-              ref.modify { counts =>
-                val key = committable.record.key
-                val newCounts = counts.updated(key, counts.getOrElse(key, 0) + 1)
-                (newCounts, newCounts)
-              }
-            }
-            .takeWhile(_.size < 200)
-            .timeout(20.seconds)
-            .compile
-            .drain
-            .guarantee(stopSignal.set(true))
-          consumer1assignments <- fiber1.joinWithNever
-          consumer2assignments <- fiber2.joinWithNever
-          keys <- ref.get
-        } yield {
-          assert {
-            keys.size.toLong == producedTotal && {
-              keys == (0 until 200).map { n =>
-                s"key-$n" -> (if (n < 100) 2 else 1)
-              }.toMap
-            } &&
-            consumer1assignments.size == 2 &&
-            consumer1assignments(0) == Set(0, 1, 2) &&
-            consumer1assignments(1).size < 3 &&
-            consumer2assignments.size == 1 &&
-            consumer2assignments(0).size < 3 &&
-            consumer1assignments(1) ++ consumer2assignments(0) == Set(0, 1, 2)
-          }
-        }).unsafeRunSync()
-      }
-    }
-
-    it("should handle rebalance with CooperativeStickyAssignor") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-        val produced1 = (0 until 100).map(n => s"key-$n" -> s"value->$n")
-        val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
-        val producedTotal = produced1.size.toLong + produced2.size.toLong
-
-        def startConsumer(
-          consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
-          stopSignal: SignallingRef[IO, Boolean]
-        ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] =
-          Ref[IO]
-            .of(Vector.empty[Set[Int]])
-            .flatMap { assignedPartitionsRef =>
-              KafkaConsumer
-                .stream(
-                  consumerSettings[IO]
-                    .withProperties(
-                      ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG -> classOf[
-                        CooperativeStickyAssignor
-                      ].getName
-                    )
-                )
-                .subscribeTo(topic)
-                .flatMap(_.partitionsMapStream)
-                .filter(_.nonEmpty)
-                .evalMap { assignment =>
-                  assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
-                    Stream
-                      .emits(assignment.map {
-                        case (_, stream) =>
-                          stream.evalMap(consumedQueue.offer)
-                      }.toList)
-                      .covary[IO]
-                  }
-                }
-                .flatten
-                .parJoinUnbounded
-                .interruptWhen(stopSignal)
-                .compile
-                .drain >> assignedPartitionsRef.get
-            }
-            .start
-
-        (for {
-          stopSignal <- SignallingRef[IO, Boolean](false)
-          queue <- Queue.unbounded[IO, CommittableConsumerRecord[IO, String, String]]
-          ref <- Ref.of[IO, Map[String, Int]](Map.empty)
-          fiber1 <- startConsumer(queue, stopSignal)
-          _ <- IO.sleep(5.seconds)
-          _ <- IO(publishToKafka(topic, produced1))
-          fiber2 <- startConsumer(queue, stopSignal)
-          _ <- IO.sleep(5.seconds)
-          _ <- IO(publishToKafka(topic, produced2))
-          _ <- Stream
-            .fromQueueUnterminated(queue)
-            .evalMap { committable =>
-              ref.modify { counts =>
-                val key = committable.record.key
-                val newCounts = counts.updated(key, counts.getOrElse(key, 0) + 1)
-                (newCounts, newCounts)
-              }
-            }
-            .takeWhile(_.size < 200)
-            .timeout(20.seconds)
-            .compile
-            .drain
-            .guarantee(stopSignal.set(true))
-          consumer1assignments <- fiber1.joinWithNever
-          consumer2assignments <- fiber2.joinWithNever
-          keys <- ref.get
-        } yield {
-          assert {
-            keys.size.toLong == producedTotal &&
-            keys.values.sum == 236 &&
-            consumer1assignments.size == 1 &&
-            consumer1assignments(0) == Set(0, 1, 2) &&
-            consumer2assignments.size == 1 &&
-            consumer2assignments(0) == Set(2)
-          }
-        }).unsafeRunSync()
-      }
-    }
-
-    it("should close all old streams on rebalance") {
-      withTopic { topic =>
-        val numPartitions = 3
-        createCustomTopic(topic, partitions = numPartitions)
-
-        val stream =
-          KafkaConsumer
-            .stream(consumerSettings[IO].withGroupId("test"))
-            .subscribeTo(topic)
-
-        (for {
-          stopSignal <- SignallingRef[IO, Boolean](false)
-          closedStreamsRef <- Ref[IO].of(Vector.empty[Int])
-          assignmentNumRef <- Ref[IO].of(1)
-          _ <- stream
-            .flatMap(_.partitionsMapStream)
-            .filter(_.nonEmpty)
-            .evalMap { assignment =>
-              assignmentNumRef.getAndUpdate(_ + 1).map { assignmentNum =>
-                if (assignmentNum == 1) {
-                  Stream
-                    .emits(assignment.map {
-                      case (partition, partitionStream) =>
-                        partitionStream.onFinalize {
-                          closedStreamsRef.update(_ :+ partition.partition())
-                        }
-                    }.toList)
-                    .covary[IO]
-                } else if (assignmentNum == 2) {
-                  Stream.eval(stopSignal.set(true)) >> Stream.empty.covary[IO]
-                } else {
-                  Stream.empty.covary[IO]
-                }
-              }
-            }
-            .flatten
-            .parJoinUnbounded
-            .concurrently(
-              // run second stream to start a rebalance after initial rebalance, default timeout is 3 secs
-              Stream.sleep[IO](5.seconds) >> stream.records
-            )
-            .interruptWhen(stopSignal)
-            .compile
-            .drain
-          closedStreams <- closedStreamsRef.get
-        } yield {
-          assert(closedStreams.toSet == Set(0, 1, 2))
-        }).unsafeRunSync()
-      }
-    }
 
     it("should handle multiple rebalances with multiple instances under load #532") {
       withTopic { topic =>
