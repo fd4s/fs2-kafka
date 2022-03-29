@@ -39,6 +39,8 @@ object ConsumerSpec2 extends BaseWeaverSpec {
     IO(expect(KafkaConsumer[IO].toString.startsWith("ConsumerPartiallyApplied$")))
   }
 
+  // "KafkaConsumer#recrods"
+
   test("should consume all records with subscribe") {
     withTopic(3) { topic =>
       val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
@@ -108,63 +110,57 @@ object ConsumerSpec2 extends BaseWeaverSpec {
     }
   }
 
+  test("should consume all records with assign without partitions") {
+    withTopic(3) { topic =>
+      val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
+      publishToKafka(topic, produced)
+
+      val consumed =
+        KafkaConsumer
+          .stream(consumerSettings[IO].withGroupId("test"))
+          .evalTap(_.assign(topic))
+          .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+          .records
+          .map(committable => committable.record.key -> committable.record.value)
+          .interruptAfter(10.seconds)
+
+      consumed.compile.toVector.map { result =>
+        expect(result.toSet === produced.toSet)
+      }
+    }
+  }
+
+  test("should consume all records to several consumers with assign") {
+    withTopic(3) { topic =>
+      val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
+      publishToKafka(topic, produced)
+
+      val consumed =
+        KafkaConsumer
+          .stream(consumerSettings[IO].withGroupId("test2"))
+          .evalTap(_.assign(topic))
+          .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+          .records
+          .map(committable => committable.record.key -> committable.record.value)
+          .interruptAfter(10.seconds)
+
+      val res = fs2
+        .Stream(
+          consumed,
+          consumed
+        )
+        .parJoinUnbounded
+        .compile
+        .toVector
+
+      res.map(result => assert(result.sorted === (produced ++ produced).toVector.sorted))
+    }
+  }
 }
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#stream") {
-
-    it("should consume all records with assign without partitions") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-        val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
-
-        val consumed =
-          KafkaConsumer
-            .stream(consumerSettings[IO].withGroupId("test"))
-            .evalTap(_.assign(topic))
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .records
-            .map(committable => committable.record.key -> committable.record.value)
-            .interruptAfter(10.seconds)
-
-        val res =
-          consumed.compile.toVector
-            .unsafeRunSync()
-
-        res should contain theSameElementsAs produced
-      }
-    }
-
-    it("should consume all records to several consumers with assign") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-        val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
-
-        val consumed =
-          KafkaConsumer
-            .stream(consumerSettings[IO].withGroupId("test2"))
-            .evalTap(_.assign(topic))
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
-            .records
-            .map(committable => committable.record.key -> committable.record.value)
-            .interruptAfter(10.seconds)
-
-        val res = fs2
-          .Stream(
-            consumed,
-            consumed
-          )
-          .parJoinUnbounded
-          .compile
-          .toVector
-          .unsafeRunSync()
-
-        res should contain theSameElementsAs produced ++ produced
-      }
-    }
 
     it("should read from the given offset") {
       withTopic {
