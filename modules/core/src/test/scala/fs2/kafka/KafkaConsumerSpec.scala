@@ -826,7 +826,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
     withTopic(3) { topic =>
       (for {
         consumer <- KafkaConsumer
-          .stream(consumerSettings[IO])
+          .stream(consumerSettings[IO].withGroupId(topic))
           .subscribeTo(topic)
         _ <- Stream.sleep[IO](5.seconds).concurrently(consumer.records)
         queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
