@@ -50,7 +50,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
       for {
         _ <- IO.blocking(publishToKafka(topic, produced))
         consumed <- KafkaConsumer
-          .stream(consumerSettings[IO])
+          .stream(consumerSettings[IO].withGroupId(topic))
           .subscribeTo(topic)
           .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
           .records
@@ -70,7 +70,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
         _ <- IO.blocking(publishToKafka(topic, produced))
 
         consumed = KafkaConsumer
-          .stream(consumerSettings[IO].withGroupId("test"))
+          .stream(consumerSettings[IO].withGroupId(topic))
           .subscribeTo(topic)
           .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
           .records
@@ -101,7 +101,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
         partitions = NonEmptySet.fromSetUnsafe(SortedSet(0, 1, 2))
 
         consumed = KafkaConsumer
-          .stream(consumerSettings[IO].withGroupId("test2"))
+          .stream(consumerSettings[IO].withGroupId(topic))
           .evalTap(_.assign(topic, partitions))
           .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
           .records
@@ -120,7 +120,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
 
       val consumed =
         KafkaConsumer
-          .stream(consumerSettings[IO].withGroupId("test"))
+          .stream(consumerSettings[IO].withGroupId(topic))
           .evalTap(_.assign(topic))
           .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
           .records
@@ -140,7 +140,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
 
       val consumed =
         KafkaConsumer
-          .stream(consumerSettings[IO].withGroupId("test2"))
+          .stream(consumerSettings[IO].withGroupId(topic))
           .evalTap(_.assign(topic))
           .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
           .records
@@ -190,7 +190,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
       _ <- IO.blocking(publishToKafka(topic, produced))
 
       consumed <- KafkaConsumer
-        .stream(consumerSettings[IO])
+        .stream(consumerSettings[IO].withGroupId(topic))
         .flatMap { consumer =>
           val validSeekParams =
             consumer.records
@@ -222,7 +222,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
         }
         .compile
         .toVector
-    } yield expect(consumed.sorted === produced.drop(readOffset.toInt).toVector.sorted)
+    } yield expect(consumed === produced.drop(readOffset.toInt).toVector)
   }
 
   test("should commit the last processed offsets") {
@@ -436,7 +436,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
         _ <- IO.blocking(publishToKafka(topic, produced))
 
         createConsumer = KafkaConsumer
-          .stream(consumerSettings[IO])
+          .stream(consumerSettings[IO].withGroupId(topic))
           .subscribeTo(topic)
 
         committed <- (for {
@@ -472,9 +472,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
       val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
       val producedTotal = produced1.size.toLong + produced2.size.toLong
 
-      val settings = consumerSettings[IO].withProperties(
-        ConsumerConfig.GROUP_ID_CONFIG -> UUID.randomUUID().toString
-      )
+      val settings = consumerSettings[IO].withGroupId(topic)
 
       def startConsumer(
         consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
@@ -557,9 +555,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
       val produced2 = (100 until 200).map(n => s"key-$n" -> s"value->$n")
       val producedTotal = produced1.size.toLong + produced2.size.toLong
 
-      val settings = consumerSettings[IO].withProperties(
-        ConsumerConfig.GROUP_ID_CONFIG -> UUID.randomUUID().toString
-      )
+      val settings = consumerSettings[IO].withGroupId(topic)
 
       def startConsumer(
         consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
@@ -639,7 +635,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
       val numPartitions = 3
       createCustomTopic(topic, partitions = numPartitions)
 
-      val settings = consumerSettings[IO].withGroupId(UUID.randomUUID().toString)
+      val settings = consumerSettings[IO].withGroupId(topic)
 
       val stream =
         KafkaConsumer
