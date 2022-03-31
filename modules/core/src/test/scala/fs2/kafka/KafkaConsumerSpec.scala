@@ -841,116 +841,116 @@ object ConsumerSpec2 extends BaseWeaverSpec {
       }).compile.foldMonoid
     }
   }
-}
 
-final class KafkaConsumerSpec extends BaseKafkaSpec {
+  // KafkaConsumer#unsubscribe
 
-  describe("KafkaConsumer#unsubscribe") {
-    it("should correctly unsubscribe") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-        val produced = (0 until 1).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
+  test("should correctly unsubscribe") {
+    withTopic(3) { topic =>
+      val produced = (0 until 1).map(n => s"key-$n" -> s"value->$n")
 
-        val cons = KafkaConsumer
-          .stream(consumerSettings[IO].withGroupId("test"))
-          .subscribeTo(topic)
+      val cons = KafkaConsumer
+        .stream(consumerSettings[IO].withGroupId(topic))
+        .subscribeTo(topic)
 
-        val topicStream = (for {
-          cntRef <- Stream.eval(Ref.of[IO, Int](0))
-          unsubscribed <- Stream.eval(Ref.of[IO, Boolean](false))
-          partitions <- Stream.eval(Ref.of[IO, Set[TopicPartition]](Set.empty[TopicPartition]))
+      val topicStream = (for {
+        _ <- Stream.eval(IO.blocking(publishToKafka(topic, produced)))
+        cntRef <- Stream.eval(Ref.of[IO, Int](0))
+        unsubscribed <- Stream.eval(Ref.of[IO, Boolean](false))
+        partitions <- Stream.eval(Ref.of[IO, Set[TopicPartition]](Set.empty[TopicPartition]))
 
-          consumer1 <- cons
-          consumer2 <- cons
+        consumer1 <- cons
+        consumer2 <- cons
 
-          _ <- Stream(
-            consumer1.records.evalTap(_ => cntRef.update(_ + 1)),
-            consumer2.records.concurrently(
-              consumer2.assignmentStream.evalTap(
-                assignedTopicPartitions => partitions.set(assignedTopicPartitions)
-              )
+        _ <- Stream(
+          consumer1.records.evalTap(_ => cntRef.update(_ + 1)),
+          consumer2.records.concurrently(
+            consumer2.assignmentStream.evalTap(
+              assignedTopicPartitions => partitions.set(assignedTopicPartitions)
             )
-          ).parJoinUnbounded
-
-          cntValue <- Stream.eval(cntRef.get)
-          unsubscribedValue <- Stream.eval(unsubscribed.get)
-          _ <- Stream.eval(
-            if (cntValue >= 3 && !unsubscribedValue) //wait for some processed elements from first consumer
-              unsubscribed.set(true) >> consumer1.unsubscribe // unsubscribe
-            else IO.unit
           )
-          _ <- Stream.eval(IO { publishToKafka(topic, produced) }) // publish some elements to topic
+        ).parJoinUnbounded
 
-          partitionsValue <- Stream.eval(partitions.get)
-        } yield (partitionsValue)).interruptAfter(10.seconds)
+        cntValue <- Stream.eval(cntRef.get)
+        unsubscribedValue <- Stream.eval(unsubscribed.get)
+        _ <- Stream.eval(
+          if (cntValue >= 3 && !unsubscribedValue) //wait for some processed elements from first consumer
+            unsubscribed.set(true) >> consumer1.unsubscribe // unsubscribe
+          else IO.unit
+        )
+        _ <- Stream.eval(IO { publishToKafka(topic, produced) }) // publish some elements to topic
 
-        val res = topicStream.compile.toVector
-          .unsafeRunSync()
+        partitionsValue <- Stream.eval(partitions.get)
+      } yield partitionsValue).interruptAfter(10.seconds)
 
-        res.last.size shouldBe 3 // in last message should be all partitions
+      topicStream.compile.toVector.map { res =>
+        expect(res.last.size === 3) // in last message should be all partitions
       }
     }
   }
 
-  describe("KafkaConsumer#stopConsuming") {
-    it("should gracefully stop running stream") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 1)
-        val messages = 20
-        val produced1 = (0 until messages).map(n => n.toString -> n.toString).toVector
-        val produced2 = (messages until messages * 2).map(n => n.toString -> n.toString).toVector
-        publishToKafka(topic, produced1)
+  // "KafkaConsumer#stopConsuming"
 
-        // all messages from a single poll batch should land into one chunk
-        val settings = consumerSettings[IO].withMaxPollRecords(messages)
+  test("should gracefully stop running stream") {
+    withTopic(1) { topic =>
+      val messages = 20
+      val produced1 = (0 until messages).map(n => n.toString -> n.toString).toVector
+      val produced2 = (messages until messages * 2).map(n => n.toString -> n.toString).toVector
 
-        val run = for {
-          consumedRef <- Ref[IO].of(Vector.empty[(String, String)])
-          _ <- KafkaConsumer.resource(settings).use { consumer =>
-            for {
-              _ <- consumer.subscribeTo(topic)
-              _ <- consumer.records
-                .evalMap { msg =>
-                  consumedRef.getAndUpdate(_ :+ (msg.record.key -> msg.record.value)).flatMap {
-                    prevConsumed =>
-                      if (prevConsumed.isEmpty) {
-                        // stop consuming right after the first message was received and publish a new batch
-                        consumer.stopConsuming >> IO(publishToKafka(topic, produced2))
-                      } else IO.unit
-                  } >> msg.offset.commit
-                }
-                .compile
-                .drain
-            } yield ()
-          }
-          consumed <- consumedRef.get
-        } yield consumed
+      // all messages from a single poll batch should land into one chunk
+      val settings = consumerSettings[IO].withMaxPollRecords(messages).withGroupId(topic)
 
-        val consumed = run.timeout(15.seconds).unsafeRunSync()
+      val run = for {
+        _ <- IO.blocking(publishToKafka(topic, produced1))
+        consumedRef <- Ref[IO].of(Vector.empty[(String, String)])
+        _ <- KafkaConsumer.resource(settings).use { consumer =>
+          for {
+            _ <- consumer.subscribeTo(topic)
+            _ <- consumer.records
+              .evalMap { msg =>
+                consumedRef.getAndUpdate(_ :+ (msg.record.key -> msg.record.value)).flatMap {
+                  prevConsumed =>
+                    if (prevConsumed.isEmpty) {
+                      // stop consuming right after the first message was received and publish a new batch
+                      consumer.stopConsuming >> IO(publishToKafka(topic, produced2))
+                    } else IO.unit
+                } >> msg.offset.commit
+              }
+              .compile
+              .drain
+          } yield ()
+        }
+        consumed <- consumedRef.get
+      } yield consumed
 
+      run.timeout(15.seconds).map { consumed =>
         // only messages from the first batch (before stopConsuming was called) should be received
         assert(consumed == produced1)
       }
     }
+  }
 
-    it("should stop running stream even when there is no data in it") {
-      withTopic { topic =>
-        createCustomTopic(topic)
-        val settings = consumerSettings[IO]
+  test("should stop running stream even when there is no data in it") {
+    withTopic(1) { topic =>
+      val settings = consumerSettings[IO].withGroupId(topic)
 
-        val run = KafkaConsumer.resource(settings).use { consumer =>
-          for {
-            _ <- consumer.subscribeTo(topic)
-            runStream = consumer.records.compile.drain
-            stopStream = consumer.stopConsuming
-            _ <- (runStream, IO.sleep(1.second) >> stopStream).parTupled
-          } yield succeed
-        }
-
-        run.timeout(15.seconds).unsafeRunSync()
+      val run = KafkaConsumer.resource(settings).use { consumer =>
+        for {
+          _ <- consumer.subscribeTo(topic)
+          runStream = consumer.records.compile.drain
+          stopStream = consumer.stopConsuming
+          _ <- (runStream, IO.sleep(1.second) >> stopStream).parTupled
+        } yield success
       }
+
+      run.timeout(15.seconds)
     }
+  }
+
+}
+
+final class KafkaConsumerSpec extends BaseKafkaSpec {
+
+  describe("KafkaConsumer#stopConsuming") {
 
     it("should not start new streams after 'stopConsuming' call") {
       withTopic { topic =>
