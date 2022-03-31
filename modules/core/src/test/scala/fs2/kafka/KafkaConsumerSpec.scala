@@ -693,7 +693,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
 
       def run(instance: Int, allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]): IO[Unit] =
         KafkaConsumer
-          .stream(consumerSettings[IO].withGroupId("test"))
+          .stream(consumerSettings[IO].withGroupId(topic))
           .subscribeTo(topic)
           .flatMap(_.partitionsMapStream)
           .flatMap { assignment =>
@@ -793,7 +793,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
       for {
         queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
         _ <- KafkaConsumer
-          .stream(consumerSettings[IO].withProperties(customProperties: _*))
+          .stream(consumerSettings[IO].withGroupId(topic).withProperties(customProperties: _*))
           .subscribeTo(topic)
           .evalMap { consumer =>
             consumer.assignmentStream
