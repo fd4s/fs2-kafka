@@ -224,6 +224,180 @@ object ConsumerSpec2 extends BaseWeaverSpec {
     } yield expect(consumed.sorted === produced.drop(readOffset.toInt).toVector.sorted)
   }
 
+  test("should commit the last processed offsets") {
+    commitTest {
+      case (_, offsetBatch) =>
+        offsetBatch.commit
+    }
+  }
+
+  test("should interrupt the stream when terminated") {
+    withTopic { topic =>
+      val consumed =
+        KafkaConsumer
+          .stream(consumerSettings[IO])
+          .subscribeTo(topic)
+          .evalTap(_.terminate)
+          .flatTap(_.records)
+          .evalTap(_.awaitTermination)
+          .compile
+          .toVector
+
+      consumed.map(consumed => assert(consumed.isEmpty))
+    }
+  }
+
+  test("should fail with an error if not subscribed or assigned") {
+    val consumed =
+      KafkaConsumer
+        .stream(consumerSettings[IO])
+        .records
+        .compile
+        .lastOrError
+        .attempt
+
+    consumed.map(
+      consumed =>
+        assert(consumed.left.toOption.map(_.toString).contains(NotSubscribedException().toString))
+    )
+  }
+
+  test("should fail with an error if subscribe is invalid") {
+    withTopic { _ =>
+      for {
+        subscribeName <- KafkaConsumer
+          .stream(consumerSettings[IO])
+          .evalMap(_.subscribeTo(""))
+          .compile
+          .lastOrError
+          .attempt
+
+        subscribeRegex <- KafkaConsumer
+          .stream(consumerSettings[IO])
+          .subscribeTo("topic")
+          .evalMap(_.subscribe("".r))
+          .compile
+          .lastOrError
+          .attempt
+      } yield assert(subscribeName.isLeft) and assert(subscribeRegex.isLeft)
+    }
+  }
+
+  test("should fail with an error if assign is invalid") {
+    withTopic(3) { _ =>
+      KafkaConsumer
+        .stream(consumerSettings[IO])
+        .evalMap(_.assign("", NonEmptySet.fromSetUnsafe(SortedSet(0))))
+        .compile
+        .lastOrError
+        .attempt
+        .map { assignEmptyName =>
+          assert {
+            assignEmptyName.left.toOption
+              .map(_.toString)
+              .contains {
+                "java.lang.IllegalArgumentException: Topic partitions to assign to cannot have null or empty topic"
+              }
+          }
+        }
+    }
+  }
+
+  test("an error should occur if subscribe and assign at the same time") {
+    withTopic(3) { topic =>
+      for {
+        assignWithSubscribeName <- KafkaConsumer
+          .stream(consumerSettings[IO])
+          .subscribeTo(topic)
+          .evalMap(_.assign(topic, NonEmptySet.fromSetUnsafe(SortedSet(0))))
+          .compile
+          .lastOrError
+          .attempt
+
+        subscribeWithAssignWithName <- KafkaConsumer
+          .stream(consumerSettings[IO])
+          .evalTap(_.assign(topic, NonEmptySet.fromSetUnsafe(SortedSet(0))))
+          .evalMap(_.subscribeTo(topic))
+          .compile
+          .lastOrError
+          .attempt
+
+      } yield inEach(List(assignWithSubscribeName, subscribeWithAssignWithName)) { name =>
+        expect(
+          name.left.toOption
+            .map(_.toString)
+            .contains {
+              "java.lang.IllegalStateException: Subscription to topics, partitions and pattern are mutually exclusive"
+            }
+        )
+      }
+    }
+  }
+
+  test("should propagate consumer errors to stream") {
+    withTopic(3) { topic =>
+      KafkaConsumer
+        .stream {
+          consumerSettings[IO]
+            .withAutoOffsetReset(AutoOffsetReset.None)
+        }
+        .subscribeTo(topic)
+        .records
+        .compile
+        .lastOrError
+        .attempt
+        .map { consumed =>
+          consumed.left.toOption match {
+            case Some(_: NoOffsetForPartitionException) => success
+            case Some(cause)                            => failure(s"Unexpected exception: $cause")
+            case None                                   => failure(s"Unexpected result [$consumed]")
+          }
+        }
+    }
+  }
+
+  private def commitTest(
+    commit: (KafkaConsumer[IO, String, String], CommittableOffsetBatch[IO]) => IO[Unit]
+  ): IO[Expectations] = {
+    val partitionsAmount = 3
+
+    withTopic(partitionsAmount) { topic =>
+      val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
+
+      val partitions = (0 until partitionsAmount).toSet
+      for {
+        _ <- IO.blocking(publishToKafka(topic, produced))
+
+        createConsumer = KafkaConsumer
+          .stream(consumerSettings[IO])
+          .subscribeTo(topic)
+
+        committed <- (for {
+          consumer <- createConsumer
+          consumed <- consumer.records
+            .take(produced.size.toLong)
+            .map(_.offset)
+            .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
+          _ <- Stream.eval(commit(consumer, consumed))
+        } yield consumed.offsets).compile.lastOrError
+
+        actuallyCommitted <- IO.blocking {
+          withKafkaConsumer(defaultConsumerProperties) { consumer =>
+            consumer
+              .committed(partitions.map { partition =>
+                new TopicPartition(topic, partition)
+              }.asJava)
+              .asScala
+              .toMap
+          }
+        }
+
+      } yield expect(committed.values.toList.foldMap(_.offset) === produced.size.toLong) and expect(
+        committed == actuallyCommitted
+      )
+    }
+  }
+
   // partitionsmapstream
   test("should handle rebalance") {
     withTopic(3) { topic =>
@@ -451,161 +625,6 @@ object ConsumerSpec2 extends BaseWeaverSpec {
 final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#stream") {
-
-    it("should commit the last processed offsets") {
-      commitTest {
-        case (_, offsetBatch) =>
-          offsetBatch.commit
-      }
-    }
-
-    it("should interrupt the stream when terminated") {
-      withTopic { topic =>
-        val consumed =
-          KafkaConsumer
-            .stream(consumerSettings[IO])
-            .subscribeTo(topic)
-            .evalTap(_.terminate)
-            .flatTap(_.records)
-            .evalTap(_.awaitTermination)
-            .compile
-            .toVector
-            .unsafeRunSync()
-
-        assert(consumed.isEmpty)
-      }
-    }
-
-    it("should fail with an error if not subscribed or assigned") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-
-        val consumed =
-          KafkaConsumer
-            .stream(consumerSettings[IO])
-            .records
-            .compile
-            .lastOrError
-            .attempt
-            .unsafeRunSync()
-
-        assert(consumed.left.toOption.map(_.toString).contains(NotSubscribedException().toString))
-      }
-    }
-
-    it("should fail with an error if subscribe is invalid") {
-      withTopic { _ =>
-        val subscribeName =
-          KafkaConsumer
-            .stream(consumerSettings[IO])
-            .evalMap(_.subscribeTo(""))
-            .compile
-            .lastOrError
-            .attempt
-            .unsafeRunSync()
-
-        assert(subscribeName.isLeft)
-
-        val subscribeRegex =
-          KafkaConsumer
-            .stream(consumerSettings[IO])
-            .subscribeTo("topic")
-            .evalMap(_.subscribe("".r))
-            .compile
-            .lastOrError
-            .attempt
-            .unsafeRunSync()
-
-        assert(subscribeRegex.isLeft)
-      }
-    }
-
-    it("should fail with an error if assign is invalid") {
-      withTopic { _ =>
-        val assignEmptyName =
-          KafkaConsumer
-            .stream(consumerSettings[IO])
-            .evalMap(_.assign("", NonEmptySet.fromSetUnsafe(SortedSet(0))))
-            .compile
-            .lastOrError
-            .attempt
-            .unsafeRunSync()
-
-        assert {
-          assignEmptyName.left.toOption
-            .map(_.toString)
-            .contains {
-              "java.lang.IllegalArgumentException: Topic partitions to assign to cannot have null or empty topic"
-            }
-        }
-      }
-    }
-
-    it("an error should occur if subscribe and assign at the same time") {
-      withTopic { topic =>
-        val assignWithSubscribeName =
-          KafkaConsumer
-            .stream(consumerSettings[IO])
-            .subscribeTo(topic)
-            .evalMap(_.assign(topic, NonEmptySet.fromSetUnsafe(SortedSet(0))))
-            .compile
-            .lastOrError
-            .attempt
-            .unsafeRunSync()
-
-        assert {
-          assignWithSubscribeName.left.toOption
-            .map(_.toString)
-            .contains {
-              "java.lang.IllegalStateException: Subscription to topics, partitions and pattern are mutually exclusive"
-            }
-        }
-
-        val subscribeWithAssignWithName =
-          KafkaConsumer
-            .stream(consumerSettings[IO])
-            .evalTap(_.assign(topic, NonEmptySet.fromSetUnsafe(SortedSet(0))))
-            .evalMap(_.subscribeTo(topic))
-            .compile
-            .lastOrError
-            .attempt
-            .unsafeRunSync()
-
-        assert {
-          subscribeWithAssignWithName.left.toOption
-            .map(_.toString)
-            .contains {
-              "java.lang.IllegalStateException: Subscription to topics, partitions and pattern are mutually exclusive"
-            }
-        }
-
-      }
-    }
-
-    it("should propagate consumer errors to stream") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-
-        val consumed =
-          KafkaConsumer
-            .stream {
-              consumerSettings[IO]
-                .withAutoOffsetReset(AutoOffsetReset.None)
-            }
-            .subscribeTo(topic)
-            .records
-            .compile
-            .lastOrError
-            .attempt
-            .unsafeRunSync()
-
-        consumed.left.toOption match {
-          case Some(_: NoOffsetForPartitionException) => succeed
-          case Some(cause)                            => fail("Unexpected exception", cause)
-          case None                                   => fail(s"Unexpected result [$consumed]")
-        }
-      }
-    }
 
     it("should be able to work with offsets") {
       withTopic { topic =>
