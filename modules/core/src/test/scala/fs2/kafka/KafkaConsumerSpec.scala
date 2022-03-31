@@ -399,9 +399,12 @@ object ConsumerSpec2 extends BaseWeaverSpec {
             for {
               assigned <- consumer.assignment
               _ <- exp.update(_ && expect(assigned.nonEmpty))
+              beginning <- consumer.beginningOffsets(assigned)
               _ <- consumer.seekToBeginning(assigned)
-              start <- assigned.toList.parTraverse(consumer.position)
-              _ <- exp.update(_ && expect(start.forall(_ === 0)))
+              start <- assigned.toList.parTraverse(tp => consumer.position(tp).tupleLeft(tp))
+              _ <- exp.update(_ && expect(start.forall {
+                case (tp, offset) => offset === beginning(tp)
+              }))
               _ <- consumer.seekToEnd(assigned)
               end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
               _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
@@ -740,64 +743,62 @@ object ConsumerSpec2 extends BaseWeaverSpec {
       } yield success
     }
   }
+
+  // KafkaConsumer#assignmentStream
+
+  test("should stream assignment updates to listeners") {
+    withTopic(3) { topic =>
+      val consumer =
+        for {
+          queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
+          _ <- KafkaConsumer
+            .stream(consumerSettings[IO])
+            .subscribeTo(topic)
+            .evalMap { consumer =>
+              consumer.assignmentStream
+                .concurrently(consumer.records)
+                .evalMap(as => queue.offer(Some(as)))
+                .compile
+                .drain
+                .start
+                .void
+            }
+        } yield queue
+
+      (for {
+        queue1 <- consumer
+        _ <- Stream.sleep(5.seconds)
+        queue2 <- consumer
+        _ <- Stream.sleep(5.seconds)
+        _ <- Stream.eval(queue1.offer(None))
+        _ <- Stream.eval(queue2.offer(None))
+        consumer1Updates <- Stream.eval(
+          Stream.fromQueueNoneTerminated(queue1).compile.toList
+        )
+        consumer2Updates <- Stream.eval(
+          Stream.fromQueueNoneTerminated(queue2).compile.toList
+        )
+      } yield assert {
+        // Startup assignments (zero), initial assignments (all topics),
+        // revoke all on 2nd joining (zero), assign rebalanced set (< 3)
+        consumer1Updates.length == 4 &&
+        consumer1Updates.head.isEmpty &&
+        consumer1Updates(1).size == 3 &&
+        consumer1Updates(2).isEmpty &&
+        consumer1Updates(3).size < 3 &&
+        // Startup assignments (zero), initial assignments (< 3)
+        consumer2Updates.length == 2 &&
+        consumer2Updates.head.isEmpty &&
+        consumer2Updates(1).size < 3 &&
+        (consumer1Updates(3) ++ consumer2Updates(1)) == consumer1Updates(1)
+      }).compile.foldMonoid
+    }
+  }
 }
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#assignmentStream") {
-    it("should stream assignment updates to listeners") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 3)
-
-        val consumer =
-          for {
-            queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
-            _ <- KafkaConsumer
-              .stream(consumerSettings[IO])
-              .subscribeTo(topic)
-              .evalMap { consumer =>
-                consumer.assignmentStream
-                  .concurrently(consumer.records)
-                  .evalMap(as => queue.offer(Some(as)))
-                  .compile
-                  .drain
-                  .start
-                  .void
-              }
-          } yield {
-            queue
-          }
-
-        (for {
-          queue1 <- consumer
-          _ <- Stream.eval(IO.sleep(5.seconds))
-          queue2 <- consumer
-          _ <- Stream.eval(IO.sleep(5.seconds))
-          _ <- Stream.eval(queue1.offer(None))
-          _ <- Stream.eval(queue2.offer(None))
-          consumer1Updates <- Stream.eval(
-            Stream.fromQueueNoneTerminated(queue1).compile.toList
-          )
-          consumer2Updates <- Stream.eval(
-            Stream.fromQueueNoneTerminated(queue2).compile.toList
-          )
-          _ <- Stream.eval(IO(assert {
-            // Startup assignments (zero), initial assignments (all topics),
-            // revoke all on 2nd joining (zero), assign rebalanced set (< 3)
-            consumer1Updates.length == 4 &&
-            consumer1Updates.head.isEmpty &&
-            consumer1Updates(1).size == 3 &&
-            consumer1Updates(2).isEmpty &&
-            consumer1Updates(3).size < 3 &&
-            // Startup assignments (zero), initial assignments (< 3)
-            consumer2Updates.length == 2 &&
-            consumer2Updates.head.isEmpty &&
-            consumer2Updates(1).size < 3 &&
-            (consumer1Updates(3) ++ consumer2Updates(1)) == consumer1Updates(1)
-          }))
-        } yield ()).compile.drain.unsafeRunSync()
-      }
-    }
 
     it("should stream assignment updates to listeners when using CooperativeStickyAssignor") {
       withTopic { topic =>
@@ -831,9 +832,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         (for {
           queue1 <- consumer
-          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- Stream.sleep[IO](5.seconds)
           queue2 <- consumer
-          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- Stream.sleep[IO](5.seconds)
           _ <- Stream.eval(queue1.offer(None))
           _ <- Stream.eval(queue2.offer(None))
           consumer1Updates <- Stream.eval(
@@ -867,12 +868,12 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           consumer <- KafkaConsumer
             .stream(consumerSettings[IO])
             .subscribeTo(topic)
-          _ <- Stream.eval(IO.sleep(5.seconds)).concurrently(consumer.records)
+          _ <- Stream.sleep[IO](5.seconds).concurrently(consumer.records)
           queue <- Stream.eval(Queue.unbounded[IO, Option[SortedSet[TopicPartition]]])
           _ <- Stream.eval(
             consumer.assignmentStream.evalTap(as => queue.offer(Some(as))).compile.drain.start
           )
-          _ <- Stream.eval(IO.sleep(5.seconds))
+          _ <- Stream.sleep[IO](5.seconds)
           _ <- Stream.eval(queue.offer(None))
           updates <- Stream.eval(Stream.fromQueueNoneTerminated(queue).compile.toList)
           _ <- Stream.eval(IO(assert {
