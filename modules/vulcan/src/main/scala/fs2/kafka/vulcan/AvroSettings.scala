@@ -260,7 +260,7 @@ object AvroSettings {
                   // being produced) or logical types such as timestamp-millis (where the logical
                   // type is lost).
                   val parsedSchema = new AvroSchema(schema.toString)
-                  override def serialize(topic: String, record: Any): Array[Byte] = {
+                  override def serialize(topic: String, record: AnyRef): Array[Byte] = {
                     if (record == null) {
                       return null
                     }
