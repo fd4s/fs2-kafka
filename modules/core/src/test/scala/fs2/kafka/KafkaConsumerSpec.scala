@@ -400,17 +400,19 @@ object ConsumerSpec2 extends BaseWeaverSpec {
               beginning <- consumer.beginningOffsets(assigned)
               _ <- consumer.seekToBeginning(assigned)
               start <- assigned.toList.parTraverse(tp => consumer.position(tp).tupleLeft(tp))
-              _ <- exp.update(_ && expect(start.forall {
-                case (tp, offset) => offset === beginning(tp)
-              }))
+              _ <- exp.update(_ && forEach(start){
+                case (tp, offset) => expect(offset === beginning(tp))
+              })
               _ <- consumer.seekToEnd(assigned)
               end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
               _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
+              assignedNow <- consumer.assignment
+              _ <- exp.update(_ && expect(assigned == assignedNow))
               _ <- consumer.seekToBeginning
-              /* start */
-              _ <- assigned.toList.parTraverse(consumer.position)
-//              _ <- exp.update(_ && forEach(start)(offset => expect(offset === 0))) flaky - wasn't a real assertion before
-              _ <- consumer.seekToEnd
+              start <- assigned.toList.parTraverse(tp => consumer.position(tp).tupleLeft(tp))
+              _ <- exp.update(_ && forEach(start){
+                case (tp, offset) => expect(offset === beginning(tp))
+              })
               end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
               _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
             } yield ()
