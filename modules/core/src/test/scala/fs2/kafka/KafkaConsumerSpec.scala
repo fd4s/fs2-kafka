@@ -66,7 +66,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
-    it("should consume all records with subscribing for several consumers") {
+    it("should consume all records at least once with subscribing for several consumers") {
       withTopic { topic =>
         createCustomTopic(topic, partitions = 3)
         val produced = (0 until 5).map(n => s"key-$n" -> s"value->$n")
@@ -91,7 +91,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .toVector
           .unsafeRunSync()
 
-        res should contain theSameElementsAs produced
+        // duplication is currently possible.
+        res.distinct should contain theSameElementsAs produced
 
       }
     }
