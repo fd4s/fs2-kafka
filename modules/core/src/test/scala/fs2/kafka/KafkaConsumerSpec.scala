@@ -20,7 +20,6 @@ import org.apache.kafka.common.errors.TimeoutException
 import org.scalatest.Assertion
 import weaver.Expectations
 
-import java.util.UUID
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 object ConsumerSpec2 extends BaseWeaverSpec {
