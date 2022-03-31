@@ -1,5 +1,6 @@
 package fs2.kafka
 
+import cats.Monoid
 import cats.data.NonEmptySet
 import cats.effect.Ref
 import cats.effect.{Fiber, IO}
@@ -356,6 +357,69 @@ object ConsumerSpec2 extends BaseWeaverSpec {
     }
   }
 
+  test("should be able to work with offsets") {
+    withTopic(1) { topic =>
+      val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
+      for {
+        _ <- IO.blocking(publishToKafka(topic, produced))
+
+        topicPartition = new TopicPartition(topic, 0)
+        topicPartitions = Set(topicPartition)
+        timeout = 10.seconds
+        exp <- IO.ref(Monoid[Expectations].empty)
+        _ <- KafkaConsumer
+          .stream(consumerSettings[IO])
+          .subscribeTo(topic)
+          .flatTap { consumer =>
+            consumer.records
+              .take(produced.size.toLong)
+              .map(_.offset)
+              .chunks
+              .evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
+          }
+          .evalTap { consumer =>
+            for {
+              start <- consumer.beginningOffsets(topicPartitions)
+              startTimeout <- consumer.beginningOffsets(topicPartitions, timeout)
+              _ <- exp.update(
+                _ && assert(start == startTimeout && start == Map(topicPartition -> 0L))
+              )
+            } yield ()
+          }
+          .evalTap { consumer =>
+            for {
+              end <- consumer.endOffsets(topicPartitions)
+              endTimeout <- consumer.endOffsets(topicPartitions, timeout)
+              _ <- exp.update(
+                _ && assert(end == endTimeout && end == Map(topicPartition -> produced.size.toLong))
+              )
+            } yield ()
+          }
+          .evalTap { consumer =>
+            for {
+              assigned <- consumer.assignment
+              _ <- exp.update(_ && expect(assigned.nonEmpty))
+              _ <- consumer.seekToBeginning(assigned)
+              start <- assigned.toList.parTraverse(consumer.position)
+              _ <- exp.update(_ && expect(start.forall(_ === 0)))
+              _ <- consumer.seekToEnd(assigned)
+              end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
+              _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
+              _ <- consumer.seekToBeginning
+              start <- assigned.toList.parTraverse(consumer.position)
+              _ <- exp.update(_ && expect(start.forall(_ === 0)))
+              _ <- consumer.seekToEnd
+              end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
+              _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
+            } yield ()
+          }
+          .compile
+          .drain
+        expectations <- exp.get
+      } yield expectations
+    }
+  }
+
   private def commitTest(
     commit: (KafkaConsumer[IO, String, String], CommittableOffsetBatch[IO]) => IO[Unit]
   ): IO[Expectations] = {
@@ -620,136 +684,65 @@ object ConsumerSpec2 extends BaseWeaverSpec {
     }
   }
 
-}
+  test("should handle multiple rebalances with multiple instances under load #532") {
+    withTopic(3) { topic =>
+      val produced = (0 until 10000).map(n => s"key-$n" -> s"value->$n")
 
-final class KafkaConsumerSpec extends BaseKafkaSpec {
-
-  describe("KafkaConsumer#stream") {
-
-    it("should be able to work with offsets") {
-      withTopic { topic =>
-        createCustomTopic(topic, partitions = 1)
-        val produced = (0 until 100).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
-
-        val topicPartition = new TopicPartition(topic, 0)
-        val topicPartitions = Set(topicPartition)
-        val timeout = 10.seconds
-
+      def run(instance: Int, allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]): IO[Unit] =
         KafkaConsumer
-          .stream(consumerSettings[IO])
+          .stream(consumerSettings[IO].withGroupId("test"))
           .subscribeTo(topic)
-          .flatTap { consumer =>
-            consumer.records
-              .take(produced.size.toLong)
-              .map(_.offset)
-              .chunks
-              .evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
-          }
-          .evalTap { consumer =>
-            for {
-              start <- consumer.beginningOffsets(topicPartitions)
-              startTimeout <- consumer.beginningOffsets(topicPartitions, timeout)
-              _ <- IO(assert(start == startTimeout && start == Map(topicPartition -> 0L)))
-            } yield ()
-          }
-          .evalTap { consumer =>
-            for {
-              end <- consumer.endOffsets(topicPartitions)
-              endTimeout <- consumer.endOffsets(topicPartitions, timeout)
-              _ <- IO(
-                assert(end == endTimeout && end == Map(topicPartition -> produced.size.toLong))
-              )
-            } yield ()
-          }
-          .evalTap { consumer =>
-            for {
-              assigned <- consumer.assignment
-              _ <- IO(assert(assigned.nonEmpty))
-              _ <- consumer.seekToBeginning(assigned)
-              start <- assigned.toList.parTraverse(consumer.position)
-              _ <- IO(start.forall(_ === 0))
-              _ <- consumer.seekToEnd(assigned)
-              end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
-              _ <- IO(end.sum === produced.size)
-              _ <- consumer.seekToBeginning
-              start <- assigned.toList.parTraverse(consumer.position)
-              _ <- IO(start.forall(_ === 0))
-              _ <- consumer.seekToEnd
-              end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
-              _ <- IO(end.sum === produced.size)
-            } yield ()
+          .flatMap(_.partitionsMapStream)
+          .flatMap { assignment =>
+            Stream.eval(allAssignments.update { current =>
+              current.updated(instance, assignment.keySet.map(_.partition()))
+            }) >> Stream
+              .emits(assignment.map {
+                case (_, partitionStream) =>
+                  partitionStream.evalMap(_ => IO.sleep(10.millis)) // imitating some work
+              }.toList)
+              .parJoinUnbounded
           }
           .compile
           .drain
-          .unsafeRunSync()
-      }
-    }
 
-  }
+      def checkAssignments(
+        allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]
+      )(instances: Set[Int]) =
+        allAssignments.discrete
+          .filter { state =>
+            state.keySet == instances &&
+            instances.forall { instance =>
+              state.get(instance).exists(_.nonEmpty)
+            } && state.values.toList.flatMap(_.toList).sorted == List(0, 1, 2)
+          }
+          .take(1)
+          .compile
+          .drain
 
-  describe("KafkaConsumer#partitionsMapStream") {
-
-    it("should handle multiple rebalances with multiple instances under load #532") {
-      withTopic { topic =>
-        val numPartitions = 3
-        createCustomTopic(topic, partitions = numPartitions)
-
-        val produced = (0 until 10000).map(n => s"key-$n" -> s"value->$n")
-        publishToKafka(topic, produced)
-
-        def run(instance: Int, allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]): IO[Unit] =
-          KafkaConsumer
-            .stream(consumerSettings[IO].withGroupId("test"))
-            .subscribeTo(topic)
-            .flatMap(_.partitionsMapStream)
-            .flatMap { assignment =>
-              Stream.eval(allAssignments.update { current =>
-                current.updated(instance, assignment.keySet.map(_.partition()))
-              }) >> Stream
-                .emits(assignment.map {
-                  case (_, partitionStream) =>
-                    partitionStream.evalMap(_ => IO.sleep(10.millis)) // imitating some work
-                }.toList)
-                .parJoinUnbounded
-            }
-            .compile
-            .drain
-
-        def checkAssignments(
-          allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]
-        )(instances: Set[Int]) =
-          allAssignments.discrete
-            .filter { state =>
-              state.keySet == instances &&
-              instances.forall { instance =>
-                state.get(instance).exists(_.nonEmpty)
-              } && state.values.toList.flatMap(_.toList).sorted == List(0, 1, 2)
-            }
-            .take(1)
-            .compile
-            .drain
-
-        (for {
-          allAssignments <- SignallingRef[IO, Map[Int, Set[Int]]](Map.empty)
-          check = checkAssignments(allAssignments)(_)
-          fiber0 <- run(0, allAssignments).start
-          _ <- check(Set(0))
-          fiber1 <- run(1, allAssignments).start
-          _ <- check(Set(0, 1))
-          fiber2 <- run(2, allAssignments).start
-          _ <- check(Set(0, 1, 2))
-          _ <- fiber2.cancel
-          _ <- allAssignments.update(_ - 2)
-          _ <- check(Set(0, 1))
-          _ <- fiber1.cancel
-          _ <- allAssignments.update(_ - 1)
-          _ <- check(Set(0))
-          _ <- fiber0.cancel
-        } yield succeed).unsafeRunSync()
-      }
+      for {
+        _ <- IO.blocking(publishToKafka(topic, produced))
+        allAssignments <- SignallingRef[IO, Map[Int, Set[Int]]](Map.empty)
+        check = checkAssignments(allAssignments)(_)
+        fiber0 <- run(0, allAssignments).start
+        _ <- check(Set(0))
+        fiber1 <- run(1, allAssignments).start
+        _ <- check(Set(0, 1))
+        fiber2 <- run(2, allAssignments).start
+        _ <- check(Set(0, 1, 2))
+        _ <- fiber2.cancel
+        _ <- allAssignments.update(_ - 2)
+        _ <- check(Set(0, 1))
+        _ <- fiber1.cancel
+        _ <- allAssignments.update(_ - 1)
+        _ <- check(Set(0))
+        _ <- fiber0.cancel
+      } yield success
     }
   }
+}
+
+final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#assignmentStream") {
     it("should stream assignment updates to listeners") {
