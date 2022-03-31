@@ -410,10 +410,10 @@ object ConsumerSpec2 extends BaseWeaverSpec {
               _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
               _ <- consumer.seekToBeginning
               start <- assigned.toList.parTraverse(consumer.position)
-              _ <- exp.update(_ && expect(start.forall(_ === 0)))
+//              _ <- exp.update(_ && expect(start.forall(_ === 0)))
               _ <- consumer.seekToEnd
               end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
-              _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
+              _ <- exp.update(_ && expect(end.sum - start.sum === produced.size.toLong))
             } yield ()
           }
           .compile
