@@ -368,7 +368,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
         timeout = 10.seconds
         exp <- IO.ref(Monoid[Expectations].empty)
         _ <- KafkaConsumer
-          .stream(consumerSettings[IO])
+          .stream(consumerSettings[IO].withGroupId(topic))
           .subscribeTo(topic)
           .flatTap { consumer =>
             consumer.records
