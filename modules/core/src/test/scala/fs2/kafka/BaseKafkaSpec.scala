@@ -72,7 +72,7 @@ trait BaseKafkaSpecBase {
     case _ => "confluentinc/cp-kafka"
   }
 
-  val container: KafkaContainer = new KafkaContainer()
+  lazy val container: KafkaContainer = new KafkaContainer()
     .configure { container =>
       container
         .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
