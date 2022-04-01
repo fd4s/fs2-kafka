@@ -364,7 +364,7 @@ lazy val scalaSettings = Seq(
 
 lazy val testSettings = Seq(
   Test / logBuffered := false,
-  Test / parallelExecution := false,
+  Test / parallelExecution := true,
   testFrameworks += new TestFramework("weaver.framework.CatsEffect"),
   Test / testOptions += Tests.Argument("-oDF")
 )
