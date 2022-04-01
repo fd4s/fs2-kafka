@@ -17,6 +17,7 @@ import org.apache.kafka.clients.consumer.{
 }
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.TimeoutException
+import fs2.kafka.instances._
 import org.scalatest.Assertion
 import weaver.{Expectations, GlobalRead}
 
@@ -24,7 +25,11 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 class ConsumerSpec2(g: GlobalRead) extends BaseWeaverSpec {
 
-  override def sharedResource: Resource[IO, KafkaContainer] = g.getOrFailR[KafkaContainer]()
+  override def sharedResource: Resource[IO, KafkaContainer] =
+    g.getR[KafkaContainer]().flatMap {
+      case Some(c) => Resource.pure(c)
+      case None    => ContainerResource(IO(BaseWeaverSpecShared.container))
+    }
 
   type Consumer = KafkaConsumer[IO, String, String]
 
@@ -369,7 +374,7 @@ class ConsumerSpec2(g: GlobalRead) extends BaseWeaverSpec {
         exp <- IO.ref(Monoid[Expectations].empty)
         _ <- KafkaConsumer
           .stream(consumerSettings[IO].withGroupId(topic))
-          .subscribeTo(topic)
+          .evalTap(_.assign(NonEmptySet.fromSetUnsafe(SortedSet.from(topicPartitions))))
           .flatTap { consumer =>
             consumer.records
               .take(produced.size.toLong)
@@ -399,22 +404,15 @@ class ConsumerSpec2(g: GlobalRead) extends BaseWeaverSpec {
             for {
               assigned <- consumer.assignment
               _ <- exp.update(_ && expect(assigned.nonEmpty))
-              beginning <- consumer.beginningOffsets(assigned)
               _ <- consumer.seekToBeginning(assigned)
-              start <- assigned.toList.parTraverse(tp => consumer.position(tp).tupleLeft(tp))
-              _ <- exp.update(_ && forEach(start) {
-                case (tp, offset) => expect(offset === beginning(tp))
-              })
+              start <- assigned.toList.parTraverse(consumer.position)
+              _ <- exp.update(_ && forEach(start)(offset => expect(offset === 0)))
               _ <- consumer.seekToEnd(assigned)
               end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
               _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
-              assignedNow <- consumer.assignment
-              _ <- exp.update(_ && expect(assigned == assignedNow))
               _ <- consumer.seekToBeginning
-              start <- assigned.toList.parTraverse(tp => consumer.position(tp).tupleLeft(tp))
-              _ <- exp.update(_ && forEach(start) {
-                case (tp, offset) => expect(offset === beginning(tp))
-              })
+              start <- assigned.toList.parTraverse(consumer.position)
+              _ <- exp.update(_ && forEach(start)(offset => expect(offset === 0)))
               end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
               _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
             } yield ()
