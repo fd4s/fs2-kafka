@@ -400,7 +400,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
               beginning <- consumer.beginningOffsets(assigned)
               _ <- consumer.seekToBeginning(assigned)
               start <- assigned.toList.parTraverse(tp => consumer.position(tp).tupleLeft(tp))
-              _ <- exp.update(_ && forEach(start){
+              _ <- exp.update(_ && forEach(start) {
                 case (tp, offset) => expect(offset === beginning(tp))
               })
               _ <- consumer.seekToEnd(assigned)
@@ -410,7 +410,7 @@ object ConsumerSpec2 extends BaseWeaverSpec {
               _ <- exp.update(_ && expect(assigned == assignedNow))
               _ <- consumer.seekToBeginning
               start <- assigned.toList.parTraverse(tp => consumer.position(tp).tupleLeft(tp))
-              _ <- exp.update(_ && forEach(start){
+              _ <- exp.update(_ && forEach(start) {
                 case (tp, offset) => expect(offset === beginning(tp))
               })
               end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
