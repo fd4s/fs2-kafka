@@ -8,7 +8,7 @@ val fs2Version = "3.2.5"
 
 val kafkaVersion = "3.1.0"
 
-val testcontainersScalaVersion = "0.40.0"
+val testcontainersScalaVersion = "0.40.4"
 
 val vulcanVersion = "1.8.0"
 
@@ -99,10 +99,8 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    ("com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion)
-      .cross(CrossVersion.for3Use2_13),
-    ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
-      .cross(CrossVersion.for3Use2_13),
+    "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
+    "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
     "org.typelevel" %% "discipline-scalatest" % "2.1.5",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
@@ -206,6 +204,8 @@ ThisBuild / githubWorkflowBuild := Seq(
 
 ThisBuild / githubWorkflowArtifactUpload := false
 
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
+
 ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
 ThisBuild / githubWorkflowPublishTargetBranches :=
   Seq(RefPredicate.StartsWith(Ref.Tag("v")))
@@ -280,13 +280,19 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.produce"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.metrics"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.committed"),
 
       // package-private
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.from"),
 
       // sealed
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withDeserializers"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withSerializers")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withSerializers"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
+      ProblemFilters.exclude[FinalMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
+
+      // private
+        ProblemFilters.exclude[Problem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.*")
     )
     // format: on
   }

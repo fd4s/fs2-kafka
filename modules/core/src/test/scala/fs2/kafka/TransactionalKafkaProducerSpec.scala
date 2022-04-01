@@ -68,7 +68,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       (for {
         producer <- TransactionalKafkaProducer.stream(
           TransactionalProducerSettings(
-            "id",
+            s"id-$topic",
             producerSettings[IO]
               .withRetries(Int.MaxValue)
           )
@@ -154,7 +154,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       (for {
         producer <- TransactionalKafkaProducer.stream(
           TransactionalProducerSettings(
-            "id",
+            s"id-$topic",
             producerSettings[IO]
               .withRetries(Int.MaxValue)
           )
@@ -216,7 +216,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
-              "id",
+              s"id-$topic",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             )
@@ -298,7 +298,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
-              "id",
+              s"id-$topic",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             )
@@ -340,6 +340,36 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     }
   }
 
+  it("should get metrics") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+
+      val info =
+        TransactionalKafkaProducer[IO]
+          .stream(
+            TransactionalProducerSettings(
+              transactionalId = s"id-$topic",
+              producerSettings = producerSettings[IO].withRetries(Int.MaxValue)
+            )
+          )
+          .evalMap(_.metrics)
+
+      val res =
+        info
+          .take(1)
+          .compile
+          .lastOrError
+          .unsafeRunSync()
+
+      assert(res.nonEmpty)
+    }
+  }
+}
+
+// TODO: after switching from ForEachTestContainer to ForAllTestContainer, this fails
+// if run with a shared container with the following error:
+// org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one. was not an instance of org.apache.kafka.common.errors.InvalidProducerEpochException, but an instance of org.apache.kafka.common.errors.ProducerFencedException
+class TransactionalKafkaProducerTimeoutSpec extends BaseKafkaSpec with EitherValues {
   it("should use user-specified transaction timeouts") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
@@ -364,7 +394,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
-              "id",
+              s"id-$topic",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             ).withTransactionTimeout(transactionTimeoutInterval - 250.millis)
@@ -399,28 +429,4 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     }
   }
 
-  it("should get metrics") {
-    withTopic { topic =>
-      createCustomTopic(topic, partitions = 3)
-
-      val info =
-        TransactionalKafkaProducer[IO]
-          .stream(
-            TransactionalProducerSettings(
-              transactionalId = "id",
-              producerSettings = producerSettings[IO].withRetries(Int.MaxValue)
-            )
-          )
-          .evalMap(_.metrics)
-
-      val res =
-        info
-          .take(1)
-          .compile
-          .lastOrError
-          .unsafeRunSync()
-
-      assert(res.nonEmpty)
-    }
-  }
 }
