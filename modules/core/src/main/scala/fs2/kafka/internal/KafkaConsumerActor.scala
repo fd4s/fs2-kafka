@@ -513,6 +513,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
             case HandlePollResult.CompletedAndStored(completeFetches, completedLog, storedLog, _) =>
               completeFetches >> logging.log(completedLog) >> logging.log(storedLog)
           }) >> result.pendingCommits.traverse_(_.commit)
+
         }
     }
     ref.get.flatMap { state =>

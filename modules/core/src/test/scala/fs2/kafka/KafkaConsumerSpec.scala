@@ -22,6 +22,7 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
+
   type Consumer = KafkaConsumer[IO, String, String]
 
   type ConsumerStream = Stream[IO, CommittableConsumerRecord[IO, String, String]]
@@ -91,6 +92,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .unsafeRunSync()
 
         res should contain theSameElementsAs produced
+
       }
     }
 
@@ -323,6 +325,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               "java.lang.IllegalStateException: Subscription to topics, partitions and pattern are mutually exclusive"
             }
         }
+
       }
     }
 

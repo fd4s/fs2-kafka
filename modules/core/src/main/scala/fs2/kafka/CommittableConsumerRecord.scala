@@ -28,6 +28,7 @@ import cats.{Applicative, Bitraverse, Eq, Eval, Show, Traverse}
   * can be used to create a new instance.
   */
 sealed abstract class CommittableConsumerRecord[F[_], +K, +V] {
+
   /**
     * The Kafka record for the [[CommittableConsumerRecord]]. If you
     * are not committing offsets to Kafka, simply use this to get the
