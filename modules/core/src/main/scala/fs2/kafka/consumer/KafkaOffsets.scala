@@ -28,7 +28,7 @@ trait KafkaOffsets[F[_]] {
     * Note that this seek evaluates lazily, and only on the next call
     * to `poll` or `position`.
     */
-  def seekToBeginning: F[Unit]
+  def seekToBeginning: F[Unit] = seekToBeginning(List.empty[TopicPartition])
 
   /**
     * Seeks to the first offset for each of the specified partitions.
@@ -48,7 +48,7 @@ trait KafkaOffsets[F[_]] {
     * Note that this seek evaluates lazily, and only on the next call
     * to `poll` or `position`.
     */
-  def seekToEnd: F[Unit]
+  def seekToEnd: F[Unit] = seekToEnd(List.empty[TopicPartition])
 
   /**
     * Seeks to the last offset for each of the specified partitions.

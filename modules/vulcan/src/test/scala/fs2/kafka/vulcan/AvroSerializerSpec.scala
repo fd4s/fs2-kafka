@@ -2,6 +2,7 @@ package fs2.kafka.vulcan
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import fs2.kafka.Headers
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
 import vulcan.{AvroError, Codec}
@@ -14,6 +15,25 @@ final class AvroSerializerSpec extends AnyFunSpec {
 
       assert(serializer.forKey.attempt.unsafeRunSync().isRight)
       assert(serializer.forValue.attempt.unsafeRunSync().isRight)
+    }
+
+    it("auto-registers union schemas") {
+      (avroSerializer[Either[Int, Boolean]]
+        .using(avroSettings)
+        .forValue
+        .flatMap(
+          _.serialize(
+            "test-union-topic",
+            Headers.empty,
+            Right(true)
+          )
+        ))
+        .unsafeRunSync()
+      assert(
+        schemaRegistryClient
+          .getLatestSchemaMetadata("test-union-topic-value")
+          .getSchema === """["int","boolean"]"""
+      )
     }
 
     it("raises schema errors") {

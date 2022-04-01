@@ -6,7 +6,7 @@
 
 package fs2.kafka.internal
 
-import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector, StateT}
+import cats.data.{Chain, NonEmptyVector, StateT}
 import cats.effect._
 import cats.effect.std._
 import cats.effect.syntax.all._
@@ -21,7 +21,6 @@ import fs2.kafka.internal.LogEntry._
 import fs2.kafka.internal.syntax._
 import java.time.Duration
 import java.util
-import java.util.regex.Pattern
 
 import org.apache.kafka.clients.consumer.{ConsumerRebalanceListener, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
@@ -46,7 +45,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
   */
 private[kafka] final class KafkaConsumerActor[F[_]](
   settings: ConsumerSettings[F, _, _],
-  ref: Ref[F, State[F]],
+  val ref: Ref[F, State[F]],
   requests: Queue[F, Request[F]],
   withConsumer: WithConsumer[F]
 )(
@@ -63,7 +62,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
   private[kafka] val consumerGroupId: Option[String] =
     settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG)
 
-  private[this] val consumerRebalanceListener: ConsumerRebalanceListener =
+  val consumerRebalanceListener: ConsumerRebalanceListener =
     new ConsumerRebalanceListener {
       override def onPartitionsRevoked(partitions: util.Collection[TopicPartition]): Unit =
         dispatcher.unsafeRunSync(revoked(partitions.toSortedSet))
@@ -71,121 +70,6 @@ private[kafka] final class KafkaConsumerActor[F[_]](
       override def onPartitionsAssigned(partitions: util.Collection[TopicPartition]): Unit =
         dispatcher.unsafeRunSync(assigned(partitions.toSortedSet))
     }
-
-  private[this] def subscribe(
-    topics: NonEmptyList[String],
-    callback: Either[Throwable, Unit] => F[Unit]
-  ): F[Unit] = {
-    val subscribe =
-      withConsumer.blocking {
-        _.subscribe(
-          topics.toList.asJava,
-          consumerRebalanceListener
-        )
-      }.attempt
-
-    subscribe
-      .flatTap {
-        case Left(_) => F.unit
-        case Right(_) =>
-          ref
-            .updateAndGet(_.asSubscribed)
-            .log(SubscribedTopics(topics, _))
-      }
-      .flatMap(callback)
-  }
-
-  private[this] def subscribe(
-    pattern: Pattern,
-    callback: Either[Throwable, Unit] => F[Unit]
-  ): F[Unit] = {
-    val subscribe =
-      withConsumer.blocking {
-        _.subscribe(
-          pattern,
-          consumerRebalanceListener
-        )
-      }.attempt
-
-    subscribe
-      .flatTap {
-        case Left(_) => F.unit
-        case Right(_) =>
-          ref
-            .updateAndGet(_.asSubscribed)
-            .log(SubscribedPattern(pattern, _))
-      }
-      .flatMap(callback)
-  }
-
-  private[this] def unsubscribe(
-    callback: Either[Throwable, Unit] => F[Unit]
-  ): F[Unit] = {
-    val unsubscribe =
-      withConsumer.blocking { _.unsubscribe() }.attempt
-
-    unsubscribe
-      .flatTap {
-        case Left(_) => F.unit
-        case Right(_) =>
-          ref
-            .updateAndGet(_.asUnsubscribed)
-            .log(Unsubscribed(_))
-      }
-      .flatMap(callback)
-  }
-
-  private[this] def assign(
-    partitions: NonEmptySet[TopicPartition],
-    callback: Either[Throwable, Unit] => F[Unit]
-  ): F[Unit] = {
-    val assign =
-      withConsumer.blocking {
-        _.assign(
-          partitions.toList.asJava
-        )
-      }.attempt
-
-    assign
-      .flatTap {
-        case Left(_) => F.unit
-        case Right(_) =>
-          ref
-            .updateAndGet(_.asSubscribed)
-            .log(ManuallyAssignedPartitions(partitions, _))
-      }
-      .flatMap(callback)
-  }
-
-  private[this] def fetch(
-    partition: TopicPartition,
-    streamId: StreamId,
-    callback: ((Chunk[KafkaByteConsumerRecord], FetchCompletedReason)) => F[Unit]
-  ): F[Unit] = {
-    val assigned =
-      withConsumer.blocking { _.assignment.contains(partition) }
-
-    def storeFetch: F[Unit] =
-      ref
-        .modify { state =>
-          val (newState, oldFetch) =
-            state.withFetch(partition, streamId, callback)
-          (newState, (newState, oldFetch))
-        }
-        .flatMap {
-          case (newState, oldFetches) =>
-            log(StoredFetch(partition, callback, newState)) >>
-              oldFetches.traverse_ { fetch =>
-                fetch.completeRevoked(Chunk.empty) >>
-                  log(RevokedPreviousFetch(partition, streamId))
-              }
-        }
-
-    def completeRevoked =
-      callback((Chunk.empty, FetchCompletedReason.TopicPartitionRevoked))
-
-    assigned.ifM(storeFetch, completeRevoked)
-  }
 
   private[this] def commitAsync(
     offsets: Map[TopicPartition, OffsetAndMetadata],
@@ -337,32 +221,7 @@ private[kafka] final class KafkaConsumerActor[F[_]](
       }
   }
 
-  private[this] def assignment(
-    callback: Either[Throwable, SortedSet[TopicPartition]] => F[Unit],
-    onRebalance: Option[OnRebalance[F]]
-  ): F[Unit] = {
-    def resolveDeferred(subscribed: Boolean): F[Unit] = {
-      val result =
-        if (subscribed) withConsumer.blocking(_.assignment.toSortedSet.asRight)
-        else F.pure(Left(NotSubscribedException()))
-
-      result.flatMap(callback)
-    }
-
-    onRebalance match {
-      case Some(on) =>
-        ref.updateAndGet(_.withOnRebalance(on).asStreaming).flatMap { newState =>
-          resolveDeferred(newState.subscribed) >> logging.log(StoredOnRebalance(on, newState))
-        }
-
-      case None =>
-        ref.updateAndGet(_.asStreaming).flatMap { newState =>
-          resolveDeferred(newState.subscribed)
-        }
-    }
-  }
-
-  private[kafka] val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
+  val offsetCommit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] =
     offsets => {
       val commit = runCommitAsync(offsets) { cb =>
         requests.offer(Request.Commit(offsets, cb))
@@ -526,17 +385,11 @@ private[kafka] final class KafkaConsumerActor[F[_]](
 
   def handle(request: Request[F]): F[Unit] =
     request match {
-      case Request.Assignment(callback, onRebalance)   => assignment(callback, onRebalance)
-      case Request.Poll()                              => poll
-      case Request.SubscribeTopics(topics, callback)   => subscribe(topics, callback)
-      case Request.Assign(partitions, callback)        => assign(partitions, callback)
-      case Request.SubscribePattern(pattern, callback) => subscribe(pattern, callback)
-      case Request.Unsubscribe(callback)               => unsubscribe(callback)
-      case Request.Fetch(partition, streamId, callback) =>
-        fetch(partition, streamId, callback)
+      case Request.Poll()                            => poll
       case request @ Request.Commit(_, _)            => commit(request)
       case request @ Request.ManualCommitAsync(_, _) => manualCommitAsync(request)
       case request @ Request.ManualCommitSync(_, _)  => manualCommitSync(request)
+      case Request.WithPermit(fa, cb)                => fa.attempt >>= cb
     }
 
   private[this] case class RevokedResult(
@@ -556,9 +409,8 @@ private[kafka] final class KafkaConsumerActor[F[_]](
       log: CommittedPendingCommits[F]
     ) {
       def commit: F[Unit] =
-        commits.foldLeft(F.unit) {
-          case (acc, commitRequest) =>
-            acc >> commitAsync(commitRequest.offsets, commitRequest.callback)
+        commits.traverse { commitRequest =>
+          commitAsync(commitRequest.offsets, commitRequest.callback)
         } >> logging.log(log)
     }
 
@@ -731,10 +583,8 @@ private[kafka] object KafkaConsumerActor {
   sealed abstract class Request[F[_]]
 
   object Request {
-    final case class Assignment[F[_]](
-      callback: Either[Throwable, SortedSet[TopicPartition]] => F[Unit],
-      onRebalance: Option[OnRebalance[F]]
-    ) extends Request[F]
+    final case class WithPermit[F[_], A](fa: F[A], callback: Either[Throwable, A] => F[Unit])
+        extends Request[F]
 
     final case class Poll[F[_]]() extends Request[F]
 
@@ -743,31 +593,6 @@ private[kafka] object KafkaConsumerActor {
 
     def poll[F[_]]: Poll[F] =
       pollInstance.asInstanceOf[Poll[F]]
-
-    final case class SubscribeTopics[F[_]](
-      topics: NonEmptyList[String],
-      callback: Either[Throwable, Unit] => F[Unit]
-    ) extends Request[F]
-
-    final case class Assign[F[_]](
-      topicPartitions: NonEmptySet[TopicPartition],
-      callback: Either[Throwable, Unit] => F[Unit]
-    ) extends Request[F]
-
-    final case class SubscribePattern[F[_]](
-      pattern: Pattern,
-      callback: Either[Throwable, Unit] => F[Unit]
-    ) extends Request[F]
-
-    final case class Unsubscribe[F[_]](
-      callback: Either[Throwable, Unit] => F[Unit]
-    ) extends Request[F]
-
-    final case class Fetch[F[_]](
-      partition: TopicPartition,
-      streamId: StreamId,
-      callback: ((Chunk[KafkaByteConsumerRecord], FetchCompletedReason)) => F[Unit]
-    ) extends Request[F]
 
     final case class Commit[F[_]](
       offsets: Map[TopicPartition, OffsetAndMetadata],
