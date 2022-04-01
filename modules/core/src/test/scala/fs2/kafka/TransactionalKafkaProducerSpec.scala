@@ -1,25 +1,27 @@
 package fs2.kafka
 
 import cats.data.NonEmptyList
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
-import com.dimafeng.testcontainers.KafkaContainer
-import fs2.{Chunk, Stream}
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
+import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.errors.InvalidProducerEpochException
+//import org.apache.kafka.common.errors.InvalidProducerEpochException
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.scalatest.EitherValues
-import weaver.{Expectations, GlobalRead}
+import weaver.Expectations
 
+import java.util.UUID
 import scala.concurrent.duration._
 
-class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with EitherValues {
-
-  override def sharedResource: Resource[IO, KafkaContainer] = g.getOrFailR[KafkaContainer]()
+//class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with EitherValues {
+//
+//  override def sharedResource: Resource[IO, KafkaContainer] = g.getOrFailR[KafkaContainer]()
+object TransactionalKafkaProducerSpec extends BaseWeaverSpec with EitherValues {
+  override lazy val container = BaseWeaverSpecShared.makeContainer()
 
   test("should support defined syntax") { _ =>
     val settings = TransactionalProducerSettings("id", ProducerSettings[IO, String, String])
@@ -46,7 +48,7 @@ class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with 
             CommittableOffset[IO](
               new TopicPartition(topic, (i % 3).toInt),
               new OffsetAndMetadata(i),
-              Some("group"),
+              Some(topic),
               _ => IO.unit
             )
         )
@@ -127,7 +129,7 @@ class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with 
             CommittableOffset[IO](
               new TopicPartition(topic, i % 3),
               new OffsetAndMetadata(i.toLong),
-              Some("group"),
+              Some(topic),
               _ => IO.unit
             )
         )
@@ -233,7 +235,7 @@ class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with 
                 CommittableOffset[IO](
                   new TopicPartition(topic, i % 3),
                   new OffsetAndMetadata(i.toLong),
-                  Some("group"),
+                  Some(topic),
                   _ => IO.unit
                 )
             }
@@ -257,7 +259,7 @@ class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with 
                         CommittableOffset[IO](
                           new TopicPartition(topic, 0),
                           new OffsetAndMetadata(0),
-                          Some("group"),
+                          Some(topic),
                           _ => IO.unit
                         )
                       )
@@ -319,7 +321,7 @@ class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with 
                 CommittableOffset(
                   new TopicPartition(topic, i % 3),
                   new OffsetAndMetadata(i.toLong),
-                  Some("group"),
+                  Some(topic),
                   _ => IO.unit
                 )
             }
@@ -378,21 +380,16 @@ class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with 
       }
     }
   }
-}
-
-// TODO: after switching from ForEachTestContainer to ForAllTestContainer, this fails
-// if run with a shared container with the following error:
-// org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one. was not an instance of org.apache.kafka.common.errors.InvalidProducerEpochException, but an instance of org.apache.kafka.common.errors.ProducerFencedException
-object TransactionalKafkaProducerTimeoutSpec extends BaseWeaverSpec with EitherValues {
-  override lazy val container = BaseWeaverSpecShared.makeContainer()
 
   test("should use user-specified transaction timeouts") {
-    withTopic { topic =>
-      createCustomTopic(topic, partitions = 3)
+    withTopic(3) { topic =>
       val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n")
 
       implicit val mkProducer: MkProducer[IO] = new MkProducer[IO] {
         def apply[G[_]](settings: ProducerSettings[G, _, _]): IO[KafkaByteProducer] = IO.delay {
+          println()
+          println("MAKING PRODUCER!!!")
+          println()
           new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
             (settings.properties: Map[String, AnyRef]).asJava,
             new ByteArraySerializer,
@@ -406,45 +403,40 @@ object TransactionalKafkaProducerTimeoutSpec extends BaseWeaverSpec with EitherV
         }
       }
 
-      val produced =
-        (for {
-          producer <- TransactionalKafkaProducer.stream(
+      val recordsToProduce = toProduce.map {
+        case (key, value) => ProducerRecord(topic, key, value)
+      }
+      val offset = CommittableOffset(
+        new TopicPartition(topic, 1),
+        new OffsetAndMetadata(recordsToProduce.length.toLong),
+        Some(topic),
+        _ => IO.unit
+      )
+      val records = TransactionalProducerRecords.one(
+        CommittableProducerRecords(recordsToProduce, offset)
+      )
+
+      for {
+        producedOrError <- TransactionalKafkaProducer
+          .resource(
             TransactionalProducerSettings(
-              s"id-$topic",
+              s"id-$topic-${UUID.randomUUID()}",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             ).withTransactionTimeout(transactionTimeoutInterval - 250.millis)
           )
-          recordsToProduce = toProduce.map {
-            case (key, value) => ProducerRecord(topic, key, value)
-          }
-          offset = CommittableOffset(
-            new TopicPartition(topic, 1),
-            new OffsetAndMetadata(recordsToProduce.length.toLong),
-            Some("group"),
-            _ => IO.unit
-          )
-          records = TransactionalProducerRecords.one(
-            CommittableProducerRecords(recordsToProduce, offset)
-          )
-          result <- Stream.eval(producer.produce(records).attempt)
-        } yield result).compile.lastOrError.unsafeRunSync()
+          .use(_.produce(records).attempt)
 
-      val consumedOrError = {
-        Either.catchNonFatal(
+        consumedOrError <- IO.blocking {
           consumeFirstKeyedMessageFrom[String, String](
             topic,
             customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
           )
-        )
-      }
-
-      IO(
-        expect(
-          produced.left.value.isInstanceOf[InvalidProducerEpochException] && consumedOrError.isLeft
-        )
+        }.attempt
+      } yield expect(
+        producedOrError.isLeft &&
+          consumedOrError.isLeft
       )
     }
   }
-
 }

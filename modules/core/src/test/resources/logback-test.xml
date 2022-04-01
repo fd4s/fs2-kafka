@@ -6,6 +6,8 @@
     </encoder>
   </appender>
 
+  <logger name="org.apache.kafka.common.utils.AppInfoParser" level = "ERROR"/>
+  <logger name="org.apache.kafka.common.metrics.Metrics" level = "ERROR"/>
   <root level="INFO" additivity="false">
     <appender-ref ref="STDOUT"/>
   </root>
