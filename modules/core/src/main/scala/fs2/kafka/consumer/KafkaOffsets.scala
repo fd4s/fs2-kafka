@@ -11,7 +11,6 @@ import cats.Foldable
 import scala.concurrent.duration.FiniteDuration
 
 trait KafkaOffsets[F[_]] {
-
   /**
     * Overrides the fetch offsets that the consumer will use when reading the
     * next record. If this API is invoked for the same partition more than once,
@@ -72,5 +71,4 @@ trait KafkaOffsets[F[_]] {
     * Returns the offset of the next record that will be fetched.
     */
   def position(partition: TopicPartition, timeout: FiniteDuration): F[Long]
-
 }

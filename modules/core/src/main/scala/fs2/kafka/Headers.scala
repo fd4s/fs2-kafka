@@ -18,7 +18,6 @@ import fs2.kafka.internal.syntax._
   * instance of [[Header]] using `append`.
   */
 sealed abstract class Headers {
-
   /**
     * Returns the first header with the specified key,
     * wrapped in `Some`, or `None` if no such header

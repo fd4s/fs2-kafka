@@ -8,5 +8,4 @@ package fs2.kafka
 
 package object internal {
   private[kafka] type ExclusiveAccess[F[_], A] = F[A] => F[A]
-
 }

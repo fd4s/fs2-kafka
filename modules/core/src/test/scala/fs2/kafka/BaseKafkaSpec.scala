@@ -57,7 +57,6 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.Args
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
-
   final val adminClientCloseTimeout: FiniteDuration = 2.seconds
   final val transactionTimeoutInterval: FiniteDuration = 1.second
 

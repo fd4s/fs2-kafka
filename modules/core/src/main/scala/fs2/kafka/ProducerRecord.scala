@@ -26,7 +26,6 @@ import cats.instances.option._
   * To create a new instance, use [[ProducerRecord#apply]].
   */
 sealed abstract class ProducerRecord[+K, +V] {
-
   /** The topic to which the record should be produced. */
   def topic: String
 

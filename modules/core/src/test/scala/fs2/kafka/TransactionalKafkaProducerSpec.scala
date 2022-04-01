@@ -17,7 +17,6 @@ import org.scalatest.EitherValues
 import scala.concurrent.duration._
 
 class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
-
   describe("creating transactional producers") {
     it("should support defined syntax") {
       val settings = TransactionalProducerSettings("id", ProducerSettings[IO, String, String])
@@ -94,7 +93,6 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                   )
                 )
             ) -> (key, value)
-
         }
         passthrough <- Stream
           .eval(
@@ -428,5 +426,4 @@ class TransactionalKafkaProducerTimeoutSpec extends BaseKafkaSpec with EitherVal
       consumedOrError.isLeft shouldBe true
     }
   }
-
 }
