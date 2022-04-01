@@ -1,4 +1,4 @@
-val catsEffectVersion = "3.3.7"
+val catsEffectVersion = "3.3.9"
 
 val confluentVersion = "6.2.2"
 
@@ -6,7 +6,7 @@ val fs2Version = "3.2.5"
 
 val kafkaVersion = "2.8.1"
 
-val testcontainersScalaVersion = "0.40.3"
+val testcontainersScalaVersion = "0.40.4"
 
 val vulcanVersion = "1.8.0"
 
@@ -205,6 +205,8 @@ ThisBuild / githubWorkflowBuild := Seq(
 
 ThisBuild / githubWorkflowArtifactUpload := false
 
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
+
 ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
 ThisBuild / githubWorkflowPublishTargetBranches :=
   Seq(RefPredicate.StartsWith(Ref.Tag("v")))
@@ -279,13 +281,19 @@ lazy val mimaSettings = Seq(
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.produce"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.metrics"),
+      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.committed"),
 
       // package-private
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.from"),
 
       // sealed
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withDeserializers"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withSerializers")
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withSerializers"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
+      ProblemFilters.exclude[FinalMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
+
+      // private
+        ProblemFilters.exclude[Problem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.*")
     )
     // format: on
   }
