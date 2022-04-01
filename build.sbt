@@ -315,7 +315,8 @@ ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
 
 lazy val scalaSettings = Seq(
   Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
-  Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
+  Compile / console / scalacOptions --= Seq("-Xlint", "-Xfatal-warnings"),
+  scalacOptions += "-Ywarn-unused",
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   Compile / unmanagedSourceDirectories ++=
     Seq(
