@@ -102,7 +102,7 @@ lazy val docs = project
   .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin, ScalaUnidocPlugin)
 
 lazy val dependencySettings = Seq(
-  resolvers += "confluent" at "https://packages.confluent.io/maven/",
+  resolvers += "confluent".at("https://packages.confluent.io/maven/"),
   libraryDependencies ++= Seq(
     "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
     "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
@@ -129,7 +129,7 @@ lazy val dependencySettings = Seq(
       override def transform(node: xml.Node): xml.NodeSeq =
         node match {
           case e: xml.Elem if scopedDependency(e) => Nil
-          case _                                  => Seq(node)
+          case _ => Seq(node)
         }
     }).transform(node).head
   }
@@ -169,23 +169,23 @@ lazy val buildInfoSettings = Seq(
     scalacOptions,
     sourceDirectory,
     ThisBuild / latestVersion,
-    BuildInfoKey.map(ThisBuild / version) {
-      case (_, v) => "latestSnapshotVersion" -> v
+    BuildInfoKey.map(ThisBuild / version) { case (_, v) =>
+      "latestSnapshotVersion" -> v
     },
-    BuildInfoKey.map(core / moduleName) {
-      case (k, v) => "core" ++ k.capitalize -> v
+    BuildInfoKey.map(core / moduleName) { case (k, v) =>
+      "core" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(core / crossScalaVersions) {
-      case (k, v) => "core" ++ k.capitalize -> v
+    BuildInfoKey.map(core / crossScalaVersions) { case (k, v) =>
+      "core" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(vulcan / moduleName) {
-      case (k, v) => "vulcan" ++ k.capitalize -> v
+    BuildInfoKey.map(vulcan / moduleName) { case (k, v) =>
+      "vulcan" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(vulcan / crossScalaVersions) {
-      case (k, v) => "vulcan" ++ k.capitalize -> v
+    BuildInfoKey.map(vulcan / crossScalaVersions) { case (k, v) =>
+      "vulcan" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) {
-      case (k, v) => "vulcanTestkitMunit" ++ k.capitalize -> v
+    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) { case (k, v) =>
+      "vulcanTestkitMunit" ++ k.capitalize -> v
     },
     LocalRootProject / organization,
     core / crossScalaVersions,
@@ -422,6 +422,8 @@ ThisBuild / updateSiteVariables := {
 def addCommandsAlias(name: String, values: List[String]) =
   addCommandAlias(name, values.mkString(";", ";", ""))
 
+addCommandsAlias("format", List("+scalafixAll", "+scalafmtAll", "+scalafmtSbt"))
+
 addCommandsAlias(
   "validate",
   List(
@@ -430,6 +432,7 @@ addCommandsAlias(
     "+mimaReportBinaryIssues",
     "+scalafmtCheck",
     "scalafmtSbtCheck",
+    "+scalafixAll --check",
     "+headerCheck",
     "+doc",
     "docs/run"
@@ -444,6 +447,7 @@ addCommandsAlias(
     "mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
+    "scalafixAll --check",
     "headerCheck",
     "doc"
   )
