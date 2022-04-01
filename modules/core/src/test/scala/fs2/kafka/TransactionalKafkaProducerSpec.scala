@@ -387,9 +387,6 @@ object TransactionalKafkaProducerSpec extends BaseWeaverSpec with EitherValues {
 
       implicit val mkProducer: MkProducer[IO] = new MkProducer[IO] {
         def apply[G[_]](settings: ProducerSettings[G, _, _]): IO[KafkaByteProducer] = IO.delay {
-          println()
-          println("MAKING PRODUCER!!!")
-          println()
           new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
             (settings.properties: Map[String, AnyRef]).asJava,
             new ByteArraySerializer,
