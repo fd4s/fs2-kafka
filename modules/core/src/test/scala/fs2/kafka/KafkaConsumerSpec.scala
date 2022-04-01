@@ -54,7 +54,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .stream(consumerSettings[IO])
             .subscribeTo(topic)
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(
+              IO.sleep(3.seconds).as(_)
+            ) // sleep a bit to trigger potential race condition with _.stream
             .records
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
@@ -76,7 +78,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           KafkaConsumer
             .stream(consumerSettings[IO].withGroupId("test"))
             .subscribeTo(topic)
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(
+              IO.sleep(3.seconds).as(_)
+            ) // sleep a bit to trigger potential race condition with _.stream
             .records
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds) // wait some time to catch potentially duplicated records
@@ -110,7 +114,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .stream(consumerSettings[IO].withGroupId("test2"))
             .evalTap(_.assign(topic, partitions))
             .evalTap(consumer => IO(consumer.toString should startWith("KafkaConsumer$")).void)
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(
+              IO.sleep(3.seconds).as(_)
+            ) // sleep a bit to trigger potential race condition with _.stream
             .records
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
@@ -133,7 +139,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           KafkaConsumer
             .stream(consumerSettings[IO].withGroupId("test"))
             .evalTap(_.assign(topic))
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(
+              IO.sleep(3.seconds).as(_)
+            ) // sleep a bit to trigger potential race condition with _.stream
             .records
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
@@ -156,7 +164,9 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           KafkaConsumer
             .stream(consumerSettings[IO].withGroupId("test2"))
             .evalTap(_.assign(topic))
-            .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+            .evalMap(
+              IO.sleep(3.seconds).as(_)
+            ) // sleep a bit to trigger potential race condition with _.stream
             .records
             .map(committable => committable.record.key -> committable.record.value)
             .interruptAfter(10.seconds)
@@ -201,9 +211,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     it("should commit the last processed offsets") {
-      commitTest {
-        case (_, offsetBatch) =>
-          offsetBatch.commit
+      commitTest { case (_, offsetBatch) =>
+        offsetBatch.commit
       }
     }
 
@@ -349,8 +358,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         consumed.left.toOption match {
           case Some(_: NoOffsetForPartitionException) => succeed
-          case Some(cause)                            => fail("Unexpected exception", cause)
-          case None                                   => fail(s"Unexpected result [$consumed]")
+          case Some(cause) => fail("Unexpected exception", cause)
+          case None => fail(s"Unexpected result [$consumed]")
         }
       }
     }
@@ -416,7 +425,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
     }
 
     def seekTest(numRecords: Long, readOffset: Long, partition: Option[Int] = None)(
-      topic: String
+        topic: String
     ) = {
       createCustomTopic(topic)
 
@@ -437,12 +446,11 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                 .map(co => (co.topicPartition, co.offsetAndMetadata.offset()))
 
             val seekParams =
-              validSeekParams.map {
-                case (topicPartition, offset) =>
-                  val p = partition.map(new TopicPartition(topic, _)).getOrElse(topicPartition)
-                  val o = Math.min(readOffset, offset)
+              validSeekParams.map { case (topicPartition, offset) =>
+                val p = partition.map(new TopicPartition(topic, _)).getOrElse(topicPartition)
+                val o = Math.min(readOffset, offset)
 
-                  (p, o)
+                (p, o)
               }
 
             val setOffset =
@@ -472,8 +480,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val producedTotal = produced1.size.toLong + produced2.size.toLong
 
         def startConsumer(
-          consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
-          stopSignal: SignallingRef[IO, Boolean]
+            consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
+            stopSignal: SignallingRef[IO, Boolean]
         ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] =
           Ref[IO]
             .of(Vector.empty[Set[Int]])
@@ -486,9 +494,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                 .evalMap { assignment =>
                   assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
                     Stream
-                      .emits(assignment.map {
-                        case (_, stream) =>
-                          stream.evalMap(consumedQueue.offer)
+                      .emits(assignment.map { case (_, stream) =>
+                        stream.evalMap(consumedQueue.offer)
                       }.toList)
                       .covary[IO]
                   }
@@ -528,20 +535,18 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           consumer1assignments <- fiber1.joinWithNever
           consumer2assignments <- fiber2.joinWithNever
           keys <- ref.get
-        } yield {
-          assert {
-            keys.size.toLong == producedTotal && {
-              keys == (0 until 200).map { n =>
-                s"key-$n" -> (if (n < 100) 2 else 1)
-              }.toMap
-            } &&
-            consumer1assignments.size == 2 &&
-            consumer1assignments(0) == Set(0, 1, 2) &&
-            consumer1assignments(1).size < 3 &&
-            consumer2assignments.size == 1 &&
-            consumer2assignments(0).size < 3 &&
-            consumer1assignments(1) ++ consumer2assignments(0) == Set(0, 1, 2)
-          }
+        } yield assert {
+          keys.size.toLong == producedTotal && {
+            keys == (0 until 200).map { n =>
+              s"key-$n" -> (if (n < 100) 2 else 1)
+            }.toMap
+          } &&
+          consumer1assignments.size == 2 &&
+          consumer1assignments(0) == Set(0, 1, 2) &&
+          consumer1assignments(1).size < 3 &&
+          consumer2assignments.size == 1 &&
+          consumer2assignments(0).size < 3 &&
+          consumer1assignments(1) ++ consumer2assignments(0) == Set(0, 1, 2)
         }).unsafeRunSync()
       }
     }
@@ -554,8 +559,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
         val producedTotal = produced1.size.toLong + produced2.size.toLong
 
         def startConsumer(
-          consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
-          stopSignal: SignallingRef[IO, Boolean]
+            consumedQueue: Queue[IO, CommittableConsumerRecord[IO, String, String]],
+            stopSignal: SignallingRef[IO, Boolean]
         ): IO[Fiber[IO, Throwable, Vector[Set[Int]]]] =
           Ref[IO]
             .of(Vector.empty[Set[Int]])
@@ -575,9 +580,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                 .evalMap { assignment =>
                   assignedPartitionsRef.update(_ :+ assignment.keySet.map(_.partition())).as {
                     Stream
-                      .emits(assignment.map {
-                        case (_, stream) =>
-                          stream.evalMap(consumedQueue.offer)
+                      .emits(assignment.map { case (_, stream) =>
+                        stream.evalMap(consumedQueue.offer)
                       }.toList)
                       .covary[IO]
                   }
@@ -617,15 +621,13 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           consumer1assignments <- fiber1.joinWithNever
           consumer2assignments <- fiber2.joinWithNever
           keys <- ref.get
-        } yield {
-          assert {
-            keys.size.toLong == producedTotal &&
-            keys.values.sum == 236 &&
-            consumer1assignments.size == 1 &&
-            consumer1assignments(0) == Set(0, 1, 2) &&
-            consumer2assignments.size == 1 &&
-            consumer2assignments(0) == Set(2)
-          }
+        } yield assert {
+          keys.size.toLong == producedTotal &&
+          keys.values.sum == 236 &&
+          consumer1assignments.size == 1 &&
+          consumer1assignments(0) == Set(0, 1, 2) &&
+          consumer2assignments.size == 1 &&
+          consumer2assignments(0) == Set(2)
         }).unsafeRunSync()
       }
     }
@@ -651,11 +653,10 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               assignmentNumRef.getAndUpdate(_ + 1).map { assignmentNum =>
                 if (assignmentNum == 1) {
                   Stream
-                    .emits(assignment.map {
-                      case (partition, partitionStream) =>
-                        partitionStream.onFinalize {
-                          closedStreamsRef.update(_ :+ partition.partition())
-                        }
+                    .emits(assignment.map { case (partition, partitionStream) =>
+                      partitionStream.onFinalize {
+                        closedStreamsRef.update(_ :+ partition.partition())
+                      }
                     }.toList)
                     .covary[IO]
                 } else if (assignmentNum == 2) {
@@ -675,9 +676,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .compile
             .drain
           closedStreams <- closedStreamsRef.get
-        } yield {
-          assert(closedStreams.toSet == Set(0, 1, 2))
-        }).unsafeRunSync()
+        } yield assert(closedStreams.toSet == Set(0, 1, 2))).unsafeRunSync()
       }
     }
 
@@ -698,9 +697,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               Stream.eval(allAssignments.update { current =>
                 current.updated(instance, assignment.keySet.map(_.partition()))
               }) >> Stream
-                .emits(assignment.map {
-                  case (_, partitionStream) =>
-                    partitionStream.evalMap(_ => IO.sleep(10.millis)) // imitating some work
+                .emits(assignment.map { case (_, partitionStream) =>
+                  partitionStream.evalMap(_ => IO.sleep(10.millis)) // imitating some work
                 }.toList)
                 .parJoinUnbounded
             }
@@ -708,7 +706,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             .drain
 
         def checkAssignments(
-          allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]
+            allAssignments: SignallingRef[IO, Map[Int, Set[Int]]]
         )(instances: Set[Int]) =
           allAssignments.discrete
             .filter { state =>
@@ -762,9 +760,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                   .start
                   .void
               }
-          } yield {
-            queue
-          }
+          } yield queue
 
         (for {
           queue1 <- consumer
@@ -823,9 +819,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                   .start
                   .void
               }
-          } yield {
-            queue
-          }
+          } yield queue
 
         (for {
           queue1 <- consumer
@@ -903,8 +897,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           _ <- Stream(
             consumer1.records.evalTap(_ => cntRef.update(_ + 1)),
             consumer2.records.concurrently(
-              consumer2.assignmentStream.evalTap(
-                assignedTopicPartitions => partitions.set(assignedTopicPartitions)
+              consumer2.assignmentStream.evalTap(assignedTopicPartitions =>
+                partitions.set(assignedTopicPartitions)
               )
             )
           ).parJoinUnbounded
@@ -912,14 +906,16 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           cntValue <- Stream.eval(cntRef.get)
           unsubscribedValue <- Stream.eval(unsubscribed.get)
           _ <- Stream.eval(
-            if (cntValue >= 3 && !unsubscribedValue) //wait for some processed elements from first consumer
+            if (
+              cntValue >= 3 && !unsubscribedValue
+            ) // wait for some processed elements from first consumer
               unsubscribed.set(true) >> consumer1.unsubscribe // unsubscribe
             else IO.unit
           )
-          _ <- Stream.eval(IO { publishToKafka(topic, produced) }) // publish some elements to topic
+          _ <- Stream.eval(IO(publishToKafka(topic, produced))) // publish some elements to topic
 
           partitionsValue <- Stream.eval(partitions.get)
-        } yield (partitionsValue)).interruptAfter(10.seconds)
+        } yield partitionsValue).interruptAfter(10.seconds)
 
         val res = topicStream.compile.toVector
           .unsafeRunSync()
@@ -1049,7 +1045,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         res.left.toOption match {
           case Some(e) => e shouldBe a[TimeoutException]
-          case _       => fail("No exception was rised!")
+          case _ => fail("No exception was rised!")
         }
       }
     }
@@ -1057,18 +1053,16 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
   describe("KafkaConsumer#commitAsync") {
     it("should commit offsets of messages from the topic to which consumer assigned") {
-      commitTest {
-        case (consumer, offsetBatch) =>
-          consumer.commitAsync(offsetBatch.offsets)
+      commitTest { case (consumer, offsetBatch) =>
+        consumer.commitAsync(offsetBatch.offsets)
       }
     }
   }
 
   describe("KafkaConsumer#commitSync") {
     it("should commit offsets of messages from the topic to which consumer assigned") {
-      commitTest {
-        case (consumer, offsetBatch) =>
-          consumer.commitSync(offsetBatch.offsets)
+      commitTest { case (consumer, offsetBatch) =>
+        consumer.commitSync(offsetBatch.offsets)
       }
     }
   }
@@ -1098,7 +1092,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
   }
 
   private def commitTest(
-    commit: (KafkaConsumer[IO, String, String], CommittableOffsetBatch[IO]) => IO[Unit]
+      commit: (KafkaConsumer[IO, String, String], CommittableOffsetBatch[IO]) => IO[Unit]
   ): Assertion =
     withTopic { topic =>
       val partitionsAmount = 3

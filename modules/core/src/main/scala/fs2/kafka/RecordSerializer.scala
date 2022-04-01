@@ -8,10 +8,8 @@ package fs2.kafka
 
 import cats.Applicative
 
-/**
-  * Serializer which may vary depending on whether a record
-  * key or value is being serialized, and which may require
-  * a creation effect.
+/** Serializer which may vary depending on whether a record key or value is being serialized, and
+  * which may require a creation effect.
   */
 sealed abstract class RecordSerializer[F[_], A] {
   def forKey: F[Serializer[F, A]]
@@ -20,13 +18,13 @@ sealed abstract class RecordSerializer[F[_], A] {
 }
 
 object RecordSerializer {
-  def apply[F[_], A](
-    implicit serializer: RecordSerializer[F, A]
+  def apply[F[_], A](implicit
+      serializer: RecordSerializer[F, A]
   ): RecordSerializer[F, A] =
     serializer
 
   def const[F[_], A](
-    serializer: => F[Serializer[F, A]]
+      serializer: => F[Serializer[F, A]]
   ): RecordSerializer[F, A] =
     RecordSerializer.instance(
       forKey = serializer,
@@ -34,8 +32,8 @@ object RecordSerializer {
     )
 
   def instance[F[_], A](
-    forKey: => F[Serializer[F, A]],
-    forValue: => F[Serializer[F, A]]
+      forKey: => F[Serializer[F, A]],
+      forValue: => F[Serializer[F, A]]
   ): RecordSerializer[F, A] = {
     def _forKey = forKey
     def _forValue = forValue
@@ -52,14 +50,14 @@ object RecordSerializer {
     }
   }
 
-  def lift[F[_], A](serializer: => Serializer[F, A])(
-    implicit F: Applicative[F]
+  def lift[F[_], A](serializer: => Serializer[F, A])(implicit
+      F: Applicative[F]
   ): RecordSerializer[F, A] =
     RecordSerializer.const(F.pure(serializer))
 
-  implicit def lift[F[_], A](
-    implicit F: Applicative[F],
-    serializer: Serializer[F, A]
+  implicit def lift[F[_], A](implicit
+      F: Applicative[F],
+      serializer: Serializer[F, A]
   ): RecordSerializer[F, A] =
     RecordSerializer.lift(serializer)
 }

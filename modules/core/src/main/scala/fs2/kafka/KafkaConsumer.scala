@@ -30,43 +30,31 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex
 
-/**
-  * [[KafkaConsumer]] represents a consumer of Kafka records, with the
-  * ability to `subscribe` to topics, start a single top-level stream,
-  * and optionally control it via the provided [[fiber]] instance.<br>
-  * <br>
-  * The following top-level streams are provided.<br>
-  * <br>
-  * - [[stream]] provides a single stream of records, where the order
-  *   of records is guaranteed per topic-partition.<br>
-  * - [[partitionedStream]] provides a stream with elements as streams
-  *   that continually request records for a single partition. Order
-  *   is guaranteed per topic-partition, but all assigned partitions
-  *   will have to be processed in parallel.<br>
-  * - [[partitionsMapStream]] provides a stream where each element contains
-  *   a current assignment. The current assignment is the `Map`, where keys
-  *   is a `TopicPartition`, and values are streams with records for a
-  *   particular `TopicPartition`.
-  * <br>
-  * For the streams, records are wrapped in [[CommittableConsumerRecord]]s
-  * which provide [[CommittableOffset]]s with the ability to commit
-  * record offsets to Kafka. For performance reasons, offsets are
-  * usually committed in batches using [[CommittableOffsetBatch]].
-  * Provided `Pipe`s, like [[commitBatchWithin]] are available for
-  * batch committing offsets. If you are not committing offsets to
-  * Kafka, you can simply discard the [[CommittableOffset]], and
-  * only make use of the record.<br>
-  * <br>
-  * While it's technically possible to start more than one stream from a
-  * single [[KafkaConsumer]], it is generally not recommended as there is
-  * no guarantee which stream will receive which records, and there might
-  * be an overlap, in terms of duplicate records, between the two streams.
-  * If a first stream completes, possibly with error, there's no guarantee
-  * the stream has processed all of the records it received, and a second
-  * stream from the same [[KafkaConsumer]] might not be able to pick up where
-  * the first one left off. Therefore, only create a single top-level stream
-  * per [[KafkaConsumer]], and if you want to start a new stream if the first
-  * one finishes, let the [[KafkaConsumer]] shutdown and create a new one.
+/** [[KafkaConsumer]] represents a consumer of Kafka records, with the ability to `subscribe` to
+  * topics, start a single top-level stream, and optionally control it via the provided [[fiber]]
+  * instance.<br> <br> The following top-level streams are provided.<br> <br>
+  *   - [[stream]] provides a single stream of records, where the order of records is guaranteed per
+  *     topic-partition.<br>
+  *   - [[partitionedStream]] provides a stream with elements as streams that continually request
+  *     records for a single partition. Order is guaranteed per topic-partition, but all assigned
+  *     partitions will have to be processed in parallel.<br>
+  *   - [[partitionsMapStream]] provides a stream where each element contains a current assignment.
+  *     The current assignment is the `Map`, where keys is a `TopicPartition`, and values are
+  *     streams with records for a particular `TopicPartition`. <br> For the streams, records are
+  *     wrapped in [[CommittableConsumerRecord]]s which provide [[CommittableOffset]]s with the
+  *     ability to commit record offsets to Kafka. For performance reasons, offsets are usually
+  *     committed in batches using [[CommittableOffsetBatch]]. Provided `Pipe`s, like
+  *     [[commitBatchWithin]] are available for batch committing offsets. If you are not committing
+  *     offsets to Kafka, you can simply discard the [[CommittableOffset]], and only make use of the
+  *     record.<br> <br> While it's technically possible to start more than one stream from a single
+  *     [[KafkaConsumer]], it is generally not recommended as there is no guarantee which stream
+  *     will receive which records, and there might be an overlap, in terms of duplicate records,
+  *     between the two streams. If a first stream completes, possibly with error, there's no
+  *     guarantee the stream has processed all of the records it received, and a second stream from
+  *     the same [[KafkaConsumer]] might not be able to pick up where the first one left off.
+  *     Therefore, only create a single top-level stream per [[KafkaConsumer]], and if you want to
+  *     start a new stream if the first one finishes, let the [[KafkaConsumer]] shutdown and create
+  *     a new one.
   */
 sealed abstract class KafkaConsumer[F[_], K, V]
     extends KafkaConsume[F, K, V]
@@ -85,7 +73,7 @@ object KafkaConsumer {
         fa.foreverM[Unit]
           .guaranteeCase {
             case Outcome.Errored(e) => deferred.complete(Left(e)).void
-            case _                  => deferred.complete(Right(())).void
+            case _ => deferred.complete(Right(())).void
           }
           .start
           .map(fiber => FakeFiber(deferred.get.rethrow, fiber.cancel.start.void))
@@ -93,11 +81,11 @@ object KafkaConsumer {
     }(_.cancel)
 
   private def startConsumerActor[F[_]](
-    requests: QueueSource[F, Request[F]],
-    polls: QueueSource[F, Request.Poll[F]],
-    actor: KafkaConsumerActor[F]
-  )(
-    implicit F: Async[F]
+      requests: QueueSource[F, Request[F]],
+      polls: QueueSource[F, Request.Poll[F]],
+      actor: KafkaConsumerActor[F]
+  )(implicit
+      F: Async[F]
   ): Resource[F, FakeFiber[F]] =
     spawnRepeating {
       OptionT(requests.tryTake)
@@ -106,31 +94,31 @@ object KafkaConsumer {
     }
 
   private def startPollScheduler[F[_], K, V](
-    polls: QueueSink[F, Request.Poll[F]],
-    pollInterval: FiniteDuration
-  )(
-    implicit F: Temporal[F]
+      polls: QueueSink[F, Request.Poll[F]],
+      pollInterval: FiniteDuration
+  )(implicit
+      F: Temporal[F]
   ): Resource[F, FakeFiber[F]] =
     spawnRepeating {
       polls.offer(Request.poll) >> F.sleep(pollInterval)
     }
 
   private def createKafkaConsumer[F[_], K, V](
-    requests: QueueSink[F, Request[F]],
-    settings: ConsumerSettings[F, K, V],
-    keyDes: Deserializer[F, K],
-    valueDes: Deserializer[F, V],
-    actor: KafkaConsumerActor[F],
-    fiber: FakeFiber[F],
-    streamIdRef: Ref[F, StreamId],
-    id: Int,
-    withConsumer: WithConsumer[F],
-    stopConsumingDeferred: Deferred[F, Unit]
+      requests: QueueSink[F, Request[F]],
+      settings: ConsumerSettings[F, K, V],
+      keyDes: Deserializer[F, K],
+      valueDes: Deserializer[F, V],
+      actor: KafkaConsumerActor[F],
+      fiber: FakeFiber[F],
+      streamIdRef: Ref[F, StreamId],
+      id: Int,
+      withConsumer: WithConsumer[F],
+      stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
 
       override def partitionsMapStream
-        : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
+          : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
           Queue.bounded(settings.maxPrefetchBatches - 1)
 
@@ -141,9 +129,9 @@ object KafkaConsumer {
         type PartitionsMapQueue = Queue[F, Option[PartitionsMap]]
 
         def partitionStream(
-          streamId: StreamId,
-          partition: TopicPartition,
-          assignmentRevoked: F[Unit]
+            streamId: StreamId,
+            partition: TopicPartition,
+            assignmentRevoked: F[Unit]
         ): Stream[F, CommittableConsumerRecord[F, K, V]] = Stream.force {
           for {
             chunks <- chunkQueue
@@ -163,8 +151,8 @@ object KafkaConsumer {
             stopReqs <- Deferred[F, Unit]
           } yield Stream.eval {
             def committableConsumerRecord(
-              record: ConsumerRecord[K, V],
-              partition: TopicPartition
+                record: ConsumerRecord[K, V],
+                partition: TopicPartition
             ): CommittableConsumerRecord[F, K, V] =
               CommittableConsumerRecord(
                 record = record,
@@ -258,15 +246,14 @@ object KafkaConsumer {
         }
 
         def enqueueAssignment(
-          streamId: StreamId,
-          assigned: Map[TopicPartition, Deferred[F, Unit]],
-          partitionsMapQueue: PartitionsMapQueue
+            streamId: StreamId,
+            assigned: Map[TopicPartition, Deferred[F, Unit]],
+            partitionsMapQueue: PartitionsMapQueue
         ): F[Unit] =
           stopConsumingDeferred.tryGet.flatMap {
             case None =>
-              val assignment: PartitionsMap = assigned.map {
-                case (partition, finisher) =>
-                  partition -> partitionStream(streamId, partition, finisher.get)
+              val assignment: PartitionsMap = assigned.map { case (partition, finisher) =>
+                partition -> partitionStream(streamId, partition, finisher.get)
               }
               partitionsMapQueue.offer(Some(assignment))
             case Some(()) =>
@@ -274,22 +261,20 @@ object KafkaConsumer {
           }
 
         def onRebalance(
-          streamId: StreamId,
-          assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
-          partitionsMapQueue: PartitionsMapQueue
+            streamId: StreamId,
+            assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
+            partitionsMapQueue: PartitionsMapQueue
         ): OnRebalance[F] =
           OnRebalance(
-            onRevoked = revoked => {
+            onRevoked = revoked =>
               for {
                 finishers <- assignmentRef.modify(_.partition(entry => !revoked.contains(entry._1)))
                 _ <- finishers.toVector
-                  .traverse {
-                    case (_, finisher) =>
-                      finisher.complete(())
+                  .traverse { case (_, finisher) =>
+                    finisher.complete(())
                   }
-              } yield ()
-            },
-            onAssigned = assignedPartitions => {
+              } yield (),
+            onAssigned = assignedPartitions =>
               for {
                 assignment <- assignedPartitions.toVector
                   .traverse { partition =>
@@ -303,13 +288,12 @@ object KafkaConsumer {
                   partitionsMapQueue = partitionsMapQueue
                 )
               } yield ()
-            }
           )
 
         def requestAssignment(
-          streamId: StreamId,
-          assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
-          partitionsMapQueue: PartitionsMapQueue
+            streamId: StreamId,
+            assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
+            partitionsMapQueue: PartitionsMapQueue
         ): F[Map[TopicPartition, Deferred[F, Unit]]] = {
           val assignment = this.assignment(
             Some(
@@ -335,9 +319,9 @@ object KafkaConsumer {
         }
 
         def initialEnqueue(
-          streamId: StreamId,
-          assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
-          partitionsMapQueue: PartitionsMapQueue
+            streamId: StreamId,
+            assignmentRef: Ref[F, Map[TopicPartition, Deferred[F, Unit]]],
+            partitionsMapQueue: PartitionsMapQueue
         ): F[Unit] =
           for {
             assigned <- requestAssignment(
@@ -377,9 +361,8 @@ object KafkaConsumer {
 
       override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
         partitionsMapStream.flatMap { partitionsMap =>
-          Stream.emits(partitionsMap.toVector.map {
-            case (_, partitionStream) =>
-              partitionStream
+          Stream.emits(partitionsMap.toVector.map { case (_, partitionStream) =>
+            partitionStream
           })
         }
 
@@ -403,7 +386,7 @@ object KafkaConsumer {
         }
 
       private[this] def request[A](
-        request: (Either[Throwable, A] => F[Unit]) => Request[F]
+          request: (Either[Throwable, A] => F[Unit]) => Request[F]
       ): F[A] =
         Deferred[F, Either[Throwable, A]].flatMap { deferred =>
           requests.offer(request(deferred.complete(_).void)) >>
@@ -414,7 +397,7 @@ object KafkaConsumer {
         assignment(Option.empty)
 
       private def assignment(
-        onRebalance: Option[OnRebalance[F]]
+          onRebalance: Option[OnRebalance[F]]
       ): F[SortedSet[TopicPartition]] =
         withPermit {
           onRebalance
@@ -434,9 +417,9 @@ object KafkaConsumer {
         // registered but before `assignmentRef` can be updated with initial
         // assignments.
         def onRebalanceWith(
-          updateQueue: Queue[F, SortedSet[TopicPartition]],
-          assignmentRef: Ref[F, SortedSet[TopicPartition]],
-          initialAssignmentDone: F[Unit]
+            updateQueue: Queue[F, SortedSet[TopicPartition]],
+            assignmentRef: Ref[F, SortedSet[TopicPartition]],
+            initialAssignmentDone: F[Unit]
         ): OnRebalance[F] =
           OnRebalance(
             onAssigned = assigned =>
@@ -477,37 +460,37 @@ object KafkaConsumer {
       }
 
       override def seek(partition: TopicPartition, offset: Long): F[Unit] =
-        withConsumer.blocking { _.seek(partition, offset) }
+        withConsumer.blocking(_.seek(partition, offset))
 
-      override def seekToBeginning[G[_]](partitions: G[TopicPartition])(
-        implicit G: Foldable[G]
+      override def seekToBeginning[G[_]](partitions: G[TopicPartition])(implicit
+          G: Foldable[G]
       ): F[Unit] =
-        withConsumer.blocking { _.seekToBeginning(partitions.asJava) }
+        withConsumer.blocking(_.seekToBeginning(partitions.asJava))
 
       override def seekToEnd[G[_]](
-        partitions: G[TopicPartition]
+          partitions: G[TopicPartition]
       )(implicit G: Foldable[G]): F[Unit] =
-        withConsumer.blocking { _.seekToEnd(partitions.asJava) }
+        withConsumer.blocking(_.seekToEnd(partitions.asJava))
 
       override def partitionsFor(
-        topic: String
+          topic: String
       ): F[List[PartitionInfo]] =
-        withConsumer.blocking { _.partitionsFor(topic).asScala.toList }
+        withConsumer.blocking(_.partitionsFor(topic).asScala.toList)
 
       override def partitionsFor(
-        topic: String,
-        timeout: FiniteDuration
+          topic: String,
+          timeout: FiniteDuration
       ): F[List[PartitionInfo]] =
-        withConsumer.blocking { _.partitionsFor(topic, timeout.asJava).asScala.toList }
+        withConsumer.blocking(_.partitionsFor(topic, timeout.asJava).asScala.toList)
 
       override def position(partition: TopicPartition): F[Long] =
-        withConsumer.blocking { _.position(partition) }
+        withConsumer.blocking(_.position(partition))
 
       override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
-        withConsumer.blocking { _.position(partition, timeout.asJava) }
+        withConsumer.blocking(_.position(partition, timeout.asJava))
 
       override def committed(
-        partitions: Set[TopicPartition]
+          partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, OffsetAndMetadata]] =
         withConsumer.blocking {
           _.committed(partitions.asJava)
@@ -516,8 +499,8 @@ object KafkaConsumer {
         }
 
       override def committed(
-        partitions: Set[TopicPartition],
-        timeout: FiniteDuration
+          partitions: Set[TopicPartition],
+          timeout: FiniteDuration
       ): F[Map[TopicPartition, OffsetAndMetadata]] =
         withConsumer.blocking {
           _.committed(partitions.asJava, timeout.asJava)
@@ -537,11 +520,13 @@ object KafkaConsumer {
             .log(LogEntry.SubscribedTopics(topics.toNonEmptyList, _))
         }
 
-      private def withPermit[A](fa: F[A]): F[A] = F.deferred[Either[Throwable, A]].flatMap {
-        deferred =>
+      private def withPermit[A](fa: F[A]): F[A] =
+        F.deferred[Either[Throwable, A]].flatMap { deferred =>
           requests
-            .offer(Request.WithPermit(fa, deferred.complete(_: Either[Throwable, A]).void)) >> deferred.get.rethrow
-      }
+            .offer(
+              Request.WithPermit(fa, deferred.complete(_: Either[Throwable, A]).void)
+            ) >> deferred.get.rethrow
+        }
 
       override def subscribe(regex: Regex): F[Unit] =
         withPermit {
@@ -558,7 +543,7 @@ object KafkaConsumer {
 
       override def unsubscribe: F[Unit] =
         withPermit {
-          withConsumer.blocking { _.unsubscribe() } >> actor.ref
+          withConsumer.blocking(_.unsubscribe()) >> actor.ref
             .updateAndGet(_.asUnsubscribed)
             .log(LogEntry.Unsubscribed(_))
         }
@@ -590,7 +575,7 @@ object KafkaConsumer {
         } yield ()
 
       override def beginningOffsets(
-        partitions: Set[TopicPartition]
+          partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
         withConsumer.blocking {
           _.beginningOffsets(partitions.asJava)
@@ -599,8 +584,8 @@ object KafkaConsumer {
         }
 
       override def beginningOffsets(
-        partitions: Set[TopicPartition],
-        timeout: FiniteDuration
+          partitions: Set[TopicPartition],
+          timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
         withConsumer.blocking {
           _.beginningOffsets(partitions.asJava, timeout.asJava)
@@ -609,7 +594,7 @@ object KafkaConsumer {
         }
 
       override def endOffsets(
-        partitions: Set[TopicPartition]
+          partitions: Set[TopicPartition]
       ): F[Map[TopicPartition, Long]] =
         withConsumer.blocking {
           _.endOffsets(partitions.asJava)
@@ -618,8 +603,8 @@ object KafkaConsumer {
         }
 
       override def endOffsets(
-        partitions: Set[TopicPartition],
-        timeout: FiniteDuration
+          partitions: Set[TopicPartition],
+          timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
         withConsumer.blocking {
           _.endOffsets(partitions.asJava, timeout.asJava)
@@ -628,7 +613,7 @@ object KafkaConsumer {
         }
 
       override def metrics: F[Map[MetricName, Metric]] =
-        withConsumer.blocking { _.metrics().asScala.toMap }
+        withConsumer.blocking(_.metrics().asScala.toMap)
 
       override def toString: String =
         "KafkaConsumer$" + id
@@ -638,22 +623,19 @@ object KafkaConsumer {
       override def awaitTermination: F[Unit] = fiber.join
     }
 
-  /**
-    * Creates a new [[KafkaConsumer]] in the `Resource` context,
-    * using the specified [[ConsumerSettings]]. Note that there
-    * is another version where `F[_]` is specified explicitly and
-    * the key and value type can be inferred, which allows you
-    * to use the following syntax.
+  /** Creates a new [[KafkaConsumer]] in the `Resource` context, using the specified
+    * [[ConsumerSettings]]. Note that there is another version where `F[_]` is specified explicitly
+    * and the key and value type can be inferred, which allows you to use the following syntax.
     *
     * {{{
     * KafkaConsumer.resource[F].using(settings)
     * }}}
     */
   def resource[F[_], K, V](
-    settings: ConsumerSettings[F, K, V]
-  )(
-    implicit F: Async[F],
-    mk: MkConsumer[F]
+      settings: ConsumerSettings[F, K, V]
+  )(implicit
+      F: Async[F],
+      mk: MkConsumer[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     for {
       keyDeserializer <- Resource.eval(settings.keyDeserializer)
@@ -695,19 +677,16 @@ object KafkaConsumer {
       stopConsumingDeferred
     )(F, logging)
 
-  /**
-    * Creates a new [[KafkaConsumer]] in the `Stream` context,
-    * using the specified [[ConsumerSettings]]. Note that there
-    * is another version where `F[_]` is specified explicitly and
-    * the key and value type can be inferred, which allows you
-    * to use the following syntax.
+  /** Creates a new [[KafkaConsumer]] in the `Stream` context, using the specified
+    * [[ConsumerSettings]]. Note that there is another version where `F[_]` is specified explicitly
+    * and the key and value type can be inferred, which allows you to use the following syntax.
     *
     * {{{
     * KafkaConsumer.stream[F].using(settings)
     * }}}
     */
   def stream[F[_], K, V](
-    settings: ConsumerSettings[F, K, V]
+      settings: ConsumerSettings[F, K, V]
   )(implicit F: Async[F], mk: MkConsumer[F]): Stream[F, KafkaConsumer[F, K, V]] =
     Stream.resource(resource(settings)(F, mk))
 
@@ -717,35 +696,31 @@ object KafkaConsumer {
   private[kafka] final class ConsumerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
 
-    /**
-      * Alternative version of `resource` where the `F[_]` is
-      * specified explicitly, and where the key and value type can
-      * be inferred from the [[ConsumerSettings]]. This allows you
-      * to use the following syntax.
+    /** Alternative version of `resource` where the `F[_]` is specified explicitly, and where the
+      * key and value type can be inferred from the [[ConsumerSettings]]. This allows you to use the
+      * following syntax.
       *
       * {{{
       * KafkaConsumer[F].resource(settings)
       * }}}
       */
-    def resource[K, V](settings: ConsumerSettings[F, K, V])(
-      implicit F: Async[F],
-      mk: MkConsumer[F]
+    def resource[K, V](settings: ConsumerSettings[F, K, V])(implicit
+        F: Async[F],
+        mk: MkConsumer[F]
     ): Resource[F, KafkaConsumer[F, K, V]] =
       KafkaConsumer.resource(settings)(F, mk)
 
-    /**
-      * Alternative version of `stream` where the `F[_]` is
-      * specified explicitly, and where the key and value type can
-      * be inferred from the [[ConsumerSettings]]. This allows you
-      * to use the following syntax.
+    /** Alternative version of `stream` where the `F[_]` is specified explicitly, and where the key
+      * and value type can be inferred from the [[ConsumerSettings]]. This allows you to use the
+      * following syntax.
       *
       * {{{
       * KafkaConsumer[F].stream(settings)
       * }}}
       */
-    def stream[K, V](settings: ConsumerSettings[F, K, V])(
-      implicit F: Async[F],
-      mk: MkConsumer[F]
+    def stream[K, V](settings: ConsumerSettings[F, K, V])(implicit
+        F: Async[F],
+        mk: MkConsumer[F]
     ): Stream[F, KafkaConsumer[F, K, V]] =
       KafkaConsumer.stream(settings)(F, mk)
 
@@ -759,9 +734,8 @@ object KafkaConsumer {
    */
   implicit final class StreamOps[F[_]: Functor, K, V](self: Stream[F, KafkaConsumer[F, K, V]]) {
 
-    /**
-      * Subscribes a consumer to the specified topics within the [[Stream]] context.
-      * See [[KafkaSubscription#subscribe]].
+    /** Subscribes a consumer to the specified topics within the [[Stream]] context. See
+      * [[KafkaSubscription#subscribe]].
       */
     def subscribe[G[_]: Reducible](topics: G[String]): Stream[F, KafkaConsumer[F, K, V]] =
       self.evalTap(_.subscribe(topics))
@@ -769,36 +743,30 @@ object KafkaConsumer {
     def subscribe(regex: Regex): Stream[F, KafkaConsumer[F, K, V]] =
       self.evalTap(_.subscribe(regex))
 
-    /**
-      * Subscribes a consumer to the specified topics within the [[Stream]] context.
-      * See [[KafkaSubscription#subscribe]].
+    /** Subscribes a consumer to the specified topics within the [[Stream]] context. See
+      * [[KafkaSubscription#subscribe]].
       */
     def subscribeTo(
-      firstTopic: String,
-      remainingTopics: String*
+        firstTopic: String,
+        remainingTopics: String*
     ): Stream[F, KafkaConsumer[F, K, V]] =
       self.evalTap(_.subscribeTo(firstTopic, remainingTopics: _*))
 
-    /**
-      * A [[Stream]] of records from the allocated [[KafkaConsumer]]. Alias for [[stream]].
-      * See [[KafkaConsume#stream]]
+    /** A [[Stream]] of records from the allocated [[KafkaConsumer]]. Alias for [[stream]]. See
+      * [[KafkaConsume#stream]]
       */
     def records: Stream[F, CommittableConsumerRecord[F, K, V]] = stream
 
-    /**
-      * A [[Stream]] of records from the allocated [[KafkaConsumer]].
-      * See [[KafkaConsume#stream]]
+    /** A [[Stream]] of records from the allocated [[KafkaConsumer]]. See [[KafkaConsume#stream]]
       */
     def stream: Stream[F, CommittableConsumerRecord[F, K, V]] = self.flatMap(_.records)
 
-    /**
-      * Alias for [[partitionedStream]]. See [[KafkaConsume#partitionedStream]]
+    /** Alias for [[partitionedStream]]. See [[KafkaConsume#partitionedStream]]
       */
     def partitionedRecords: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
       partitionedStream
 
-    /**
-      * See [[KafkaConsume#partitionedStream]]
+    /** See [[KafkaConsume#partitionedStream]]
       */
     def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
       self.flatMap(_.partitionedRecords)

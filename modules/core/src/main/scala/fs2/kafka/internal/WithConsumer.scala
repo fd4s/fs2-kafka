@@ -18,11 +18,11 @@ private[kafka] sealed abstract class WithConsumer[F[_]] {
 
 private[kafka] object WithConsumer {
   def apply[F[_]: Async, K, V](
-    mk: MkConsumer[F],
-    settings: ConsumerSettings[F, K, V]
+      mk: MkConsumer[F],
+      settings: ConsumerSettings[F, K, V]
   ): Resource[F, WithConsumer[F]] = {
     val blocking: Resource[F, Blocking[F]] = settings.customBlockingContext match {
-      case None     => Blocking.singleThreaded[F]("fs2-kafka-consumer")
+      case None => Blocking.singleThreaded[F]("fs2-kafka-consumer")
       case Some(ec) => Resource.pure(Blocking.fromExecutionContext(ec))
     }
 
@@ -34,7 +34,7 @@ private[kafka] object WithConsumer {
               b(f(consumer))
           }
         }
-      }(_.blocking { _.close(settings.closeTimeout.asJava) })
+      }(_.blocking(_.close(settings.closeTimeout.asJava)))
     }
   }
 }

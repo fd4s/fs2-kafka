@@ -30,7 +30,7 @@ final class KafkaSpec extends BaseAsyncSpec {
   }
 
   def exampleOffsets[F[_]](
-    commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
+      commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit]
   )(implicit F: ApplicativeError[F, Throwable]): List[CommittableOffset[F]] = List(
     CommittableOffset[F](
       new TopicPartition("topic", 0),

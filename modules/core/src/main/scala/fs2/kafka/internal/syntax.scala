@@ -24,39 +24,39 @@ import scala.concurrent.duration.FiniteDuration
 
 private[kafka] object syntax {
   implicit final class LoggingSyntax[F[_], A](
-    private val fa: F[A]
+      private val fa: F[A]
   ) extends AnyVal {
-    def log(f: A => LogEntry)(
-      implicit F: FlatMap[F],
-      logging: Logging[F]
+    def log(f: A => LogEntry)(implicit
+        F: FlatMap[F],
+        logging: Logging[F]
     ): F[Unit] =
       fa.flatMap(a => logging.log(f(a)))
   }
 
   implicit final class FiniteDurationSyntax(
-    private val duration: FiniteDuration
+      private val duration: FiniteDuration
   ) extends AnyVal {
     def asJava: Duration =
       if (duration.length == 0L) Duration.ZERO
       else
         duration.unit match {
-          case TimeUnit.DAYS         => Duration.ofDays(duration.length)
-          case TimeUnit.HOURS        => Duration.ofHours(duration.length)
-          case TimeUnit.MINUTES      => Duration.ofMinutes(duration.length)
-          case TimeUnit.SECONDS      => Duration.ofSeconds(duration.length)
+          case TimeUnit.DAYS => Duration.ofDays(duration.length)
+          case TimeUnit.HOURS => Duration.ofHours(duration.length)
+          case TimeUnit.MINUTES => Duration.ofMinutes(duration.length)
+          case TimeUnit.SECONDS => Duration.ofSeconds(duration.length)
           case TimeUnit.MILLISECONDS => Duration.ofMillis(duration.length)
           case TimeUnit.MICROSECONDS => Duration.of(duration.length, ChronoUnit.MICROS)
-          case TimeUnit.NANOSECONDS  => Duration.ofNanos(duration.length)
+          case TimeUnit.NANOSECONDS => Duration.ofNanos(duration.length)
         }
   }
 
   implicit final class FoldableSyntax[F[_], A](
-    private val fa: F[A]
+      private val fa: F[A]
   ) extends AnyVal {
     def mkStringAppend(f: (String => Unit, A) => Unit)(
-      start: String,
-      sep: String,
-      end: String
+        start: String,
+        sep: String,
+        end: String
     )(implicit F: Foldable[F]): String = {
       val builder = new java.lang.StringBuilder(start)
       val append: String => Unit = s => { builder.append(s); () }
@@ -71,28 +71,28 @@ private[kafka] object syntax {
       builder.append(end).toString
     }
 
-    def mkStringMap(f: A => String)(start: String, sep: String, end: String)(
-      implicit F: Foldable[F]
+    def mkStringMap(f: A => String)(start: String, sep: String, end: String)(implicit
+        F: Foldable[F]
     ): String = mkStringAppend((append, a) => append(f(a)))(start, sep, end)
 
-    def mkString(start: String, sep: String, end: String)(
-      implicit F: Foldable[F]
+    def mkString(start: String, sep: String, end: String)(implicit
+        F: Foldable[F]
     ): String = mkStringMap(_.toString)(start, sep, end)
 
-    def mkStringShow(start: String, sep: String, end: String)(
-      implicit F: Foldable[F],
-      A: Show[A]
+    def mkStringShow(start: String, sep: String, end: String)(implicit
+        F: Foldable[F],
+        A: Show[A]
     ): String = mkStringMap(_.show)(start, sep, end)
 
     def asJava(implicit F: Foldable[F]): util.List[A] = {
       val array = new util.ArrayList[A](fa.size.toInt)
-      fa.foldLeft(())((_, a) => { array.add(a); () })
+      fa.foldLeft(()) { (_, a) => array.add(a); () }
       util.Collections.unmodifiableList(array)
     }
   }
 
   implicit final class MapSyntax[K, V](
-    private val map: Map[K, V]
+      private val map: Map[K, V]
   ) extends AnyVal {
     def keySetStrict: Set[K] = {
       val builder = Set.newBuilder[K]
@@ -124,14 +124,14 @@ private[kafka] object syntax {
   }
 
   implicit final class MapWrappedValueSyntax[F[_], K, V](
-    private val map: Map[K, F[V]]
+      private val map: Map[K, F[V]]
   ) extends AnyVal {
     def asJavaMap(implicit F: Foldable[F]): util.Map[K, util.Collection[V]] =
       map.map { case (k, fv) => k -> (fv.asJava: util.Collection[V]) }.asJava
   }
 
   implicit final class JavaUtilCollectionSyntax[A](
-    private val collection: util.Collection[A]
+      private val collection: util.Collection[A]
   ) extends AnyVal {
     def toSet: Set[A] = {
       val builder = Set.newBuilder[A]
@@ -170,7 +170,7 @@ private[kafka] object syntax {
   }
 
   implicit final class JavaUtilMapSyntax[K, V](
-    private val map: util.Map[K, V]
+      private val map: util.Map[K, V]
   ) extends AnyVal {
     def toMap: Map[K, V] = {
       var result = Map.empty[K, V]
@@ -184,7 +184,7 @@ private[kafka] object syntax {
   }
 
   implicit final class KafkaFutureSyntax[A](
-    private val future: KafkaFuture[A]
+      private val future: KafkaFuture[A]
   ) extends AnyVal {
     private[this] def baseFunction[B](f: A => B): BaseFunction[A, B] =
       new BaseFunction[A, B] { override def apply(a: A): B = f(a) }
@@ -202,22 +202,21 @@ private[kafka] object syntax {
     def cancelable[F[_]](implicit F: Async[F]): F[A] =
       F.async { (cb: (Either[Throwable, A] => Unit)) =>
         F.blocking {
-            future
-              .whenComplete(new BiConsumer[A, Throwable] {
-                override def accept(a: A, t: Throwable): Unit = t match {
-                  case null                                         => cb(a.asRight)
-                  case _: CancellationException                     => ()
-                  case e: CompletionException if e.getCause != null => cb(e.getCause.asLeft)
-                  case e                                            => cb(e.asLeft)
-                }
-              })
-          }
-          .flatMap(_.cancelToken)
+          future
+            .whenComplete(new BiConsumer[A, Throwable] {
+              override def accept(a: A, t: Throwable): Unit = t match {
+                case null => cb(a.asRight)
+                case _: CancellationException => ()
+                case e: CompletionException if e.getCause != null => cb(e.getCause.asLeft)
+                case e => cb(e.asLeft)
+              }
+            })
+        }.flatMap(_.cancelToken)
       }
   }
 
   implicit final class KafkaHeadersSyntax(
-    private val headers: KafkaHeaders
+      private val headers: KafkaHeaders
   ) extends AnyVal {
     def asScala: Headers =
       Headers.fromSeq {

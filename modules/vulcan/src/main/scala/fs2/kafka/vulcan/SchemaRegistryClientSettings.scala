@@ -10,86 +10,71 @@ import cats.effect.Sync
 import cats.Show
 import fs2.kafka.internal.converters.collection._
 
-/**
-  * Describes how to create a `SchemaRegistryClient` and which
-  * settings should be used. Settings are tailored for default
-  * implementation `CachedSchemaRegistryClient`.
+/** Describes how to create a `SchemaRegistryClient` and which settings should be used. Settings are
+  * tailored for default implementation `CachedSchemaRegistryClient`.
   *
   * Use `SchemaRegistryClient#apply` to create an instance.
   */
 sealed abstract class SchemaRegistryClientSettings[F[_]] {
 
-  /**
-    * The base URL of the schema registry service.
+  /** The base URL of the schema registry service.
     */
   def baseUrl: String
 
-  /**
-    * The maximum number of schemas to cache in the client.
+  /** The maximum number of schemas to cache in the client.
     *
     * The default value is 1000.
     */
   def maxCacheSize: Int
 
-  /**
-    * Creates a new [[SchemaRegistryClientSettings]] instance
-    * with the specified [[maxCacheSize]].
+  /** Creates a new [[SchemaRegistryClientSettings]] instance with the specified [[maxCacheSize]].
     */
   def withMaxCacheSize(maxCacheSize: Int): SchemaRegistryClientSettings[F]
 
-  /**
-    * Creates a new [[SchemaRegistryClientSettings]] instance
-    * with the specified authentication details.
+  /** Creates a new [[SchemaRegistryClientSettings]] instance with the specified authentication
+    * details.
     */
   def withAuth(auth: Auth): SchemaRegistryClientSettings[F]
 
-  /**
-    * Properties provided when creating a `SchemaRegistryClient`.
-    * Numerous functions in [[SchemaRegistryClientSettings]] add
-    * properties here as necessary.
+  /** Properties provided when creating a `SchemaRegistryClient`. Numerous functions in
+    * [[SchemaRegistryClientSettings]] add properties here as necessary.
     */
   def properties: Map[String, String]
 
-  /**
-    * Creates a new [[SchemaRegistryClientSettings]] instance
-    * including a property with the specified key and value.
+  /** Creates a new [[SchemaRegistryClientSettings]] instance including a property with the
+    * specified key and value.
     */
   def withProperty(key: String, value: String): SchemaRegistryClientSettings[F]
 
-  /**
-    * Creates a new [[SchemaRegistryClientSettings]] instance
-    * including properties with the specified keys and values.
+  /** Creates a new [[SchemaRegistryClientSettings]] instance including properties with the
+    * specified keys and values.
     */
   def withProperties(properties: (String, String)*): SchemaRegistryClientSettings[F]
 
-  /**
-    * Creates a new [[SchemaRegistryClientSettings]] instance
-    * including properties with the specified keys and values.
+  /** Creates a new [[SchemaRegistryClientSettings]] instance including properties with the
+    * specified keys and values.
     */
   def withProperties(properties: Map[String, String]): SchemaRegistryClientSettings[F]
 
-  /**
-    * Creates a new `SchemaRegistryClient` using the settings
-    * contained within this [[SchemaRegistryClientSettings]].
+  /** Creates a new `SchemaRegistryClient` using the settings contained within this
+    * [[SchemaRegistryClientSettings]].
     */
   def createSchemaRegistryClient: F[SchemaRegistryClient]
 
-  /**
-    * Creates a new [[SchemaRegistryClientSettings]] instance
-    * with the specified function for creating new instances
-    * of `SchemaRegistryClient` from settings. The arguments
-    * are [[baseUrl]], [[maxCacheSize]], and [[properties]].
+  /** Creates a new [[SchemaRegistryClientSettings]] instance with the specified function for
+    * creating new instances of `SchemaRegistryClient` from settings. The arguments are [[baseUrl]],
+    * [[maxCacheSize]], and [[properties]].
     */
   def withCreateSchemaRegistryClient(
-    createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[SchemaRegistryClient]
+      createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[SchemaRegistryClient]
   ): SchemaRegistryClientSettings[F]
 }
 
 object SchemaRegistryClientSettings {
   private[this] final case class SchemaRegistryClientSettingsImpl[F[_]](
-    override val baseUrl: String,
-    override val maxCacheSize: Int,
-    override val properties: Map[String, String],
+      override val baseUrl: String,
+      override val maxCacheSize: Int,
+      override val properties: Map[String, String],
     // format: off
     val createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[SchemaRegistryClient]
     // format: on
@@ -128,7 +113,11 @@ object SchemaRegistryClientSettings {
       createSchemaRegistryClientWith(baseUrl, maxCacheSize, properties)
 
     override def withCreateSchemaRegistryClient(
-      createSchemaRegistryClientWith: (String, Int, Map[String, String]) => F[SchemaRegistryClient]
+        createSchemaRegistryClientWith: (
+            String,
+            Int,
+            Map[String, String]
+        ) => F[SchemaRegistryClient]
     ): SchemaRegistryClientSettings[F] =
       copy(createSchemaRegistryClientWith = createSchemaRegistryClientWith)
 
@@ -136,9 +125,8 @@ object SchemaRegistryClientSettings {
       s"SchemaRegistryClientSettings(baseUrl = $baseUrl, maxCacheSize = $maxCacheSize)"
   }
 
-  /**
-    * Creates a new [[SchemaRegistryClientSettings]] instance
-    * using the specified base URL of the schema registry.
+  /** Creates a new [[SchemaRegistryClientSettings]] instance using the specified base URL of the
+    * schema registry.
     */
   def apply[F[_]](baseUrl: String)(implicit F: Sync[F]): SchemaRegistryClientSettings[F] =
     SchemaRegistryClientSettingsImpl(

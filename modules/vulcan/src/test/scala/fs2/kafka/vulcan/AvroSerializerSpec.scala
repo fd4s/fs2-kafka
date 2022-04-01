@@ -53,7 +53,7 @@ final class AvroSerializerSpec extends AnyFunSpec {
 
     it("toString") {
       assert {
-        avroSerializer[Int].toString() startsWith "AvroSerializer$"
+        avroSerializer[Int].toString().startsWith("AvroSerializer$")
       }
     }
   }

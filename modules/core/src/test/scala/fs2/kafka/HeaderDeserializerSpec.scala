@@ -41,6 +41,6 @@ final class HeaderDeserializerSpec extends BaseCatsSpec {
   }
 
   test("HeaderDeserializer#toString") {
-    assert(HeaderDeserializer[String].toString startsWith "HeaderDeserializer$")
+    assert(HeaderDeserializer[String].toString.startsWith("HeaderDeserializer$"))
   }
 }

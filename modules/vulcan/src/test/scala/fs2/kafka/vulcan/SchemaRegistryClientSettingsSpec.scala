@@ -104,8 +104,8 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
     it("should provide withCreateSchemaRegistryClient") {
       assert {
         settings
-          .withCreateSchemaRegistryClient {
-            case _ => IO.raiseError(new RuntimeException)
+          .withCreateSchemaRegistryClient { case _ =>
+            IO.raiseError(new RuntimeException)
           }
           .createSchemaRegistryClient
           .attempt

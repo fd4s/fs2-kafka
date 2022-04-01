@@ -18,76 +18,66 @@ import org.apache.kafka.common.{Metric, MetricName}
 
 import scala.annotation.nowarn
 
-/**
-  * Represents a producer of Kafka records specialized for 'read-process-write'
-  * streams, with the ability to atomically produce `ProducerRecord`s and commit
-  * corresponding [[CommittableOffset]]s using [[produce]].<br>
-  * <br>
-  * Records are wrapped in [[TransactionalProducerRecords]] which allow an
-  * arbitrary passthrough value to be included in the result.
+/** Represents a producer of Kafka records specialized for 'read-process-write' streams, with the
+  * ability to atomically produce `ProducerRecord`s and commit corresponding [[CommittableOffset]]s
+  * using [[produce]].<br> <br> Records are wrapped in [[TransactionalProducerRecords]] which allow
+  * an arbitrary passthrough value to be included in the result.
   */
 abstract class TransactionalKafkaProducer[F[_], K, V] {
 
-  /**
-    * Produces the `ProducerRecord`s in the specified [[TransactionalProducerRecords]]
-    * in four steps: first a transaction is initialized, then the records are placed
-    * in the buffer of the producer, then the offsets of the records are sent to the
-    * transaction, and lastly the transaction is committed. If errors or cancellation
-    * occurs, the transaction is aborted. The returned effect succeeds if the whole
-    * transaction completes successfully.
+  /** Produces the `ProducerRecord`s in the specified [[TransactionalProducerRecords]] in four
+    * steps: first a transaction is initialized, then the records are placed in the buffer of the
+    * producer, then the offsets of the records are sent to the transaction, and lastly the
+    * transaction is committed. If errors or cancellation occurs, the transaction is aborted. The
+    * returned effect succeeds if the whole transaction completes successfully.
     */
   def produce[P](
-    records: TransactionalProducerRecords[F, P, K, V]
+      records: TransactionalProducerRecords[F, P, K, V]
   ): F[ProducerResult[P, K, V]]
 }
 
 object TransactionalKafkaProducer {
 
-  /**
-    * [[TransactionalKafkaProducer.Metrics]] extends [[TransactionalKafkaProducer]] to provide
+  /** [[TransactionalKafkaProducer.Metrics]] extends [[TransactionalKafkaProducer]] to provide
     * access to the underlying producer metrics.
     */
   abstract class Metrics[F[_], K, V] extends TransactionalKafkaProducer[F, K, V] {
 
-    /**
-      * Returns producer metrics.
+    /** Returns producer metrics.
       *
-      * @see org.apache.kafka.clients.producer.KafkaProducer#metrics
+      * @see
+      *   org.apache.kafka.clients.producer.KafkaProducer#metrics
       */
     def metrics: F[Map[MetricName, Metric]]
   }
 
-  /**
-    * [[TransactionalKafkaProducer.WithoutOffsets]] extends [[TransactionalKafkaProducer.Metrics]]
+  /** [[TransactionalKafkaProducer.WithoutOffsets]] extends [[TransactionalKafkaProducer.Metrics]]
     * to allow producing of records without corresponding upstream offsets.
     */
   abstract class WithoutOffsets[F[_], K, V] extends Metrics[F, K, V] {
 
-    /**
-      * Produces the `ProducerRecord`s in the specified [[ProducerRecords]]
-      * in three steps: first a transaction is initialized, then the records are placed
-      * in the buffer of the producer, and lastly the transaction is committed. If errors
-      * or cancellation occurs, the transaction is aborted. The returned effect succeeds
-      * if the whole transaction completes successfully.
+    /** Produces the `ProducerRecord`s in the specified [[ProducerRecords]] in three steps: first a
+      * transaction is initialized, then the records are placed in the buffer of the producer, and
+      * lastly the transaction is committed. If errors or cancellation occurs, the transaction is
+      * aborted. The returned effect succeeds if the whole transaction completes successfully.
       */
     def produceWithoutOffsets[P](records: ProducerRecords[P, K, V]): F[ProducerResult[P, K, V]]
   }
 
-  /**
-    * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context,
-    * using the specified [[TransactionalProducerSettings]]. Note that there
-    * is another version where `F[_]` is specified explicitly and the key and
-    * value type can be inferred, which allows you to use the following syntax.
+  /** Creates a new [[TransactionalKafkaProducer]] in the `Resource` context, using the specified
+    * [[TransactionalProducerSettings]]. Note that there is another version where `F[_]` is
+    * specified explicitly and the key and value type can be inferred, which allows you to use the
+    * following syntax.
     *
     * {{{
     * TransactionalKafkaProducer.resource[F].using(settings)
     * }}}
     */
   def resource[F[_], K, V](
-    settings: TransactionalProducerSettings[F, K, V]
-  )(
-    implicit F: Async[F],
-    mk: MkProducer[F]
+      settings: TransactionalProducerSettings[F, K, V]
+  )(implicit
+      F: Async[F],
+      mk: MkProducer[F]
   ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
     (
       Resource.eval(settings.producerSettings.keySerializer),
@@ -96,13 +86,13 @@ object TransactionalKafkaProducer {
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
         override def produce[P](
-          records: TransactionalProducerRecords[F, P, K, V]
+            records: TransactionalProducerRecords[F, P, K, V]
         ): F[ProducerResult[P, K, V]] =
           produceTransactionWithOffsets(records)
             .map(ProducerResult(_, records.passthrough))
 
         private[this] def produceTransactionWithOffsets[P](
-          records: TransactionalProducerRecords[F, P, K, V]
+            records: TransactionalProducerRecords[F, P, K, V]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
           if (records.records.isEmpty) F.pure(Chunk.empty)
           else {
@@ -128,13 +118,13 @@ object TransactionalKafkaProducer {
           }
 
         override def produceWithoutOffsets[P](
-          records: ProducerRecords[P, K, V]
+            records: ProducerRecords[P, K, V]
         ): F[ProducerResult[P, K, V]] =
           produceTransaction(records.records, None).map(ProducerResult(_, records.passthrough))
 
         private[this] def produceTransaction[P](
-          records: Chunk[ProducerRecord[K, V]],
-          sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
+            records: Chunk[ProducerRecord[K, V]],
+            sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
           if (records.isEmpty) F.pure(Chunk.empty)
           else {
@@ -160,28 +150,27 @@ object TransactionalKafkaProducer {
           }
 
         override def metrics: F[Map[MetricName, Metric]] =
-          withProducer.blocking { _.metrics().asScala.toMap }
+          withProducer.blocking(_.metrics().asScala.toMap)
 
         override def toString: String =
           "TransactionalKafkaProducer$" + System.identityHashCode(this)
       }
     }
 
-  /**
-    * Creates a new [[TransactionalKafkaProducer]] in the `Stream` context,
-    * using the specified [[TransactionalProducerSettings]]. Note that there
-    * is another version where `F[_]` is specified explicitly and the key and
-    * value type can be inferred, which allows you to use the following syntax.
+  /** Creates a new [[TransactionalKafkaProducer]] in the `Stream` context, using the specified
+    * [[TransactionalProducerSettings]]. Note that there is another version where `F[_]` is
+    * specified explicitly and the key and value type can be inferred, which allows you to use the
+    * following syntax.
     *
     * {{{
     * TransactionalKafkaProducer.stream[F].using(settings)
     * }}}
     */
   def stream[F[_], K, V](
-    settings: TransactionalProducerSettings[F, K, V]
-  )(
-    implicit F: Async[F],
-    mk: MkProducer[F]
+      settings: TransactionalProducerSettings[F, K, V]
+  )(implicit
+      F: Async[F],
+      mk: MkProducer[F]
   ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
     Stream.resource(resource(settings)(F, mk))
 
@@ -191,35 +180,31 @@ object TransactionalKafkaProducer {
   private[kafka] final class TransactionalProducerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
 
-    /**
-      * Alternative version of `resource` where the `F[_]` is
-      * specified explicitly, and where the key and value type can
-      * be inferred from the [[TransactionalProducerSettings]]. This allows you
-      * to use the following syntax.
+    /** Alternative version of `resource` where the `F[_]` is specified explicitly, and where the
+      * key and value type can be inferred from the [[TransactionalProducerSettings]]. This allows
+      * you to use the following syntax.
       *
       * {{{
       * KafkaProducer[F].resource(settings)
       * }}}
       */
-    def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(
-      implicit F: Async[F],
-      mk: MkProducer[F]
+    def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(implicit
+        F: Async[F],
+        mk: MkProducer[F]
     ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
       TransactionalKafkaProducer.resource(settings)(F, mk)
 
-    /**
-      * Alternative version of `stream` where the `F[_]` is
-      * specified explicitly, and where the key and value type can
-      * be inferred from the [[TransactionalProducerSettings]]. This allows you
+    /** Alternative version of `stream` where the `F[_]` is specified explicitly, and where the key
+      * and value type can be inferred from the [[TransactionalProducerSettings]]. This allows you
       * to use the following syntax.
       *
       * {{{
       * KafkaProducer[F].stream(settings)
       * }}}
       */
-    def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(
-      implicit F: Async[F],
-      mk: MkProducer[F]
+    def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(implicit
+        F: Async[F],
+        mk: MkProducer[F]
     ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
       TransactionalKafkaProducer.stream(settings)(F, mk)
 

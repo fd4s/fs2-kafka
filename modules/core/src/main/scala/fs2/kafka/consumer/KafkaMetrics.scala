@@ -10,10 +10,10 @@ import org.apache.kafka.common.{MetricName, Metric}
 
 trait KafkaMetrics[F[_]] {
 
-  /**
-    * Returns consumer metrics.
+  /** Returns consumer metrics.
     *
-    * @see org.apache.kafka.clients.consumer.KafkaConsumer#metrics
+    * @see
+    *   org.apache.kafka.clients.consumer.KafkaConsumer#metrics
     */
   def metrics: F[Map[MetricName, Metric]]
 }

@@ -12,7 +12,7 @@ final class ConsumerRecordSpec extends BaseSpec {
   describe("ConsumerRecord#fromJava") {
     it("should convert timestamps") {
       def check(timestamp: Long, timestampType: TimestampType)(
-        f: ConsumerRecord[String, String] => Assertion
+          f: ConsumerRecord[String, String] => Assertion
       ): Assertion = {
         val record =
           new KafkaByteConsumerRecord(
@@ -46,7 +46,7 @@ final class ConsumerRecordSpec extends BaseSpec {
 
     it("should convert serialized key size") {
       def check(serializedKeySize: Int)(
-        f: ConsumerRecord[String, String] => Assertion
+          f: ConsumerRecord[String, String] => Assertion
       ): Assertion = {
         val record =
           new KafkaByteConsumerRecord(
@@ -75,7 +75,7 @@ final class ConsumerRecordSpec extends BaseSpec {
 
     it("should convert serialized value size") {
       def check(serializedValueSize: Int)(
-        f: ConsumerRecord[String, String] => Assertion
+          f: ConsumerRecord[String, String] => Assertion
       ): Assertion = {
         val record =
           new KafkaByteConsumerRecord(
@@ -104,7 +104,7 @@ final class ConsumerRecordSpec extends BaseSpec {
 
     it("should convert leader epoch") {
       def check(leaderEpoch: Option[Int])(
-        f: ConsumerRecord[String, String] => Assertion
+          f: ConsumerRecord[String, String] => Assertion
       ): Assertion = {
         val record =
           new KafkaByteConsumerRecord(

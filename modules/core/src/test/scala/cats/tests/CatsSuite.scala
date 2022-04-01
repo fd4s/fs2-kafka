@@ -52,9 +52,7 @@ trait TestSettings extends Configuration with Matchers {
     else PropertyCheckConfiguration(minSuccessful = 1, sizeRange = 1)
 }
 
-/**
-  * An opinionated stack of traits to improve consistency and reduce
-  * boilerplate in Cats tests.
+/** An opinionated stack of traits to improve consistency and reduce boilerplate in Cats tests.
   */
 trait CatsSuite
     extends AnyFunSuiteLike
@@ -78,7 +76,7 @@ trait CatsSuite
     with AllSyntaxBinCompat5
     with StrictCatsEquality {
 
-  implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
+  override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
     checkConfiguration
 
   // disable Eq syntax (by making `catsSyntaxEq` not implicit), since it collides
@@ -91,6 +89,6 @@ trait CatsSuite
 }
 
 trait SlowCatsSuite extends CatsSuite {
-  implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
+  override implicit val generatorDrivenConfig: PropertyCheckConfiguration =
     slowCheckConfiguration
 }

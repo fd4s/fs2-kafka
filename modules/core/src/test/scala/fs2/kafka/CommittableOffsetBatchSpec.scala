@@ -63,9 +63,8 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
       forAll { (batch1: CommittableOffsetBatch[IO], batch2: CommittableOffsetBatch[IO]) =>
         val result = batch1.updated(batch2)
 
-        val offsets = batch2.offsets.map {
-          case (topicPartition, offsetAndMetadata) =>
-            CommittableOffset[IO](topicPartition, offsetAndMetadata, None, _ => IO.unit)
+        val offsets = batch2.offsets.map { case (topicPartition, offsetAndMetadata) =>
+          CommittableOffset[IO](topicPartition, offsetAndMetadata, None, _ => IO.unit)
         }
 
         val expected = offsets.foldLeft(batch1)(_ updated _)
@@ -108,7 +107,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
         oneMetadata.show == oneMetadata.toString
       }
 
-      val two = one updated oneMetadata
+      val two = one.updated(oneMetadata)
 
       assert {
         two.toString == "CommittableOffsetBatch(topic-0 -> 0, topic-1 -> (0, metadata))" &&

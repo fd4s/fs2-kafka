@@ -20,8 +20,8 @@ private[kafka] sealed abstract class WithAdminClient[F[_]] {
 
 private[kafka] object WithAdminClient {
   def apply[F[_], G[_]](
-    mk: MkAdminClient[F],
-    settings: AdminClientSettings
+      mk: MkAdminClient[F],
+      settings: AdminClientSettings
   )(implicit F: Sync[F], G: Async[G]): Resource[F, WithAdminClient[G]] =
     Resource {
       mk(settings).map { adminClient =>

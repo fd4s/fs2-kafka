@@ -53,7 +53,7 @@ final class DeserializerSpec extends BaseCatsSpec {
       Deserializer.headers { headers =>
         headers("format").map(_.as[String]) match {
           case Some("int") => Deserializer[IO, Int]
-          case _           => Deserializer[IO, String].map(_.toInt).suspend
+          case _ => Deserializer[IO, String].map(_.toInt).suspend
         }
       }
 
@@ -122,7 +122,7 @@ final class DeserializerSpec extends BaseCatsSpec {
     val deserializer =
       Deserializer.topic {
         case "topic" => Deserializer[IO, Int]
-        case _       => Deserializer[IO, String].map(_.toInt).suspend
+        case _ => Deserializer[IO, String].map(_.toInt).suspend
       }
 
     forAll { (i: Int) =>
@@ -150,8 +150,8 @@ final class DeserializerSpec extends BaseCatsSpec {
 
   test("Deserializer#topic.unknown") {
     val deserializer =
-      Deserializer.topic {
-        case "topic" => Deserializer[IO, Int]
+      Deserializer.topic { case "topic" =>
+        Deserializer[IO, Int]
       }
 
     forAll { (headers: Headers, bytes: Array[Byte]) =>
@@ -186,10 +186,10 @@ final class DeserializerSpec extends BaseCatsSpec {
   }
 
   test("Deserializer#toString") {
-    assert(Deserializer[IO, String].toString startsWith "Deserializer$")
+    assert(Deserializer[IO, String].toString.startsWith("Deserializer$"))
   }
 
   test("Deserializer.Record#toString") {
-    assert(RecordDeserializer[IO, String].toString startsWith "Deserializer.Record$")
+    assert(RecordDeserializer[IO, String].toString.startsWith("Deserializer.Record$"))
   }
 }

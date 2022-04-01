@@ -127,7 +127,7 @@ final class SerializerSpec extends BaseCatsSpec {
       Serializer.headers { headers =>
         headers("format").map(_.as[String]) match {
           case Some("int") => Serializer[IO, Int]
-          case _           => Serializer[IO, String].contramap[Int](_.toString)
+          case _ => Serializer[IO, String].contramap[Int](_.toString)
         }
       }
 
@@ -158,7 +158,7 @@ final class SerializerSpec extends BaseCatsSpec {
     val serializer =
       Serializer.topic {
         case "topic" => Serializer[IO, Int]
-        case _       => Serializer[IO, String].contramap[Int](_.toString)
+        case _ => Serializer[IO, String].contramap[Int](_.toString)
       }
 
     forAll { (i: Int) =>
@@ -187,8 +187,8 @@ final class SerializerSpec extends BaseCatsSpec {
 
   test("Serializer#topic.unknown") {
     val serializer =
-      Serializer.topic {
-        case "topic" => Serializer[IO, Int]
+      Serializer.topic { case "topic" =>
+        Serializer[IO, Int]
       }
 
     forAll { (headers: Headers, int: Int) =>
@@ -239,16 +239,16 @@ final class SerializerSpec extends BaseCatsSpec {
   }
 
   test("Serializer#toString") {
-    assert(Serializer[IO, Int].toString startsWith "Serializer$")
+    assert(Serializer[IO, Int].toString.startsWith("Serializer$"))
   }
 
   test("Serializer.Record#toString") {
-    assert(RecordSerializer[IO, Int].toString startsWith "Serializer.Record$")
+    assert(RecordSerializer[IO, Int].toString.startsWith("Serializer.Record$"))
   }
 
   def roundtrip[A: Arbitrary: Eq](
-    serializer: Serializer[IO, A],
-    deserializer: Deserializer[IO, A]
+      serializer: Serializer[IO, A],
+      deserializer: Deserializer[IO, A]
   ): Assertion = forAll { (topic: String, headers: Headers, a: A) =>
     val serialized = serializer.serialize(topic, headers, a).unsafeRunSync()
     val deserialized = deserializer.deserialize(topic, headers, serialized).unsafeRunSync()
@@ -256,8 +256,8 @@ final class SerializerSpec extends BaseCatsSpec {
   }
 
   def roundtripAttempt[A: Arbitrary: Eq](
-    serializer: Serializer[IO, A],
-    deserializer: Deserializer[IO, A]
+      serializer: Serializer[IO, A],
+      deserializer: Deserializer[IO, A]
   ): Assertion = forAll { (topic: String, headers: Headers, a: A) =>
     val serialized = serializer.serialize(topic, headers, a).unsafeRunSync()
     val deserialized = deserializer.deserialize(topic, headers, serialized)

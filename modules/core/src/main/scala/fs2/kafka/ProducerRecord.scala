@@ -15,15 +15,11 @@ import cats.instances.int._
 import cats.instances.long._
 import cats.instances.option._
 
-/**
-  * [[ProducerRecord]] represents a record which can be produced
-  * to Kafka. At the very least, this includes a key of type `K`,
-  * a value of type `V`, and to which topic the record should be
-  * produced. The partition, timestamp, and headers can be set
-  * by using the [[withPartition]], [[withTimestamp]], and
-  * [[withHeaders]] functions, respectively.<br>
-  * <br>
-  * To create a new instance, use [[ProducerRecord#apply]].
+/** [[ProducerRecord]] represents a record which can be produced to Kafka. At the very least, this
+  * includes a key of type `K`, a value of type `V`, and to which topic the record should be
+  * produced. The partition, timestamp, and headers can be set by using the [[withPartition]],
+  * [[withTimestamp]], and [[withHeaders]] functions, respectively.<br> <br> To create a new
+  * instance, use [[ProducerRecord#apply]].
   */
 sealed abstract class ProducerRecord[+K, +V] {
 
@@ -45,23 +41,18 @@ sealed abstract class ProducerRecord[+K, +V] {
   /** The record headers. */
   def headers: Headers
 
-  /**
-    * Creates a new [[ProducerRecord]] instance with the
-    * specified partition as the partition to which the
-    * record should be produced.
+  /** Creates a new [[ProducerRecord]] instance with the specified partition as the partition to
+    * which the record should be produced.
     */
   def withPartition(partition: Int): ProducerRecord[K, V]
 
-  /**
-    * Creates a new [[ProducerRecord]] instance with the
-    * specified timestamp as the timestamp for when the
-    * record was produced.
+  /** Creates a new [[ProducerRecord]] instance with the specified timestamp as the timestamp for
+    * when the record was produced.
     */
   def withTimestamp(timestamp: Long): ProducerRecord[K, V]
 
-  /**
-    * Creates a new [[ProducerRecord]] instance with the
-    * specified headers as the headers for the record.
+  /** Creates a new [[ProducerRecord]] instance with the specified headers as the headers for the
+    * record.
     */
   def withHeaders(headers: Headers): ProducerRecord[K, V]
 
@@ -71,12 +62,12 @@ sealed abstract class ProducerRecord[+K, +V] {
 
 object ProducerRecord {
   private[this] final case class ProducerRecordImpl[+K, +V](
-    override val topic: String,
-    override val partition: Option[Int],
-    override val timestamp: Option[Long],
-    override val key: K,
-    override val value: V,
-    override val headers: Headers
+      override val topic: String,
+      override val partition: Option[Int],
+      override val timestamp: Option[Long],
+      override val key: K,
+      override val value: V,
+      override val headers: Headers
   ) extends ProducerRecord[K, V] {
     override def withPartition(partition: Int): ProducerRecord[K, V] =
       copy(partition = Some(partition))
@@ -98,20 +89,18 @@ object ProducerRecord {
       b.append(")").toString
     }
 
-    private[kafka] override def withValue[V2](v: V2): ProducerRecord[K, V2] = copy(value = v)
-    private[kafka] override def withKeyValue[K2, V2](k: K2, v: V2): ProducerRecord[K2, V2] =
+    override private[kafka] def withValue[V2](v: V2): ProducerRecord[K, V2] = copy(value = v)
+    override private[kafka] def withKeyValue[K2, V2](k: K2, v: V2): ProducerRecord[K2, V2] =
       copy(key = k, value = v)
   }
 
-  /**
-    * Creates a new [[ProducerRecord]] instance using the
-    * specified key and value, and the topic to which the
-    * record should be produced.
+  /** Creates a new [[ProducerRecord]] instance using the specified key and value, and the topic to
+    * which the record should be produced.
     */
   def apply[K, V](
-    topic: String,
-    key: K,
-    value: V
+      topic: String,
+      key: K,
+      value: V
   ): ProducerRecord[K, V] =
     ProducerRecordImpl(
       topic = topic,
@@ -122,10 +111,9 @@ object ProducerRecord {
       headers = Headers.empty
     )
 
-  implicit def producerRecordShow[K, V](
-    implicit
-    K: Show[K],
-    V: Show[V]
+  implicit def producerRecordShow[K, V](implicit
+      K: Show[K],
+      V: Show[V]
   ): Show[ProducerRecord[K, V]] = Show.show { record =>
     val b = new java.lang.StringBuilder("ProducerRecord(")
     b.append("topic = ").append(record.topic)
@@ -138,35 +126,33 @@ object ProducerRecord {
   }
 
   implicit def producerRecordEq[K: Eq, V: Eq]: Eq[ProducerRecord[K, V]] =
-    Eq.instance {
-      case (l, r) =>
-        l.topic === r.topic &&
-          l.partition === r.partition &&
-          l.timestamp === r.timestamp &&
-          l.key === r.key &&
-          l.value === r.value &&
-          l.headers === r.headers
+    Eq.instance { case (l, r) =>
+      l.topic === r.topic &&
+      l.partition === r.partition &&
+      l.timestamp === r.timestamp &&
+      l.key === r.key &&
+      l.value === r.value &&
+      l.headers === r.headers
     }
 
   implicit val producerRecordBitraverse: Bitraverse[ProducerRecord] =
     new Bitraverse[ProducerRecord] {
       override def bitraverse[G[_], A, B, C, D](
-        fab: ProducerRecord[A, B]
+          fab: ProducerRecord[A, B]
       )(f: A => G[C], g: B => G[D])(implicit G: Applicative[G]): G[ProducerRecord[C, D]] =
-        G.product(f(fab.key), g(fab.value)).map {
-          case (c, d) =>
-            fab.withKeyValue(c, d)
+        G.product(f(fab.key), g(fab.value)).map { case (c, d) =>
+          fab.withKeyValue(c, d)
         }
 
       override def bifoldLeft[A, B, C](
-        fab: ProducerRecord[A, B],
-        c: C
+          fab: ProducerRecord[A, B],
+          c: C
       )(f: (C, A) => C, g: (C, B) => C): C =
         g(f(c, fab.key), fab.value)
 
       override def bifoldRight[A, B, C](
-        fab: ProducerRecord[A, B],
-        c: Eval[C]
+          fab: ProducerRecord[A, B],
+          c: Eval[C]
       )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] =
         g(fab.value, f(fab.key, c))
     }
@@ -174,7 +160,7 @@ object ProducerRecord {
   implicit def producerRecordTraverse[K]: Traverse[ProducerRecord[K, *]] =
     new Traverse[ProducerRecord[K, *]] {
       override def traverse[G[_], A, B](
-        fa: ProducerRecord[K, A]
+          fa: ProducerRecord[K, A]
       )(f: A => G[B])(implicit G: Applicative[G]): G[ProducerRecord[K, B]] =
         f(fa.value).map { b =>
           fa.withValue(b)
@@ -184,7 +170,7 @@ object ProducerRecord {
         f(b, fa.value)
 
       override def foldRight[A, B](fa: ProducerRecord[K, A], lb: Eval[B])(
-        f: (A, Eval[B]) => Eval[B]
+          f: (A, Eval[B]) => Eval[B]
       ): Eval[B] =
         f(fa.value, lb)
     }

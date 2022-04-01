@@ -12,9 +12,9 @@ sealed trait KafkaCredentialStore {
 
 object KafkaCredentialStore {
   final def fromPemStrings(
-    caCertificate: String,
-    clientPrivateKey: String,
-    clientCertificate: String
+      caCertificate: String,
+      clientPrivateKey: String,
+      clientCertificate: String
   ): KafkaCredentialStore =
     new KafkaCredentialStore {
       override val properties: Map[String, String] =

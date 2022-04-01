@@ -96,10 +96,10 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
   implicit final val stringDeserializer: KafkaDeserializer[String] = new StringDeserializer
 
   def createCustomTopic(
-    topic: String,
-    topicConfig: Map[String, String] = Map.empty,
-    partitions: Int = 1,
-    replicationFactor: Int = 1
+      topic: String,
+      topicConfig: Map[String, String] = Map.empty,
+      partitions: Int = 1,
+      replicationFactor: Int = 1
   ): Try[Unit] = {
     val newTopic = new NewTopic(topic, partitions, replicationFactor.toShort)
       .configs(topicConfig.asJava)
@@ -113,7 +113,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
   }
 
   protected def withAdminClient[T](
-    body: AdminClient => T
+      body: AdminClient => T
   ): Try[T] = {
     val adminClient = AdminClient.create(
       Map[String, Object](
@@ -153,12 +153,12 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     f(nextTopicName())
 
   final def withKafkaConsumer(
-    nativeSettings: Map[String, AnyRef]
+      nativeSettings: Map[String, AnyRef]
   ): WithKafkaConsumer =
     new WithKafkaConsumer(nativeSettings)
 
   final class WithKafkaConsumer(
-    nativeSettings: Map[String, AnyRef]
+      nativeSettings: Map[String, AnyRef]
   ) {
     def apply[A](f: KConsumer[Array[Byte], Array[Byte]] => A): A = {
       val consumer: KConsumer[Array[Byte], Array[Byte]] =
@@ -177,12 +177,11 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     s"topic-${UUID.randomUUID()}"
 
   def consumeFirstKeyedMessageFrom[K, V](
-    topic: String,
-    customProperties: Map[String, Object] = Map.empty
-  )(
-    implicit
-    keyDeserializer: KafkaDeserializer[K],
-    valueDeserializer: KafkaDeserializer[V]
+      topic: String,
+      customProperties: Map[String, Object] = Map.empty
+  )(implicit
+      keyDeserializer: KafkaDeserializer[K],
+      valueDeserializer: KafkaDeserializer[V]
   ): (K, V) =
     consumeNumberKeyedMessagesFrom[K, V](topic, 1, customProperties = customProperties)(
       keyDeserializer,
@@ -190,13 +189,12 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     ).head
 
   def consumeNumberKeyedMessagesFrom[K, V](
-    topic: String,
-    number: Int,
-    customProperties: Map[String, Object] = Map.empty
-  )(
-    implicit
-    keyDeserializer: KafkaDeserializer[K],
-    valueDeserializer: KafkaDeserializer[V]
+      topic: String,
+      number: Int,
+      customProperties: Map[String, Object] = Map.empty
+  )(implicit
+      keyDeserializer: KafkaDeserializer[K],
+      valueDeserializer: KafkaDeserializer[V]
   ): List[(K, V)] =
     consumeNumberKeyedMessagesFromTopics(
       Set(topic),
@@ -208,15 +206,14 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     )(topic)
 
   def consumeNumberKeyedMessagesFromTopics[K, V](
-    topics: Set[String],
-    number: Int,
-    timeout: Duration = 10.seconds,
-    resetTimeoutOnEachMessage: Boolean = true,
-    customProperties: Map[String, Object] = Map.empty
-  )(
-    implicit
-    keyDeserializer: KafkaDeserializer[K],
-    valueDeserializer: KafkaDeserializer[V]
+      topics: Set[String],
+      number: Int,
+      timeout: Duration = 10.seconds,
+      resetTimeoutOnEachMessage: Boolean = true,
+      customProperties: Map[String, Object] = Map.empty
+  )(implicit
+      keyDeserializer: KafkaDeserializer[K],
+      valueDeserializer: KafkaDeserializer[V]
   ): Map[String, List[(K, V)]] = {
     val consumerProperties = defaultConsumerProperties ++ customProperties
 
@@ -257,8 +254,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     }
 
     consumer.close()
-    messages.recover {
-      case ex: KafkaException => throw new Exception("Kafka unavailable", ex)
+    messages.recover { case ex: KafkaException =>
+      throw new Exception("Kafka unavailable", ex)
     }.get
   }
 
@@ -270,8 +267,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     )
 
   def publishToKafka[T](
-    topic: String,
-    message: T
+      topic: String,
+      message: T
   )(implicit serializer: KafkaSerializer[T]): Unit =
     publishToKafka(
       new KProducer(
@@ -283,8 +280,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     )
 
   private def publishToKafka[K, T](
-    kafkaProducer: KProducer[K, T],
-    record: KProducerRecord[K, T]
+      kafkaProducer: KProducer[K, T],
+      record: KProducerRecord[K, T]
   ): Unit = {
     val sendFuture = kafkaProducer.send(record)
     val sendResult = Try {
@@ -295,13 +292,13 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
     sendResult match {
       case Failure(ex) => throw new Exception("Kafka unavailable", ex)
-      case _           => // OK
+      case _ => // OK
     }
   }
 
-  def publishToKafka[K, T](topic: String, messages: Seq[(K, T)])(
-    implicit keySerializer: KafkaSerializer[K],
-    serializer: KafkaSerializer[T]
+  def publishToKafka[K, T](topic: String, messages: Seq[(K, T)])(implicit
+      keySerializer: KafkaSerializer[K],
+      serializer: KafkaSerializer[T]
   ): Unit = {
     val producer =
       new KProducer(
@@ -313,7 +310,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     val tupleToRecord =
       (new KProducerRecord(topic, _: K, _: T)).tupled
 
-    val futureSend = tupleToRecord andThen producer.send
+    val futureSend = tupleToRecord.andThen(producer.send)
 
     val futures = messages.map(futureSend)
 
@@ -323,8 +320,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
     producer.close()
 
-    val _ = records.collectFirst {
-      case Failure(ex) => throw new Exception("Kafka unavialable", ex)
+    val _ = records.collectFirst { case Failure(ex) =>
+      throw new Exception("Kafka unavialable", ex)
     }
   }
 }

@@ -17,13 +17,13 @@ import org.apache.avro.Schema
 
 trait CompatibilityChecker[F[_]] {
   def checkReaderCompatibility[A](
-    reader: Codec[A],
-    writerSubject: String
+      reader: Codec[A],
+      writerSubject: String
   ): F[SchemaCompatibility.SchemaPairCompatibility]
 
   def checkWriterCompatibility[A](
-    writer: Codec[A],
-    readerSubject: String
+      writer: Codec[A],
+      readerSubject: String
   ): F[SchemaCompatibility.SchemaPairCompatibility]
 }
 
@@ -32,8 +32,8 @@ trait SchemaSuite extends FunSuite {
   private def codecAsSchema[A](codec: Codec[A]) = codec.schema.fold(e => fail(e.message), ok => ok)
 
   def compatibilityChecker(
-    clientSettings: SchemaRegistryClientSettings[IO],
-    name: String = "schema-compatibility-checker"
+      clientSettings: SchemaRegistryClientSettings[IO],
+      name: String = "schema-compatibility-checker"
   ) = new Fixture[CompatibilityChecker[IO]](name) {
     private var checker: CompatibilityChecker[IO] = null
 
@@ -53,8 +53,8 @@ trait SchemaSuite extends FunSuite {
               } yield schema.rawSchema()
 
             def checkReaderCompatibility[A](
-              reader: Codec[A],
-              writerSubject: String
+                reader: Codec[A],
+                writerSubject: String
             ): IO[SchemaCompatibility.SchemaPairCompatibility] = {
               val vulcanSchema = codecAsSchema(reader)
               registrySchema(writerSubject).map { regSchema =>
@@ -66,7 +66,7 @@ trait SchemaSuite extends FunSuite {
             }
 
             def checkWriterCompatibility[A](writer: Codec[A], readerSubject: String)
-              : IO[SchemaCompatibility.SchemaPairCompatibility] = {
+                : IO[SchemaCompatibility.SchemaPairCompatibility] = {
               val vulcanSchema = codecAsSchema(writer)
               registrySchema(readerSubject).map { regSchema =>
                 SchemaCompatibility.checkReaderWriterCompatibility(

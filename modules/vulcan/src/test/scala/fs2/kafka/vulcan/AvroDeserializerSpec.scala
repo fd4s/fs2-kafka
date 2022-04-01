@@ -33,7 +33,7 @@ final class AvroDeserializerSpec extends AnyFunSpec {
 
     it("toString") {
       assert {
-        avroDeserializer[Int].toString() startsWith "AvroDeserializer$"
+        avroDeserializer[Int].toString().startsWith("AvroDeserializer$")
       }
     }
   }

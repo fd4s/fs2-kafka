@@ -14,35 +14,34 @@ import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import java.nio.ByteBuffer
 
 final class AvroDeserializer[A] private[vulcan] (
-  private val codec: Codec[A]
+    private val codec: Codec[A]
 ) extends AnyVal {
   def using[F[_]](
-    settings: AvroSettings[F]
+      settings: AvroSettings[F]
   )(implicit F: Sync[F]): RecordDeserializer[F, A] =
     codec.schema match {
       case Right(schema) =>
         val createDeserializer: Boolean => F[Deserializer[F, A]] =
-          settings.createAvroDeserializer(_).map {
-            case (deserializer, schemaRegistryClient) =>
-              Deserializer.instance { (topic, _, bytes) =>
-                F.defer {
-                  val writerSchemaId =
-                    ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
+          settings.createAvroDeserializer(_).map { case (deserializer, schemaRegistryClient) =>
+            Deserializer.instance { (topic, _, bytes) =>
+              F.defer {
+                val writerSchemaId =
+                  ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
 
-                  val writerSchema = {
-                    val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
-                    if (schema.isInstanceOf[AvroSchema])
-                      schema.asInstanceOf[AvroSchema].rawSchema()
-                    else
-                      null
-                  }
+                val writerSchema = {
+                  val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
+                  if (schema.isInstanceOf[AvroSchema])
+                    schema.asInstanceOf[AvroSchema].rawSchema()
+                  else
+                    null
+                }
 
-                  codec.decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
-                    case Right(a)    => F.pure(a)
-                    case Left(error) => F.raiseError(error.throwable)
-                  }
+                codec.decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
+                  case Right(a) => F.pure(a)
+                  case Left(error) => F.raiseError(error.throwable)
                 }
               }
+            }
           }
 
         RecordDeserializer.instance(

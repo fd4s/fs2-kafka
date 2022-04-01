@@ -68,12 +68,12 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
   }
 
   test("HeaderSerializer#toString") {
-    assert(HeaderSerializer[Int].toString startsWith "HeaderSerializer$")
+    assert(HeaderSerializer[Int].toString.startsWith("HeaderSerializer$"))
   }
 
   def roundtrip[A: Arbitrary: Eq](
-    serializer: HeaderSerializer[A],
-    deserializer: HeaderDeserializer[A]
+      serializer: HeaderSerializer[A],
+      deserializer: HeaderDeserializer[A]
   ): Assertion = forAll { (a: A) =>
     val serialized = serializer.serialize(a)
     val deserialized = deserializer.deserialize(serialized)
@@ -81,8 +81,8 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
   }
 
   def roundtripAttempt[A: Arbitrary: Eq](
-    serializer: HeaderSerializer[A],
-    deserializer: HeaderDeserializer.Attempt[A]
+      serializer: HeaderSerializer[A],
+      deserializer: HeaderDeserializer.Attempt[A]
   ): Assertion = forAll { (a: A) =>
     val serialized = serializer.serialize(a)
     val deserialized = deserializer.deserialize(serialized)

@@ -76,8 +76,8 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
     it("should provide withCreateAvroDeserializer") {
       assert {
         settings
-          .withCreateAvroDeserializer {
-            case _ => IO.raiseError(new RuntimeException)
+          .withCreateAvroDeserializer { case _ =>
+            IO.raiseError(new RuntimeException)
           }
           .createAvroDeserializer(isKey = false)
           .attempt
@@ -102,8 +102,8 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
     it("should provide withRegisterSchema") {
       assert {
         settings
-          .withRegisterSchema {
-            case _ => IO.raiseError(new RuntimeException)
+          .withRegisterSchema { case _ =>
+            IO.raiseError(new RuntimeException)
           }
           .registerSchema[String]("example-key")
           .attempt

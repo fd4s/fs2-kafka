@@ -14,18 +14,18 @@ import fs2.kafka.{KafkaByteProducer, ProducerSettings}
 private[kafka] sealed abstract class WithProducer[F[_]] {
   def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A]
 
-  def blocking[A](f: KafkaByteProducer => A): F[A] = apply {
-    case (producer, blocking) => blocking(f(producer))
+  def blocking[A](f: KafkaByteProducer => A): F[A] = apply { case (producer, blocking) =>
+    blocking(f(producer))
   }
 }
 
 private[kafka] object WithProducer {
   def apply[F[_], G[_]](
-    mk: MkProducer[F],
-    settings: ProducerSettings[G, _, _]
-  )(
-    implicit F: Async[F],
-    G: Async[G]
+      mk: MkProducer[F],
+      settings: ProducerSettings[G, _, _]
+  )(implicit
+      F: Async[F],
+      G: Async[G]
   ): Resource[F, WithProducer[G]] = {
     val blockingF =
       settings.customBlockingContext.fold(Blocking.fromSync[F])(Blocking.fromExecutionContext[F])
@@ -35,13 +35,13 @@ private[kafka] object WithProducer {
     Resource
       .make(
         mk(settings)
-      )(producer => blockingF { producer.close(settings.closeTimeout.asJava) })
+      )(producer => blockingF(producer.close(settings.closeTimeout.asJava)))
       .map(create(_, blockingG))
   }
 
   private def create[F[_]](
-    producer: KafkaByteProducer,
-    _blocking: Blocking[F]
+      producer: KafkaByteProducer,
+      _blocking: Blocking[F]
   ): WithProducer[F] = new WithProducer[F] {
     override def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A] =
       f(producer, _blocking)
