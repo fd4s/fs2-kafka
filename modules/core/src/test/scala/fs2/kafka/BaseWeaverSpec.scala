@@ -28,7 +28,39 @@ package fs2.kafka
 
 import cats.effect.{IO, Resource}
 import com.dimafeng.testcontainers.KafkaContainer
-import weaver.IOSuite
+import weaver.{GlobalResource, GlobalWrite, IOSuite}
+
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+
+object BaseWeaverSpecShared extends GlobalResource {
+  protected val imageVersion = "7.0.1"
+
+  protected val imageName = Option(System.getProperty("os.arch")) match {
+    case Some("aarch64") =>
+      "niciqy/cp-kafka-arm64" // no official docker image for ARM is available yet
+    case _ => "confluentinc/cp-kafka"
+  }
+  final val transactionTimeoutInterval: FiniteDuration = 1.second
+
+  lazy val container: KafkaContainer = new KafkaContainer()
+    .configure { container =>
+      container
+        .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+        .withEnv(
+          "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
+          transactionTimeoutInterval.toMillis.toString
+        )
+        .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
+        .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
+        .setDockerImageName(s"$imageName:$imageVersion")
+
+      ()
+    }
+
+  override def sharedResources(global: GlobalWrite): Resource[IO, Unit] =
+    ContainerResource(IO(container)).evalMap(global.put(_))
+}
 
 abstract class BaseWeaverSpec extends IOSuite with BaseKafkaSpecBase {
 

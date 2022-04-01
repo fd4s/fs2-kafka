@@ -1,9 +1,10 @@
 package fs2.kafka
 
 import cats.data.NonEmptyList
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
+import com.dimafeng.testcontainers.KafkaContainer
 import fs2.{Chunk, Stream}
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
@@ -12,11 +13,13 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.InvalidProducerEpochException
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.scalatest.EitherValues
-import weaver.Expectations
+import weaver.{Expectations, GlobalRead}
 
 import scala.concurrent.duration._
 
-object TransactionalKafkaProducerSpec extends BaseWeaverSpec with EitherValues {
+class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with EitherValues {
+
+  override def sharedResource: Resource[IO, KafkaContainer] = g.getOrFailR[KafkaContainer]()
 
   test("should support defined syntax") { _ =>
     val settings = TransactionalProducerSettings("id", ProducerSettings[IO, String, String])

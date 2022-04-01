@@ -2,11 +2,11 @@ package fs2.kafka
 
 import cats.Monoid
 import cats.data.NonEmptySet
-import cats.effect.Ref
-import cats.effect.{Fiber, IO}
+import cats.effect.{Fiber, IO, Ref, Resource}
 import cats.effect.std.Queue
 import cats.syntax.all._
 import cats.effect.unsafe.implicits.global
+import com.dimafeng.testcontainers.KafkaContainer
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import fs2.kafka.internal.converters.collection._
@@ -18,11 +18,13 @@ import org.apache.kafka.clients.consumer.{
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.TimeoutException
 import org.scalatest.Assertion
-import weaver.Expectations
+import weaver.{Expectations, GlobalRead}
 
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
-object ConsumerSpec2 extends BaseWeaverSpec {
+class ConsumerSpec2(g: GlobalRead) extends BaseWeaverSpec {
+
+  override def sharedResource: Resource[IO, KafkaContainer] = g.getOrFailR[KafkaContainer]()
 
   type Consumer = KafkaConsumer[IO, String, String]
 
