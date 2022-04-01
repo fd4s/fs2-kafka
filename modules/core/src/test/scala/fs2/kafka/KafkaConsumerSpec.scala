@@ -374,7 +374,7 @@ class ConsumerSpec2(g: GlobalRead) extends BaseWeaverSpec {
         exp <- IO.ref(Monoid[Expectations].empty)
         _ <- KafkaConsumer
           .stream(consumerSettings[IO].withGroupId(topic))
-          .evalTap(_.assign(NonEmptySet.fromSetUnsafe(SortedSet.from(topicPartitions))))
+          .evalTap(_.assign(NonEmptySet.one(topicPartition)))
           .flatTap { consumer =>
             consumer.records
               .take(produced.size.toLong)
@@ -406,13 +406,17 @@ class ConsumerSpec2(g: GlobalRead) extends BaseWeaverSpec {
               _ <- exp.update(_ && expect(assigned.nonEmpty))
               _ <- consumer.seekToBeginning(assigned)
               start <- assigned.toList.parTraverse(consumer.position)
-              _ <- exp.update(_ && forEach(start)(offset => expect(offset === 0)))
+              _ <- exp.update(_ && forEach(start) { offset =>
+                expect(offset === 0)
+              })
               _ <- consumer.seekToEnd(assigned)
               end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
               _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
               _ <- consumer.seekToBeginning
               start <- assigned.toList.parTraverse(consumer.position)
-              _ <- exp.update(_ && forEach(start)(offset => expect(offset === 0)))
+              _ <- exp.update(_ && forEach(start) { offset =>
+                expect(offset === 0)
+              })
               end <- assigned.toList.parTraverse(consumer.position(_, 10.seconds))
               _ <- exp.update(_ && expect(end.sum === produced.size.toLong))
             } yield ()
