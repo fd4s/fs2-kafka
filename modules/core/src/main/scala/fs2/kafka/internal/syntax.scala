@@ -92,7 +92,7 @@ private[kafka] object syntax {
         A: Show[A]
     ): String = mkStringMap(_.show)(start, sep, end)
 
-    def asJava(implicit F: Foldable[F]): util.List[A] = {
+    def toJava(implicit F: Foldable[F]): util.List[A] = {
       val array = new util.ArrayList[A](fa.size.toInt)
       fa.foldLeft(()) { (_, a) => array.add(a); () }
       util.Collections.unmodifiableList(array)
@@ -135,7 +135,7 @@ private[kafka] object syntax {
       private val map: Map[K, F[V]]
   ) extends AnyVal {
     def asJavaMap(implicit F: Foldable[F]): util.Map[K, util.Collection[V]] =
-      map.map { case (k, fv) => k -> (fv.asJava: util.Collection[V]) }.asJava
+      map.map { case (k, fv) => k -> (fv.toJava: util.Collection[V]) }.asJava
   }
 
   implicit final class JavaUtilCollectionSyntax[A](

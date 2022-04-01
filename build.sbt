@@ -314,43 +314,6 @@ ThisBuild / scalaVersion := scala213
 ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
 
 lazy val scalaSettings = Seq(
-  scalacOptions ++= Seq(
-    "-deprecation",
-    "-encoding",
-    "UTF-8",
-    "-feature",
-    "-language:implicitConversions",
-    "-unchecked"
-  ) ++ (
-    if (scalaVersion.value.startsWith("2.13"))
-      Seq(
-        "-language:higherKinds",
-        "-Xlint",
-        "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-value-discard",
-        "-Ywarn-unused",
-        "-Xfatal-warnings"
-      )
-    else if (scalaVersion.value.startsWith("2.12"))
-      Seq(
-        "-language:higherKinds",
-        "-Xlint",
-        "-Yno-adapted-args",
-        "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-value-discard",
-        "-Ywarn-unused",
-        "-Ypartial-unification",
-        "-Xfatal-warnings"
-      )
-    else
-      Seq(
-        "-Ykind-projector",
-        "-source:3.0-migration",
-        "-Xignore-scala2-macros"
-      )
-  ),
   Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
   Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,

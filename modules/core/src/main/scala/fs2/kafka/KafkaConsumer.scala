@@ -472,12 +472,12 @@ object KafkaConsumer {
       override def seekToBeginning[G[_]](partitions: G[TopicPartition])(implicit
           G: Foldable[G]
       ): F[Unit] =
-        withConsumer.blocking(_.seekToBeginning(partitions.asJava))
+        withConsumer.blocking(_.seekToBeginning(partitions.toJava))
 
       override def seekToEnd[G[_]](
           partitions: G[TopicPartition]
       )(implicit G: Foldable[G]): F[Unit] =
-        withConsumer.blocking(_.seekToEnd(partitions.asJava))
+        withConsumer.blocking(_.seekToEnd(partitions.toJava))
 
       override def partitionsFor(
           topic: String
