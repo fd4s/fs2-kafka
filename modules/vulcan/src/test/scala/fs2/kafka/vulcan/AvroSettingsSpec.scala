@@ -89,10 +89,10 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
     it("should provide withCreateAvroSerializer") {
       assert {
         settings
-          .withCreateAvroSerializer {
-            case _ => IO.raiseError(new RuntimeException)
+          .withCreateAvroSerializer { (_, _, _, _) =>
+            IO.raiseError(new RuntimeException)
           }
-          .createAvroSerializer(isKey = false)
+          .createAvroSerializer(isKey = false, null)
           .attempt
           .unsafeRunSync()
           .isLeft

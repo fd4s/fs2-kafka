@@ -27,12 +27,12 @@ final class PackageSpec extends AnyFunSpec {
   describe("avroSerializer/avroDeserializer") {
     it("should be able to do roundtrip serialization") {
       (for {
-        serializer <- avroSerializer[Test].using(avroSettings).forValue
+        serializer <- avroSerializer[Either[Test, Int]].using(avroSettings).forValue
         test = Test("test")
-        serialized <- serializer.serialize("topic", Headers.empty, test)
-        deserializer <- avroDeserializer[Test].using(avroSettings).forValue
+        serialized <- serializer.serialize("topic", Headers.empty, Left(test))
+        deserializer <- avroDeserializer[Either[Test, Int]].using(avroSettings).forValue
         deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
-      } yield assert(deserialized == test)).unsafeRunSync()
+      } yield assert(deserialized == Left(test))).unsafeRunSync()
     }
 
     it("should be able to do roundtrip serialization using compatible schemas") {
