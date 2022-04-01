@@ -6,9 +6,10 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Concurrent, Outcome}
-import cats.syntax.all._
+import cats.effect.Concurrent
+import cats.effect.Outcome
 import cats.effect.syntax.all._
+import cats.syntax.all._
 
 /** A wrapper for `cancel` and `join` effects used to terminate and await termination of running
   * processes, ported from `Fiber` in cats-effect 2.

@@ -6,14 +6,14 @@
 
 package fs2.kafka.vulcan.testkit
 
-import fs2.kafka.vulcan.SchemaRegistryClientSettings
-import munit.FunSuite
-import vulcan.Codec
-import org.apache.avro.SchemaCompatibility
-import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import fs2.kafka.vulcan.SchemaRegistryClientSettings
+import io.confluent.kafka.schemaregistry.avro.AvroSchema
+import munit.FunSuite
 import org.apache.avro.Schema
+import org.apache.avro.SchemaCompatibility
+import vulcan.Codec
 
 trait CompatibilityChecker[F[_]] {
   def checkReaderCompatibility[A](

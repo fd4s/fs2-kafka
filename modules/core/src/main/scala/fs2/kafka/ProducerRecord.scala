@@ -6,14 +6,19 @@
 
 package fs2.kafka
 
-import cats.{Applicative, Bitraverse, Eq, Eval, Show, Traverse}
-import cats.syntax.functor._
-import cats.syntax.show._
-import cats.syntax.eq._
-import cats.instances.string._
+import cats.Applicative
+import cats.Bitraverse
+import cats.Eq
+import cats.Eval
+import cats.Show
+import cats.Traverse
 import cats.instances.int._
 import cats.instances.long._
 import cats.instances.option._
+import cats.instances.string._
+import cats.syntax.eq._
+import cats.syntax.functor._
+import cats.syntax.show._
 
 /** [[ProducerRecord]] represents a record which can be produced to Kafka. At the very least, this
   * includes a key of type `K`, a value of type `V`, and to which topic the record should be

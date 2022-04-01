@@ -6,8 +6,9 @@
 
 package fs2.kafka.consumer
 
-import org.apache.kafka.common.TopicPartition
 import cats.Foldable
+import org.apache.kafka.common.TopicPartition
+
 import scala.concurrent.duration.FiniteDuration
 
 trait KafkaOffsets[F[_]] {

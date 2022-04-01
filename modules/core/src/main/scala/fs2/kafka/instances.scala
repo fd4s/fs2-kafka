@@ -6,12 +6,13 @@
 
 package fs2.kafka
 
+import cats.Order
+import cats.Show
 import cats.instances.int._
 import cats.instances.long._
 import cats.instances.string._
 import cats.instances.tuple._
 import cats.syntax.show._
-import cats.{Order, Show}
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition

@@ -1,19 +1,22 @@
 package fs2.kafka
 
-import cats.{ApplicativeError, ApplicativeThrow}
+import cats.ApplicativeError
+import cats.ApplicativeThrow
+import cats.data.Chain
 import cats.effect._
+import cats.laws.discipline.arbitrary._
 import cats.syntax.all._
+import fs2.Chunk
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
+import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.{Arbitrary, Cogen, Gen}
+import org.scalacheck.Cogen
+import org.scalacheck.Gen
+import org.scalacheck.rng.Seed
+
 import java.nio.charset._
 import java.util.UUID
-
-import cats.data.Chain
-import cats.laws.discipline.arbitrary._
-import fs2.Chunk
-import org.scalacheck.rng.Seed
 
 trait BaseGenerators {
 

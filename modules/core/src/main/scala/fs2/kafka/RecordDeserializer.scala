@@ -6,8 +6,9 @@
 
 package fs2.kafka
 
+import cats.Applicative
+import cats.Functor
 import cats.syntax.all._
-import cats.{Applicative, Functor}
 
 /** Deserializer which may vary depending on whether a record key or value is being deserialized,
   * and which may require a creation effect.

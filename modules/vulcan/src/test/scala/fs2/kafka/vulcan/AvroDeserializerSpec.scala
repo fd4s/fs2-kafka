@@ -4,7 +4,8 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
-import vulcan.{AvroError, Codec}
+import vulcan.AvroError
+import vulcan.Codec
 
 final class AvroDeserializerSpec extends AnyFunSpec {
   describe("AvroDeserializer") {

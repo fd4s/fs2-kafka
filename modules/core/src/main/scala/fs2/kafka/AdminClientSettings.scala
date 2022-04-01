@@ -9,6 +9,7 @@ package fs2.kafka
 import cats.Show
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.admin.AdminClientConfig
+
 import scala.concurrent.duration._
 
 /** [[AdminClientSettings]] contain settings necessary to create a [[KafkaAdminClient]]. Several

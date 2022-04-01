@@ -1,19 +1,21 @@
 package fs2.kafka
 
-import cats.effect.{IO, SyncIO}
-import cats.syntax.all._
+import cats.effect.IO
+import cats.effect.SyncIO
 import cats.effect.unsafe.implicits.global
-import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry, NewPartitions, NewTopic}
+import cats.syntax.all._
+import org.apache.kafka.clients.admin.AlterConfigOp
+import org.apache.kafka.clients.admin.ConfigEntry
+import org.apache.kafka.clients.admin.NewPartitions
+import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.acl._
 import org.apache.kafka.common.config.ConfigResource
-import org.apache.kafka.common.resource.{
-  PatternType,
-  ResourcePattern,
-  ResourcePatternFilter,
-  ResourceType
-}
+import org.apache.kafka.common.resource.PatternType
+import org.apache.kafka.common.resource.ResourcePattern
+import org.apache.kafka.common.resource.ResourcePatternFilter
+import org.apache.kafka.common.resource.ResourceType
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
 

@@ -6,14 +6,19 @@
 
 package fs2.kafka
 
+import cats.Applicative
+import cats.Bitraverse
+import cats.Eq
+import cats.Eval
+import cats.Show
+import cats.Traverse
 import cats.syntax.bifoldable._
 import cats.syntax.bitraverse._
+import cats.syntax.eq._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.show._
-import cats.syntax.eq._
 import cats.syntax.traverse._
-import cats.{Applicative, Bitraverse, Eq, Eval, Show, Traverse}
 
 /** [[CommittableConsumerRecord]] is a Kafka record along with an instance of [[CommittableOffset]],
   * which can be used commit the record offset to Kafka. Offsets are normally committed in batches,

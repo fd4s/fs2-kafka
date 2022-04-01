@@ -2,9 +2,10 @@ package fs2.kafka
 
 import cats.ApplicativeError
 import cats.effect.IO
-import cats.effect.unsafe.implicits.global
 import cats.effect.Ref
-import fs2.{Chunk, Stream}
+import cats.effect.unsafe.implicits.global
+import fs2.Chunk
+import fs2.Stream
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 

@@ -8,6 +8,7 @@ package fs2.kafka
 
 import cats.Show
 import org.apache.kafka.clients.producer.ProducerConfig
+
 import scala.concurrent.duration.FiniteDuration
 
 /** [[TransactionalProducerSettings]] contain settings necessary to create a

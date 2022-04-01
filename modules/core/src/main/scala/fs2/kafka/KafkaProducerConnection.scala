@@ -12,10 +12,10 @@ import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
+import org.apache.kafka.common.Metric
+import org.apache.kafka.common.MetricName
 
 import scala.annotation.nowarn
-import org.apache.kafka.common.MetricName
-import org.apache.kafka.common.Metric
 
 /** [[KafkaProducerConnection]] represents a connection to a Kafka broker that can be used to create
   * [[KafkaProducer]] instances. All [[KafkaProducer]] instances created from an given

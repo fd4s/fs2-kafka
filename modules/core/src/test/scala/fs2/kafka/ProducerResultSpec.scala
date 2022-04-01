@@ -1,7 +1,7 @@
 package fs2.kafka
 
-import fs2.Chunk
 import cats.syntax.all._
+import fs2.Chunk
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
 

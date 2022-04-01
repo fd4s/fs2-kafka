@@ -7,6 +7,7 @@
 package fs2
 
 import cats.effect._
+
 import scala.concurrent.duration.FiniteDuration
 
 package object kafka {

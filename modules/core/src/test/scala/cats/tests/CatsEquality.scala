@@ -27,6 +27,7 @@ package cats
 package tests
 
 import org.scalactic._
+
 import TripleEqualsSupport.AToBEquivalenceConstraint
 import TripleEqualsSupport.BToAEquivalenceConstraint
 

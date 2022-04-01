@@ -6,7 +6,10 @@
 
 package fs2.kafka.internal
 
-import cats.data.{Chain, NonEmptyList, NonEmptySet, NonEmptyVector}
+import cats.data.Chain
+import cats.data.NonEmptyList
+import cats.data.NonEmptySet
+import cats.data.NonEmptyVector
 import cats.syntax.all._
 import fs2.Chunk
 import fs2.kafka._
@@ -14,8 +17,9 @@ import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogLevel._
 import fs2.kafka.internal.syntax._
-import java.util.regex.Pattern
 import org.apache.kafka.common.TopicPartition
+
+import java.util.regex.Pattern
 import scala.collection.immutable.SortedSet
 
 private[kafka] sealed abstract class LogEntry {

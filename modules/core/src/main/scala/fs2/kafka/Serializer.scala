@@ -9,7 +9,9 @@ package fs2.kafka
 import cats.Contravariant
 import cats.effect.Sync
 import cats.syntax.all._
-import java.nio.charset.{Charset, StandardCharsets}
+
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 
 /** Functional composable Kafka key- and record serializer with support for effect types.

@@ -2,9 +2,10 @@ package fs2.kafka
 
 import cats._
 import cats.laws.discipline._
-import java.nio.charset._
 import org.scalacheck._
 import org.scalatest._
+
+import java.nio.charset._
 
 final class HeaderSerializerSpec extends BaseCatsSpec {
   checkAll(

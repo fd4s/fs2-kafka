@@ -6,26 +6,28 @@
 
 package fs2.kafka.internal
 
-import cats.data.{Chain, NonEmptyVector, StateT}
+import cats.data.Chain
+import cats.data.NonEmptyVector
+import cats.data.StateT
 import cats.effect._
 import cats.effect.std._
 import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.Chunk
 import fs2.kafka._
-import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogEntry._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
-import java.time.Duration
-import java.util
-
-import org.apache.kafka.clients.consumer.{ConsumerRebalanceListener, OffsetAndMetadata}
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
+import java.time.Duration
+import java.util
 import scala.collection.immutable.SortedSet
-import org.apache.kafka.clients.consumer.ConsumerConfig
 
 /** [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to a traditional actor, in
   * the sense that it receives requests one at-a-time via a queue, which are received as calls to

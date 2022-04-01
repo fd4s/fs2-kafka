@@ -1,19 +1,18 @@
 package fs2.kafka
 
 import cats.data.NonEmptySet
+import cats.effect.Fiber
+import cats.effect.IO
 import cats.effect.Ref
-import cats.effect.{Fiber, IO}
 import cats.effect.std.Queue
-import cats.syntax.all._
 import cats.effect.unsafe.implicits.global
+import cats.syntax.all._
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.clients.consumer.{
-  ConsumerConfig,
-  CooperativeStickyAssignor,
-  NoOffsetForPartitionException
-}
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.CooperativeStickyAssignor
+import org.apache.kafka.clients.consumer.NoOffsetForPartitionException
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.TimeoutException
 import org.scalatest.Assertion

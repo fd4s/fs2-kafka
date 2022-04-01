@@ -6,9 +6,10 @@
 
 package fs2.kafka
 
-import cats.{Eq, Show}
-import cats.syntax.eq._
+import cats.Eq
+import cats.Show
 import cats.instances.string._
+import cats.syntax.eq._
 
 /** [[Header]] represents a `String` key and `Array[Byte]` value which can be included as part of
   * [[Headers]] when creating a [[ProducerRecord]]. [[Headers]] are included together with a record

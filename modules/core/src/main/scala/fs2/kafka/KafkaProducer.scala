@@ -6,16 +6,17 @@
 
 package fs2.kafka
 
+import cats.Apply
+import cats.Functor
 import cats.effect._
 import cats.syntax.all._
-import cats.Apply
+import fs2.Chunk
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
-import org.apache.kafka.common.{Metric, MetricName}
-import fs2.Chunk
-import cats.Functor
+import org.apache.kafka.common.Metric
+import org.apache.kafka.common.MetricName
 
 import scala.annotation.nowarn
 import scala.concurrent.Promise

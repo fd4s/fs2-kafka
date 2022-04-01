@@ -11,7 +11,8 @@ import cats.syntax.show._
 import fs2.kafka.instances._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
-import org.apache.kafka.common.{KafkaException, TopicPartition}
+import org.apache.kafka.common.KafkaException
+import org.apache.kafka.common.TopicPartition
 
 /** [[CommitRecoveryException]] indicates that offset commit recovery was attempted `attempts` times
   * for `offsets`, but that it wasn't able to complete successfully. The last encountered exception

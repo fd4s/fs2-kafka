@@ -8,8 +8,8 @@ package fs2.kafka.admin
 
 import cats.effect.Sync
 import fs2.kafka.AdminClientSettings
-import org.apache.kafka.clients.admin.AdminClient
 import fs2.kafka.internal.converters.collection._
+import org.apache.kafka.clients.admin.AdminClient
 
 /** A capability trait representing the ability to instantiate the Java `AdminClient` that underlies
   * the fs2-kafka `KafkaAdminClient`. This is needed in order to instantiate

@@ -6,8 +6,10 @@
 
 package fs2.kafka
 
-import cats.data.{Chain, NonEmptyChain}
-import cats.{Eq, Show}
+import cats.Eq
+import cats.Show
+import cats.data.Chain
+import cats.data.NonEmptyChain
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 

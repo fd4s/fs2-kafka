@@ -6,7 +6,8 @@
 
 package fs2.kafka
 
-import cats.{Show, Traverse}
+import cats.Show
+import cats.Traverse
 import cats.syntax.show._
 import fs2.Chunk
 import fs2.kafka.internal.syntax._

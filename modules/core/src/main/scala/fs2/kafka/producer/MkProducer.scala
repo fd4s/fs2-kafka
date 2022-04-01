@@ -7,9 +7,10 @@
 package fs2.kafka.producer
 
 import cats.effect.Sync
-import fs2.kafka.{KafkaByteProducer, ProducerSettings}
-import org.apache.kafka.common.serialization.ByteArraySerializer
+import fs2.kafka.KafkaByteProducer
+import fs2.kafka.ProducerSettings
 import fs2.kafka.internal.converters.collection._
+import org.apache.kafka.common.serialization.ByteArraySerializer
 
 /** A capability trait representing the ability to instantiate the Java `Producer` that underlies
   * the fs2-kafka `KafkaProducer`. This is needed in order to instantiate

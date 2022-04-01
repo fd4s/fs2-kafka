@@ -6,11 +6,12 @@
 
 package fs2.kafka
 
-import cats.{Eq, Show}
-import cats.syntax.eq._
+import cats.Eq
+import cats.Show
+import cats.instances.boolean._
 import cats.instances.long._
 import cats.instances.option._
-import cats.instances.boolean._
+import cats.syntax.eq._
 
 /** [[Timestamp]] is an optional timestamp value representing a [[createTime]], [[logAppendTime]],
   * [[unknownTime]], or no timestamp at all.

@@ -6,12 +6,15 @@
 
 package fs2.kafka.internal
 
+import cats.effect.Async
+import cats.effect.MonadCancelThrow
+import cats.effect.Resource
 import cats.effect.std.Semaphore
-import cats.effect.{Async, MonadCancelThrow, Resource}
 import cats.implicits._
+import fs2.kafka.KafkaByteProducer
+import fs2.kafka.TransactionalProducerSettings
 import fs2.kafka.internal.syntax._
 import fs2.kafka.producer.MkProducer
-import fs2.kafka.{KafkaByteProducer, TransactionalProducerSettings}
 
 private[kafka] sealed abstract class WithTransactionalProducer[F[_]] {
   def apply[A](f: (KafkaByteProducer, Blocking[F], ExclusiveAccess[F, A]) => F[A]): F[A]

@@ -16,9 +16,11 @@ import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
-import org.apache.kafka.common.acl.{AclBinding, AclBindingFilter}
+import org.apache.kafka.common.Node
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.acl.AclBinding
+import org.apache.kafka.common.acl.AclBindingFilter
 import org.apache.kafka.common.config.ConfigResource
-import org.apache.kafka.common.{Node, TopicPartition}
 
 import scala.annotation.nowarn
 

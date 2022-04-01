@@ -5,7 +5,8 @@ import cats.effect.unsafe.implicits.global
 import fs2.kafka.Headers
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
-import vulcan.{AvroError, Codec}
+import vulcan.AvroError
+import vulcan.Codec
 
 final class AvroSerializerSpec extends AnyFunSpec {
   describe("AvroSerializer") {

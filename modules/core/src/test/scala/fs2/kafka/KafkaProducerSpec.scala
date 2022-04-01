@@ -2,7 +2,8 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import fs2.{Chunk, Stream}
+import fs2.Chunk
+import fs2.Stream
 
 final class KafkaProducerSpec extends BaseKafkaSpec {
 

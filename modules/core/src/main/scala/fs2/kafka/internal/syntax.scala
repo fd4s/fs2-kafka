@@ -6,19 +6,27 @@
 
 package fs2.kafka.internal
 
-import cats.{FlatMap, Foldable, Show}
+import cats.FlatMap
+import cats.Foldable
+import cats.Show
 import cats.effect.Async
 import cats.effect.syntax.all._
 import cats.syntax.all._
-import fs2.kafka.{Header, Headers, KafkaHeaders}
-import fs2.kafka.internal.converters.unsafeWrapArray
+import fs2.kafka.Header
+import fs2.kafka.Headers
+import fs2.kafka.KafkaHeaders
 import fs2.kafka.internal.converters.collection._
+import fs2.kafka.internal.converters.unsafeWrapArray
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.KafkaFuture.BaseFunction
+import org.apache.kafka.common.KafkaFuture.BiConsumer
+
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util
-import java.util.concurrent.{CancellationException, CompletionException, TimeUnit}
-import org.apache.kafka.common.KafkaFuture
-import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
+import java.util.concurrent.CancellationException
+import java.util.concurrent.CompletionException
+import java.util.concurrent.TimeUnit
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 

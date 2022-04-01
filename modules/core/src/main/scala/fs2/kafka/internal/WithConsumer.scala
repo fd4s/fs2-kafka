@@ -6,10 +6,12 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Async, Resource}
+import cats.effect.Async
+import cats.effect.Resource
 import cats.syntax.all._
+import fs2.kafka.ConsumerSettings
+import fs2.kafka.KafkaByteConsumer
 import fs2.kafka.consumer.MkConsumer
-import fs2.kafka.{ConsumerSettings, KafkaByteConsumer}
 import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {

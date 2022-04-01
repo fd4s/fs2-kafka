@@ -6,14 +6,20 @@
 
 package fs2.kafka
 
+import cats.Applicative
+import cats.Bitraverse
+import cats.Eq
+import cats.Eval
+import cats.Foldable
+import cats.Show
+import cats.Traverse
 import cats.syntax.bifoldable._
 import cats.syntax.bitraverse._
+import cats.syntax.eq._
 import cats.syntax.foldable._
 import cats.syntax.functor._
 import cats.syntax.show._
-import cats.syntax.eq._
 import cats.syntax.traverse._
-import cats.{Applicative, Bitraverse, Eq, Eval, Foldable, Show, Traverse}
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
 

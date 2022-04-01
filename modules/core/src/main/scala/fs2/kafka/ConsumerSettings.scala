@@ -6,8 +6,9 @@
 
 package fs2.kafka
 
+import cats.Applicative
+import cats.Show
 import cats.effect.Sync
-import cats.{Applicative, Show}
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse

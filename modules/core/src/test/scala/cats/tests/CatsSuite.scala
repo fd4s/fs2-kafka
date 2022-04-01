@@ -29,7 +29,9 @@ package tests
 import cats.instances._
 import cats.platform.Platform
 import cats.syntax._
-import org.scalactic.anyvals.{PosInt, PosZDouble, PosZInt}
+import org.scalactic.anyvals.PosInt
+import org.scalactic.anyvals.PosZDouble
+import org.scalactic.anyvals.PosZInt
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.Configuration

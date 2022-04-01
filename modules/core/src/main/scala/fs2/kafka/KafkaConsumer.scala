@@ -6,25 +6,32 @@
 
 package fs2.kafka
 
-import cats.{Foldable, Functor, Reducible}
-import cats.data.{NonEmptySet, OptionT}
+import cats.Foldable
+import cats.Functor
+import cats.Reducible
+import cats.data.NonEmptySet
+import cats.data.OptionT
 import cats.effect._
-import cats.effect.std._
 import cats.effect.implicits._
+import cats.effect.std._
 import cats.syntax.all._
-import fs2.{Chunk, Stream}
-import fs2.kafka.internal._
-import fs2.kafka.internal.converters.collection._
+import fs2.Chunk
+import fs2.Stream
+import fs2.kafka.consumer._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
+import fs2.kafka.internal.LogEntry.RevokedPreviousFetch
+import fs2.kafka.internal.LogEntry.StoredFetch
+import fs2.kafka.internal._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
-import fs2.kafka.consumer._
-import fs2.kafka.internal.LogEntry.{RevokedPreviousFetch, StoredFetch}
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.common.Metric
+import org.apache.kafka.common.MetricName
+import org.apache.kafka.common.PartitionInfo
+import org.apache.kafka.common.TopicPartition
 
 import java.util
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
-import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
-
 import scala.annotation.nowarn
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration

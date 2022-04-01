@@ -7,8 +7,9 @@
 package fs2.kafka.consumer
 
 import org.apache.kafka.common.PartitionInfo
-import scala.concurrent.duration.FiniteDuration
 import org.apache.kafka.common.TopicPartition
+
+import scala.concurrent.duration.FiniteDuration
 
 trait KafkaTopics[F[_]] {
 

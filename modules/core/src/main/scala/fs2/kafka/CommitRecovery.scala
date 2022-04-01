@@ -6,12 +6,13 @@
 
 package fs2.kafka
 
+import cats.Functor
 import cats.effect.Temporal
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import cats.Functor
-import org.apache.kafka.clients.consumer.{OffsetAndMetadata, RetriableCommitFailedException}
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer.RetriableCommitFailedException
 import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.duration._

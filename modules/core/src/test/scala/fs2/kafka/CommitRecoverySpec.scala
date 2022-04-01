@@ -1,11 +1,16 @@
 package fs2.kafka
 
 import cats.data.Chain
-import cats.effect.kernel.{Deferred, Fiber, Poll}
-import cats.effect.{IO, Ref, Temporal}
+import cats.effect.IO
+import cats.effect.Ref
+import cats.effect.Temporal
+import cats.effect.kernel.Deferred
+import cats.effect.kernel.Fiber
+import cats.effect.kernel.Poll
 import cats.effect.unsafe.implicits.global
 import cats.syntax.functor._
-import org.apache.kafka.clients.consumer.{OffsetAndMetadata, RetriableCommitFailedException}
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer.RetriableCommitFailedException
 import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.duration.FiniteDuration

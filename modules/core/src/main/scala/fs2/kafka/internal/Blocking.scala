@@ -6,11 +6,13 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Async, Resource, Sync}
+import cats.effect.Async
+import cats.effect.Resource
+import cats.effect.Sync
+import cats.effect.syntax.async._
 
 import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
-import cats.effect.syntax.async._
 
 private[kafka] trait Blocking[F[_]] {
   def apply[A](a: => A): F[A]

@@ -2,9 +2,9 @@ package fs2.kafka
 
 import cats.effect.IO
 import cats.instances.list._
+import fs2.Chunk
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
-import fs2.Chunk
 
 class TransactionalProducerRecordsSpec extends BaseSpec {
   describe("TransactionalProducerRecords") {

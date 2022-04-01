@@ -1,10 +1,11 @@
 package fs2.kafka.internal
 
-import fs2.kafka._
 import fs2.kafka.BaseSpec
+import fs2.kafka._
 import fs2.kafka.internal.syntax._
-import java.time.temporal.ChronoUnit.MICROS
 import org.apache.kafka.common.header.internals.RecordHeaders
+
+import java.time.temporal.ChronoUnit.MICROS
 import scala.concurrent.duration._
 
 final class SyntaxSpec extends BaseSpec {

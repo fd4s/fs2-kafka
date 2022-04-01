@@ -27,35 +27,32 @@ This file contains code derived from the Embedded Kafka library
 package fs2.kafka
 
 import cats.effect.Sync
+import com.dimafeng.testcontainers.ForAllTestContainer
+import com.dimafeng.testcontainers.KafkaContainer
 import fs2.kafka.internal.converters.collection._
+import org.apache.kafka.clients.admin.AdminClient
+import org.apache.kafka.clients.admin.AdminClientConfig
+import org.apache.kafka.clients.admin.NewTopic
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer}
+import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.clients.producer.{KafkaProducer => KProducer}
+import org.apache.kafka.clients.producer.{ProducerRecord => KProducerRecord}
+import org.apache.kafka.common.KafkaException
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.StringSerializer
+import org.scalatest.Args
 
 import java.util.UUID
-import scala.util.Failure
-import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}
-import org.apache.kafka.clients.admin.AdminClientConfig
-import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer}
-import org.apache.kafka.clients.producer.{
-  ProducerConfig,
-  KafkaProducer => KProducer,
-  ProducerRecord => KProducerRecord
-}
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
-
-import scala.concurrent.duration._
-import org.apache.kafka.clients.admin.NewTopic
-
-import scala.util.Try
-import org.apache.kafka.clients.admin.AdminClient
-import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
-import org.apache.kafka.common.{KafkaException, TopicPartition}
-
-import scala.collection.mutable.ListBuffer
-import java.util.concurrent.TimeoutException
-import org.apache.kafka.common.serialization.StringSerializer
-
 import java.util.concurrent.TimeUnit
-import org.apache.kafka.common.serialization.StringDeserializer
-import org.scalatest.Args
+import java.util.concurrent.TimeoutException
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.duration._
+import scala.util.Failure
+import scala.util.Try
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 

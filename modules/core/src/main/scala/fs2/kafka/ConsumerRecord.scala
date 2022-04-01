@@ -6,11 +6,19 @@
 
 package fs2.kafka
 
+import cats.Applicative
+import cats.Apply
+import cats.Bitraverse
+import cats.Eq
+import cats.Eval
+import cats.Show
+import cats.Traverse
 import cats.syntax.all._
-import cats.{Applicative, Apply, Bitraverse, Eq, Eval, Show, Traverse}
 import fs2.kafka.internal.syntax._
-import org.apache.kafka.clients.consumer.ConsumerRecord.{NO_TIMESTAMP, NULL_SIZE}
-import org.apache.kafka.common.record.TimestampType.{CREATE_TIME, LOG_APPEND_TIME}
+import org.apache.kafka.clients.consumer.ConsumerRecord.NO_TIMESTAMP
+import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
+import org.apache.kafka.common.record.TimestampType.CREATE_TIME
+import org.apache.kafka.common.record.TimestampType.LOG_APPEND_TIME
 
 /** [[ConsumerRecord]] represents a record which has been consumed from Kafka. At the very least,
   * this includes a key of type `K`, value of type `V`, and the topic, partition, and offset of the

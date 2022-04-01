@@ -1,15 +1,14 @@
 package fs2.kafka.vulcan
 
-import java.time.Instant
-
-import cats.syntax.all._
+import _root_.vulcan.Codec
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import cats.syntax.all._
 import fs2.kafka._
-
-import org.scalatest.funspec.AnyFunSpec
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
-import _root_.vulcan.Codec
+import org.scalatest.funspec.AnyFunSpec
+
+import java.time.Instant
 
 final class PackageSpec extends AnyFunSpec {
   describe("avroSerializer") {

@@ -6,7 +6,9 @@
 
 package fs2.kafka
 
-import cats.{ApplicativeError, Eq, Show}
+import cats.ApplicativeError
+import cats.Eq
+import cats.Show
 import cats.instances.string._
 import cats.syntax.show._
 import fs2.kafka.instances._

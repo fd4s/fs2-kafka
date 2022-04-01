@@ -6,9 +6,12 @@
 
 package fs2.kafka
 
-import cats.{Eval, Monad}
+import cats.Eval
+import cats.Monad
 import cats.syntax.either._
-import java.nio.charset.{Charset, StandardCharsets}
+
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 import scala.annotation.tailrec
 
