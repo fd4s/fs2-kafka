@@ -1108,31 +1108,37 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
       val partitions = (0 until partitionsAmount).toSet
 
+      val topicPartitions = partitions.map(partition => new TopicPartition(topic, partition))
+
       val createConsumer = KafkaConsumer
         .stream(consumerSettings[IO])
         .subscribeTo(topic)
 
-      val committed = (for {
-        consumer <- createConsumer
-        consumed <- consumer.records
-          .take(produced.size.toLong)
-          .map(_.offset)
-          .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
-        _ <- Stream.eval(commit(consumer, consumed))
-      } yield consumed.offsets).compile.lastOrError.unsafeRunSync()
+      val committed = {
+        for {
+          consumer <- createConsumer
+          consumed <- consumer.records
+            .take(produced.size.toLong)
+            .map(_.offset)
+            .fold(CommittableOffsetBatch.empty[IO])(_ updated _)
+          _ <- Stream.eval(commit(consumer, consumed))
+          committed <- Stream.eval(consumer.committed(topicPartitions))
+          committedWithTimeout <- Stream.eval(consumer.committed(topicPartitions, 10.seconds))
+        } yield List(consumed.offsets, committed, committedWithTimeout)
+      }.compile.lastOrError.unsafeRunSync()
 
       val actuallyCommitted = withKafkaConsumer(defaultConsumerProperties) { consumer =>
         consumer
-          .committed(partitions.map { partition =>
-            new TopicPartition(topic, partition)
-          }.asJava)
+          .committed(topicPartitions.asJava)
           .asScala
           .toMap
       }
 
       assert {
-        committed.values.toList.foldMap(_.offset) == produced.size.toLong &&
-        committed == actuallyCommitted
+        committed.forall { offsets =>
+          offsets.values.toList.foldMap(_.offset) == produced.size.toLong &&
+          offsets == actuallyCommitted
+        }
       }
     }
 }
