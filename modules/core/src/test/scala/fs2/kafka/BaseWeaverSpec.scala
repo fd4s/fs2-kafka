@@ -42,21 +42,24 @@ object BaseWeaverSpecShared extends GlobalResource {
   }
   final val transactionTimeoutInterval: FiniteDuration = 1.second
 
-  lazy val container: KafkaContainer = new KafkaContainer()
-    .configure { container =>
-      container
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
-        .withEnv(
-          "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
-          transactionTimeoutInterval.toMillis.toString
-        )
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
-        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
-        .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
-        .setDockerImageName(s"$imageName:$imageVersion")
+  lazy val container: KafkaContainer = makeContainer()
 
-      ()
-    }
+  def makeContainer() =
+    new KafkaContainer()
+      .configure { container =>
+        container
+          .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+          .withEnv(
+            "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
+            transactionTimeoutInterval.toMillis.toString
+          )
+          .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+          .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
+          .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
+          .setDockerImageName(s"$imageName:$imageVersion")
+
+        ()
+      }
 
   override def sharedResources(global: GlobalWrite): Resource[IO, Unit] =
     ContainerResource(IO(container)).evalMap(global.put(_))

@@ -384,6 +384,8 @@ class TransactionalKafkaProducerSpec(g: GlobalRead) extends BaseWeaverSpec with 
 // if run with a shared container with the following error:
 // org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one. was not an instance of org.apache.kafka.common.errors.InvalidProducerEpochException, but an instance of org.apache.kafka.common.errors.ProducerFencedException
 object TransactionalKafkaProducerTimeoutSpec extends BaseWeaverSpec with EitherValues {
+  override lazy val container = BaseWeaverSpecShared.makeContainer()
+
   test("should use user-specified transaction timeouts") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
