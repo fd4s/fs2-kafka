@@ -8,7 +8,7 @@ val kafkaVersion = "2.8.1"
 
 val testcontainersScalaVersion = "0.40.4"
 
-val vulcanVersion = "1.8.0"
+val vulcanVersion = "1.8.3"
 
 val munitVersion = "0.7.29"
 
