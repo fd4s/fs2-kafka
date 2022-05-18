@@ -1,6 +1,7 @@
 package fs2.kafka
 
 import cats.syntax.all._
+import fs2.Chunk
 
 final class ProducerRecordsSpec extends BaseSpec {
   describe("ProducerRecords") {
@@ -38,6 +39,25 @@ final class ProducerRecordsSpec extends BaseSpec {
         ProducerRecords[List, Int, String, String](Nil, 123).toString == "ProducerRecords(<empty>, 123)" &&
         ProducerRecords[List, Int, String, String](Nil, 123).show == "ProducerRecords(<empty>, 123)"
       }
+    }
+  }
+
+  it("should be able to create with multiple records in a chunk") {
+    val records = Chunk(ProducerRecord("topic", "key", "value"))
+
+    assert {
+      ProducerRecords
+        .chunk[Int, String, String](records, 123)
+        .toString == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
+      ProducerRecords
+        .chunk[Int, String, String](records, 123)
+        .show == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), 123)" &&
+      ProducerRecords
+        .chunk[String, String](records)
+        .toString == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), ())" &&
+      ProducerRecords
+        .chunk[String, String](records)
+        .show == "ProducerRecords(ProducerRecord(topic = topic, key = key, value = value), ())"
     }
   }
 }

@@ -52,12 +52,14 @@ object CommittableProducerRecords {
     * Creates a new [[CommittableProducerRecords]] for producing zero or
     * more [[ProducerRecord]]s and committing an offset atomically within
     * a transaction.
+    *
+    * @see [[chunk]] if your `records` are already contained in an [[fs2.Chunk]]
     */
   def apply[F[_], G[+_], K, V](
     records: G[ProducerRecord[K, V]],
     offset: CommittableOffset[F]
   )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] =
-    new CommittableProducerRecordsImpl(Chunk.iterable(Foldable[G].toIterable(records)), offset)
+    chunk(Chunk.iterable(Foldable[G].toIterable(records)), offset)
 
   /**
     * Creates a new [[CommittableProducerRecords]] for producing exactly
@@ -68,7 +70,18 @@ object CommittableProducerRecords {
     record: ProducerRecord[K, V],
     offset: CommittableOffset[F]
   ): CommittableProducerRecords[F, K, V] =
-    new CommittableProducerRecordsImpl(Chunk.singleton(record), offset)
+    chunk(Chunk.singleton(record), offset)
+
+  /**
+    * Creates a new [[CommittableProducerRecords]] for producing zero or
+    * more [[ProducerRecord]]s and committing an offset atomically within
+    * a transaction.
+    */
+  def chunk[F[_], K, V](
+    records: Chunk[ProducerRecord[K, V]],
+    offset: CommittableOffset[F]
+  ): CommittableProducerRecords[F, K, V] =
+    new CommittableProducerRecordsImpl(records, offset)
 
   implicit def committableProducerRecordsShow[F[_], K, V](
     implicit
