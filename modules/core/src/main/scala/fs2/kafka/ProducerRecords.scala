@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.{Foldable, Show}
+import cats.{Foldable, Show, Traverse}
 import cats.syntax.show._
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
@@ -54,7 +54,7 @@ object ProducerRecords {
   def apply[F[+_], K, V](
     records: F[ProducerRecord[K, V]]
   )(
-    implicit F: Foldable[F]
+    implicit F: Traverse[F]
   ): ProducerRecords[Unit, K, V] =
     apply(records, ())
 
@@ -67,7 +67,7 @@ object ProducerRecords {
     records: F[ProducerRecord[K, V]],
     passthrough: P
   )(
-    implicit F: Foldable[F]
+    implicit F: Traverse[F]
   ): ProducerRecords[P, K, V] =
     new ProducerRecordsImpl(Chunk.iterable(Foldable[F].toIterable(records)), passthrough)
 
