@@ -6,12 +6,10 @@
 
 package fs2.kafka
 
-import cats.{Show, Traverse}
+import cats.{Foldable, Show}
 import cats.syntax.show._
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
-
-import scala.collection.mutable
 
 /**
   * [[ProducerRecords]] represents zero or more `ProducerRecord`s,
@@ -56,7 +54,7 @@ object ProducerRecords {
   def apply[F[+_], K, V](
     records: F[ProducerRecord[K, V]]
   )(
-    implicit F: Traverse[F]
+    implicit F: Foldable[F]
   ): ProducerRecords[Unit, K, V] =
     apply(records, ())
 
@@ -69,25 +67,9 @@ object ProducerRecords {
     records: F[ProducerRecord[K, V]],
     passthrough: P
   )(
-    implicit F: Traverse[F]
-  ): ProducerRecords[P, K, V] = {
-    val numRecords = F.size(records).toInt
-    val chunk = if (numRecords <= 1) {
-      F.get(records)(0) match {
-        case None         => Chunk.empty[ProducerRecord[K, V]]
-        case Some(record) => Chunk.singleton(record)
-      }
-    } else {
-      val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](numRecords)
-      F.foldLeft(records, ()) {
-        case (_, record) =>
-          buf += record
-          ()
-      }
-      Chunk.array(buf.toArray)
-    }
-    new ProducerRecordsImpl(chunk, passthrough)
-  }
+    implicit F: Foldable[F]
+  ): ProducerRecords[P, K, V] =
+    new ProducerRecordsImpl(Chunk.iterable(Foldable[F].toIterable(records)), passthrough)
 
   /**
     * Creates a new [[ProducerRecords]] for producing exactly one
