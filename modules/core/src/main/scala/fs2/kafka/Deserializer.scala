@@ -223,6 +223,15 @@ object Deserializer {
     Deserializer.lift(bytes => F.pure(bytes))
 
   /**
+    * The attempt [[Deserializer]] try to deserialize to type `A`,
+    * When it fails returns `Left` containing the exception, otherwise returns `Right` with the value `A`
+    */
+  implicit def attempt[F[_], A](
+    implicit deserializer: Deserializer[F, A]
+  ): Deserializer[F, Either[Throwable, A]] =
+    deserializer.attempt
+
+  /**
     * The option [[Deserializer]] returns `None` when the bytes are
     * `null`, and otherwise deserializes using the deserializer for
     * the type `A`, wrapping the result in `Some`.
