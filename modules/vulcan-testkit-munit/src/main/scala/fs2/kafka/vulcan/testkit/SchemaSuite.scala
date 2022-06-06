@@ -24,14 +24,18 @@ trait CompatibilityChecker[F[_]] {
     writerSubject: String
   ): F[SchemaCompatibility.SchemaPairCompatibility]
 
-  def assertReaderCompatibility[A](reader: Codec[A], writerSubject: String): F[Unit]
-
   def checkWriterCompatibility[A](
     writer: Codec[A],
     readerSubject: String
   ): F[SchemaCompatibility.SchemaPairCompatibility]
+}
+
+trait AssertableCompatibilityChecker[F[_]] extends CompatibilityChecker[F] {
+
+  def assertReaderCompatibility[A](reader: Codec[A], writerSubject: String): F[Unit]
 
   def assertWriterCompatibility[A](writer: Codec[A], readerSubject: String): F[Unit]
+
 }
 
 trait SchemaSuite extends FunSuite {
@@ -52,10 +56,10 @@ trait SchemaSuite extends FunSuite {
   def compatibilityChecker(
     clientSettings: SchemaRegistryClientSettings[IO],
     name: String = "schema-compatibility-checker"
-  ) = new Fixture[CompatibilityChecker[IO]](name) {
-    private var checker: CompatibilityChecker[IO] = null
+  ) = new Fixture[AssertableCompatibilityChecker[IO]](name) {
+    private var checker: AssertableCompatibilityChecker[IO] = null
 
-    override def apply(): CompatibilityChecker[IO] = checker
+    override def apply(): AssertableCompatibilityChecker[IO] = checker
 
     override def beforeAll(): Unit =
       checker = newCompatibilityChecker(clientSettings)
@@ -64,10 +68,10 @@ trait SchemaSuite extends FunSuite {
 
   def newCompatibilityChecker(
     clientSettings: SchemaRegistryClientSettings[IO]
-  ): IO[CompatibilityChecker[IO]] =
+  ): IO[AssertableCompatibilityChecker[IO]] =
     clientSettings.createSchemaRegistryClient
       .map { client =>
-        new CompatibilityChecker[IO] {
+        new AssertableCompatibilityChecker[IO] {
           private def registrySchema(subject: String): IO[Schema] =
             for {
               metadata <- IO.delay(client.getLatestSchemaMetadata(subject))
