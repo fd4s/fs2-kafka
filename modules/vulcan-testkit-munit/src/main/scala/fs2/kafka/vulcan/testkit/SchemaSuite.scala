@@ -14,6 +14,9 @@ import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import org.apache.avro.Schema
+import org.apache.avro.SchemaCompatibility.Incompatibility
+import org.apache.avro.SchemaCompatibility.SchemaCompatibilityType
+import scala.jdk.CollectionConverters._
 
 trait CompatibilityChecker[F[_]] {
   def checkReaderCompatibility[A](
@@ -21,14 +24,30 @@ trait CompatibilityChecker[F[_]] {
     writerSubject: String
   ): F[SchemaCompatibility.SchemaPairCompatibility]
 
+  def assertReaderCompatibility[A](reader: Codec[A], writerSubject: String): F[Unit]
+
   def checkWriterCompatibility[A](
     writer: Codec[A],
     readerSubject: String
   ): F[SchemaCompatibility.SchemaPairCompatibility]
+
+  def assertWriterCompatibility[A](writer: Codec[A], readerSubject: String): F[Unit]
 }
 
 trait SchemaSuite extends FunSuite {
   private def codecAsSchema[A](codec: Codec[A]) = codec.schema.fold(e => fail(e.message), ok => ok)
+
+  private def renderIncompatibilities(incompatibilities: List[Incompatibility]): String =
+    "Schema incompatibilities:\n" + incompatibilities.zipWithIndex
+      .map({
+        case (incompatibility, i) =>
+          s"""${i + 1}) ${incompatibility.getType} - ${incompatibility.getMessage}
+           |At ${incompatibility.getLocation}
+           |Reader schema fragment: ${incompatibility.getReaderFragment.toString(true)}
+           |Writer schema fragment: ${incompatibility.getWriterFragment
+               .toString(true)}""".stripMargin
+      })
+      .mkString("\n-----\n")
 
   def compatibilityChecker(
     clientSettings: SchemaRegistryClientSettings[IO],
@@ -82,6 +101,30 @@ trait SchemaSuite extends FunSuite {
               )
             }
           }
+
+                      override def assertWriterCompatibility[A](writer: Codec[A], readerSubject: String)
+              : IO[Unit] =
+              checkReaderCompatibility(writer, readerSubject).flatMap { compat =>
+                IO.delay {
+                  assertEquals(
+                    compat.getResult().getCompatibility(),
+                    SchemaCompatibilityType.COMPATIBLE,
+                    renderIncompatibilities(compat.getResult.getIncompatibilities.asScala.toList)
+                  )
+                }
+              }
+
+            override def assertReaderCompatibility[A](reader: Codec[A], writerSubject: String)
+              : IO[Unit] =
+              checkReaderCompatibility(reader, writerSubject).flatMap { compat =>
+                IO.delay {
+                  assertEquals(
+                    compat.getResult().getCompatibility(),
+                    SchemaCompatibilityType.COMPATIBLE,
+                    renderIncompatibilities(compat.getResult.getIncompatibilities.asScala.toList)
+                  )
+                }
+              }
         }
       }
 }
