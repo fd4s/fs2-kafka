@@ -16,7 +16,7 @@ import cats.effect.unsafe.implicits.global
 import org.apache.avro.Schema
 import org.apache.avro.SchemaCompatibility.Incompatibility
 import org.apache.avro.SchemaCompatibility.SchemaCompatibilityType
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.syntax._
 
 trait CompatibilityChecker[F[_]] {
   def checkReaderCompatibility[A](
@@ -109,7 +109,7 @@ trait SchemaSuite extends FunSuite {
                   assertEquals(
                     compat.getResult().getCompatibility(),
                     SchemaCompatibilityType.COMPATIBLE,
-                    renderIncompatibilities(compat.getResult.getIncompatibilities.asScala.toList)
+                    renderIncompatibilities(compat.getResult.getIncompatibilities.toList)
                   )
                 }
               }
@@ -121,7 +121,7 @@ trait SchemaSuite extends FunSuite {
                   assertEquals(
                     compat.getResult().getCompatibility(),
                     SchemaCompatibilityType.COMPATIBLE,
-                    renderIncompatibilities(compat.getResult.getIncompatibilities.asScala.toList)
+                    renderIncompatibilities(compat.getResult.getIncompatibilities.toList)
                   )
                 }
               }
