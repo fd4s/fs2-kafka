@@ -16,7 +16,7 @@ val munitVersion = "0.7.29"
 
 val scala2 = "2.13.8"
 
-val scala3 = "3.1.2"
+val scala3 = "3.1.3"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
