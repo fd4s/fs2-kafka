@@ -327,7 +327,7 @@ To achieve this behavior we could use a `stopConsuming` method on a` KafkaConsum
 2. All currently running streams will continue to run until all in-flight messages will be processed.
    It means that streams will be completed when all fetched messages will be processed.
 
-We could combine `stopConsuming` with the custom resource handling and implement a graceful shutdown. Let's try it:
+We could combine `stopConsuming` with the custom resource handling and implement a graceful shutdown. Let's try it. For cats-effect 2 it may looks like this:
 
 ```scala mdoc:silent
 import cats.effect.{Deferred, Ref}
@@ -391,6 +391,59 @@ object WithGracefulShutdownExample extends IOApp.Simple {
 13. Let's add a timeout for our graceful shutdown. This is not absolutely necessary, but if your processing contains many steps, a graceful shutdown may take a while.
 14. When `stoppedDeferred` returns some result, we could somehow handle it. For example, we could handle an error case.
 15. Don't forget to call the `closeConsumer` function.
+
+For cats-effect 3 the example above will not work as in cats-effect 2, because in cats-effect 3 cancelation semantics [was changed](https://typelevel.org/cats-effect/docs/typeclasses/monadcancel). Here is the example of graceful shutdown for cats-effect 3:
+
+```scala mdoc:silent
+object WithGracefulShutdownExample extends IOApp.Simple {
+  val run: IO[Unit] = {
+    def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
+      IO(println(s"Processing record: $record"))
+
+    def run(consumer: KafkaConsumer[IO, String, String]): IO[Unit] = {
+      consumer.subscribeTo("topic") >> consumer.stream.evalMap { msg =>
+        processRecord(msg).as(msg.offset)
+      }.through(commitBatchWithin(100, 15.seconds)).compile.drain
+    }
+
+    KafkaConsumer.resource(consumerSettings).use { consumer => // [1]
+      IO.uncancelable { poll => // [2]
+        for {
+          runFiber <- run(consumer).start // [3]
+          _ <- poll(runFiber.join).onCancel { // [4]
+            for {
+              _ <- IO(println("Starting graceful shutdown"))
+              _ <- consumer.stopConsuming // [5]
+              shutdownOutcome <- runFiber.join.timeoutTo[Outcome[IO, Throwable, Unit]]( // [6]
+                20.seconds,
+                IO.pure(Outcome.Errored(new RuntimeException("Graceful shutdown timed out")))
+              )
+              _ <- shutdownOutcome match { // [7]
+                case Outcome.Succeeded(_) =>
+                  IO(println("Succeeded in graceful shutdown"))
+                case Outcome.Canceled() =>
+                  IO(println("Canceled in graceful shutdown")) >> runFiber.cancel
+                case Outcome.Errored(e) =>
+                  IO(println("Failed to shutdown gracefully")) >> runFiber.cancel >> IO.raiseError(e)
+              }
+            } yield ()
+          }
+        } yield ()
+      }
+    }
+  }
+}
+```
+
+
+`processRecord` and `run` functions are the same. But resource handling part is changed:
+1. Here we allocated `KafkaConsumer` as a resource. Unlike the cats-effect 2 example, you don't need to use `allocated`.
+2. We created an `uncancelable` block. You can get more information about this in the [`MonadCancel` docs](https://typelevel.org/cats-effect/docs/typeclasses/monadcancel). But shortly — everything inside an `uncancelable` block ignores `cancel` signals. But if you want to create a _cancelable_ block inside, you can use `poll` for this. We will use it in our example.
+3. We started our application's main logic by calling the `run` function. An important note here: we are starting in a separate fiber. It's because we want to manually control the lifecycle of this fiber.
+4. We called the `join` method on `runFiber` to wait for fiber completion. This call is wrapped in the `poll` function to make this awaiting cancellable. Also, on this line, we are calling the `onCancel` callback to add custom logic for cancelation.
+5. If `runFiber.join` call is canceled we have to call the `stopConsuming` to get a graceful shutdown.
+6. We joined on `runFiber` one more time, this time after the `stopConsuming` call. After the `stopConsuming` call the `runFiber` will work until an internal `IO` is finished. And internal `IO` finishes when a consumer stream will be finished. That's the main graceful shutdown point. Also, we added the `timeoutTo` on `join` to not wait for too long.
+7. We handled all possible outcomes after `runFiber.join`. In the case of `Outcome.Canceled` (note, that it means that `join` call is canceled, not the fiber itself) we have to cancel `runFiber` manually. In the case of `Outcome.Errored` we again have to cancel `runFiber`, and also it will be useful to re-raise an error.
 
 You may notice, that actual graceful shutdown implementation requires a decent amount of low-level handwork. `stopConsuming` is just a building block for making your own graceful shutdown, not a ready-made solution for all needs. This design is intentional, because different applications may need different graceful shutdown logic. For example, what if your application has multiple consumers? Or some other components in your application may also need to participate in a graceful shutdown somehow? Because of that graceful shutdown with `stopConsuming` considered as a low level and advanced feature.
 
