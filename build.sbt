@@ -33,6 +33,8 @@ val scala213 = "2.13.8"
 
 val scala3 = "3.1.2"
 
+ThisBuild / tlVersionIntroduced := Map("3" -> "2.1.0")
+
 def versionIntroduced(v: String) = Seq(
   tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> v).toMap
 )
@@ -124,19 +126,18 @@ lazy val docs = project
 //        ), navLinks = Seq()
 //      ),
     mdocVariables ++= Map(
-      "ORGANIZATION" -> "org.fd4s",
+      "ORGANIZATION" -> organization.value,
       "API_BASE_URL" -> "/fs2-kafka/api/fs2/kafka",
       "KAFKA_API_BASE_URL" -> s"https://kafka.apache.org/FOOBAR/javadoc",
       "KAFKA_VERSION" -> kafkaVersion,
       "VULCAN_VERSION" -> vulcanVersion,
       "CONFLUENT_VERSION" -> confluentVersion,
       "FS2_VERSION" -> fs2Version,
-      "CORE_CROSS_SCALA_VERSIONS" ->
+      "CROSS_SCALA_VERSIONS" ->
         minorVersionsString(List(scala212, scala213, scala3)),
-      "VULCAN_CROSS_SCALA_VERSIONS" ->
-        minorVersionsString(List(scala212, scala213, scala3)),
-      "CORE_MODULE_NAME" -> "fs2-kafka",
+      "CORE_MODULE_NAME" -> (core / moduleName).value,
       "VULCAN_MODULE_NAME" -> (vulcan / moduleName).value,
+      "VULCAN_TESTKIT_MUNIT_MODULE_NAME" -> (`vulcan-testkit-munit` / moduleName).value,
       "DOCS_SCALA_MINOR_VERSION" -> scala213
     ),
     laikaConfig := laikaConfig.value
@@ -155,14 +156,14 @@ lazy val docs = project
           )
         )
       )
-      .withConfigValue("VULCAN_MODULE_NAME", "fs2-kafka-vulcan")
-      .withConfigValue("CONFLUENT_VERSION", confluentVersion)
-      .withConfigValue("VULCAN_VERSION", vulcanVersion)
-      .withConfigValue("DOCS_SCALA_MINOR_VERSION", scala213)
-      .withConfigValue(
-        "CORE_CROSS_SCALA_VERSIONS",
-        minorVersionsString(List(scala212, scala213, scala3))
-      )
+//      .withConfigValue("VULCAN_MODULE_NAME", "fs2-kafka-vulcan")
+//      .withConfigValue("CONFLUENT_VERSION", confluentVersion)
+//      .withConfigValue("VULCAN_VERSION", vulcanVersion)
+//      .withConfigValue("DOCS_SCALA_MINOR_VERSION", scala213)
+//      .withConfigValue(
+//        "CORE_CROSS_SCALA_VERSIONS",
+//        minorVersionsString(List(scala212, scala213, scala3))
+//      )
 
 //    moduleName := "fs2-kafka-docs",
 //    name := moduleName.value,
