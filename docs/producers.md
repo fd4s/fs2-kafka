@@ -31,7 +31,7 @@ For more involved types, we need to resort to custom serializers.
 
 ```scala mdoc:silent
 Serializer.instance[IO, String] {
-  (topic, headers, s) =>
+  (_, _, s) =>
     IO.pure(s.getBytes("UTF-8"))
 }
 ```
