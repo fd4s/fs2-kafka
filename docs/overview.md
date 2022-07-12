@@ -12,7 +12,7 @@ To get started with [sbt](https://scala-sbt.org), simply add the following line 
 libraryDependencies += "@ORGANIZATION@" %% "@CORE_MODULE_NAME@" % "@VERSION@"
 ```
 
-Published for Scala@CROSS_SCALA_VERSIONS@. For changes, refer to the [release notes](https://github.com/fd4s/fs2-kafka/releases).
+Published for Scala @CROSS_SCALA_VERSIONS@. For changes, refer to the [release notes](https://github.com/fd4s/fs2-kafka/releases).
 
 For Scala 2.12, enable partial unification by adding the following line to `build.sbt`.
 

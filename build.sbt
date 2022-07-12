@@ -112,6 +112,7 @@ def minorVersionsString(versions: Seq[String]): String = {
 lazy val docs = project
   .in(file("site"))
   .settings(
+    tlFatalWarnings := false,
     tlSiteRelatedProjects := Seq(
       "vulcan" -> new URL("https://github.com/fd4s/vulcan"),
       TypelevelProject.Fs2
