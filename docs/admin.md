@@ -136,7 +136,7 @@ import org.apache.kafka.common.resource.{
 def aclOperations[F[_]: Async]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
     for {
-      describedAcls <- client.describeAcls(AclBindingFilter.ANY)
+      _ <- client.describeAcls(AclBindingFilter.ANY)
 
       aclEntry = new AccessControlEntry(
         "User:ANONYMOUS",
