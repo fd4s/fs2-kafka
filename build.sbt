@@ -18,6 +18,8 @@ ThisBuild / tlSitePublishBranch := Some("series/2.x")
 
 ThisBuild / tlSiteApiUrl := Some(new URL("https://github.com/fd4s/fs2-kafka/"))
 
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
+
 val catsEffectVersion = "3.3.11"
 
 val confluentVersion = "6.2.2"
