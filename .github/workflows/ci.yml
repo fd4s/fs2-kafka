@@ -15,11 +15,6 @@ on:
     tags: [v*]
 
 env:
-  PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-  SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-  SONATYPE_CREDENTIAL_HOST: ${{ secrets.SONATYPE_CREDENTIAL_HOST }}
-  SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-  PGP_SECRET: ${{ secrets.PGP_SECRET }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
@@ -30,32 +25,32 @@ jobs:
         os: [ubuntu-latest]
         scala: [2.12.15, 2.13.8, 3.1.2]
         java: [temurin@8]
-        project: [rootJVM]
+        project: [fs2-kafkaJVM]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
       - name: Download Java (temurin@8)
         id: download-java-temurin-8
         if: matrix.java == 'temurin@8'
-        uses: typelevel/download-java@v1
+        uses: typelevel/download-java@v2
         with:
           distribution: temurin
           java-version: 8
 
       - name: Setup Java (temurin@8)
         if: matrix.java == 'temurin@8'
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: jdkfile
           java-version: 8
           jdkFile: ${{ steps.download-java-temurin-8.outputs.jdkFile }}
 
       - name: Cache sbt
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.sbt
@@ -86,28 +81,28 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
       - name: Download Java (temurin@8)
         id: download-java-temurin-8
         if: matrix.java == 'temurin@8'
-        uses: typelevel/download-java@v1
+        uses: typelevel/download-java@v2
         with:
           distribution: temurin
           java-version: 8
 
       - name: Setup Java (temurin@8)
         if: matrix.java == 'temurin@8'
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: jdkfile
           java-version: 8
           jdkFile: ${{ steps.download-java-temurin-8.outputs.jdkFile }}
 
       - name: Cache sbt
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.sbt
@@ -120,16 +115,26 @@ jobs:
 
       - name: Import signing key
         if: env.PGP_SECRET != '' && env.PGP_PASSPHRASE == ''
+        env:
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         run: echo $PGP_SECRET | base64 -di | gpg --import
 
       - name: Import signing key and strip passphrase
         if: env.PGP_SECRET != '' && env.PGP_PASSPHRASE != ''
+        env:
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         run: |
           echo "$PGP_SECRET" | base64 -di > /tmp/signing-key.gpg
           echo "$PGP_PASSPHRASE" | gpg --pinentry-mode loopback --passphrase-fd 0 --import /tmp/signing-key.gpg
           (echo "$PGP_PASSPHRASE"; echo; echo) | gpg --command-fd 0 --pinentry-mode loopback --change-passphrase $(gpg --list-secret-keys --with-colons 2> /dev/null | grep '^sec:' | cut --delimiter ':' --fields 5 | tail -n 1)
 
       - name: Publish
+        env:
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_CREDENTIAL_HOST: ${{ secrets.SONATYPE_CREDENTIAL_HOST }}
         run: sbt '++${{ matrix.scala }}' tlRelease
 
   site:
@@ -142,28 +147,28 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
       - name: Download Java (temurin@8)
         id: download-java-temurin-8
         if: matrix.java == 'temurin@8'
-        uses: typelevel/download-java@v1
+        uses: typelevel/download-java@v2
         with:
           distribution: temurin
           java-version: 8
 
       - name: Setup Java (temurin@8)
         if: matrix.java == 'temurin@8'
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           distribution: jdkfile
           java-version: 8
           jdkFile: ${{ steps.download-java-temurin-8.outputs.jdkFile }}
 
       - name: Cache sbt
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.sbt
@@ -178,9 +183,9 @@ jobs:
         run: sbt '++${{ matrix.scala }}' docs/tlSite
 
       - name: Publish site
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/series/2.x'
         uses: peaceiris/actions-gh-pages@v3.8.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/target/docs/site
+          publish_dir: site/target/docs/site
           keep_files: true

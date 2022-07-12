@@ -65,7 +65,6 @@ lazy val core = project
     ),
     publishSettings,
     mimaSettings,
-    scalaSettings,
     testSettings
   )
 
@@ -82,7 +81,6 @@ lazy val vulcan = project
     ),
     publishSettings,
     mimaSettings,
-    scalaSettings,
     testSettings
   )
   .dependsOn(core)
@@ -99,7 +97,6 @@ lazy val `vulcan-testkit-munit` = project
     ),
     publishSettings,
     mimaSettings,
-    scalaSettings,
     testSettings
   )
   .dependsOn(vulcan)
@@ -209,26 +206,6 @@ lazy val dependencySettings = Seq(
     }).transform(node).head
   }
 )
-
-//lazy val mdocSettings = Seq(
-//  mdoc := (Compile / run).evaluated,
-//  scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-//  crossScalaVersions := Seq(scalaVersion.value),
-//  ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
-//  ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
-//  cleanFiles += (ScalaUnidoc / unidoc / target).value,
-//  docusaurusPublishGhpages :=
-//    docusaurusPublishGhpages
-//      .dependsOn(Compile / unidoc)
-//      .dependsOn(ThisBuild / updateSiteVariables)
-//      .value,
-//  // format: off
-//  ScalaUnidoc / unidoc / scalacOptions ++= Seq(
-//    "-sourcepath", (LocalRootProject / baseDirectory).value.getAbsolutePath,
-//    "-doc-title", "FS2 Kafka",
-//  )
-//  // format: on
-//)
 
 lazy val buildInfoSettings = Seq(
   buildInfoPackage := "fs2.kafka.build",
@@ -367,58 +344,6 @@ lazy val mimaSettings = Seq(
 
 ThisBuild / scalaVersion := scala213
 ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
-
-lazy val scalaSettings = Seq(
-  scalacOptions ++= Seq(
-    "-deprecation",
-    "-encoding",
-    "UTF-8",
-    "-feature",
-    "-language:implicitConversions",
-    "-unchecked"
-  ) ++ (
-    if (scalaVersion.value.startsWith("2.13"))
-      Seq(
-        "-language:higherKinds",
-        "-Xlint",
-        "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-value-discard",
-        "-Ywarn-unused",
-        "-Xfatal-warnings"
-      )
-    else if (scalaVersion.value.startsWith("2.12"))
-      Seq(
-        "-language:higherKinds",
-        "-Xlint",
-        "-Yno-adapted-args",
-        "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-value-discard",
-        "-Ywarn-unused",
-        "-Ypartial-unification",
-        "-Xfatal-warnings"
-      )
-    else
-      Seq(
-        "-Ykind-projector",
-        "-source:3.0-migration",
-        "-Xignore-scala2-macros"
-      )
-  ),
-  Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
-  Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
-  Test / console / scalacOptions := (Compile / console / scalacOptions).value,
-  Compile / unmanagedSourceDirectories ++=
-    Seq(
-      baseDirectory.value / "src" / "main" / {
-        if (scalaVersion.value.startsWith("2.12"))
-          "scala-2.12"
-        else "scala-2.13+"
-      }
-    ),
-  Test / fork := true
-)
 
 lazy val testSettings = Seq(
   Test / logBuffered := false,
