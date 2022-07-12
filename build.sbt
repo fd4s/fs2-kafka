@@ -1,12 +1,22 @@
 import laika.ast.Path.Root
-import laika.ast.{Image, Length, LengthUnit}
+import laika.ast.{Image, Length, LengthUnit, SVGSymbolIcon, Target}
 import laika.helium.Helium
-import laika.helium.config.{Favicon, FontSizes, IconLink, ImageLink}
+import laika.helium.config.{
+  Favicon,
+  FontSizes,
+  HeliumIcon,
+  IconLink,
+  ImageLink,
+  ReleaseInfo,
+  TextLink
+}
 import laika.rewrite.link.{ApiLinks, LinkConfig}
 
 ThisBuild / tlBaseVersion := "2.4"
 
 ThisBuild / tlSitePublishBranch := Some("series/2.x")
+
+ThisBuild / tlSiteApiUrl := Some(new URL("https://github.com/fd4s/fs2-kafka/"))
 
 val catsEffectVersion = "3.3.11"
 
@@ -99,15 +109,23 @@ def minorVersionsString(versions: Seq[String]): String = {
   if (minorVersions.size <= 2) minorVersions.mkString(" and ")
   else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
 }
+
 lazy val docs = project
   .in(file("site"))
   .settings(
-    tlSiteHeliumConfig := tlSiteHeliumConfig.value.site
-      .favIcons(Favicon.internal(Root / "img" / "favicon.png", "32x32"))
-      .site
-      .topNavigationBar(
-        homeLink = IconLink.internal(Root / "overview.md", Icon.internal(Root / "img" / "fs2-kafka.svg"))
-      ),
+    tlSiteRelatedProjects := Seq(
+      "vulcan" -> new URL("https://github.com/fd4s/vulcan"),
+      TypelevelProject.Fs2
+    ),
+//    tlSiteHeliumConfig := tlSiteHeliumConfig.value.site
+//      .favIcons(Favicon.internal(Root / "img" / "favicon.png", "32x32"))
+//      .site
+//      .topNavigationBar(
+//        homeLink = TextLink.internal(
+//          path = Root / "overview.md",
+//          text = "FS2 Kafka"
+//        ), navLinks = Seq()
+//      ),
     mdocVariables ++= Map(
       "ORGANIZATION" -> "org.fd4s",
       "API_BASE_URL" -> "/fs2-kafka/api/fs2/kafka",
