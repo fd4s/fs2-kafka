@@ -1,5 +1,7 @@
 ThisBuild / tlBaseVersion := "2.4"
 
+ThisBuild / tlSitePublishBranch := Some("series/2.x")
+
 val catsEffectVersion = "3.3.11"
 
 val confluentVersion = "6.2.2"
@@ -87,17 +89,36 @@ lazy val `vulcan-testkit-munit` = project
   .dependsOn(vulcan)
 
 lazy val docs = project
-  .in(file("docs"))
+  .in(file("site"))
   .settings(
-    moduleName := "fs2-kafka-docs",
-    name := moduleName.value,
-    dependencySettings,
-    scalaSettings,
-//    mdocSettings,
-    buildInfoSettings
+    laikaConfig := {
+      def minorVersionsString(versions: Seq[String]): String = {
+        val minorVersions = versions.map(minorVersion)
+        if (minorVersions.size <= 2) minorVersions.mkString(" and ")
+        else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
+      }
+
+      laikaConfig.value
+        .withConfigValue("API_BASE_URL", "/fs2-kafka/api/fs2/kafka")
+        .withConfigValue("KAFKA_API_BASE_URL", s"https://kafka.apache.org/FOOBAR/javadoc")
+        .withConfigValue("KAFKA_VERSION", kafkaVersion)
+        .withConfigValue("FS2_VERSION", fs2Version)
+        .withConfigValue(
+          "CORE_CROSS_SCALA_VERSIONS",
+          minorVersionsString(List(scala212, scala213, scala3))
+        )
+        .withConfigValue("CORE_MODULE_NAME", "fs2-kafka")
+        .withConfigValue("VULCAN_MODULE_NAME", "fs2-kafka-vulcan")
+
+    }
+//    moduleName := "fs2-kafka-docs",
+//    name := moduleName.value,
+//    dependencySettings,
+//    scalaSettings,
+//    buildInfoSettings
   )
   .dependsOn(core, vulcan, `vulcan-testkit-munit`)
-  .enablePlugins(BuildInfoPlugin, TypelevelSitePlugin)
+  .enablePlugins(TypelevelSitePlugin)
 
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",

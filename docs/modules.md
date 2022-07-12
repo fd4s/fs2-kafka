@@ -7,7 +7,7 @@ The following sections describe the additional modules.
 
 ## Vulcan
 
-The `@VULCAN_MODULE_NAME@` module provides [Avro](https://avro.apache.org) serialization support using [Vulcan](https://fd4s.github.io/vulcan).
+The `${VULCAN_MODULE_NAME}` module provides [Avro](https://avro.apache.org) serialization support using [Vulcan](https://fd4s.github.io/vulcan).
 
 Add it to your project in build.sbt;
 
@@ -148,7 +148,7 @@ avroSettingsSharedClient.map { avroSettings =>
 
 ## Vulcan testkit munit
 
-The `@VULCAN_TESTKIT_MUNIT_MODULE_NAME@` module provides an [munit](https://scalameta.org/munit/) fixture for testing vulcan 
+The `${VULCAN_TESTKIT_MUNIT_MODULE_NAME}` module provides an [munit](https://scalameta.org/munit/) fixture for testing vulcan 
 codecs against a [schema registry](https://docs.confluent.io/platform/current/schema-registry/index.html)
 
 A usage example:

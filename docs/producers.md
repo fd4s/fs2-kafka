@@ -257,12 +257,12 @@ object KafkaProducerProduceFlattenExample extends IOApp.Simple {
 }
 ```
 
-[headers]: @API_BASE_URL@/Headers.html
-[java-kafka-producer]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/producer/KafkaProducer.html
-[kafkaproducer]: @API_BASE_URL@/KafkaProducer.html
-[producerconfig]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/producer/ProducerConfig.html
-[producersettings]: @API_BASE_URL@/ProducerSettings.html
-[serializationexception]: @API_BASE_URL@/SerializationException.html
-[serializer]: @API_BASE_URL@/Serializer.html
-[serializer$]: @API_BASE_URL@/Serializer$.html
-[unexpectedtopicexception]: @API_BASE_URL@/UnexpectedTopicException.html
+[headers]: ${API_BASE_URL}/Headers.html
+[java-kafka-producer]: ${KAFKA_API_BASE_URL}/?org/apache/kafka/clients/producer/KafkaProducer.html
+[kafkaproducer]: ${API_BASE_URL}/KafkaProducer.html
+[producerconfig]: ${KAFKA_API_BASE_URL}/?org/apache/kafka/clients/producer/ProducerConfig.html
+[producersettings]: ${API_BASE_URL}/ProducerSettings.html
+[serializationexception]: ${API_BASE_URL}/SerializationException.html
+[serializer]: ${API_BASE_URL}/Serializer.html
+[serializer$]: ${API_BASE_URL}/Serializer$.html
+[unexpectedtopicexception]: ${API_BASE_URL}/UnexpectedTopicException.html

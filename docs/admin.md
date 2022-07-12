@@ -156,6 +156,6 @@ def aclOperations[F[_]: Async]: F[Unit] =
   }
 ```
 
-[kafkaadminclient]: @API_BASE_URL@/KafkaAdminClient.html
-[adminclientsettings]: @API_BASE_URL@/AdminClientSettings.html
-[admin-client]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/admin/AdminClient.html
+[kafkaadminclient]:${API_BASE_URL}/KafkaAdminClient.html
+[adminclientsettings]:${API_BASE_URL}/AdminClientSettings.html
+[admin-client]:${KAFKA_API_BASE_URL}/?org/apache/kafka/clients/admin/AdminClient.html

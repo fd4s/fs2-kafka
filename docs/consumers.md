@@ -396,18 +396,18 @@ You may notice, that actual graceful shutdown implementation requires a decent a
 
 Also note, that even if you implement a graceful shutdown your application may fall with an error. And in this case, a graceful shutdown will not be invoked. It means that your application should be ready to an _at least once_ semantic even when a graceful shutdown is implemented. Or, if you need an _exactly once_ semantic, consider using [transactions](transactions.md).
 
-[commitrecovery-default]: @API_BASE_URL@/CommitRecovery$.html#Default:fs2.kafka.CommitRecovery
-[committableconsumerrecord]: @API_BASE_URL@/CommittableConsumerRecord.html
-[committableoffset]: @API_BASE_URL@/CommittableOffset.html
-[committableoffsetbatch]: @API_BASE_URL@/CommittableOffsetBatch.html
-[committableoffsetbatch$]: @API_BASE_URL@/CommittableOffsetBatch$.html
-[consumerconfig]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/consumer/ConsumerConfig.html
-[consumerrecord]: @API_BASE_URL@/ConsumerRecord.html
-[consumersettings]: @API_BASE_URL@/ConsumerSettings.html
-[deserializer]: @API_BASE_URL@/Deserializer.html
-[deserializer$]: @API_BASE_URL@/Deserializer$.html
-[headers]: @API_BASE_URL@/Headers.html
-[java-kafka-consumer]: @KAFKA_API_BASE_URL@/?org/apache/kafka/clients/consumer/KafkaConsumer.html
-[kafkaconsumer]: @API_BASE_URL@/KafkaConsumer.html
-[deserializationexception]: @API_BASE_URL@/DeserializationException.html
-[unexpectedtopicexception]: @API_BASE_URL@/UnexpectedTopicException.html
+[commitrecovery-default]: ${API_BASE_URL}/CommitRecovery$.html#Default:fs2.kafka.CommitRecovery
+[committableconsumerrecord]: ${API_BASE_URL}/CommittableConsumerRecord.html
+[committableoffset]: ${API_BASE_URL}/CommittableOffset.html
+[committableoffsetbatch]: ${API_BASE_URL}/CommittableOffsetBatch.html
+[committableoffsetbatch$]: ${API_BASE_URL}/CommittableOffsetBatch$.html
+[consumerconfig]: ${KAFKA_API_BASE_URL}/?org/apache/kafka/clients/consumer/ConsumerConfig.html
+[consumerrecord]: ${API_BASE_URL}/ConsumerRecord.html
+[consumersettings]: ${API_BASE_URL}/ConsumerSettings.html
+[deserializer]: ${API_BASE_URL}/Deserializer.html
+[deserializer$]: ${API_BASE_URL}/Deserializer$.html
+[headers]: ${API_BASE_URL}/Headers.html
+[java-kafka-consumer]: ${KAFKA_API_BASE_URL}/?org/apache/kafka/clients/consumer/KafkaConsumer.html
+[kafkaconsumer]: ${API_BASE_URL}/KafkaConsumer.html
+[deserializationexception]: ${API_BASE_URL}/DeserializationException.html
+[unexpectedtopicexception]: ${API_BASE_URL}/UnexpectedTopicException.html

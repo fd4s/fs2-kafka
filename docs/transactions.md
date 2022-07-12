@@ -67,4 +67,4 @@ object Main extends IOApp.Simple {
 }
 ```
 
-[transactionalkafkaproducer]: @API_BASE_URL@/TransactionalKafkaProducer.html
+[transactionalkafkaproducer]: ${API_BASE_URL}/TransactionalKafkaProducer.html
