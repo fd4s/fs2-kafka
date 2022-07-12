@@ -31,7 +31,7 @@ For more involved types, we need to resort to custom deserializers.
 
 ```scala mdoc:silent
 Deserializer.instance {
-  (topic, headers, bytes) =>
+  (_, _, bytes) =>
     IO.pure(bytes.dropWhile(_ == 0))
 }
 ```
