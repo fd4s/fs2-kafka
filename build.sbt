@@ -2,6 +2,11 @@ import laika.rewrite.link.{ApiLinks, LinkConfig}
 
 ThisBuild / tlBaseVersion := "2.4"
 
+ThisBuild / organization := "com.github.fd4s"
+ThisBuild / organizationName := "fd4s"
+
+ThisBuild / startYear := Some(2018)
+
 ThisBuild / tlSitePublishBranch := Some("series/2.x")
 
 ThisBuild / tlSiteApiUrl := Some(new URL("https://github.com/fd4s/fs2-kafka/"))
@@ -131,7 +136,7 @@ lazy val docs = project
       "VULCAN_CROSS_SCALA_VERSIONS" ->
         minorVersionsString(List(scala212, scala213, scala3)),
       "CORE_MODULE_NAME" -> "fs2-kafka",
-      "VULCAN_MODULE_NAME" -> "fs2-kafka-vulcan",
+      "VULCAN_MODULE_NAME" -> (vulcan / moduleName).value,
       "DOCS_SCALA_MINOR_VERSION" -> scala213
     ),
     laikaConfig := laikaConfig.value
