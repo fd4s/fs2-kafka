@@ -1,7 +1,4 @@
----
-id: technical-details
-title: Technical Details
----
+# Technical Details
 
 In the following sections, technical aspects of the library are detailed.
 
@@ -9,7 +6,7 @@ In the following sections, technical aspects of the library are detailed.
 
 Following are some general library implementation notes.
 
-- The library relies on the Java Kafka client, and does not re-implement the Kafka client. In particular, the library implements a consumer threading model similar to the 'decouple consumption and processing' model described in the [documentation](${KAFKA_API_BASE_URL}/?org/apache/kafka/clients/consumer/KafkaConsumer.html).
+- The library relies on the Java Kafka client, and does not re-implement the Kafka client. In particular, the library implements a consumer threading model similar to the 'decouple consumption and processing' model described in the [documentation][@:api(org.apache.kafka.clients.consumer.KafkaConsumer)].
 
 - Since the Java Kafka client is allowed to block (up to `pollTimeout` for `poll`), all Kafka client calls are run on a dedicated `ExecutionContext`. Unless explicitly provided when creating `ConsumerSettings`, a default single-threaded `ExecutionContext` will be created and used for this purpose.
 

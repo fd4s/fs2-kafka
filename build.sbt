@@ -1,3 +1,9 @@
+import laika.ast.Path.Root
+import laika.ast.{Image, Length, LengthUnit}
+import laika.helium.Helium
+import laika.helium.config.{Favicon, FontSizes, IconLink, ImageLink}
+import laika.rewrite.link.{ApiLinks, LinkConfig}
+
 ThisBuild / tlBaseVersion := "2.4"
 
 ThisBuild / tlSitePublishBranch := Some("series/2.x")
@@ -88,29 +94,61 @@ lazy val `vulcan-testkit-munit` = project
   )
   .dependsOn(vulcan)
 
+def minorVersionsString(versions: Seq[String]): String = {
+  val minorVersions = versions.map(minorVersion)
+  if (minorVersions.size <= 2) minorVersions.mkString(" and ")
+  else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
+}
 lazy val docs = project
   .in(file("site"))
   .settings(
-    laikaConfig := {
-      def minorVersionsString(versions: Seq[String]): String = {
-        val minorVersions = versions.map(minorVersion)
-        if (minorVersions.size <= 2) minorVersions.mkString(" and ")
-        else minorVersions.init.mkString(", ") ++ " and " ++ minorVersions.last
-      }
-
-      laikaConfig.value
-        .withConfigValue("API_BASE_URL", "/fs2-kafka/api/fs2/kafka")
-        .withConfigValue("KAFKA_API_BASE_URL", s"https://kafka.apache.org/FOOBAR/javadoc")
-        .withConfigValue("KAFKA_VERSION", kafkaVersion)
-        .withConfigValue("FS2_VERSION", fs2Version)
-        .withConfigValue(
-          "CORE_CROSS_SCALA_VERSIONS",
-          minorVersionsString(List(scala212, scala213, scala3))
+    tlSiteHeliumConfig := tlSiteHeliumConfig.value.site
+      .favIcons(Favicon.internal(Root / "img" / "favicon.png", "32x32"))
+      .site
+      .topNavigationBar(
+        homeLink = IconLink.internal(Root / "overview.md", Icon.internal(Root / "img" / "fs2-kafka.svg"))
+      ),
+    mdocVariables ++= Map(
+      "ORGANIZATION" -> "org.fd4s",
+      "API_BASE_URL" -> "/fs2-kafka/api/fs2/kafka",
+      "KAFKA_API_BASE_URL" -> s"https://kafka.apache.org/FOOBAR/javadoc",
+      "KAFKA_VERSION" -> kafkaVersion,
+      "VULCAN_VERSION" -> vulcanVersion,
+      "CONFLUENT_VERSION" -> confluentVersion,
+      "FS2_VERSION" -> fs2Version,
+      "CORE_CROSS_SCALA_VERSIONS" ->
+        minorVersionsString(List(scala212, scala213, scala3)),
+      "VULCAN_CROSS_SCALA_VERSIONS" ->
+        minorVersionsString(List(scala212, scala213, scala3)),
+      "CORE_MODULE_NAME" -> "fs2-kafka",
+      "VULCAN_MODULE_NAME" -> "fs2-kafka-vulcan",
+      "DOCS_SCALA_MINOR_VERSION" -> scala213
+    ),
+    laikaConfig := laikaConfig.value
+      .withConfigValue(
+        LinkConfig(
+          apiLinks = Seq(
+            ApiLinks(
+              baseUri = "https://fd4s.github.io/fs2-kafka/api/",
+              packagePrefix = "fs2.kafka"
+            ),
+            ApiLinks(
+              baseUri =
+                s"https://kafka.apache.org/${minorVersion(kafkaVersion).filter(_ != '.')}/javadoc/",
+              packagePrefix = "org.apache.kafka"
+            )
+          )
         )
-        .withConfigValue("CORE_MODULE_NAME", "fs2-kafka")
-        .withConfigValue("VULCAN_MODULE_NAME", "fs2-kafka-vulcan")
+      )
+      .withConfigValue("VULCAN_MODULE_NAME", "fs2-kafka-vulcan")
+      .withConfigValue("CONFLUENT_VERSION", confluentVersion)
+      .withConfigValue("VULCAN_VERSION", vulcanVersion)
+      .withConfigValue("DOCS_SCALA_MINOR_VERSION", scala213)
+      .withConfigValue(
+        "CORE_CROSS_SCALA_VERSIONS",
+        minorVersionsString(List(scala212, scala213, scala3))
+      )
 
-    }
 //    moduleName := "fs2-kafka-docs",
 //    name := moduleName.value,
 //    dependencySettings,

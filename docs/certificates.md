@@ -1,7 +1,4 @@
----
-id: security
-title: Security & Certificates
----
+# Security & Certificates
 
 ## Security: certificates, trust stores, and passwords 
 

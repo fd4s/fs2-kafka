@@ -1,9 +1,6 @@
----
-id: consumers
-title: Consumers
----
+# Consumers
 
-Consumers support subscribing to topics, record streaming and deserialization, as well as miscellaneous utility functionality, such as seeking to offsets, or checking what the end offsets are for a topic. Consumers make use of the [Java Kafka consumer][java-kafka-consumer], which becomes especially important for [settings](#settings). For consumer implementation details, refer to the [technical details](technical-details.md) section.
+Consumers support subscribing to topics, record streaming and deserialization, as well as miscellaneous utility functionality, such as seeking to offsets, or checking what the end offsets are for a topic. Consumers make use of the @:api(org.apache.kafka.clients.consumer.KafkaConsumer), which becomes especially important for [settings](#settings). For consumer implementation details, refer to the [technical details](technical-details.md) section.
 
 The following imports are assumed throughout this page.
 
@@ -16,7 +13,7 @@ import scala.concurrent.duration._
 
 ## Deserializers
 
-[`Deserializer`][deserializer] describes functional composable deserializers for record keys and values. We generally require two deserializers: one for the record key and one for the record value. Deserializers are provided implicitly for many standard library types, including:
+@:api(fs2.kafka.Deserializer) describes functional composable deserializers for record keys and values. We generally require two deserializers: one for the record key and one for the record value. Deserializers are provided implicitly for many standard library types, including:
 
 - `Array[Byte]`, `Double`, `Float`, `Int`, `Long`, `Short`, `String`, and `UUID`.
 
@@ -30,7 +27,7 @@ For more involved types, we need to resort to custom deserializers.
 
 ### Custom Deserializers
 
-`Deserializer[F[_], A]` describes a function `Array[Byte] => F[A]`, while also having access to the topic name and record [`Headers`][headers]. There are many [functions][deserializer$] available for creating custom deserializers, with the most basic one being `instance`, which simply creates a deserializer from a provided function.
+`Deserializer[F[_], A]` describes a function `Array[Byte] => F[A]`, while also having access to the topic name and record @:api(fs2.kafka.Headers). There are many @:api(fs2.kafka.Deserializer) available for creating custom deserializers, with the most basic one being `instance`, which simply creates a deserializer from a provided function.
 
 ```scala mdoc:silent
 Deserializer.instance {
@@ -54,7 +51,7 @@ Deserializer.topic[IO, String] {
 }
 ```
 
-For unmatched topics, an [`UnexpectedTopicException`][unexpectedtopicexception] is raised.
+For unmatched topics, an @:api(fs2.kafka.UnexpectedTopicException) is raised.
 
 Use `headers` for different deserializers depending on record headers.
 
@@ -69,7 +66,7 @@ Deserializer.headers[IO, String] { headers =>
 }
 ```
 
-In the example above, `failWith` raises a [`DeserializationException`][deserializationexception] with the provided message.
+In the example above, `failWith` raises a @:api(fs2.kafka.DeserializationException) with the provided message.
 
 ### Java Interoperability
 
@@ -101,7 +98,7 @@ Note that `close` and `configure` won't be called for the delegates.
 
 ## Settings
 
-In order to create a [`KafkaConsumer`][kafkaconsumer], we first need to create [`ConsumerSettings`][consumersettings]. At the very minimum, settings include the effect type to use, and the key and value deserializers. More generally, [`ConsumerSettings`][consumersettings] contain everything necessary to create a [`KafkaConsumer`][kafkaconsumer]. If deserializers are available implicitly for the key and value type, we can use the syntax in the following example.
+In order to create a @:api(fs2.kafka.KafkaConsumer), we first need to create [ConsumerSettings][@:api(fs2.kafka.ConsumerSettings)]. At the very minimum, settings include the effect type to use, and the key and value deserializers. More generally, [ConsumerSettings][@:api(fs2.kafka.ConsumerSettings)] contain everything necessary to create a @:api(fs2.kafka.KafkaConsumer). If deserializers are available implicitly for the key and value type, we can use the syntax in the following example.
 
 ```scala mdoc:silent
 val consumerSettings =
@@ -122,7 +119,7 @@ ConsumerSettings(
  .withGroupId("group")
 ```
 
-[`ConsumerSettings`][consumersettings] provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use `withProperty` or `withProperties` together with constants from [`ConsumerConfig`][consumerconfig]. Available properties for the Java Kafka consumer are described in the [documentation](http://kafka.apache.org/documentation/#consumerconfigs).
+[ConsumerSettings][@:api(fs2.kafka.ConsumerSettings)] provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use `withProperty` or `withProperties` together with constants from @:api(org.apache.kafka.clients.consumer.ConsumerConfig) Available properties for the Java Kafka consumer are described in the [documentation](http://kafka.apache.org/documentation/#consumerconfigs).
 
 ### Default Settings
 
@@ -138,7 +135,7 @@ In addition, there are several settings specific to the library.
 
 - `withCloseTimeout` controls the timeout when waiting for consumer shutdown. Default is 20 seconds.
 
-- `withCommitRecovery` defines how offset commit exceptions are recovered. See [`CommitRecovery.Default`][commitrecovery-default].
+- `withCommitRecovery` defines how offset commit exceptions are recovered. See [`CommitRecovery.Default`][@:api(fs2.kafka.CommitRecovery)].
 
 - `withCommitTimeout` sets the timeout for offset commits. Default is 15 seconds.
 
@@ -154,7 +151,7 @@ In addition, there are several settings specific to the library.
 
 ## Consumer Creation
 
-Once [`ConsumerSettings`][consumersettings] is defined, use `KafkaConsumer.stream` to create a [`KafkaConsumer`][kafkaconsumer] instance.
+Once [ConsumerSettings][@:api(fs2.kafka.ConsumerSettings)] is defined, use `KafkaConsumer.stream` to create a @:api(fs2.kafka.KafkaConsumer) instance.
 
 ```scala mdoc:silent
 object ConsumerExample extends IOApp.Simple {
@@ -165,7 +162,7 @@ object ConsumerExample extends IOApp.Simple {
 
 There is also `KafkaConsumer.resource` for when it's preferable to work with `Resource`. Both these functions create an underlying Java Kafka consumer and start work in the background to support record streaming. In addition, they both also guarantee resource cleanup (closing the Kafka consumer and stopping background work).
 
-In the example above, we simply create the consumer and then immediately shutdown after resource cleanup. [`KafkaConsumer`][kafkaconsumer] supports much of the Java Kafka consumer functionality in addition to record streaming, but for streaming records, we first have to subscribe to a topic.
+In the example above, we simply create the consumer and then immediately shutdown after resource cleanup. @:api(fs2.kafka.KafkaConsumer) supports much of the Java Kafka consumer functionality in addition to record streaming, but for streaming records, we first have to subscribe to a topic.
 
 ## Topic Subscription
 
@@ -184,7 +181,7 @@ Note that only automatic partition assignment is supported. Like in the [consume
 
 ## Record Streaming
 
-Once subscribed to at least one topic, we can use `stream` for a `Stream` of [`CommittableConsumerRecord`][committableconsumerrecord]s. Each record contains a deserialized [`ConsumerRecord`][consumerrecord], as well as a [`CommittableOffset`][committableoffset] for managing [offset commits](#offset-commits). Streams guarantee records in topic-partition order, but not ordering across partitions. This is the same ordering guarantee that Kafka provides.
+Once subscribed to at least one topic, we can use `stream` for a `Stream` of [`CommittableConsumerRecord`][@:api(fs2.kafka.CommittableConsumerRecord)]s. Each record contains a deserialized [`ConsumerRecord`][@:api(fs2.kafka.ConsumerRecord)], as well as a [`CommittableOffset`][@:api(fs2.kafka.CommittableOffset)] for managing [offset commits](#offset-commits). Streams guarantee records in topic-partition order, but not ordering across partitions. This is the same ordering guarantee that Kafka provides.
 
 ```scala mdoc:silent
 object ConsumerStreamExample extends IOApp.Simple {
@@ -262,11 +259,11 @@ object ConsumerMapAsyncExample extends IOApp.Simple {
 
 ## Offset Commits
 
-Offsets commits are managed manually, which is important for ensuring at-least-once delivery. This means that, by [default](#default-settings), automatic offset commits are disabled. If you're sure you don't need at-least-once delivery, you can re-enable automatic offset commits using `withEnableAutoCommit` on [`ConsumerSettings`][consumersettings], and then ignore the [`CommittableOffset`][committableoffset] part of [`CommittableConsumerRecord`][committableconsumerrecord], keeping only the [`ConsumerRecord`][consumerrecord].
+Offsets commits are managed manually, which is important for ensuring at-least-once delivery. This means that, by [default](#default-settings), automatic offset commits are disabled. If you're sure you don't need at-least-once delivery, you can re-enable automatic offset commits using `withEnableAutoCommit` on [ConsumerSettings][@:api(fs2.kafka.ConsumerSettings)], and then ignore the [`CommittableOffset`][@:api(fs2.kafka.CommittableOffset)] part of [`CommittableConsumerRecord`][@:api(fs2.kafka.CommittableConsumerRecord)], keeping only the [`ConsumerRecord`][@:api(fs2.kafka.ConsumerRecord)].
 
 Offset commits are usually done in batches for performance reasons. We normally don't need to commit every offset, but only the last processed offset. There is a trade-off in how much reprocessing we have to do when we restart versus the performance implication of committing more frequently. Depending on our situation, we'll then choose an appropriate frequency for offset commits.
 
-We should keep the [`CommittableOffset`][committableoffset] in our `Stream` once we've finished processing the record. For at-least-once delivery, it's essential that offset commits preserve topic-partition ordering, so we have to make sure we keep offsets in the same order as we receive them. There are then several functions available for common batch committing scenarios, like `commitBatch`, `commitBatchOption`, and `commitBatchWithin`.
+We should keep the [`CommittableOffset`][@:api(fs2.kafka.CommittableOffset)] in our `Stream` once we've finished processing the record. For at-least-once delivery, it's essential that offset commits preserve topic-partition ordering, so we have to make sure we keep offsets in the same order as we receive them. There are then several functions available for common batch committing scenarios, like `commitBatch`, `commitBatchOption`, and `commitBatchWithin`.
 
 ```scala mdoc:silent
 object ConsumerCommitBatchExample extends IOApp.Simple {
@@ -291,11 +288,11 @@ object ConsumerCommitBatchExample extends IOApp.Simple {
 
 The example above commits once every 500 offsets or 15 seconds, whichever happens first. Alternatively, `commitBatch` uses the underlying chunking of the `Stream`, committing once every `Chunk`, while the `commitBatchOption` function does the same except when offsets are wrapped in `Option`.
 
-The batch commit functions uses [`CommittableOffsetBatch`][committableoffsetbatch] and provided [functions][committableoffsetbatch$] for batching offsets. For more involved batch commit scenarios, we can use [`CommittableOffsetBatch`][committableoffsetbatch] to batch offsets, while having custom logic to determine batch frequency.
+The batch commit functions uses [`CommittableOffsetBatch`][@:api(fs2.kafka.CommittableOffsetBatch)] and provided [functions][@:api(fs2.kafka.CommittableOffsetBatch$)] for batching offsets. For more involved batch commit scenarios, we can use [`CommittableOffsetBatch`][@:api(fs2.kafka.CommittableOffsetBatch)] to batch offsets, while having custom logic to determine batch frequency.
 
 For at-least-once delivery, offset commit has to be the last step in the stream. Anything that happens after offset commit cannot be part of the at-least-once guarantee. This is the main reason why batch commit functions return `Unit`, as they should always be the last part of the stream definition.
 
-If we're sure we need to commit every offset, we can `commit` individual [`CommittableOffset`][committableoffset]s. Note there is a substantial performance implication to committing every offset, and it should be avoided when possible. The approach also limits parallelism, since offset commits need to preserve topic-partition ordering.
+If we're sure we need to commit every offset, we can `commit` individual [`CommittableOffset`][@:api(fs2.kafka.CommittableOffset)]s. Note there is a substantial performance implication to committing every offset, and it should be avoided when possible. The approach also limits parallelism, since offset commits need to preserve topic-partition ordering.
 
 ## Graceful shutdown
 
@@ -396,18 +393,4 @@ You may notice, that actual graceful shutdown implementation requires a decent a
 
 Also note, that even if you implement a graceful shutdown your application may fall with an error. And in this case, a graceful shutdown will not be invoked. It means that your application should be ready to an _at least once_ semantic even when a graceful shutdown is implemented. Or, if you need an _exactly once_ semantic, consider using [transactions](transactions.md).
 
-[commitrecovery-default]: ${API_BASE_URL}/CommitRecovery$.html#Default:fs2.kafka.CommitRecovery
-[committableconsumerrecord]: ${API_BASE_URL}/CommittableConsumerRecord.html
-[committableoffset]: ${API_BASE_URL}/CommittableOffset.html
-[committableoffsetbatch]: ${API_BASE_URL}/CommittableOffsetBatch.html
-[committableoffsetbatch$]: ${API_BASE_URL}/CommittableOffsetBatch$.html
-[consumerconfig]: ${KAFKA_API_BASE_URL}/?org/apache/kafka/clients/consumer/ConsumerConfig.html
-[consumerrecord]: ${API_BASE_URL}/ConsumerRecord.html
-[consumersettings]: ${API_BASE_URL}/ConsumerSettings.html
-[deserializer]: ${API_BASE_URL}/Deserializer.html
-[deserializer$]: ${API_BASE_URL}/Deserializer$.html
-[headers]: ${API_BASE_URL}/Headers.html
-[java-kafka-consumer]: ${KAFKA_API_BASE_URL}/?org/apache/kafka/clients/consumer/KafkaConsumer.html
-[kafkaconsumer]: ${API_BASE_URL}/KafkaConsumer.html
-[deserializationexception]: ${API_BASE_URL}/DeserializationException.html
-[unexpectedtopicexception]: ${API_BASE_URL}/UnexpectedTopicException.html
+[committableoffset]: @:api(fs2.kafka.CommittableOffset)

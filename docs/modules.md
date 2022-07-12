@@ -1,7 +1,4 @@
----
-id: modules
-title: Modules
----
+# Modules
 
 The following sections describe the additional modules.
 
@@ -149,7 +146,7 @@ avroSettingsSharedClient.map { avroSettings =>
 ## Vulcan testkit munit
 
 The `${VULCAN_TESTKIT_MUNIT_MODULE_NAME}` module provides an [munit](https://scalameta.org/munit/) fixture for testing vulcan 
-codecs against a [schema registry](https://docs.confluent.io/platform/current/schema-registry/index.html)
+codecs against a [schema registry](https://docs.confluent.io/platform/current/schema-registry/index)
 
 A usage example:
 

@@ -1,10 +1,7 @@
----
-id: admin
-title: Admin
----
+# Admin
 
-There is partial support for the Kafka admin API through [KafkaAdminClient][kafkaadminclient]. Internally, this relies on the Java Kafka
-[AdminClient][admin-client] and supports the same settings.
+There is partial support for the Kafka admin API through @:api(fs2.kafka.KafkaAdminClient). Internally, this relies on the Java Kafka
+@:api(org.apache.kafka.clients.admin.AdminClient) and supports the same settings.
 
 The following imports are assumed throughout this page.
 
@@ -17,7 +14,7 @@ import fs2.kafka._
 
 ## Settings
 
-[`AdminClientSettings`][adminclientsettings] is provided to avoid having to deal with `String` key-value settings.
+@:api(fs2.kafka.AdminClientSettings) is provided to avoid having to deal with `String` key-value settings.
 
 ### Default Settings
 
@@ -155,7 +152,3 @@ def aclOperations[F[_]: Async]: F[Unit] =
     } yield ()
   }
 ```
-
-[kafkaadminclient]:${API_BASE_URL}/KafkaAdminClient.html
-[adminclientsettings]:${API_BASE_URL}/AdminClientSettings.html
-[admin-client]:${KAFKA_API_BASE_URL}/?org/apache/kafka/clients/admin/AdminClient.html

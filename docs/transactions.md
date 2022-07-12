@@ -1,9 +1,6 @@
----
-id: transactions
-title: Transactions
----
+# Transactions
 
-Kafka transactions are supported through a [`TransactionalKafkaProducer`][transactionalkafkaproducer]. In order to use transactions, the following steps should be taken. For details on [consumers](consumers.md) and [producers](producers.md), see the respective sections.
+Kafka transactions are supported through a [`TransactionalKafkaProducer`][@:api(fs2.kafka.TransactionalKafkaProducer)]. In order to use transactions, the following steps should be taken. For details on [consumers](consumers.md) and [producers](producers.md), see the respective sections.
 
 - Create a `TransactionalProducerSettings` specifying the transactional ID.
 
@@ -66,5 +63,3 @@ object Main extends IOApp.Simple {
   }
 }
 ```
-
-[transactionalkafkaproducer]: ${API_BASE_URL}/TransactionalKafkaProducer.html
