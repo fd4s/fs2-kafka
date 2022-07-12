@@ -1,3 +1,5 @@
+ThisBuild / tlBaseVersion := "2.4"
+
 val catsEffectVersion = "3.3.11"
 
 val confluentVersion = "6.2.2"
@@ -18,16 +20,18 @@ val scala213 = "2.13.8"
 
 val scala3 = "3.1.2"
 
-lazy val `fs2-kafka` = project
-  .in(file("."))
-  .settings(
-    mimaSettings,
-    scalaSettings,
-    noPublishSettings,
-    console := (core / Compile / console).value,
-    Test / console := (core / Test / console).value
-  )
-  .aggregate(core, vulcan, `vulcan-testkit-munit`)
+lazy val `fs2-kafka` = tlCrossRootProject.aggregate(core, vulcan, `vulcan-testkit-munit`)
+//
+//  project
+//  .in(file("."))
+//  .settings(
+//    mimaSettings,
+//    scalaSettings,
+//    noPublishSettings,
+//    console := (core / Compile / console).value,
+//    Test / console := (core / Test / console).value
+//  )
+//  .aggregate(core, vulcan, `vulcan-testkit-munit`)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -88,13 +92,12 @@ lazy val docs = project
     moduleName := "fs2-kafka-docs",
     name := moduleName.value,
     dependencySettings,
-    noPublishSettings,
     scalaSettings,
-    mdocSettings,
+//    mdocSettings,
     buildInfoSettings
   )
   .dependsOn(core, vulcan, `vulcan-testkit-munit`)
-  .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin, ScalaUnidocPlugin)
+  .enablePlugins(BuildInfoPlugin, TypelevelSitePlugin)
 
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
@@ -130,31 +133,25 @@ lazy val dependencySettings = Seq(
   }
 )
 
-lazy val mdocSettings = Seq(
-  mdoc := (Compile / run).evaluated,
-  scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-  crossScalaVersions := Seq(scalaVersion.value),
-  ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
-  ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
-  cleanFiles += (ScalaUnidoc / unidoc / target).value,
-  docusaurusCreateSite := docusaurusCreateSite
-    .dependsOn(Compile / unidoc)
-    .dependsOn(ThisBuild / updateSiteVariables)
-    .value,
-  docusaurusPublishGhpages :=
-    docusaurusPublishGhpages
-      .dependsOn(Compile / unidoc)
-      .dependsOn(ThisBuild / updateSiteVariables)
-      .value,
-  // format: off
-  ScalaUnidoc / unidoc / scalacOptions ++= Seq(
-    "-doc-source-url", s"https://github.com/fd4s/fs2-kafka/tree/v${(ThisBuild / latestVersion).value}€{FILE_PATH}.scala",
-    "-sourcepath", (LocalRootProject / baseDirectory).value.getAbsolutePath,
-    "-doc-title", "FS2 Kafka",
-    "-doc-version", s"v${(ThisBuild / latestVersion).value}"
-  )
-  // format: on
-)
+//lazy val mdocSettings = Seq(
+//  mdoc := (Compile / run).evaluated,
+//  scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
+//  crossScalaVersions := Seq(scalaVersion.value),
+//  ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
+//  ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
+//  cleanFiles += (ScalaUnidoc / unidoc / target).value,
+//  docusaurusPublishGhpages :=
+//    docusaurusPublishGhpages
+//      .dependsOn(Compile / unidoc)
+//      .dependsOn(ThisBuild / updateSiteVariables)
+//      .value,
+//  // format: off
+//  ScalaUnidoc / unidoc / scalacOptions ++= Seq(
+//    "-sourcepath", (LocalRootProject / baseDirectory).value.getAbsolutePath,
+//    "-doc-title", "FS2 Kafka",
+//  )
+//  // format: on
+//)
 
 lazy val buildInfoSettings = Seq(
   buildInfoPackage := "fs2.kafka.build",
@@ -163,7 +160,6 @@ lazy val buildInfoSettings = Seq(
     scalaVersion,
     scalacOptions,
     sourceDirectory,
-    ThisBuild / latestVersion,
     BuildInfoKey.map(ThisBuild / version) {
       case (_, v) => "latestSnapshotVersion" -> v
     },
@@ -261,11 +257,6 @@ lazy val publishSettings =
   )
 
 lazy val mimaSettings = Seq(
-  mimaPreviousArtifacts := {
-    if (publishArtifact.value) {
-      Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
-    } else Set()
-  },
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
     // format: off
@@ -297,14 +288,6 @@ lazy val mimaSettings = Seq(
     // format: on
   }
 )
-
-lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
-
-lazy val noPublishSettings =
-  publishSettings ++ Seq(
-    publish / skip := true,
-    publishArtifact := false
-  )
 
 ThisBuild / scalaVersion := scala213
 ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
@@ -373,18 +356,6 @@ def minorVersion(version: String): String = {
   s"$major.$minor"
 }
 
-val latestVersion = settingKey[String]("Latest stable released version")
-ThisBuild / latestVersion := {
-  val snapshot = (ThisBuild / isSnapshot).value
-  val stable = (ThisBuild / isVersionStable).value
-
-  if (!snapshot && stable) {
-    (ThisBuild / version).value
-  } else {
-    (ThisBuild / previousStableVersion).value.get
-  }
-}
-
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 ThisBuild / updateSiteVariables := {
   val file =
@@ -394,7 +365,6 @@ ThisBuild / updateSiteVariables := {
     Map[String, String](
       "organization" -> (LocalRootProject / organization).value,
       "coreModuleName" -> (core / moduleName).value,
-      "latestVersion" -> (ThisBuild / latestVersion).value,
       "scalaPublishVersions" -> {
         val minorVersions = (core / crossScalaVersions).value.map(minorVersion)
         if (minorVersions.size <= 2) minorVersions.mkString(" and ")
