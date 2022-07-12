@@ -1,15 +1,4 @@
-import laika.ast.Path.Root
-import laika.ast.{Image, Length, LengthUnit, SVGSymbolIcon, Target}
-import laika.helium.Helium
-import laika.helium.config.{
-  Favicon,
-  FontSizes,
-  HeliumIcon,
-  IconLink,
-  ImageLink,
-  ReleaseInfo,
-  TextLink
-}
+
 import laika.rewrite.link.{ApiLinks, LinkConfig}
 
 ThisBuild / tlBaseVersion := "2.4"
