@@ -1,4 +1,3 @@
-
 import laika.rewrite.link.{ApiLinks, LinkConfig}
 
 ThisBuild / tlBaseVersion := "2.4"
@@ -28,6 +27,10 @@ val scala212 = "2.12.15"
 val scala213 = "2.13.8"
 
 val scala3 = "3.1.2"
+
+def versionIntroduced(v: String) = Seq(
+  tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> v).toMap
+)
 
 lazy val `fs2-kafka` = tlCrossRootProject.aggregate(core, vulcan, `vulcan-testkit-munit`)
 //
@@ -88,7 +91,8 @@ lazy val `vulcan-testkit-munit` = project
     ),
     publishSettings,
     mimaSettings,
-    testSettings
+    testSettings,
+    versionIntroduced("2.2.0")
   )
   .dependsOn(vulcan)
 
