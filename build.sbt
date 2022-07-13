@@ -18,10 +18,13 @@ val scala213 = "2.13.8"
 
 val scala3 = "3.1.2"
 
+ThisBuild / tlVersionIntroduced := Map("3" -> "2.1.0")
+
 lazy val `fs2-kafka` = project
   .in(file("."))
   .settings(
-    mimaSettings,
+    // Prevent spurious "mimaPreviousArtifacts is empty, not analyzing binary compatibility" message for root project
+    mimaReportBinaryIssues := {},
     scalaSettings,
     noPublishSettings,
     console := (core / Compile / console).value,
@@ -46,6 +49,7 @@ lazy val core = project
     scalaSettings,
     testSettings
   )
+  .enablePlugins(TypelevelMimaPlugin)
 
 lazy val vulcan = project
   .in(file("modules/vulcan"))
@@ -63,6 +67,7 @@ lazy val vulcan = project
     scalaSettings,
     testSettings
   )
+  .enablePlugins(TypelevelMimaPlugin)
   .dependsOn(core)
 
 lazy val `vulcan-testkit-munit` = project
@@ -78,8 +83,10 @@ lazy val `vulcan-testkit-munit` = project
     publishSettings,
     mimaSettings,
     scalaSettings,
-    testSettings
+    testSettings,
+    versionIntroduced("2.2.0")
   )
+  .enablePlugins(TypelevelMimaPlugin)
   .dependsOn(vulcan)
 
 lazy val docs = project
@@ -261,11 +268,6 @@ lazy val publishSettings =
   )
 
 lazy val mimaSettings = Seq(
-  mimaPreviousArtifacts := {
-    if (publishArtifact.value) {
-      Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
-    } else Set()
-  },
   mimaBinaryIssueFilters ++= {
     import com.typesafe.tools.mima.core._
     // format: off
@@ -413,6 +415,10 @@ ThisBuild / updateSiteVariables := {
 
   IO.write(file, fileContents)
 }
+
+def versionIntroduced(v: String) = Seq(
+  tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> v).toMap
+)
 
 def addCommandsAlias(name: String, values: List[String]) =
   addCommandAlias(name, values.mkString(";", ";", ""))
