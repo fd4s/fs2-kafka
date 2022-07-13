@@ -263,7 +263,7 @@ lazy val publishSettings =
 lazy val mimaSettings = Seq(
   mimaPreviousArtifacts := {
     if (publishArtifact.value) {
-      Set(organization.value %% moduleName.value % "2.5.0") // `previousStableVersion` gives a milestone - TODO revert
+      Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
     } else Set()
   },
   mimaBinaryIssueFilters ++= {
