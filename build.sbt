@@ -30,6 +30,7 @@ lazy val `fs2-kafka` = project
     console := (core / Compile / console).value,
     Test / console := (core / Test / console).value
   )
+  .enablePlugins(TypelevelMimaPlugin)
   .aggregate(core, vulcan, `vulcan-testkit-munit`)
 
 lazy val core = project
@@ -45,11 +46,9 @@ lazy val core = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
     testSettings
   )
-  .enablePlugins(TypelevelMimaPlugin)
 
 lazy val vulcan = project
   .in(file("modules/vulcan"))
@@ -63,11 +62,9 @@ lazy val vulcan = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
     testSettings
   )
-  .enablePlugins(TypelevelMimaPlugin)
   .dependsOn(core)
 
 lazy val `vulcan-testkit-munit` = project
@@ -81,12 +78,10 @@ lazy val `vulcan-testkit-munit` = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
     testSettings,
     versionIntroduced("2.2.0")
   )
-  .enablePlugins(TypelevelMimaPlugin)
   .dependsOn(vulcan)
 
 lazy val docs = project
@@ -266,10 +261,9 @@ lazy val publishSettings =
     )
   )
 
-lazy val mimaSettings = Seq(
-  mimaBinaryIssueFilters ++= {
-    import com.typesafe.tools.mima.core._
-    // format: off
+ThisBuild / mimaBinaryIssueFilters ++= {
+  import com.typesafe.tools.mima.core._
+  // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
       ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
@@ -296,8 +290,7 @@ lazy val mimaSettings = Seq(
         ProblemFilters.exclude[Problem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.*")
     )
     // format: on
-  }
-)
+}
 
 lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
 
