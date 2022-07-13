@@ -6,12 +6,10 @@
 
 package fs2.kafka
 
-import cats.{Show, Traverse}
+import cats.{Foldable, Show, Traverse}
 import cats.syntax.show._
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
-
-import scala.collection.mutable
 
 /**
   * [[ProducerRecords]] represents zero or more `ProducerRecord`s,
@@ -52,6 +50,8 @@ object ProducerRecords {
     * Creates a new [[ProducerRecords]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and `Unit` passthrough value.
+    *
+    * @see [[fs2.kafka.ProducerRecords#chunk(fs2.Chunk)]] if your `records` are already contained in an [[fs2.Chunk]]
     */
   def apply[F[+_], K, V](
     records: F[ProducerRecord[K, V]]
@@ -64,30 +64,17 @@ object ProducerRecords {
     * Creates a new [[ProducerRecords]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
+    *
+    * @see [[fs2.kafka.ProducerRecords#chunk(fs2.Chunk, java.lang.Object)]] if your `records` are already contained in
+    * an [[fs2.Chunk]]
     */
   def apply[F[+_], P, K, V](
     records: F[ProducerRecord[K, V]],
     passthrough: P
   )(
     implicit F: Traverse[F]
-  ): ProducerRecords[P, K, V] = {
-    val numRecords = F.size(records).toInt
-    val chunk = if (numRecords <= 1) {
-      F.get(records)(0) match {
-        case None         => Chunk.empty[ProducerRecord[K, V]]
-        case Some(record) => Chunk.singleton(record)
-      }
-    } else {
-      val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](numRecords)
-      F.foldLeft(records, ()) {
-        case (_, record) =>
-          buf += record
-          ()
-      }
-      Chunk.array(buf.toArray)
-    }
-    new ProducerRecordsImpl(chunk, passthrough)
-  }
+  ): ProducerRecords[P, K, V] =
+    chunk(Chunk.iterable(Foldable[F].toIterable(records)), passthrough)
 
   /**
     * Creates a new [[ProducerRecords]] for producing exactly one
@@ -108,7 +95,28 @@ object ProducerRecords {
     record: ProducerRecord[K, V],
     passthrough: P
   ): ProducerRecords[P, K, V] =
-    new ProducerRecordsImpl(Chunk.singleton(record), passthrough)
+    apply(Chunk.singleton(record), passthrough)
+
+  /**
+    * Creates a new [[ProducerRecords]] for producing zero or more
+    * `ProducerRecords`s, then emitting a [[ProducerResult]] with
+    * the results and `Unit` passthrough value.
+    */
+  def chunk[K, V](
+    records: Chunk[ProducerRecord[K, V]]
+  ): ProducerRecords[Unit, K, V] =
+    chunk(records, ())
+
+  /**
+    * Creates a new [[ProducerRecords]] for producing zero or more
+    * `ProducerRecords`s, then emitting a [[ProducerResult]] with
+    * the results and specified passthrough value.
+    */
+  def chunk[P, K, V](
+    records: Chunk[ProducerRecord[K, V]],
+    passthrough: P
+  ): ProducerRecords[P, K, V] =
+    new ProducerRecordsImpl(records, passthrough)
 
   implicit def producerRecordsShow[P, K, V](
     implicit

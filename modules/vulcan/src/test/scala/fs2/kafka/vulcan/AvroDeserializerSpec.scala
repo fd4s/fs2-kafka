@@ -2,6 +2,7 @@ package fs2.kafka.vulcan
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import fs2.kafka.Headers
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
 import vulcan.{AvroError, Codec}
@@ -29,6 +30,13 @@ final class AvroDeserializerSpec extends AnyFunSpec {
 
       assert(deserializer.forKey.attempt.unsafeRunSync().isLeft)
       assert(deserializer.forValue.attempt.unsafeRunSync().isLeft)
+    }
+
+    it("raises IllegalArgumentException if the data is null") {
+      val deserializer = AvroDeserializer[String].using(avroSettings)
+      intercept[IllegalArgumentException] {
+        deserializer.forKey.flatMap(_.deserialize("foo", Headers.empty, null)).unsafeRunSync()
+      }
     }
 
     it("toString") {
