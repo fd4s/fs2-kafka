@@ -8,7 +8,6 @@ package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
-import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
@@ -196,7 +195,11 @@ private[kafka] object syntax {
       map(_ => ())
 
     def cancelToken[F[_]](implicit F: Async[F]): F[Option[F[Unit]]] =
-      F.blocking { future.cancel(true); () }.start.map(_.cancel.some)
+      F.pure {
+        Some(F.blocking {
+          future.cancel(true); ()
+        })
+      }
 
     // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
     def cancelable[F[_]](implicit F: Async[F]): F[A] =
