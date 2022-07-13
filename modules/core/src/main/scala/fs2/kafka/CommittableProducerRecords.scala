@@ -17,8 +17,6 @@ import cats.{Applicative, Bitraverse, Eq, Eval, Foldable, Show, Traverse}
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
 
-import scala.collection.mutable
-
 /**
   * [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
   * and a [[CommittableOffset]], used by [[TransactionalKafkaProducer]] to
@@ -58,25 +56,8 @@ object CommittableProducerRecords {
   def apply[F[_], G[+_], K, V](
     records: G[ProducerRecord[K, V]],
     offset: CommittableOffset[F]
-  )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] = {
-    val numRecords = G.size(records).toInt
-    val chunk = if (numRecords <= 1) {
-      G.get(records)(0) match {
-        case None         => Chunk.empty[ProducerRecord[K, V]]
-        case Some(record) => Chunk.singleton(record)
-      }
-    } else {
-      val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](numRecords)
-      G.foldLeft(records, ()) {
-        case (_, record) =>
-          buf += record
-          ()
-      }
-      Chunk.array(buf.toArray)
-    }
-
-    new CommittableProducerRecordsImpl(chunk, offset)
-  }
+  )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] =
+    new CommittableProducerRecordsImpl(Chunk.iterable(Foldable[G].toIterable(records)), offset)
 
   /**
     * Creates a new [[CommittableProducerRecords]] for producing exactly
