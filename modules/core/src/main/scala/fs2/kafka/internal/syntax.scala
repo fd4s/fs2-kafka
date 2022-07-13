@@ -8,16 +8,19 @@ package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
+import cats.effect.implicits.monadCancelOps_
 import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
 import fs2.kafka.internal.converters.collection._
+
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util
 import java.util.concurrent.{CancellationException, CompletionException, TimeUnit}
 import org.apache.kafka.common.KafkaFuture
-import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
+import org.apache.kafka.common.KafkaFuture.BiConsumer
+
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
@@ -185,14 +188,6 @@ private[kafka] object syntax {
   implicit final class KafkaFutureSyntax[A](
     private val future: KafkaFuture[A]
   ) extends AnyVal {
-    private[this] def baseFunction[B](f: A => B): BaseFunction[A, B] =
-      new BaseFunction[A, B] { override def apply(a: A): B = f(a) }
-
-    def map[B](f: A => B): KafkaFuture[B] =
-      future.thenApply(baseFunction(f))
-
-    def void: KafkaFuture[Unit] =
-      map(_ => ())
 
     def cancelToken[F[_]](implicit F: Async[F]): F[Option[F[Unit]]] =
       F.pure {
@@ -200,13 +195,11 @@ private[kafka] object syntax {
           future.cancel(true); ()
         })
       }
-
     // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
     def cancelable[F[_]](implicit F: Async[F]): F[A] =
       F.async { (cb: (Either[Throwable, A] => Unit)) =>
-        F.blocking {
-            future
-              .whenComplete(new BiConsumer[A, Throwable] {
+          F.blocking {
+              future.whenComplete(new BiConsumer[A, Throwable] {
                 override def accept(a: A, t: Throwable): Unit = t match {
                   case null                                         => cb(a.asRight)
                   case _: CancellationException                     => ()
@@ -214,9 +207,10 @@ private[kafka] object syntax {
                   case e                                            => cb(e.asLeft)
                 }
               })
-          }
-          .flatMap(_.cancelToken)
-      }
+            }
+            .flatMap(_.cancelToken)
+        }
+        .onCancel(F.delay(future.cancel(true)).void)
   }
 
   implicit final class KafkaHeadersSyntax(

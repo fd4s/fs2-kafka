@@ -5,6 +5,7 @@ import cats.effect.IO
 import fs2.kafka._
 import fs2.kafka.BaseSpec
 import fs2.kafka.internal.syntax._
+import org.apache.kafka.common.KafkaFuture
 
 import java.time.temporal.ChronoUnit.MICROS
 import org.apache.kafka.common.header.internals.RecordHeaders
@@ -56,7 +57,7 @@ final class SyntaxSpec extends BaseSpec {
     }
   }
 
-  describe("KafkaFuture cancel token") {
+  describe("KafkaFuture.cancelable") {
     it("should cancel future when run, not when created") {
       val f = new KafkaFutureImpl[String]()
       val test =
@@ -65,6 +66,28 @@ final class SyntaxSpec extends BaseSpec {
           _ <- IO(assert(!f.isCancelled))
           _ <- token.get
           _ <- IO(assert(f.isCancelled))
+        } yield ()
+      test.unsafeRunSync()
+    }
+    it("should cancel future when fiber is cancelled") {
+      @volatile var futureWasCancelled = false
+
+      val future: KafkaFuture[String] =
+        new KafkaFutureImpl[String]() {
+          override def cancel(mayInterruptIfRunning: Boolean): Boolean = {
+            futureWasCancelled = true;
+            true
+          }
+        }
+
+      future.whenComplete((_, _) => println("future completed"))
+
+      val test =
+        for {
+          fiber <- future.cancelable[IO].start
+          _ <- IO(assert(!futureWasCancelled))
+          _ <- fiber.cancel
+          _ <- IO(assert(futureWasCancelled))
         } yield ()
       test.unsafeRunSync()
     }
