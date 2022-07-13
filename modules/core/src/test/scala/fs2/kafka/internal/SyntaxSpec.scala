@@ -1,10 +1,15 @@
 package fs2.kafka.internal
 
+import cats.effect.unsafe.implicits.global
+import cats.effect.IO
 import fs2.kafka._
 import fs2.kafka.BaseSpec
 import fs2.kafka.internal.syntax._
+
 import java.time.temporal.ChronoUnit.MICROS
 import org.apache.kafka.common.header.internals.RecordHeaders
+import org.apache.kafka.common.internals.KafkaFutureImpl
+
 import scala.concurrent.duration._
 
 final class SyntaxSpec extends BaseSpec {
@@ -48,6 +53,20 @@ final class SyntaxSpec extends BaseSpec {
         headers.toChain.size == 1 &&
         headers("key").map(_.value.size) == Some(0)
       }
+    }
+  }
+
+  describe("KafkaFuture cancel token") {
+    it("should cancel future when run, not when created") {
+      val f = new KafkaFutureImpl[String]()
+      val test =
+        for {
+          token <- f.cancelToken[IO]
+          _ <- IO(assert(!f.isCancelled))
+          _ <- token.get
+          _ <- IO(assert(f.isCancelled))
+        } yield ()
+      test.unsafeRunSync()
     }
   }
 }
