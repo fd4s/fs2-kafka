@@ -133,7 +133,7 @@ lazy val dependencySettings = Seq(
 lazy val mdocSettings = Seq(
   mdoc := (Compile / run).evaluated,
   scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-  crossScalaVersions := Seq(scalaVersion.value),
+  crossScalaVersions := Seq(scala213),
   ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
   ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
   cleanFiles += (ScalaUnidoc / unidoc / target).value,
@@ -347,7 +347,7 @@ lazy val scalaSettings = Seq(
         "-Xignore-scala2-macros"
       )
   ),
-  Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
+  Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007 but also suppresses genunine problems
   Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   Compile / unmanagedSourceDirectories ++=
