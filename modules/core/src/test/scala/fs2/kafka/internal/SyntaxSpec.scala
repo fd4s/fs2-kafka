@@ -58,36 +58,16 @@ final class SyntaxSpec extends BaseSpec {
   }
 
   describe("KafkaFuture.cancelable") {
-    it("should cancel future when run, not when created") {
-      val f = new KafkaFutureImpl[String]()
-      val test =
-        for {
-          token <- f.cancelToken[IO]
-          _ <- IO(assert(!f.isCancelled))
-          _ <- token.get
-          _ <- IO(assert(f.isCancelled))
-        } yield ()
-      test.unsafeRunSync()
-    }
     it("should cancel future when fiber is cancelled") {
-      @volatile var futureWasCancelled = false
 
-      val future: KafkaFuture[String] =
-        new KafkaFutureImpl[String]() {
-          override def cancel(mayInterruptIfRunning: Boolean): Boolean = {
-            futureWasCancelled = true;
-            true
-          }
-        }
-
-      future.whenComplete((_, _) => println("future completed"))
+      val future: KafkaFuture[String] = new KafkaFutureImpl
 
       val test =
         for {
           fiber <- future.cancelable[IO].start
-          _ <- IO(assert(!futureWasCancelled))
+          _ <- IO(assert(!future.isCancelled))
           _ <- fiber.cancel
-          _ <- IO(assert(futureWasCancelled))
+          _ <- IO(assert(future.isCancelled))
         } yield ()
       test.unsafeRunSync()
     }

@@ -189,12 +189,6 @@ private[kafka] object syntax {
     private val future: KafkaFuture[A]
   ) extends AnyVal {
 
-    def cancelToken[F[_]](implicit F: Async[F]): F[Option[F[Unit]]] =
-      F.pure {
-        Some(F.blocking {
-          future.cancel(true); ()
-        })
-      }
     // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
     def cancelable[F[_]](implicit F: Async[F]): F[A] =
       F.async { (cb: (Either[Throwable, A] => Unit)) =>
@@ -208,7 +202,7 @@ private[kafka] object syntax {
                 }
               })
             }
-            .flatMap(_.cancelToken)
+            .as(None)
         }
         .onCancel(F.delay(future.cancel(true)).void)
   }
