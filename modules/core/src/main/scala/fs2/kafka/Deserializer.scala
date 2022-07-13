@@ -205,7 +205,7 @@ object Deserializer {
     * default `String` deserializer uses `UTF-8`.
     */
   def string[F[_]](charset: Charset)(implicit F: Sync[F]): Deserializer[F, String] =
-    Deserializer.lift(bytes => F.pure(new String(bytes, charset)))
+    Deserializer.lift(bytes => F.catchNonFatal(new String(bytes, charset)))
 
   /**
     * Creates a new [[Deserializer]] which deserializes `String`
