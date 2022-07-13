@@ -42,7 +42,8 @@ lazy val core = project
       libraryDependencies ++= Seq(
         "co.fs2" %% "fs2-core" % fs2Version,
         "org.typelevel" %% "cats-effect" % catsEffectVersion,
-        "org.apache.kafka" % "kafka-clients" % kafkaVersion
+        "org.apache.kafka" % "kafka-clients" % kafkaVersion,
+        "com.disneystreaming" %% "weaver-cats" % "0.7.11" % Test
       )
     ),
     publishSettings,
@@ -321,6 +322,7 @@ lazy val scalaSettings = Seq(
 lazy val testSettings = Seq(
   Test / logBuffered := false,
   Test / parallelExecution := false,
+  testFrameworks += new TestFramework("weaver.framework.CatsEffect"),
   Test / testOptions += Tests.Argument("-oDF")
 )
 
