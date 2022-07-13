@@ -204,7 +204,7 @@ private[kafka] object syntax {
             }
             .as(None)
         }
-        .onCancel(F.delay(future.cancel(true)).void)
+        .onCancel(F.blocking(future.cancel(true)).void)
   }
 
   implicit final class KafkaHeadersSyntax(
