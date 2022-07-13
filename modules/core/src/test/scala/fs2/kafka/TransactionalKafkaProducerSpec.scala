@@ -1,7 +1,6 @@
 package fs2.kafka
 
 import java.util
-import cats.data.NonEmptyList
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
@@ -271,7 +270,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   it("should abort transactions if committing offsets fails") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
-      val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n").toList
+      val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n")
       val toPassthrough = "passthrough"
 
       val error = new RuntimeException("BOOM")
@@ -321,8 +320,8 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           records = TransactionalProducerRecords(
             Chunk.seq(recordsToProduce.zip(offsets)).map {
               case (record, offset) =>
-                CommittableProducerRecords(
-                  NonEmptyList.one(record),
+                CommittableProducerRecords.chunk(
+                  Chunk.singleton(record),
                   offset
                 )
             },
