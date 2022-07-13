@@ -165,7 +165,7 @@ final class DeserializerSpec extends BaseCatsSpec {
     }
   }
 
-  test("Deserializer#attempt") {
+  test("Deserializer#attempt (implicit)") {
     val deserializer =
       Deserializer[IO, Either[Throwable, String]]
 
