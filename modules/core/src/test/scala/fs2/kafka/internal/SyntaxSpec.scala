@@ -2,6 +2,7 @@ package fs2.kafka.internal
 
 import cats.effect.unsafe.implicits.global
 import cats.effect.IO
+import cats.effect.kernel.Deferred
 import fs2.kafka._
 import fs2.kafka.BaseSpec
 import fs2.kafka.internal.syntax._
@@ -58,18 +59,30 @@ final class SyntaxSpec extends BaseSpec {
   }
 
   describe("KafkaFuture.cancelable") {
-    it("should cancel future when fiber is cancelled") {
 
-      val future: KafkaFuture[String] = new KafkaFutureImpl
+    it("should cancel future when fiber is cancelled (2)") {
+
+      @volatile var isFutureCancelled = false
 
       val test =
         for {
-          fiber <- future.cancelable[IO].start
-          _ <- IO(assert(!future.isCancelled))
+          gate <- IO.deferred[Unit]
+          futureIO: IO[KafkaFuture[Unit]] = gate.complete(()) >> IO {
+            new KafkaFutureImpl[Unit] {
+              override def cancel(mayInterruptIfRunning: Boolean): Boolean = {
+                isFutureCancelled = true
+                true
+              }
+            }
+          }
+          fiber <- futureIO.cancelable.start
+          _ <- IO(assert(!isFutureCancelled))
+          _ <- gate.get // wait for future to be created before canceling it
           _ <- fiber.cancel
-          _ <- IO(assert(future.isCancelled))
+          _ <- IO(assert(isFutureCancelled))
         } yield ()
       test.unsafeRunSync()
     }
+
   }
 }

@@ -8,7 +8,6 @@ package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
-import cats.effect.implicits.monadCancelOps_
 import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
@@ -185,13 +184,14 @@ private[kafka] object syntax {
     }
   }
 
-  implicit final class KafkaFutureSyntax[A](
-    private val future: KafkaFuture[A]
+  implicit final class KafkaFutureSyntax[F[_], A](
+    private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
 
     // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
-    def cancelable[F[_]](implicit F: Async[F]): F[A] =
+    def cancelable(implicit F: Async[F]): F[A] =
       F.async { (cb: (Either[Throwable, A] => Unit)) =>
+        futureF.flatMap { future =>
           F.blocking {
               future.whenComplete(new BiConsumer[A, Throwable] {
                 override def accept(a: A, t: Throwable): Unit = t match {
@@ -202,9 +202,9 @@ private[kafka] object syntax {
                 }
               })
             }
-            .as(None)
+            .as(Some(F.blocking(future.cancel(true)).void))
         }
-        .onCancel(F.blocking(future.cancel(true)).void)
+      }
   }
 
   implicit final class KafkaHeadersSyntax(
