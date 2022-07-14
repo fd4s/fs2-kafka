@@ -2,7 +2,6 @@ package fs2.kafka.internal
 
 import cats.effect.unsafe.implicits.global
 import cats.effect.IO
-import cats.effect.kernel.Deferred
 import fs2.kafka._
 import fs2.kafka.BaseSpec
 import fs2.kafka.internal.syntax._
