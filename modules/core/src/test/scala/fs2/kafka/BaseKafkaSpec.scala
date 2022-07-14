@@ -34,7 +34,11 @@ import scala.util.Failure
 import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer}
-import org.apache.kafka.clients.producer.{ProducerConfig, KafkaProducer => KProducer, ProducerRecord => KProducerRecord}
+import org.apache.kafka.clients.producer.{
+  ProducerConfig,
+  KafkaProducer => KProducer,
+  ProducerRecord => KProducerRecord
+}
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 import scala.concurrent.duration._
@@ -68,20 +72,21 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
   private lazy val imageName = "confluentinc/cp-kafka"
 
-  override val container: KafkaContainer = new KafkaContainer(DockerImageName.parse(s"$imageName:$imageVersion"))
-    .configure { container =>
-      container
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
-        .withEnv(
-          "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
-          transactionTimeoutInterval.toMillis.toString
-        )
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
-        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
-        .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
+  override val container: KafkaContainer =
+    new KafkaContainer(DockerImageName.parse(s"$imageName:$imageVersion"))
+      .configure { container =>
+        container
+          .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+          .withEnv(
+            "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
+            transactionTimeoutInterval.toMillis.toString
+          )
+          .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+          .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
+          .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
 
-      ()
-    }
+        ()
+      }
 
   implicit final val stringSerializer: KafkaSerializer[String] = new StringSerializer
 
