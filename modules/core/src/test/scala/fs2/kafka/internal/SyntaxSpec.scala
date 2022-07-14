@@ -59,7 +59,7 @@ final class SyntaxSpec extends BaseSpec {
 
   describe("KafkaFuture.cancelable") {
 
-    it("should cancel future when fiber is cancelled (2)") {
+    it("should cancel future when fiber is cancelled") {
 
       @volatile var isFutureCancelled = false
 
