@@ -8,7 +8,7 @@ val fs2Version = "3.2.5"
 
 val kafkaVersion = "3.1.1"
 
-val testcontainersScalaVersion = "0.40.6"
+val testcontainersScalaVersion = "0.40.8"
 
 val vulcanVersion = "1.8.3"
 
@@ -18,15 +18,19 @@ val scala2 = "2.13.8"
 
 val scala3 = "3.1.3"
 
+ThisBuild / tlVersionIntroduced := Map("3" -> "2.1.0")
+
 lazy val `fs2-kafka` = project
   .in(file("."))
   .settings(
-    mimaSettings,
+    // Prevent spurious "mimaPreviousArtifacts is empty, not analyzing binary compatibility" message for root project
+    mimaReportBinaryIssues := {},
     scalaSettings,
     noPublishSettings,
     console := (core / Compile / console).value,
     Test / console := (core / Test / console).value
   )
+  .enablePlugins(TypelevelMimaPlugin)
   .aggregate(core, vulcan, `vulcan-testkit-munit`)
 
 lazy val core = project
@@ -42,7 +46,6 @@ lazy val core = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
     testSettings
   )
@@ -59,7 +62,6 @@ lazy val vulcan = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
     testSettings
   )
@@ -76,7 +78,6 @@ lazy val `vulcan-testkit-munit` = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
     testSettings
   )
@@ -133,7 +134,7 @@ lazy val dependencySettings = Seq(
 lazy val mdocSettings = Seq(
   mdoc := (Compile / run).evaluated,
   scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-  crossScalaVersions := Seq(scalaVersion.value),
+  crossScalaVersions := Seq(scala2),
   ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
   ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
   cleanFiles += (ScalaUnidoc / unidoc / target).value,
@@ -206,7 +207,6 @@ ThisBuild / githubWorkflowArtifactUpload := false
 
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
 
-ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
 ThisBuild / githubWorkflowPublishTargetBranches :=
   Seq(RefPredicate.StartsWith(Ref.Tag("v")))
 
@@ -260,43 +260,12 @@ lazy val publishSettings =
     )
   )
 
-lazy val mimaSettings = Seq(
-  mimaPreviousArtifacts := {
-    if (publishArtifact.value) {
-      Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
-    } else Set()
-  },
-  mimaBinaryIssueFilters ++= {
-    import com.typesafe.tools.mima.core._
-    // format: off
-    Seq(
-      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.registerSchema"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withRegisterSchema"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.copy"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.apply"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.produce"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.metrics"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.committed"),
-
-      // package-private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.from"),
-
-      // sealed
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withDeserializers"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withSerializers"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
-      ProblemFilters.exclude[FinalMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
-
-      // private
-        ProblemFilters.exclude[Problem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.*")
-    )
+ThisBuild / mimaBinaryIssueFilters ++= {
+  import com.typesafe.tools.mima.core._
+  // format: off
+    Seq.empty
     // format: on
-  }
-)
+}
 
 lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
 
@@ -310,32 +279,7 @@ ThisBuild / scalaVersion := scala2
 ThisBuild / crossScalaVersions := Seq(scala2, scala3)
 
 lazy val scalaSettings = Seq(
-  scalacOptions ++= Seq(
-    "-deprecation",
-    "-encoding",
-    "UTF-8",
-    "-feature",
-    "-language:implicitConversions",
-    "-unchecked"
-  ) ++ (
-    if (scalaVersion.value.startsWith("2"))
-      Seq(
-        "-language:higherKinds",
-        "-Xlint",
-        "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-value-discard",
-        "-Ywarn-unused",
-        "-Xfatal-warnings"
-      )
-    else
-      Seq(
-        "-Ykind-projector",
-        "-source:3.0-migration",
-        "-Xignore-scala2-macros"
-      )
-  ),
-  Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
+  Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007 but also suppresses genunine problems
   Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   Compile / unmanagedSourceDirectories ++=
@@ -401,6 +345,10 @@ ThisBuild / updateSiteVariables := {
 
   IO.write(file, fileContents)
 }
+
+def versionIntroduced(v: String) = Seq(
+  tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> v).toMap
+)
 
 def addCommandsAlias(name: String, values: List[String]) =
   addCommandAlias(name, values.mkString(";", ";", ""))

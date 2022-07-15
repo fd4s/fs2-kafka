@@ -13,7 +13,6 @@ import fs2.kafka.{Header, Headers, KafkaHeaders}
 import scala.jdk.CollectionConverters._
 import java.util
 import org.apache.kafka.common.KafkaFuture
-import org.apache.kafka.common.KafkaFuture.BaseFunction
 import scala.collection.immutable.{ArraySeq, SortedSet}
 
 private[kafka] object syntax {
@@ -160,19 +159,11 @@ private[kafka] object syntax {
     }
   }
 
-  implicit final class KafkaFutureSyntax[A](
-    private val future: KafkaFuture[A]
+  implicit final class KafkaFutureSyntax[F[_], A](
+    private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
-    private[this] def baseFunction[B](f: A => B): BaseFunction[A, B] = f(_)
-
-    def map[B](f: A => B): KafkaFuture[B] =
-      future.thenApply(baseFunction(f))
-
-    def void: KafkaFuture[Unit] =
-      map(_ => ())
-
     def cancelable[F[_]](implicit F: Async[F]): F[A] =
-      F.fromCompletableFuture(F.delay(future.toCompletionStage.toCompletableFuture))
+      F.fromCompletableFuture(futureF.map(_.toCompletionStage.toCompletableFuture))
   }
 
   implicit final class KafkaHeadersSyntax(

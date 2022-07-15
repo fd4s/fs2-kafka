@@ -6,7 +6,6 @@
 
 package fs2.kafka
 
-import cats.effect.Sync
 import cats.{Applicative, Show}
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -606,17 +605,6 @@ object ConsumerSettings {
     create(
       keyDeserializer = keyDeserializer.forKey,
       valueDeserializer = valueDeserializer.forValue
-    )
-
-  /**
-    * Create a `ConsumerSettings` instance using placeholder deserializers that return unit.
-    * These can be subsequently replaced using `withDeserializers`, allowing configuration of
-    * deserializers to be decoupled from other configuration.
-    */
-  def unit[F[_]](implicit F: Sync[F]): ConsumerSettings[F, Unit, Unit] =
-    create(
-      keyDeserializer = F.pure(Deserializer.unit),
-      valueDeserializer = F.pure(Deserializer.unit)
     )
 
   implicit def consumerSettingsShow[F[_], K, V]: Show[ConsumerSettings[F, K, V]] =

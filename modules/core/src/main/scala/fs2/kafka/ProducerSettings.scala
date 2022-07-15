@@ -6,7 +6,6 @@
 
 package fs2.kafka
 
-import cats.effect.Sync
 import cats.{Applicative, Show}
 import cats.syntax.all._
 import fs2.kafka.security.KafkaCredentialStore
@@ -357,19 +356,6 @@ object ProducerSettings {
     valueSerializer: RecordSerializer[F, V]
   ): ProducerSettings[F, K, V] =
     create(keySerializer = keySerializer.forKey, valueSerializer = valueSerializer.forValue)
-
-  /**
-    * Create a `ProducerSettings` instance using placeholder serializers that serialize nothing.
-    * These can be subsequently replaced using `withSerializers`, allowing configuration of
-    * serializers to be decoupled from other configuration.
-    */
-  def nothing[F[_]](implicit F: Sync[F]): ProducerSettings[F, Nothing, Nothing] = {
-    val nothingSerializer = F.pure(Serializer.fail[F, Nothing](new AssertionError("impossible")))
-    create[F, Nothing, Nothing](
-      keySerializer = nothingSerializer.widen,
-      valueSerializer = nothingSerializer.widen
-    )
-  }
 
   implicit def producerSettingsShow[F[_], K, V]: Show[ProducerSettings[F, K, V]] =
     Show.fromToString
