@@ -91,29 +91,15 @@ package kafka {
 }
 package kafka {
 
+  import cats.Foldable
+
   object ProducerRecords {
 
     def apply[F[+_], K, V](
       records: F[ProducerRecord[K, V]]
     )(
       implicit F: Traverse[F]
-    ): ProducerRecords[K, V] = {
-      val numRecords = F.size(records).toInt
-      if (numRecords <= 1) {
-        F.get(records)(0) match {
-          case None         => Chunk.empty[ProducerRecord[K, V]]
-          case Some(record) => Chunk.singleton(record)
-        }
-      } else {
-        val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](numRecords)
-        F.foldLeft(records, ()) {
-          case (_, record) =>
-            buf += record
-            ()
-        }
-        Chunk.array(buf.toArray)
-      }
-    }
+    ): ProducerRecords[K, V] = Chunk.iterable(Foldable[F].toIterable(records))
 
     def one[K, V](record: ProducerRecord[K, V]): ProducerRecords[K, V] =
       Chunk.singleton(record)
