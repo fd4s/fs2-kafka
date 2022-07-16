@@ -18,8 +18,6 @@ val scala2 = "2.13.8"
 
 val scala3 = "3.1.3"
 
-val scala3 = "3.1.3"
-
 ThisBuild / tlBaseVersion := "3.0"
 
 lazy val `fs2-kafka` = project

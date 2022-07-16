@@ -28,11 +28,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.12.16, 2.13.8, 3.1.3]
+        scala: [2.13.8, 3.1.3]
         java: [temurin@8, temurin@17]
         exclude:
-          - scala: 2.12.16
-            java: temurin@17
           - scala: 3.1.3
             java: temurin@17
     runs-on: ${{ matrix.os }}
@@ -171,4 +169,4 @@ jobs:
           GIT_DEPLOY_KEY: ${{ secrets.GIT_DEPLOY_KEY }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
-        run: sbt '++${{ matrix.scala }}' ci-release docs/docusaurusPublishGhpages
+        run: sbt '++${{ matrix.scala }}' ci-release
