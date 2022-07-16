@@ -18,7 +18,9 @@ val scala2 = "2.13.8"
 
 val scala3 = "3.1.3"
 
-ThisBuild / tlVersionIntroduced := Map("3" -> "2.1.0")
+val scala3 = "3.1.3"
+
+ThisBuild / tlBaseVersion := "3.0"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -79,7 +81,8 @@ lazy val `vulcan-testkit-munit` = project
     ),
     publishSettings,
     scalaSettings,
-    testSettings
+    testSettings,
+    versionIntroduced("2.2.0")
   )
   .dependsOn(vulcan)
 
@@ -299,16 +302,9 @@ def minorVersion(version: String): String = {
 }
 
 val latestVersion = settingKey[String]("Latest stable released version")
-ThisBuild / latestVersion := {
-  val snapshot = (ThisBuild / isSnapshot).value
-  val stable = (ThisBuild / isVersionStable).value
-
-  if (!snapshot && stable) {
-    (ThisBuild / version).value
-  } else {
-    (ThisBuild / previousStableVersion).value.get
-  }
-}
+ThisBuild / latestVersion := tlLatestVersion.value.getOrElse(
+  throw new IllegalStateException("No tagged version found")
+)
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 ThisBuild / updateSiteVariables := {
@@ -319,7 +315,7 @@ ThisBuild / updateSiteVariables := {
     Map[String, String](
       "organization" -> (LocalRootProject / organization).value,
       "coreModuleName" -> (core / moduleName).value,
-      "latestVersion" -> (ThisBuild / latestVersion).value,
+      "latestVersion" -> latestVersion.value,
       "scalaPublishVersions" -> {
         val minorVersions = (core / crossScalaVersions).value.map(minorVersion)
         if (minorVersions.size <= 2) minorVersions.mkString(" and ")
