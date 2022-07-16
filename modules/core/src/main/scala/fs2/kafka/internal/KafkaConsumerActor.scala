@@ -48,8 +48,8 @@ import scala.collection.immutable.SortedSet
   */
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[F, K, V],
-  keyDeserializer: Deserializer[F, K],
-  valueDeserializer: Deserializer[F, V],
+  keyDeserializer: KeyDeserializer[F, K],
+  valueDeserializer: ValueDeserializer[F, V],
   val ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
   withConsumer: WithConsumer[F]

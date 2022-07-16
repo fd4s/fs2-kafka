@@ -260,13 +260,6 @@ lazy val publishSettings =
     )
   )
 
-ThisBuild / mimaBinaryIssueFilters ++= {
-  import com.typesafe.tools.mima.core._
-  // format: off
-    Seq.empty
-    // format: on
-}
-
 lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
 
 lazy val noPublishSettings =

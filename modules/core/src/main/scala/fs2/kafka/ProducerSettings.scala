@@ -7,7 +7,6 @@
 package fs2.kafka
 
 import cats.{Applicative, Show}
-import cats.syntax.all._
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.producer.ProducerConfig
 

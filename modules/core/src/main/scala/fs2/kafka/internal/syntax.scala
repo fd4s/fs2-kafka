@@ -10,9 +10,11 @@ import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
 import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
+
 import scala.jdk.CollectionConverters._
 import java.util
 import org.apache.kafka.common.KafkaFuture
+
 import scala.collection.immutable.{ArraySeq, SortedSet}
 
 private[kafka] object syntax {
@@ -162,7 +164,7 @@ private[kafka] object syntax {
   implicit final class KafkaFutureSyntax[F[_], A](
     private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
-    def cancelable[F[_]](implicit F: Async[F]): F[A] =
+    def cancelable(implicit F: Async[F]): F[A] =
       F.fromCompletableFuture(futureF.map(_.toCompletionStage.toCompletableFuture))
   }
 

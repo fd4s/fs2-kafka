@@ -7,11 +7,8 @@ import fs2.kafka.BaseSpec
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.common.KafkaFuture
 
-import java.time.temporal.ChronoUnit.MICROS
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.internals.KafkaFutureImpl
-
-import scala.concurrent.duration._
 
 final class SyntaxSpec extends BaseSpec {
 
