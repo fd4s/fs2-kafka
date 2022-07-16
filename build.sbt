@@ -18,6 +18,8 @@ val scala213 = "2.13.8"
 
 val scala3 = "3.1.3"
 
+ThisBuild / tlBaseVersion := "2.5"
+
 ThisBuild / tlVersionIntroduced := Map("3" -> "2.1.0")
 
 lazy val `fs2-kafka` = project
@@ -331,16 +333,9 @@ def minorVersion(version: String): String = {
 }
 
 val latestVersion = settingKey[String]("Latest stable released version")
-ThisBuild / latestVersion := {
-  val snapshot = (ThisBuild / isSnapshot).value
-  val stable = (ThisBuild / isVersionStable).value
-
-  if (!snapshot && stable) {
-    (ThisBuild / version).value
-  } else {
-    (ThisBuild / previousStableVersion).value.get
-  }
-}
+ThisBuild / latestVersion := tlLatestVersion.value.getOrElse(
+  throw new IllegalStateException("No tagged version found")
+)
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 ThisBuild / updateSiteVariables := {
@@ -351,7 +346,7 @@ ThisBuild / updateSiteVariables := {
     Map[String, String](
       "organization" -> (LocalRootProject / organization).value,
       "coreModuleName" -> (core / moduleName).value,
-      "latestVersion" -> (ThisBuild / latestVersion).value,
+      "latestVersion" -> latestVersion.value,
       "scalaPublishVersions" -> {
         val minorVersions = (core / crossScalaVersions).value.map(minorVersion)
         if (minorVersions.size <= 2) minorVersions.mkString(" and ")
