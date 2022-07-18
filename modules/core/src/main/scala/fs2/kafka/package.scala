@@ -10,7 +10,6 @@ import fs2.Chunk
 import cats.Traverse
 import cats.effect._
 
-import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import org.apache.kafka.clients.producer.RecordMetadata
 
