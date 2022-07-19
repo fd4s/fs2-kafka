@@ -8,13 +8,12 @@ package fs2.kafka
 
 import cats.effect._
 import cats.syntax.all._
-import cats.Apply
+import cats.{Apply, Functor, Traverse}
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.{Metric, MetricName}
-import cats.Functor
 
 import scala.annotation.nowarn
 import scala.concurrent.Promise
@@ -131,7 +130,7 @@ object KafkaProducer {
       override def produce(
         records: ProducerRecords[K, V]
       ): F[F[ProducerResult[K, V]]] =
-        connection.produce(records)(keySerializer, valueSerializer)
+        connection.produce(records)(Traverse[Chunk], keySerializer, valueSerializer)
 
       override def metrics: F[Map[MetricName, Metric]] =
         connection.metrics
@@ -156,12 +155,12 @@ object KafkaProducer {
   )(implicit F: Async[F], mk: MkProducer[F]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
     Stream.resource(KafkaProducer.resource(settings))
 
-  private[kafka] def produce[F[_]: Async, K, V](
+  private[kafka] def produce[F[_]: Async, G[_]: Traverse, K, V](
     withProducer: WithProducer[F],
     keySerializer: KeySerializer[F, K],
     valueSerializer: ValueSerializer[F, V],
-    records: ProducerRecords[K, V]
-  ): F[F[ProducerResult[K, V]]] =
+    records: G[ProducerRecord[K, V]]
+  ): F[F[G[(ProducerRecord[K, V], RecordMetadata)]]] =
     withProducer { (producer, blocking) =>
       records
         .traverse(produceRecord(keySerializer, valueSerializer, producer, blocking))

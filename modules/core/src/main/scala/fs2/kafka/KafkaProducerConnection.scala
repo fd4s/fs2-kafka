@@ -6,11 +6,13 @@
 
 package fs2.kafka
 
+import cats.Traverse
 import cats.effect._
 import cats.syntax.all._
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
+import org.apache.kafka.clients.producer.RecordMetadata
 
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
@@ -25,9 +27,9 @@ import org.apache.kafka.common.Metric
   */
 sealed abstract class KafkaProducerConnection[F[_]] {
 
-  def produce[K: KeySerializer[F, *], V: ValueSerializer[F, *]](
-    records: ProducerRecords[K, V]
-  ): F[F[ProducerResult[K, V]]]
+  def produce[G[_]: Traverse, K: KeySerializer[F, *], V: ValueSerializer[F, *]](
+    records: G[ProducerRecord[K, V]]
+  ): F[F[G[(ProducerRecord[K, V], RecordMetadata)]]]
 
   def metrics: F[Map[MetricName, Metric]]
 
@@ -114,13 +116,13 @@ object KafkaProducerConnection {
   ): Resource[F, KafkaProducerConnection[G]] =
     WithProducer(mk, settings).map { withProducer =>
       new KafkaProducerConnection[G] {
-        override def produce[K, V](
-          records: ProducerRecords[K, V]
+        override def produce[F[_]: Traverse, K, V](
+          records: F[ProducerRecord[K, V]]
         )(
           implicit keySerializer: KeySerializer[G, K],
           valueSerializer: ValueSerializer[G, V]
-        ): G[G[ProducerResult[K, V]]] =
-          KafkaProducer.produce[G, K, V](
+        ): G[G[F[(ProducerRecord[K, V], RecordMetadata)]]] =
+          KafkaProducer.produce[G, F, K, V](
             withProducer,
             keySerializer,
             valueSerializer,
