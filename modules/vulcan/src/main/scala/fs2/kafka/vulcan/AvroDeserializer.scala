@@ -26,20 +26,30 @@ final class AvroDeserializer[A] private[vulcan] (
             case (deserializer, schemaRegistryClient) =>
               Deserializer.instance { (topic, _, bytes) =>
                 F.defer {
-                  val writerSchemaId =
-                    ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
+                  if (bytes == null || bytes.length == 0) {
+                    F.raiseError(
+                      new IllegalArgumentException(
+                        s"Invalid Avro record: bytes is null or empty"
+                      )
+                    )
 
-                  val writerSchema = {
-                    val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
-                    if (schema.isInstanceOf[AvroSchema])
-                      schema.asInstanceOf[AvroSchema].rawSchema()
-                    else
-                      null
-                  }
+                  } else {
+                    val writerSchemaId =
+                      ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
 
-                  codec.decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
-                    case Right(a)    => F.pure(a)
-                    case Left(error) => F.raiseError(error.throwable)
+                    val writerSchema = {
+                      val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
+                      if (schema.isInstanceOf[AvroSchema])
+                        schema.asInstanceOf[AvroSchema].rawSchema()
+                      else
+                        null
+                    }
+
+                    codec
+                      .decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
+                      case Right(a)    => F.pure(a)
+                      case Left(error) => F.raiseError(error.throwable)
+                    }
                   }
                 }
               }
