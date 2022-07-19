@@ -233,10 +233,10 @@ object TransactionalKafkaProducer {
    * to code defined in this object, ensuring factory methods require an instance
    * to be provided at the call site.
    */
-  @nowarn("cat=unused")
+  @nowarn("msg=never used")
   implicit private def mkAmbig1[F[_]]: MkProducer[F] =
     throw new AssertionError("should not be used")
-  @nowarn("cat=unused")
+  @nowarn("msg=never used")
   implicit private def mkAmbig2[F[_]]: MkProducer[F] =
     throw new AssertionError("should not be used")
 }

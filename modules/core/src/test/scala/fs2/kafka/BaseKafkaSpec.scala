@@ -55,6 +55,7 @@ import org.apache.kafka.common.serialization.StringSerializer
 import java.util.concurrent.TimeUnit
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.Args
+import org.testcontainers.utility.DockerImageName
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
@@ -66,29 +67,25 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
   override def runTest(testName: String, args: Args) = super.runTest(testName, args)
 
-  private val imageVersion = "7.0.1"
+  private val imageVersion = "7.2.0"
 
-  private lazy val imageName = Option(System.getProperty("os.arch")) match {
-    case Some("aarch64") =>
-      "niciqy/cp-kafka-arm64" // no official docker image for ARM is available yet
-    case _ => "confluentinc/cp-kafka"
-  }
+  private lazy val imageName = "confluentinc/cp-kafka"
 
-  override val container: KafkaContainer = new KafkaContainer()
-    .configure { container =>
-      container
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
-        .withEnv(
-          "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
-          transactionTimeoutInterval.toMillis.toString
-        )
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
-        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
-        .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
-        .setDockerImageName(s"$imageName:$imageVersion")
+  override val container: KafkaContainer =
+    new KafkaContainer(DockerImageName.parse(s"$imageName:$imageVersion"))
+      .configure { container =>
+        container
+          .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+          .withEnv(
+            "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
+            transactionTimeoutInterval.toMillis.toString
+          )
+          .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+          .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
+          .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
 
-      ()
-    }
+        ()
+      }
 
   implicit final val stringSerializer: KafkaSerializer[String] = new StringSerializer
 
