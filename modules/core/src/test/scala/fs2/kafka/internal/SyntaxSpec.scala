@@ -6,6 +6,7 @@ import fs2.kafka.internal.syntax._
 import org.apache.kafka.common.header.internals.RecordHeaders
 
 final class SyntaxSpec extends BaseSpec {
+
   describe("Map#filterKeysStrictValuesList") {
     it("should be the same as toList.collect") {
       forAll { (m: Map[Int, Int], p: Int => Boolean) =>

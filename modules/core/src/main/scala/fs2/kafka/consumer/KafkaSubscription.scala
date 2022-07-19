@@ -12,6 +12,7 @@ import cats.data.NonEmptyList
 import scala.util.matching.Regex
 
 trait KafkaSubscription[F[_]] {
+
   /**
     * Subscribes the consumer to the specified topics. Note that you have to
     * use one of the `subscribe` functions to subscribe to one or more topics
@@ -46,4 +47,5 @@ trait KafkaSubscription[F[_]] {
     * by `subscribe` or `assign`.
     */
   def unsubscribe: F[Unit]
+
 }
