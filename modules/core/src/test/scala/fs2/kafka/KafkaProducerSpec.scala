@@ -111,24 +111,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         (for {
           producer <- KafkaProducer.stream(producerSettings[IO])
           records = ProducerRecords(Nil)
-          result <- Stream.eval(producer.produce(records).flatten.tupleLeft(passthrough))
-        } yield result).compile.lastOrError.unsafeRunSync()
-
-      assert(result._1 == passthrough)
-    }
-  }
-
-  it("should be able to produce zero records with passthrough") {
-    withTopic { topic =>
-      createCustomTopic(topic, partitions = 3)
-      val passthrough = "passthrough"
-
-      val result =
-        (for {
-          producer <- KafkaProducer.stream(producerSettings[IO])
-          result <- Stream.eval {
-            producer.produce(ProducerRecords(Nil)).flatten.tupleLeft(passthrough)
-          }
+          result <- Stream.eval(producer.produce[Chunk](records).flatten.tupleLeft(passthrough))
         } yield result).compile.lastOrError.unsafeRunSync()
 
       assert(result._1 == passthrough)

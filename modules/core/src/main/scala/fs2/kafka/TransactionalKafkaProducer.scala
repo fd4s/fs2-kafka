@@ -40,7 +40,7 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
     */
   def produce(
     records: TransactionalProducerRecords[F, K, V]
-  ): F[ProducerResult[K, V]]
+  ): F[ProducerResult[Chunk, K, V]]
 }
 
 object TransactionalKafkaProducer {
@@ -72,7 +72,7 @@ object TransactionalKafkaProducer {
       * or cancellation occurs, the transaction is aborted. The returned effect succeeds
       * if the whole transaction completes successfully.
       */
-    def produceWithoutOffsets(records: ProducerRecords[K, V]): F[ProducerResult[K, V]]
+    def produceWithoutOffsets(records: ProducerRecords[Chunk, K, V]): F[ProducerResult[Chunk, K, V]]
   }
 
   /**
@@ -99,7 +99,7 @@ object TransactionalKafkaProducer {
       new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
         override def produce(
           records: TransactionalProducerRecords[F, K, V]
-        ): F[ProducerResult[K, V]] =
+        ): F[ProducerResult[Chunk, K, V]] =
           produceTransactionWithOffsets(records)
 
         private[this] def produceTransactionWithOffsets(
@@ -129,8 +129,8 @@ object TransactionalKafkaProducer {
           }
 
         override def produceWithoutOffsets(
-          records: ProducerRecords[K, V]
-        ): F[ProducerResult[K, V]] =
+          records: ProducerRecords[Chunk, K, V]
+        ): F[ProducerResult[Chunk, K, V]] =
           produceTransaction(records, None)
 
         private[this] def produceTransaction(

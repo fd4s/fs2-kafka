@@ -79,10 +79,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
             makeOffset.fold[
               Either[
-                ProducerRecords[String, String],
+                ProducerRecords[Chunk, String, String],
                 TransactionalProducerRecords[IO, String, String]
               ]
-            ](Left(ProducerRecords.one(record)))(
+            ](Left(Chunk.singleton(record)))(
               offset =>
                 Right(
                   TransactionalProducerRecords.one(
@@ -149,7 +149,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
     val toPassthrough = "passthrough"
 
-    val produced =
+    val produced: (String, ProducerResult[Chunk, String, String]) =
       (for {
         producer <- TransactionalKafkaProducer.stream(
           TransactionalProducerSettings(

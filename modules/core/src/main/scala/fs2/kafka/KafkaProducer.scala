@@ -47,9 +47,9 @@ abstract class KafkaProducer[F[_], K, V] {
     *   have `otherAction` execute after records have been sent,
     *   but losing the order of produced records.
     */
-  def produce(
-    records: ProducerRecords[K, V]
-  ): F[F[ProducerResult[K, V]]]
+  def produce[Coll[_]: Traverse](
+    records: ProducerRecords[Coll, K, V]
+  ): F[F[ProducerResult[Coll, K, V]]]
 }
 
 object KafkaProducer {
@@ -62,7 +62,7 @@ object KafkaProducer {
       */
     def produceOne_(record: ProducerRecord[K, V])(implicit F: Functor[F]): F[F[RecordMetadata]] =
       produceOne(record).map(_.map { res =>
-        res.head.get._2 //Should always be present so get is ok
+        res._2
       })
 
     /**
@@ -80,13 +80,13 @@ object KafkaProducer {
       topic: String,
       key: K,
       value: V
-    ): F[F[ProducerResult[K, V]]] =
+    ): F[F[ProducerResult[cats.Id, K, V]]] =
       produceOne(ProducerRecord(topic, key, value))
 
     /**
       * Produce a single [[ProducerRecord]], see [[KafkaProducer.produce]] for general semantics.
       */
-    def produceOne(record: ProducerRecord[K, V]): F[F[ProducerResult[K, V]]] =
+    def produceOne(record: ProducerRecord[K, V]): F[F[ProducerResult[cats.Id, K, V]]] =
       producer.produce(ProducerRecords.one(record))
 
   }
@@ -127,10 +127,10 @@ object KafkaProducer {
     valueSerializer: ValueSerializer[F, V]
   ): KafkaProducer.Metrics[F, K, V] =
     new KafkaProducer.Metrics[F, K, V] {
-      override def produce(
-        records: ProducerRecords[K, V]
-      ): F[F[ProducerResult[K, V]]] =
-        connection.produce(records)(Traverse[Chunk], keySerializer, valueSerializer)
+      def produce[Coll[_]: Traverse](
+        records: ProducerRecords[Coll, K, V]
+      ): F[F[ProducerResult[Coll, K, V]]] =
+        connection.produce(records)(Traverse[Coll], keySerializer, valueSerializer)
 
       override def metrics: F[Map[MetricName, Metric]] =
         connection.metrics
@@ -194,21 +194,21 @@ object KafkaProducer {
     * Creates a [[KafkaProducer]] using the provided settings and
     * produces record in batches.
     */
-  def pipe[F[_], K, V](
+  def pipe[F[_], Coll[_]: Traverse, K, V](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
-  ): Pipe[F, ProducerRecords[K, V], ProducerResult[K, V]] =
+  ): Pipe[F, ProducerRecords[Coll, K, V], ProducerResult[Coll, K, V]] =
     records => stream(settings).flatMap(pipe(_).apply(records))
 
   /**
     * Produces records in batches using the provided [[KafkaProducer]].
     */
-  def pipe[F[_]: Concurrent, K, V](
+  def pipe[F[_]: Concurrent, Coll[_]: Traverse, K, V](
     producer: KafkaProducer[F, K, V]
-  ): Pipe[F, ProducerRecords[K, V], ProducerResult[K, V]] =
-    _.evalMap(producer.produce).parEvalMap(Int.MaxValue)(identity)
+  ): Pipe[F, ProducerRecords[Coll, K, V], ProducerResult[Coll, K, V]] =
+    _.evalMap(producer.produce[Coll](_)).parEvalMap(Int.MaxValue)(identity)
 
   private[this] def serializeToBytes[F[_], K, V](
     keySerializer: KeySerializer[F, K],

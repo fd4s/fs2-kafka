@@ -52,11 +52,11 @@ package object kafka {
   type KafkaByteProducerRecord =
     org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
-  type ProducerRecords[K, V] = Chunk[ProducerRecord[K, V]]
+  type ProducerRecords[Coll[_], K, V] = Coll[ProducerRecord[K, V]]
 
   type TransactionalProducerRecords[F[_], +K, +V] = Chunk[CommittableProducerRecords[F, K, V]]
 
-  type ProducerResult[K, V] = Chunk[(ProducerRecord[K, V], RecordMetadata)]
+  type ProducerResult[Coll[_], K, V] = Coll[(ProducerRecord[K, V], RecordMetadata)]
 
   /**
     * Commits offsets in batches of every `n` offsets or time window
@@ -98,10 +98,10 @@ package kafka {
       records: F[ProducerRecord[K, V]]
     )(
       implicit F: Traverse[F]
-    ): ProducerRecords[K, V] = Chunk.iterable(Foldable[F].toIterable(records))
+    ): ProducerRecords[Chunk, K, V] = Chunk.iterable(Foldable[F].toIterable(records))
 
-    def one[K, V](record: ProducerRecord[K, V]): ProducerRecords[K, V] =
-      Chunk.singleton(record)
+    def one[K, V](record: ProducerRecord[K, V]): ProducerRecords[cats.Id, K, V] =
+      record
 
   }
 
