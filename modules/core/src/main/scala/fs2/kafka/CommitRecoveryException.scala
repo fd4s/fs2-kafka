@@ -41,7 +41,6 @@ sealed abstract class CommitRecoveryException(
     })
 
 object CommitRecoveryException {
-
   /**
     * Creates a new [[CommitRecoveryException]] indicating that offset
     * commit recovery was attempted `attempts` times for `offsets` but

@@ -4,12 +4,10 @@ import scalafix.v1._
 import scala.meta._
 
 class Fs2Kafka extends SemanticRule("Fs2Kafka") {
-
   override def fix(implicit doc: SemanticDocument): Patch =
     reorderPassthroughParams
 
   def reorderPassthroughParams(implicit doc: SemanticDocument): Patch = {
-
     val ProducerRecords_M =
       SymbolMatcher.normalized(
         "fs2/kafka/ProducerRecords.",
@@ -66,7 +64,6 @@ class Fs2Kafka extends SemanticRule("Fs2Kafka") {
             List(f, k, v, p)
           ) =>
         Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
-
     }.asPatch
   }
 }

@@ -13,7 +13,6 @@ import org.apache.kafka.common.internals.KafkaFutureImpl
 import java.util.concurrent.CancellationException
 
 final class SyntaxSpec extends BaseSpec {
-
   describe("Map#filterKeysStrictValuesList") {
     it("should be the same as toList.collect") {
       forAll { (m: Map[Int, Int], p: Int => Boolean) =>
@@ -48,9 +47,7 @@ final class SyntaxSpec extends BaseSpec {
   }
 
   describe("KafkaFuture.cancelable") {
-
     it("should cancel future when fiber is cancelled") {
-
       @volatile var isFutureCancelled = false
 
       val test =
@@ -74,6 +71,5 @@ final class SyntaxSpec extends BaseSpec {
         } yield ()
       test.unsafeRunSync()
     }
-
   }
 }

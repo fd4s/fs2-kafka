@@ -127,7 +127,6 @@ object KafkaConsumer {
     stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
@@ -395,7 +394,6 @@ object KafkaConsumer {
               actor.ref.updateAndGet(_.withOnRebalance(on).asStreaming).flatTap { newState =>
                 logging.log(LogEntry.StoredOnRebalance(on, newState))
               }
-
             }
             .ensure(NotSubscribedException())(_.subscribed) >>
             withConsumer.blocking(_.assignment.toSortedSet)
@@ -548,7 +546,6 @@ object KafkaConsumer {
           } >> actor.ref
             .updateAndGet(_.asSubscribed)
             .log(LogEntry.ManuallyAssignedPartitions(partitions, _))
-
         }
 
       override def assign(topic: String): F[Unit] =
@@ -689,7 +686,6 @@ object KafkaConsumer {
 
   private[kafka] final class ConsumerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
-
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can
@@ -731,7 +727,6 @@ object KafkaConsumer {
    * to explicitly use operations such as `flatMap` and `evalTap`
    */
   implicit final class StreamOps[F[_]: Functor, K, V](self: Stream[F, KafkaConsumer[F, K, V]]) {
-
     /**
       * Subscribes a consumer to the specified topics within the [[Stream]] context.
       * See [[KafkaSubscription#subscribe]].
