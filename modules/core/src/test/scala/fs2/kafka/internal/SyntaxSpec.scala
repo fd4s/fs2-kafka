@@ -10,6 +10,8 @@ import org.apache.kafka.common.KafkaFuture
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.internals.KafkaFutureImpl
 
+import java.util.concurrent.CancellationException
+
 final class SyntaxSpec extends BaseSpec {
 
   describe("Map#filterKeysStrictValuesList") {
@@ -55,16 +57,18 @@ final class SyntaxSpec extends BaseSpec {
         for {
           gate <- IO.deferred[Unit]
           futureIO: IO[KafkaFuture[Unit]] = gate.complete(()) >> IO {
-            new KafkaFutureImpl[Unit] {
-              override def cancel(mayInterruptIfRunning: Boolean): Boolean = {
-                isFutureCancelled = true
-                true
-              }
+            // We need to return the original future after calling `whenComplete`, because the future returned by
+            // `whenComplete` doesn't propagate cancellation back to the original future.
+            val future = new KafkaFutureImpl[Unit]
+            future.whenComplete {
+              case (_, _: CancellationException) => isFutureCancelled = true
+              case _                             => ()
             }
+            future
           }
           fiber <- futureIO.cancelable.start
-          _ <- IO(assert(!isFutureCancelled))
           _ <- gate.get // wait for future to be created before canceling it
+          _ <- IO(assert(!isFutureCancelled))
           _ <- fiber.cancel
           _ <- IO(assert(isFutureCancelled))
         } yield ()

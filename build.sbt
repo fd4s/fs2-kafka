@@ -213,7 +213,7 @@ ThisBuild / githubWorkflowPublishTargetBranches :=
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
-    List("ci-release"), // For 3.0 release: List("ci-release", "docs/docusaurusPublishGhpages"),
+    List("tlRelease"), // For 3.0 release: List("tlRelease", "docs/docusaurusPublishGhpages"),
     env = Map(
       "GIT_DEPLOY_KEY" -> "${{ secrets.GIT_DEPLOY_KEY }}",
       "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
