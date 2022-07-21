@@ -103,7 +103,7 @@ lazy val dependencySettings = Seq(
       .cross(CrossVersion.for3Use2_13),
     ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
       .cross(CrossVersion.for3Use2_13),
-    "org.typelevel" %% "discipline-scalatest" % "2.1.5",
+    "org.typelevel" %% "discipline-scalatest" % "2.2.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.11"
   ).map(_ % Test),
