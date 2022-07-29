@@ -110,12 +110,7 @@ object CommittableOffset {
         Map(_topicPartition -> _offsetAndMetadata)
 
       override def batch: CommittableOffsetBatch[F] =
-        CommittableOffsetBatch.one(
-          _topicPartition,
-          _offsetAndMetadata,
-          consumerGroupId,
-          _commit
-        )
+        CommittableOffsetBatch.one(this)
 
       override def commit: F[Unit] =
         _commit(offsets)
