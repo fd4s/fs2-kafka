@@ -57,12 +57,6 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
   def offsets: Map[TopicPartition, OffsetAndMetadata]
 
   /**
-    * The offsets included in the [[CommittableOffsetBatch]] grouped by topic name.
-    */
-  def offsetsByTopic: Map[String, Map[TopicPartition, OffsetAndMetadata]] =
-    offsets.groupBy(_._1.topic())
-
-  /**
     * The consumer group IDs for the [[offsets]] in the batch.
     * For the batch to be valid and for [[commit]] to succeed,
     * there should be exactly one ID in the set and the flag
@@ -98,6 +92,9 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
     * is nothing to commit.
     */
   def commit: F[Unit]
+
+  private[kafka] def committableOffsetsMap
+    : Map[String, Map[TopicPartition, OffsetAndMetadata] => F[Unit]]
 }
 
 object CommittableOffsetBatch {
@@ -106,12 +103,12 @@ object CommittableOffsetBatch {
     offsets: Map[TopicPartition, OffsetAndMetadata],
     consumerGroupIds: Set[String],
     consumerGroupIdsMissing: Boolean,
-    commitMap: Map[String, Map[TopicPartition, OffsetAndMetadata] => F[Unit]]
+    commitOffsetsMap: Map[String, Map[TopicPartition, OffsetAndMetadata] => F[Unit]]
   )(implicit F: ApplicativeError[F, Throwable]): CommittableOffsetBatch[F] = {
     val _offsets = offsets
     val _consumerGroupIds = consumerGroupIds
     val _consumerGroupIdsMissing = consumerGroupIdsMissing
-    val _commitMap = commitMap
+    val _commitOffsetsMap = commitOffsetsMap
 
     new CommittableOffsetBatch[F] {
       override def updated(that: CommittableOffset[F]): CommittableOffsetBatch[F] =
@@ -119,7 +116,7 @@ object CommittableOffsetBatch {
           _offsets.updated(that.topicPartition, that.offsetAndMetadata),
           that.consumerGroupId.fold(_consumerGroupIds)(_consumerGroupIds + _),
           _consumerGroupIdsMissing || that.consumerGroupId.isEmpty,
-          _commitMap
+          _commitOffsetsMap.updated(that.topicPartition.topic(), that.commitOffsets)
         )
 
       override def updated(that: CommittableOffsetBatch[F]): CommittableOffsetBatch[F] =
@@ -127,11 +124,15 @@ object CommittableOffsetBatch {
           _offsets ++ that.offsets,
           _consumerGroupIds ++ that.consumerGroupIds,
           _consumerGroupIdsMissing || that.consumerGroupIdsMissing,
-          _commitMap
+          (committableOffsetsMap.toList ++ that.committableOffsetsMap.toList).toMap
         )
 
       override val offsets: Map[TopicPartition, OffsetAndMetadata] =
         _offsets
+
+      override val committableOffsetsMap
+        : Map[String, Map[TopicPartition, OffsetAndMetadata] => F[Unit]] =
+        _commitOffsetsMap
 
       override val consumerGroupIds: Set[String] =
         _consumerGroupIds
@@ -143,10 +144,11 @@ object CommittableOffsetBatch {
         if (_consumerGroupIdsMissing)
           ApplicativeThrow[F].raiseError(ConsumerGroupException(consumerGroupIds))
         else {
-          offsetsByTopic
+          offsets
+            .groupBy(_._1.topic())
             .map {
               case (topicName, info) =>
-                commitMap
+                committableOffsetsMap
                   .getOrElse[Map[TopicPartition, OffsetAndMetadata] => F[Unit]](
                     topicName,
                     _ =>
@@ -200,7 +202,7 @@ object CommittableOffsetBatch {
       committableOffset.consumerGroupId.isEmpty,
       Map(
         committableOffset.topicPartition
-          .topic() -> Map(committableOffset.topicPartition.topic() -> committableOffset.commit)
+          .topic() -> Map(committableOffset.topicPartition -> committableOffset.commit)
       )
     )
 
@@ -355,6 +357,10 @@ object CommittableOffsetBatch {
 
       override def toString: String =
         Show[CommittableOffsetBatch[F]].show(this)
+
+      override private[kafka] def committableOffsetsMap
+        : Map[String, Map[TopicPartition, OffsetAndMetadata] => F[Unit]] =
+        Map.empty
     }
 
   implicit def committableOffsetBatchShow[F[_]]: Show[CommittableOffsetBatch[F]] =
