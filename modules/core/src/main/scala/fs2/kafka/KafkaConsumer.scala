@@ -162,8 +162,11 @@ object KafkaConsumer {
             stopReqs <- Deferred[F, Unit]
           } yield Stream.eval {
             def fetchPartition: F[Unit] = F.deferred[PartitionResult].flatMap { deferred =>
-              val callback: PartitionResult => F[Unit] =
-                deferred.complete(_).void
+              val callback: PartitionResult => F[Unit] = {
+                case pr @ (chunk, _) =>
+                  deferred.complete(pr) *>
+                    chunks.offer(Some(chunk)).unlessA(chunk.isEmpty)
+              }
 
               val fetch: F[PartitionResult] = withPermit {
                 val assigned =
@@ -192,13 +195,8 @@ object KafkaConsumer {
                 case Left(()) =>
                   stopReqs.complete(()).void
 
-                case Right((chunk, reason)) =>
-                  val enqueueChunk = chunks.offer(Some(chunk)).unlessA(chunk.isEmpty)
-
-                  val completeRevoked =
-                    stopReqs.complete(()).void.whenA(reason.topicPartitionRevoked)
-
-                  enqueueChunk >> completeRevoked
+                case Right((_, reason)) =>
+                  stopReqs.complete(()).void.whenA(reason.topicPartitionRevoked)
               }
             }
 
