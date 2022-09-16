@@ -315,7 +315,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         val records = withRebalancing.records.keySetStrict
 
         val revokedFetches = revoked intersect fetches
-        val revokedNonFetches = revoked diff fetches
+        val revokedNonFetches = revoked diff revokedFetches
 
         val withRecords = records intersect revokedFetches
         val withoutRecords = revokedFetches diff records

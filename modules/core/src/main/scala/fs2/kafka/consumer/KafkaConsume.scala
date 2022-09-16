@@ -54,9 +54,9 @@ trait KafkaConsume[F[_], K, V] {
   def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
 
   /**
-    * `Stream` where each element contains a current assignment. The current
-    * assignment is the `Map`, where keys is a `TopicPartition`, and values are
-    * streams with records for a particular `TopicPartition`.<br>
+    * `Stream` where each element contains an assignment. Each assignment
+    * assignment is `Map`, where keys are a `TopicPartition`s, and values are
+    * record streams for the `TopicPartition`.<br>
     * <br>
     * New assignments will be received on each rebalance. On rebalance,
     * Kafka revoke all previously assigned partitions, and after that assigned
