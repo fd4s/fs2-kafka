@@ -230,11 +230,11 @@ object KafkaConsumer {
             F.pure(Map.empty)
           } else {
             assigned.toVector
-            .traverse {
-              case (partition, finisher) =>
-                createPartitionStream(streamId, partition, finisher.get).map { stream =>
-                  partition -> stream
-                }
+              .traverse {
+                case (partition, finisher) =>
+                  createPartitionStream(streamId, partition, finisher.get).map { stream =>
+                    partition -> stream
+                  }
               }
               .map(_.toMap)
           }
