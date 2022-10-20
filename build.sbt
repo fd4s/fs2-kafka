@@ -1,8 +1,8 @@
 val catsEffectVersion = "3.3.13"
 
-val confluentVersion = "6.2.5"
+val confluentVersion = "6.2.6"
 
-val fs2Version = "3.2.5"
+val fs2Version = "3.2.12"
 
 val kafkaVersion = "2.8.1"
 
@@ -105,7 +105,7 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
     "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "2.1.5",
+    "org.typelevel" %% "discipline-scalatest" % "2.2.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
     "ch.qos.logback" % "logback-classic" % "1.2.11"
