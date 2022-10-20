@@ -63,7 +63,6 @@ lazy val `schema-registry` = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
     testSettings
   )
