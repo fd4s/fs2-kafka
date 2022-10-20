@@ -34,11 +34,16 @@ final class AvroSerializerSpec extends AnyFunSpec {
           )
         ))
         .unsafeRunSync()
-      assert(
-        schemaRegistryClient
-          .getLatestSchemaMetadata("test-union-topic-value")
-          .getSchema === """["int","boolean"]"""
-      )
+
+      avroSettings.schemaRegistryClient
+        .flatMap(_.getLatestSchemaMetadata("test-union-topic-value"))
+        .map(
+          latestSchemaMetadata =>
+            assert(
+              latestSchemaMetadata.getSchema === """["int","boolean"]"""
+            )
+        )
+        .unsafeRunSync()
     }
 
     it("raises schema errors") {
