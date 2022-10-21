@@ -122,6 +122,8 @@ private[kafka] object syntax {
     def updatedIfAbsent(k: K, v: => V): Map[K, V] =
       if (map.contains(k)) map else map.updated(k, v)
 
+    def asJavaMap: util.Map[K, V] =
+      map.asJava
   }
 
   implicit final class MapWrappedValueSyntax[F[_], K, V](

@@ -1,10 +1,9 @@
 package fs2.kafka.schemaregistry.client
 
 import cats.effect.kernel.Sync
+import fs2.kafka.internal.syntax.MapSyntax
 import io.confluent.kafka.schemaregistry.ParsedSchema
 import io.confluent.kafka.schemaregistry.client.SchemaMetadata
-
-import scala.jdk.CollectionConverters.MapHasAsJava
 
 trait SchemaRegistryClient[F[_]] {
 
@@ -14,7 +13,7 @@ trait SchemaRegistryClient[F[_]] {
     * @param subject The subject name
     * @return The schema id
     */
-  def register[A](subject: String, schema: ParsedSchema): F[Int]
+  def register(subject: String, schema: ParsedSchema): F[Int]
 
   /**
     * Get latest schema for the specified subject
@@ -47,14 +46,14 @@ trait SchemaRegistryClient[F[_]] {
 }
 object SchemaRegistryClient {
 
-  import cats.implicits._
+  import cats.syntax.all._
 
   private[this] final case class SchemaRegistryClientSettingsImpl[F[_]](
     override val javaClient: JSchemaRegistryClient
   )(implicit F: Sync[F])
       extends SchemaRegistryClient[F] {
 
-    override def register[A](subject: String, schema: ParsedSchema): F[Int] =
+    override def register(subject: String, schema: ParsedSchema): F[Int] =
       F.delay(javaClient.register(subject, schema))
 
     override def getLatestSchemaMetadata(subject: String): F[SchemaMetadata] =
@@ -76,7 +75,7 @@ object SchemaRegistryClient {
         new JCachedSchemaRegistryClient(
           settings.baseUrl,
           settings.maxCacheSize,
-          settings.properties.asJava
+          settings.properties.asJavaMap
         )
       )
       .map(fromJava(_))
