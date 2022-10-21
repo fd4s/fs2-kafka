@@ -2,8 +2,6 @@ package fs2.kafka.schemaregistry.client
 
 import cats.effect.kernel.Sync
 import fs2.kafka.internal.syntax.MapSyntax
-import io.confluent.kafka.schemaregistry.ParsedSchema
-import io.confluent.kafka.schemaregistry.client.SchemaMetadata
 
 trait SchemaRegistryClient[F[_]] {
 
