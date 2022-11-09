@@ -136,9 +136,6 @@ object TransactionalKafkaProducer {
           records: Chunk[ProducerRecord[K, V]],
           sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-          if (records.isEmpty) F.pure(Chunk.empty)
-          else {
-
             withProducer.exclusiveAccess { (producer, blocking) =>
               blocking(producer.beginTransaction())
                 .bracketCase { _ =>
@@ -157,7 +154,6 @@ object TransactionalKafkaProducer {
                     blocking(producer.abortTransaction())
                 }
             }.flatten
-          }
 
         override def metrics: F[Map[MetricName, Metric]] =
           withProducer.blocking { _.metrics().asScala.toMap }
