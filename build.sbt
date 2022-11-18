@@ -1,6 +1,6 @@
 val catsEffectVersion = "2.5.5"
 
-val confluentVersion = "6.2.5"
+val confluentVersion = "6.2.7"
 
 val fs2Version = "2.5.11"
 
@@ -12,7 +12,7 @@ val vulcanVersion = "1.8.3"
 
 val munitVersion = "0.7.29"
 
-val scala212 = "2.12.16"
+val scala212 = "2.12.17"
 
 val scala213 = "2.13.8"
 
