@@ -14,7 +14,7 @@ val vulcanVersion = "1.8.3"
 
 val munitVersion = "0.7.29"
 
-val scala2 = "2.13.8"
+val scala2 = "2.13.10"
 
 val scala3 = "3.2.1"
 
