@@ -12,10 +12,9 @@ import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
+import org.apache.kafka.common.{Metric, MetricName, PartitionInfo}
 
 import scala.annotation.nowarn
-import org.apache.kafka.common.MetricName
-import org.apache.kafka.common.Metric
 
 /**
   * [[KafkaProducerConnection]] represents a connection to a Kafka broker
@@ -54,6 +53,10 @@ sealed abstract class KafkaProducerConnection[F[_]] {
   def withSerializersFrom[K, V](
     settings: ProducerSettings[F, K, V]
   ): F[KafkaProducer.Metrics[F, K, V]]
+
+  def partitionsFor(
+    topic: String
+  ): F[List[PartitionInfo]]
 }
 
 object KafkaProducerConnection {
@@ -139,6 +142,9 @@ object KafkaProducerConnection {
           settings: ProducerSettings[G, K, V]
         ): G[KafkaProducer.Metrics[G, K, V]] =
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
+
+        override def partitionsFor(topic: String): G[List[PartitionInfo]] =
+          withProducer.blocking { _.partitionsFor(topic).asScala.toList }
       }
     }
 

@@ -6,16 +6,14 @@
 
 package fs2.kafka
 
+import cats.{Apply, Functor}
 import cats.effect._
 import cats.syntax.all._
-import cats.Apply
-import fs2._
+import fs2.{Chunk, _}
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
-import org.apache.kafka.common.{Metric, MetricName}
-import fs2.Chunk
-import cats.Functor
+import org.apache.kafka.common.{Metric, MetricName, PartitionInfo}
 
 import scala.annotation.nowarn
 import scala.concurrent.Promise
@@ -56,6 +54,10 @@ abstract class KafkaProducer[F[_], K, V] {
   def produce[P](
     records: ProducerRecords[P, K, V]
   ): F[F[ProducerResult[P, K, V]]]
+
+  def partitionsFor(
+    topic: String,
+  ): F[List[PartitionInfo]]
 }
 
 object KafkaProducer {
@@ -154,6 +156,9 @@ object KafkaProducer {
 
       override def toString: String =
         "KafkaProducer$" + System.identityHashCode(this)
+
+      override def partitionsFor(topic: String): F[List[PartitionInfo]] =
+        connection.partitionsFor(topic)
     }
 
   /**
