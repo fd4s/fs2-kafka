@@ -156,10 +156,9 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
               new ByteArraySerializer
             ) {
               override def sendOffsetsToTransaction(
-                                                     offsets: util.Map[TopicPartition, OffsetAndMetadata],
-                                                     consumerGroupId: String
-                                                   ): Unit =
-              {
+                offsets: util.Map[TopicPartition, OffsetAndMetadata],
+                consumerGroupId: String
+              ): Unit = {
                 commitState.set(true)
                 super.sendOffsetsToTransaction(offsets, consumerGroupId)
               }
@@ -174,11 +173,13 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
               .withRetries(Int.MaxValue)
           )
         )
-        offsets = (i: Int) => CommittableOffset[IO](
-          new TopicPartition(topic, i % 3),
-          new OffsetAndMetadata(i.toLong),
-          Some("group"),
-          _ => IO.unit)
+        offsets = (i: Int) =>
+          CommittableOffset[IO](
+            new TopicPartition(topic, i % 3),
+            new OffsetAndMetadata(i.toLong),
+            Some("group"),
+            _ => IO.unit
+          )
 
         records = TransactionalProducerRecords(
           Chunk.seq(0 to 100).map(i => CommittableProducerRecords(Chunk.empty, offsets(i))),
@@ -188,7 +189,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         results <- Stream.eval(producer.produce(records))
       } yield {
         results.passthrough shouldBe toPassthrough
-        results.records should be (empty)
+        results.records should be(empty)
         commitState.get shouldBe true
       }
     }.compile.lastOrError.unsafeRunSync()
