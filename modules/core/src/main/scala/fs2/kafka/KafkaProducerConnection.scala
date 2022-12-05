@@ -40,7 +40,7 @@ sealed abstract class KafkaProducerConnection[F[_]] {
   def withSerializers[K, V](
     keySerializer: Serializer[F, K],
     valueSerializer: Serializer[F, V]
-  ): KafkaProducer.Metrics[F, K, V]
+  ): KafkaProducer.PartitionsFor[F, K, V]
 
   /**
     * Creates a new [[KafkaProducer]] in the `F` context,
@@ -52,7 +52,7 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     */
   def withSerializersFrom[K, V](
     settings: ProducerSettings[F, K, V]
-  ): F[KafkaProducer.Metrics[F, K, V]]
+  ): F[KafkaProducer.PartitionsFor[F, K, V]]
 
   def partitionsFor(
     topic: String
@@ -135,12 +135,12 @@ object KafkaProducerConnection {
         override def withSerializers[K, V](
           keySerializer: Serializer[G, K],
           valueSerializer: Serializer[G, V]
-        ): KafkaProducer.Metrics[G, K, V] =
+        ): KafkaProducer.PartitionsFor[G, K, V] =
           KafkaProducer.from(this, keySerializer, valueSerializer)
 
         override def withSerializersFrom[K, V](
           settings: ProducerSettings[G, K, V]
-        ): G[KafkaProducer.Metrics[G, K, V]] =
+        ): G[KafkaProducer.PartitionsFor[G, K, V]] =
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
 
         override def partitionsFor(topic: String): G[List[PartitionInfo]] =
