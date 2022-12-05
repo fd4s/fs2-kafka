@@ -287,6 +287,9 @@ ThisBuild / mimaBinaryIssueFilters ++= {
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withSerializers"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
       ProblemFilters.exclude[FinalMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("fs2.kafka.KafkaProducerConnection.withSerializers"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.withSerializers"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.partitionsFor"),
 
       // private
         ProblemFilters.exclude[Problem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.*")
