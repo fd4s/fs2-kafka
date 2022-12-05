@@ -281,6 +281,7 @@ ThisBuild / mimaBinaryIssueFilters ++= {
 
       // package-private
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.from"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("fs2.kafka.KafkaProducer.from"),
 
       // sealed
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withDeserializers"),
