@@ -135,7 +135,7 @@ object KafkaProducer {
       *
       * @see org.apache.kafka.clients.producer.KafkaProducer#partitionsFor
       */
-    def partitionsFor: F[List[PartitionInfo]]
+    def partitionsFor(topic: String): F[List[PartitionInfo]]
   }
 
   /**
