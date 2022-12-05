@@ -54,10 +54,6 @@ abstract class KafkaProducer[F[_], K, V] {
   def produce[P](
     records: ProducerRecords[P, K, V]
   ): F[F[ProducerResult[P, K, V]]]
-
-  def partitionsFor(
-    topic: String,
-  ): F[List[PartitionInfo]]
 }
 
 object KafkaProducer {
