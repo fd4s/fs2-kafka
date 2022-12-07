@@ -151,19 +151,22 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       } else (st, F.unit)
     }
 
-    for {
-      action <- ref.modify { state =>
-        removeRevokedRecords.run(
-          state
-            .withRebalancing(false)
-            .withAssignments(assigned)
-        )
+    ref
+      .modify { state =>
+        removeRevokedRecords
+          .run(
+            state
+              .withRebalancing(false)
+              .withAssignments(assigned)
+          )
+          .map(stateWithAction => stateWithAction._1 -> stateWithAction)
       }
-      updatedState <- ref.get
-      _ <- action >>
-        log(AssignedPartitions(assigned, updatedState)) >>
-        updatedState.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned))
-    } yield ()
+      .flatMap {
+        case (updatedState, action) =>
+          action >>
+            log(AssignedPartitions(assigned, updatedState)) >>
+            updatedState.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned))
+      }
   }
 
   private[this] def revoked(revoked: SortedSet[TopicPartition]): F[Unit] = {
