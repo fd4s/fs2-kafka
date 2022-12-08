@@ -87,12 +87,12 @@ jobs:
           key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Check that workflows are up to date
-        run: sbt '++${{ matrix.scala }}' 'project /' githubWorkflowCheck
+        run: sbt githubWorkflowCheck
 
-      - run: sbt '++${{ matrix.scala }}' ci
+      - run: sbt '++ ${{ matrix.scala }}' ci
 
       - if: matrix.scala == '2.13.10'
-        run: sbt '++${{ matrix.scala }}' docs/run
+        run: sbt '++ ${{ matrix.scala }}' docs/run
 
   publish:
     name: Publish Artifacts
@@ -171,4 +171,4 @@ jobs:
           GIT_DEPLOY_KEY: ${{ secrets.GIT_DEPLOY_KEY }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
-        run: sbt '++${{ matrix.scala }}' tlRelease docs/docusaurusPublishGhpages
+        run: sbt '++ ${{ matrix.scala }}' tlRelease docs/docusaurusPublishGhpages
