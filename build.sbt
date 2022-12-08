@@ -2,7 +2,7 @@ val catsEffectVersion = "3.3.13"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "7.1.4"
+val confluentVersion = "7.3.0"
 
 val fs2Version = "3.2.5"
 
