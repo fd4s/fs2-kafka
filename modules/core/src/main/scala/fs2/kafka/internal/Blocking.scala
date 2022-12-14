@@ -18,7 +18,7 @@ private[kafka] trait Blocking[F[_]] {
 
 private[kafka] object Blocking {
   def fromSync[F[_]: Sync]: Blocking[F] = new Blocking[F] {
-    override def apply[A](a: => A): F[A] = Sync[F].blocking(a)
+    override def apply[A](a: => A): F[A] = Sync[F].interruptible(a)
   }
 
   def fromExecutionContext[F[_]](ec: ExecutionContext)(implicit F: Async[F]): Blocking[F] =
