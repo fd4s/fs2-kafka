@@ -1,22 +1,22 @@
-val catsEffectVersion = "3.3.13"
+val catsEffectVersion = "3.3.14"
 
-val confluentVersion = "6.2.6"
+val confluentVersion = "6.2.7"
 
-val fs2Version = "3.2.12"
+val fs2Version = "3.2.14"
 
-val kafkaVersion = "2.8.1"
+val kafkaVersion = "2.8.2"
 
-val testcontainersScalaVersion = "0.40.8"
+val testcontainersScalaVersion = "0.40.11"
 
 val vulcanVersion = "1.8.3"
 
 val munitVersion = "0.7.29"
 
-val scala212 = "2.12.16"
+val scala212 = "2.12.17"
 
-val scala213 = "2.13.8"
+val scala213 = "2.13.10"
 
-val scala3 = "3.1.3"
+val scala3 = "3.2.1"
 
 ThisBuild / tlBaseVersion := "2.5"
 
@@ -281,12 +281,16 @@ ThisBuild / mimaBinaryIssueFilters ++= {
 
       // package-private
       ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.from"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("fs2.kafka.KafkaProducer.from"),
 
       // sealed
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withDeserializers"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withSerializers"),
       ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
       ProblemFilters.exclude[FinalMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("fs2.kafka.KafkaProducerConnection.withSerializers"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.withSerializers"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.partitionsFor"),
 
       // private
         ProblemFilters.exclude[Problem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.*")
