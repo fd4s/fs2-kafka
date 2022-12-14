@@ -144,7 +144,7 @@ object TransactionalKafkaProducer {
                     KafkaProducer
                       .produceRecord(keySerializer, valueSerializer, producer, blocking)
                   )
-                  .map(_.sequence)
+                  .flatMap(_.sequence)
 
                 sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
               } {
@@ -153,7 +153,7 @@ object TransactionalKafkaProducer {
                 case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
                   blocking(producer.abortTransaction())
               }
-          }.flatten
+          }
 
         override def metrics: F[Map[MetricName, Metric]] =
           withProducer.blocking { _.metrics().asScala.toMap }
