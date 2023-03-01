@@ -23,6 +23,8 @@ private[kafka] sealed abstract class WithTransactionalProducer[F[_]] {
   def blocking[A](f: KafkaByteProducer => A): F[A] = apply {
     case (producer, blocking, _) => blocking(f(producer))
   }
+
+  def semaphore: Semaphore[F]
 }
 
 private[kafka] object WithTransactionalProducer {
@@ -70,5 +72,7 @@ private[kafka] object WithTransactionalProducer {
       f: (KafkaByteProducer, Blocking[F], ExclusiveAccess[F, A]) => F[A]
     ): F[A] =
       f(producer, _blocking, transactionSemaphore.permit.surround)
+
+    override def semaphore: Semaphore[F] = transactionSemaphore
   }
 }
