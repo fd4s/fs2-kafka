@@ -14,8 +14,7 @@ import cats.effect.implicits._
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
-import scala.jdk.CollectionConverters._
-import scala.jdk.DurationConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
@@ -682,7 +681,7 @@ object KafkaConsumer {
   def stream[F[_], K, V](
     settings: ConsumerSettings[F, K, V]
   )(implicit F: Async[F], mk: MkConsumer[F]): Stream[F, KafkaConsumer[F, K, V]] =
-    Stream.resource(resource(settings))
+    Stream.resource(resource(settings)(F, mk))
 
   def apply[F[_]]: ConsumerPartiallyApplied[F] =
     new ConsumerPartiallyApplied()
@@ -704,7 +703,7 @@ object KafkaConsumer {
       implicit F: Async[F],
       mk: MkConsumer[F]
     ): Resource[F, KafkaConsumer[F, K, V]] =
-      KafkaConsumer.resource(settings)
+      KafkaConsumer.resource(settings)(F, mk)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -720,7 +719,7 @@ object KafkaConsumer {
       implicit F: Async[F],
       mk: MkConsumer[F]
     ): Stream[F, KafkaConsumer[F, K, V]] =
-      KafkaConsumer.stream(settings)
+      KafkaConsumer.stream(settings)(F, mk)
 
     override def toString: String =
       "ConsumerPartiallyApplied$" + System.identityHashCode(this)

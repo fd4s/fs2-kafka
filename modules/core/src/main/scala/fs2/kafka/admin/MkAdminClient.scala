@@ -9,7 +9,7 @@ package fs2.kafka.admin
 import cats.effect.Sync
 import fs2.kafka.AdminClientSettings
 import org.apache.kafka.clients.admin.AdminClient
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 
 /**
   * A capability trait representing the ability to instantiate the Java

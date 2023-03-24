@@ -9,7 +9,7 @@ package fs2.kafka.internal
 import cats.effect.std.Semaphore
 import cats.effect.{Async, MonadCancelThrow, Resource}
 import cats.implicits._
-import scala.jdk.DurationConverters._
+import fs2.kafka.internal.syntax._
 import fs2.kafka.producer.MkProducer
 import fs2.kafka.{KafkaByteProducer, TransactionalProducerSettings}
 

@@ -10,7 +10,7 @@ import cats.effect.{Async, Resource}
 import cats.syntax.all._
 import fs2.kafka.consumer.MkConsumer
 import fs2.kafka.{ConsumerSettings, KafkaByteConsumer}
-import scala.jdk.DurationConverters._
+import fs2.kafka.internal.syntax._
 
 private[kafka] sealed abstract class WithConsumer[F[_]] {
   def blocking[A](f: KafkaByteConsumer => A): F[A]

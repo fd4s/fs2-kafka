@@ -6,7 +6,6 @@
 
 package fs2
 
-import fs2.Chunk
 import cats.Traverse
 import cats.effect._
 

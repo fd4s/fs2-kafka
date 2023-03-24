@@ -9,7 +9,7 @@ package fs2.kafka.producer
 import cats.effect.Sync
 import fs2.kafka.{KafkaByteProducer, ProducerSettings}
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 
 /**
   * A capability trait representing the ability to instantiate the Java

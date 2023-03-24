@@ -8,7 +8,7 @@ package fs2.kafka
 
 import cats.data.{Chain, NonEmptyChain}
 import cats.{Eq, Show}
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 
 /**
