@@ -11,6 +11,7 @@ import cats.syntax.all._
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
+import org.apache.kafka.common.{Metric, MetricName, PartitionInfo}
 
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
@@ -41,7 +42,7 @@ sealed abstract class KafkaProducerConnection[F[_]] {
   def withSerializers[K, V](
     keySerializer: KeySerializer[F, K],
     valueSerializer: ValueSerializer[F, V]
-  ): KafkaProducer.Metrics[F, K, V]
+  ): KafkaProducer.PartitionsFor[F, K, V]
 
   /**
     * Creates a new [[KafkaProducer]] in the `F` context,
@@ -53,7 +54,11 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     */
   def withSerializersFrom[K, V](
     settings: ProducerSettings[F, K, V]
-  ): F[KafkaProducer.Metrics[F, K, V]]
+  ): F[KafkaProducer.PartitionsFor[F, K, V]]
+
+  def partitionsFor(
+    topic: String
+  ): F[List[PartitionInfo]]
 }
 
 object KafkaProducerConnection {
@@ -132,13 +137,16 @@ object KafkaProducerConnection {
         override def withSerializers[K, V](
           keySerializer: KeySerializer[G, K],
           valueSerializer: ValueSerializer[G, V]
-        ): KafkaProducer.Metrics[G, K, V] =
+        ): KafkaProducer.PartitionsFor[G, K, V] =
           KafkaProducer.from(this, keySerializer, valueSerializer)
 
         override def withSerializersFrom[K, V](
           settings: ProducerSettings[G, K, V]
-        ): G[KafkaProducer.Metrics[G, K, V]] =
+        ): G[KafkaProducer.PartitionsFor[G, K, V]] =
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
+
+        override def partitionsFor(topic: String): G[List[PartitionInfo]] =
+          withProducer.blocking { _.partitionsFor(topic).asScala.toList }
 
       }
     }

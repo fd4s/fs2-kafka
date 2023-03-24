@@ -11,7 +11,7 @@ import cats.effect.unsafe.implicits.global
 import fs2.kafka.Headers
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
-import vulcan.{AvroError, Codec}
+import vulcan.Codec
 
 final class AvroDeserializerSpec extends AnyFunSpec {
   describe("AvroDeserializer") {
@@ -24,12 +24,8 @@ final class AvroDeserializerSpec extends AnyFunSpec {
     }
 
     it("raises schema errors") {
-      val codec: Codec[Int] =
-        Codec.instance(
-          Left(AvroError("error")),
-          _ => Left(AvroError("encode")),
-          (_, _) => Left(AvroError("decode"))
-        )
+      val codec: Codec[BigDecimal] =
+        Codec.decimal(-1, -1)
 
       val deserializer =
         avroDeserializer(codec).using(avroSettings)
