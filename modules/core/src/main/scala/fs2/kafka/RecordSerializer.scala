@@ -6,7 +6,8 @@
 
 package fs2.kafka
 
-import cats.Applicative
+import cats.{Applicative, Functor}
+import cats.syntax.all._
 
 /**
   * Serializer which may vary depending on whether a record
@@ -19,11 +20,26 @@ sealed abstract class RecordSerializer[F[_], A] {
 
   def forValue: F[Serializer[F, A]]
 
-  final def option(implicit F: Applicative[F]): RecordSerializer[F, Option[A]] =
+  /**
+    * Returns a new [[RecordSerializer]] instance applying the specified mapping functions to key and value serializers
+    */
+  final def bimap[B](
+    fKey: Serializer[F, A] => Serializer[F, B],
+    fValue: Serializer[F, A] => Serializer[F, B]
+  )(implicit F: Functor[F]): RecordSerializer[F, B] =
     RecordSerializer.instance(
-      forKey = F.map(forKey)(_.option),
-      forValue = F.map(forValue)(_.option)
+      forKey = forKey.map(fKey),
+      forValue = forValue.map(fValue)
     )
+
+  /**
+    * Returns a new [[RecordSerializer]] instance that will serialize key and value `Some` values
+    * using the specific [[Serializer]], and serialize `None` as `null`.
+    *
+    * See [[Serializer.option]] for more details.
+    */
+  final def option(implicit F: Functor[F]): RecordSerializer[F, Option[A]] =
+    bimap(fKey = _.option, fValue = _.option)
 }
 
 object RecordSerializer {

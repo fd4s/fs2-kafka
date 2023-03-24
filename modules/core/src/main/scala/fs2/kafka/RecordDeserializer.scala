@@ -20,12 +20,33 @@ sealed abstract class RecordDeserializer[F[_], A] {
   def forValue: F[Deserializer[F, A]]
 
   /**
+    * Returns a new [[RecordDeserializer]] instance applying the specified mapping functions to key and value deserializers
+    */
+  final def bimap[B](
+    fKey: Deserializer[F, A] => Deserializer[F, B],
+    fValue: Deserializer[F, A] => Deserializer[F, B]
+  )(implicit F: Functor[F]): RecordDeserializer[F, B] =
+    RecordDeserializer.instance(
+      forKey = forKey.map(fKey),
+      forValue = forValue.map(fValue)
+    )
+
+  /**
     * Returns a new [[RecordDeserializer]] instance that will catch deserialization
     * errors and return them as a value, allowing user code to handle them without
     * causing the consumer to fail.
     */
   final def attempt(implicit F: Functor[F]): RecordDeserializer[F, Either[Throwable, A]] =
-    RecordDeserializer.instance(forKey.map(_.attempt), forValue.map(_.attempt))
+    bimap(_.attempt, _.attempt)
+
+  /**
+    * Returns a new [[RecordDeserializer]] instance that will deserialize key and value returning `None` when the
+    * bytes are `null`, and otherwise returns the result wrapped in `Some`.
+    *
+    * See [[Deserializer.option]] for more details.
+    */
+  final def option(implicit F: Functor[F]): RecordDeserializer[F, Option[A]] =
+    bimap(_.option, _.option)
 }
 
 object RecordDeserializer {
