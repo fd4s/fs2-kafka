@@ -1,6 +1,6 @@
 val catsEffectVersion = "3.3.14"
 
-val confluentVersion = "6.2.7"
+val confluentVersion = "6.2.9"
 
 val fs2Version = "3.2.14"
 
@@ -211,7 +211,7 @@ ThisBuild / githubWorkflowArtifactUpload := false
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
 
 ThisBuild / githubWorkflowPublishTargetBranches :=
-  Seq(RefPredicate.StartsWith(Ref.Tag("v")))
+  Seq(RefPredicate.StartsWith(Ref.Branch("series/")))
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
