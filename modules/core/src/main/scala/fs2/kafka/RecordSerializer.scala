@@ -14,9 +14,16 @@ import cats.Applicative
   * a creation effect.
   */
 sealed abstract class RecordSerializer[F[_], A] {
+
   def forKey: F[Serializer[F, A]]
 
   def forValue: F[Serializer[F, A]]
+
+  final def option(implicit F: Applicative[F]): RecordSerializer[F, Option[A]] =
+    RecordSerializer.instance(
+      forKey = F.map(forKey)(_.option),
+      forValue = F.map(forValue)(_.option)
+    )
 }
 
 object RecordSerializer {
