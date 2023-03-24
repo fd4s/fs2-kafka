@@ -8,7 +8,7 @@ val kafkaVersion = "2.8.2"
 
 val testcontainersScalaVersion = "0.40.1"
 
-val vulcanVersion = "1.8.3"
+val vulcanVersion = "1.8.4"
 
 val munitVersion = "0.7.29"
 
@@ -16,7 +16,7 @@ val scala212 = "2.12.17"
 
 val scala213 = "2.13.10"
 
-val scala3 = "3.0.1"
+val scala3 = "3.2.2"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
