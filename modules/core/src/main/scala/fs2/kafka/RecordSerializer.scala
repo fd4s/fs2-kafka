@@ -21,15 +21,14 @@ sealed abstract class RecordSerializer[F[_], A] {
   def forValue: F[Serializer[F, A]]
 
   /**
-    * Returns a new [[RecordSerializer]] instance applying the specified mapping functions to key and value serializers
+    * Returns a new [[RecordSerializer]] instance applying the mapping function to key and value serializers
     */
-  final def bimap[B](
-    fKey: Serializer[F, A] => Serializer[F, B],
-    fValue: Serializer[F, A] => Serializer[F, B]
+  final def map[B](
+    f: Serializer[F, A] => Serializer[F, B]
   )(implicit F: Functor[F]): RecordSerializer[F, B] =
     RecordSerializer.instance(
-      forKey = forKey.map(fKey),
-      forValue = forValue.map(fValue)
+      forKey = forKey.map(f),
+      forValue = forValue.map(f)
     )
 
   /**
@@ -39,7 +38,7 @@ sealed abstract class RecordSerializer[F[_], A] {
     * See [[Serializer.option]] for more details.
     */
   final def option(implicit F: Functor[F]): RecordSerializer[F, Option[A]] =
-    bimap(fKey = _.option, fValue = _.option)
+    map(_.option)
 }
 
 object RecordSerializer {
@@ -60,8 +59,8 @@ object RecordSerializer {
     forKey: => F[Serializer[F, A]],
     forValue: => F[Serializer[F, A]]
   ): RecordSerializer[F, A] = {
-    def _forKey = forKey
-    def _forValue = forValue
+    def _forKey: F[Serializer[F, A]] = forKey
+    def _forValue: F[Serializer[F, A]] = forValue
 
     new RecordSerializer[F, A] {
       override def forKey: F[Serializer[F, A]] =

@@ -15,20 +15,20 @@ import cats.{Applicative, Functor}
   * a creation effect.
   */
 sealed abstract class RecordDeserializer[F[_], A] {
+
   def forKey: F[Deserializer[F, A]]
 
   def forValue: F[Deserializer[F, A]]
 
   /**
-    * Returns a new [[RecordDeserializer]] instance applying the specified mapping functions to key and value deserializers
+    * Returns a new [[RecordDeserializer]] instance applying the mapping function to key and value deserializers
     */
-  final def bimap[B](
-    fKey: Deserializer[F, A] => Deserializer[F, B],
-    fValue: Deserializer[F, A] => Deserializer[F, B]
+  final def map[B](
+    f: Deserializer[F, A] => Deserializer[F, B]
   )(implicit F: Functor[F]): RecordDeserializer[F, B] =
     RecordDeserializer.instance(
-      forKey = forKey.map(fKey),
-      forValue = forValue.map(fValue)
+      forKey = forKey.map(f),
+      forValue = forValue.map(f)
     )
 
   /**
@@ -37,7 +37,7 @@ sealed abstract class RecordDeserializer[F[_], A] {
     * causing the consumer to fail.
     */
   final def attempt(implicit F: Functor[F]): RecordDeserializer[F, Either[Throwable, A]] =
-    bimap(_.attempt, _.attempt)
+    map(_.attempt)
 
   /**
     * Returns a new [[RecordDeserializer]] instance that will deserialize key and value returning `None` when the
@@ -46,7 +46,7 @@ sealed abstract class RecordDeserializer[F[_], A] {
     * See [[Deserializer.option]] for more details.
     */
   final def option(implicit F: Functor[F]): RecordDeserializer[F, Option[A]] =
-    bimap(_.option, _.option)
+    map(_.option)
 }
 
 object RecordDeserializer {
@@ -67,8 +67,8 @@ object RecordDeserializer {
     forKey: => F[Deserializer[F, A]],
     forValue: => F[Deserializer[F, A]]
   ): RecordDeserializer[F, A] = {
-    def _forKey = forKey
-    def _forValue = forValue
+    def _forKey: F[Deserializer[F, A]] = forKey
+    def _forValue: F[Deserializer[F, A]] = forValue
 
     new RecordDeserializer[F, A] {
       override def forKey: F[Deserializer[F, A]] =
