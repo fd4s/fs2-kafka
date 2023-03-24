@@ -137,27 +137,23 @@ object TransactionalKafkaProducer {
           records: Chunk[ProducerRecord[K, V]],
           sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-          if (records.isEmpty) F.pure(Chunk.empty)
-          else {
+          withProducer.exclusiveAccess { (producer, blocking) =>
+            blocking(producer.beginTransaction())
+              .bracketCase { _ =>
+                val produce = records
+                  .traverse(
+                    KafkaProducer
+                      .produceRecord(keySerializer, valueSerializer, producer, blocking)
+                  )
+                  .flatMap(_.sequence)
 
-            withProducer.exclusiveAccess { (producer, blocking) =>
-              blocking(producer.beginTransaction())
-                .bracketCase { _ =>
-                  val produce = records
-                    .traverse(
-                      KafkaProducer
-                        .produceRecord(keySerializer, valueSerializer, producer, blocking)
-                    )
-                    .map(_.sequence)
-
-                  sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
-                } {
-                  case (_, Outcome.Succeeded(_)) =>
-                    blocking(producer.commitTransaction())
-                  case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                    blocking(producer.abortTransaction())
-                }
-            }.flatten
+                sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
+              } {
+                case (_, Outcome.Succeeded(_)) =>
+                  blocking(producer.commitTransaction())
+                case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
+                  blocking(producer.abortTransaction())
+              }
           }
 
         override def metrics: F[Map[MetricName, Metric]] =
