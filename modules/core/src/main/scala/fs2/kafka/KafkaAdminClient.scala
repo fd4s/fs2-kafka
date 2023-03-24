@@ -334,13 +334,15 @@ object KafkaAdminClient {
     partitions: G[TopicPartition]
   ): ListConsumerGroupOffsetsForPartitions[F] =
     new ListConsumerGroupOffsetsForPartitions[F] {
-      private[this] def options: ListConsumerGroupOffsetsOptions =
-        new ListConsumerGroupOffsetsOptions().topicPartitions(partitions.asJava)
+
+      private[this] val groupOffsets = Map(
+        groupId -> new ListConsumerGroupOffsetsSpec().topicPartitions(partitions.asJava)
+      ).asJava
 
       override def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]] =
         withAdminClient { adminClient =>
           adminClient
-            .listConsumerGroupOffsets(groupId, options)
+            .listConsumerGroupOffsets(groupOffsets)
             .partitionsToOffsetAndMetadata
 
         }.map(_.toMap)
