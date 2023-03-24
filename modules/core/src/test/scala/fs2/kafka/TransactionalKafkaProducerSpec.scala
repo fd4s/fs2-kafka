@@ -152,7 +152,6 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   it("should be able to commit offset without producing records in a transaction") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
-      val toPassthrough = "passthrough"
       val commitState = new AtomicBoolean(false)
       implicit val mk: MkProducer[IO] = new MkProducer[IO] {
         def apply[G[_]](settings: ProducerSettings[G, _, _]): IO[KafkaByteProducer] =
@@ -164,10 +163,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             ) {
               override def sendOffsetsToTransaction(
                 offsets: util.Map[TopicPartition, OffsetAndMetadata],
-                consumerGroupId: String
+                consumerGroupMetadata: ConsumerGroupMetadata
               ): Unit = {
                 commitState.set(true)
-                super.sendOffsetsToTransaction(offsets, consumerGroupId)
+                super.sendOffsetsToTransaction(offsets, consumerGroupMetadata)
               }
             }
           }
@@ -188,15 +187,11 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             _ => IO.unit
           )
 
-        records = TransactionalProducerRecords(
-          Chunk.seq(0 to 100).map(i => CommittableProducerRecords(Chunk.empty, offsets(i))),
-          toPassthrough
-        )
+        records = Chunk.seq(0 to 100).map(i => CommittableProducerRecords(Chunk.empty, offsets(i)))
 
         results <- Stream.eval(producer.produce(records))
       } yield {
-        results.passthrough shouldBe toPassthrough
-        results.records should be(empty)
+        results should be(empty)
         commitState.get shouldBe true
       }
     }.compile.lastOrError.unsafeRunSync()

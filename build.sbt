@@ -16,7 +16,7 @@ val munitVersion = "0.7.29"
 
 val scala2 = "2.13.10"
 
-val scala3 = "3.2.1"
+val scala3 = "3.2.2"
 
 ThisBuild / tlBaseVersion := "3.0"
 

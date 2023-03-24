@@ -9,11 +9,11 @@ package fs2.kafka
 import cats.{Apply, Functor}
 import cats.effect._
 import cats.syntax.all._
-import fs2.{Chunk, _}
+import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
-import org.apache.kafka.common.{Metric, MetricName}
+import org.apache.kafka.common.{Metric, MetricName, PartitionInfo}
 
 import scala.annotation.nowarn
 import scala.concurrent.Promise
