@@ -11,10 +11,12 @@ import cats.syntax.all._
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
-import org.apache.kafka.common.{Metric, MetricName, PartitionInfo}
+import org.apache.kafka.common.PartitionInfo
 
 import scala.annotation.nowarn
 import scala.jdk.CollectionConverters._
+import org.apache.kafka.common.MetricName
+import org.apache.kafka.common.Metric
 
 /**
   * [[KafkaProducerConnection]] represents a connection to a Kafka broker
