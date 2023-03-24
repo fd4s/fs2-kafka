@@ -99,7 +99,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.8]
+        scala: [2.13.10]
         java: [temurin@8]
     runs-on: ${{ matrix.os }}
     steps:
