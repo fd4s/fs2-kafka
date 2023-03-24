@@ -77,7 +77,9 @@ resolvers += <span class="hljs-string">"confluent"</span> at <span class="hljs-s
       field(<span class="hljs-string">"age"</span>, _.age)
     ).mapN(<span class="hljs-type">Person</span>(_, _))
   }
-<span class="hljs-comment">// personCodec: Codec[Person] = Codec({</span>
+<span class="hljs-comment">// personCodec: Codec[Person] = WithTypeName(</span>
+<span class="hljs-comment">//   codec = Validated(</span>
+<span class="hljs-comment">//     codec = Codec({</span>
 <span class="hljs-comment">//   "type" : "record",</span>
 <span class="hljs-comment">//   "name" : "Person",</span>
 <span class="hljs-comment">//   "namespace" : "com.example",</span>
@@ -88,7 +90,11 @@ resolvers += <span class="hljs-string">"confluent"</span> at <span class="hljs-s
 <span class="hljs-comment">//     "name" : "age",</span>
 <span class="hljs-comment">//     "type" : [ "null", "int" ]</span>
 <span class="hljs-comment">//   } ]</span>
-<span class="hljs-comment">// })</span>
+<span class="hljs-comment">// }),</span>
+<span class="hljs-comment">//     validSchema = {"type":"record","name":"Person","namespace":"com.example","fields":[{"name":"name","type":"string"},{"name":"age","type":["null","int"]}]}</span>
+<span class="hljs-comment">//   ),</span>
+<span class="hljs-comment">//   typeName = "com.example.Person"</span>
+<span class="hljs-comment">// )</span>
 </code></pre>
 <p>We then define <code>AvroSettings</code>, describing the schema registry settings.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.<span class="hljs-type">IO</span>
