@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -330,13 +330,15 @@ object KafkaAdminClient {
     partitions: G[TopicPartition]
   ): ListConsumerGroupOffsetsForPartitions[F] =
     new ListConsumerGroupOffsetsForPartitions[F] {
-      private[this] def options: ListConsumerGroupOffsetsOptions =
-        new ListConsumerGroupOffsetsOptions().topicPartitions(partitions.asJava)
+
+      private[this] val groupOffsets = Map(
+        groupId -> new ListConsumerGroupOffsetsSpec().topicPartitions(partitions.asJava)
+      ).asJava
 
       override def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]] =
         withAdminClient { adminClient =>
           adminClient
-            .listConsumerGroupOffsets(groupId, options)
+            .listConsumerGroupOffsets(groupOffsets)
             .partitionsToOffsetAndMetadata
         }.map(_.toMap)
 
