@@ -23,7 +23,7 @@ sealed abstract class RecordDeserializer[F[_], A] {
   /**
     * Returns a new [[RecordDeserializer]] instance applying the mapping function to key and value deserializers
     */
-  final def map[B](
+  final def transform[B](
     f: Deserializer[F, A] => Deserializer[F, B]
   )(implicit F: Functor[F]): RecordDeserializer[F, B] =
     RecordDeserializer.instance(
@@ -37,7 +37,7 @@ sealed abstract class RecordDeserializer[F[_], A] {
     * causing the consumer to fail.
     */
   final def attempt(implicit F: Functor[F]): RecordDeserializer[F, Either[Throwable, A]] =
-    map(_.attempt)
+    transform(_.attempt)
 
   /**
     * Returns a new [[RecordDeserializer]] instance that will deserialize key and value returning `None` when the
@@ -46,7 +46,7 @@ sealed abstract class RecordDeserializer[F[_], A] {
     * See [[Deserializer.option]] for more details.
     */
   final def option(implicit F: Functor[F]): RecordDeserializer[F, Option[A]] =
-    map(_.option)
+    transform(_.option)
 }
 
 object RecordDeserializer {

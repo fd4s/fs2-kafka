@@ -23,7 +23,7 @@ sealed abstract class RecordSerializer[F[_], A] {
   /**
     * Returns a new [[RecordSerializer]] instance applying the mapping function to key and value serializers
     */
-  final def map[B](
+  final def transform[B](
     f: Serializer[F, A] => Serializer[F, B]
   )(implicit F: Functor[F]): RecordSerializer[F, B] =
     RecordSerializer.instance(
@@ -38,7 +38,7 @@ sealed abstract class RecordSerializer[F[_], A] {
     * See [[Serializer.option]] for more details.
     */
   final def option(implicit F: Functor[F]): RecordSerializer[F, Option[A]] =
-    map(_.option)
+    transform(_.option)
 }
 
 object RecordSerializer {
