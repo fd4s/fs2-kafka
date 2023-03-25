@@ -1,14 +1,14 @@
-val catsEffectVersion = "3.3.14"
+val catsEffectVersion = "3.4.8"
 
-val confluentVersion = "6.2.7"
+val confluentVersion = "6.2.9"
 
-val fs2Version = "3.2.14"
+val fs2Version = "3.6.1"
 
 val kafkaVersion = "2.8.2"
 
-val testcontainersScalaVersion = "0.40.11"
+val testcontainersScalaVersion = "0.40.12"
 
-val vulcanVersion = "1.8.3"
+val vulcanVersion = "1.9.0"
 
 val munitVersion = "0.7.29"
 
@@ -16,7 +16,7 @@ val scala212 = "2.12.17"
 
 val scala213 = "2.13.10"
 
-val scala3 = "3.2.1"
+val scala3 = "3.2.2"
 
 ThisBuild / tlBaseVersion := "2.5"
 
@@ -108,7 +108,7 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "discipline-scalatest" % "2.2.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.11"
+    "ch.qos.logback" % "logback-classic" % "1.3.6"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
