@@ -6,7 +6,8 @@
 
 package fs2.kafka
 
-import cats.Applicative
+import cats.{Applicative, Functor}
+import cats.syntax.all._
 
 /**
   * Serializer which may vary depending on whether a record
@@ -14,9 +15,30 @@ import cats.Applicative
   * a creation effect.
   */
 sealed abstract class RecordSerializer[F[_], A] {
+
   def forKey: F[Serializer[F, A]]
 
   def forValue: F[Serializer[F, A]]
+
+  /**
+    * Returns a new [[RecordSerializer]] instance applying the mapping function to key and value serializers
+    */
+  final def transform[B](
+    f: Serializer[F, A] => Serializer[F, B]
+  )(implicit F: Functor[F]): RecordSerializer[F, B] =
+    RecordSerializer.instance(
+      forKey = forKey.map(f),
+      forValue = forValue.map(f)
+    )
+
+  /**
+    * Returns a new [[RecordSerializer]] instance that will serialize key and value `Some` values
+    * using the specific [[Serializer]], and serialize `None` as `null`.
+    *
+    * See [[Serializer.option]] for more details.
+    */
+  final def option(implicit F: Functor[F]): RecordSerializer[F, Option[A]] =
+    transform(_.option)
 }
 
 object RecordSerializer {
@@ -37,8 +59,8 @@ object RecordSerializer {
     forKey: => F[Serializer[F, A]],
     forValue: => F[Serializer[F, A]]
   ): RecordSerializer[F, A] = {
-    def _forKey = forKey
-    def _forValue = forValue
+    def _forKey: F[Serializer[F, A]] = forKey
+    def _forValue: F[Serializer[F, A]] = forValue
 
     new RecordSerializer[F, A] {
       override def forKey: F[Serializer[F, A]] =
