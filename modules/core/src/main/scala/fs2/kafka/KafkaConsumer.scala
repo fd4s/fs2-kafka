@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -637,7 +637,7 @@ object KafkaConsumer {
       polls <- Resource.eval(Queue.bounded[F, Request.Poll[F]](1))
       ref <- Resource.eval(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.eval(Ref.of[F, StreamId](0))
-      dispatcher <- Dispatcher[F]
+      dispatcher <- Dispatcher.sequential[F]
       stopConsumingDeferred <- Resource.eval(Deferred[F, Unit])
       withConsumer <- WithConsumer(mk, settings)
       actor = {

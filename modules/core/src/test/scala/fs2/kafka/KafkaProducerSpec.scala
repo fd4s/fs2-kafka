@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.effect.IO
@@ -264,6 +270,28 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
           .unsafeRunSync()
 
       assert(res.nonEmpty)
+    }
+  }
+
+  describe("KafkaProducer#partitionsFor") {
+    it("should correctly return partitions for topic") {
+      withTopic { topic =>
+        val partitions = List(0, 1, 2)
+
+        createCustomTopic(topic, partitions = partitions.size)
+
+        val info =
+          KafkaProducer
+            .stream(producerSettings[IO])
+            .evalMap(_.partitionsFor(topic))
+
+        val res =
+          info.compile.lastOrError
+            .unsafeRunSync()
+
+        res.map(_.partition()) should contain theSameElementsAs partitions
+        res.map(_.topic()).toSet should contain theSameElementsAs Set(topic)
+      }
     }
   }
 }
