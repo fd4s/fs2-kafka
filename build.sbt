@@ -108,7 +108,7 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "discipline-scalatest" % "2.2.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.3.6"
+    "ch.qos.logback" % "logback-classic" % "1.4.6"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
