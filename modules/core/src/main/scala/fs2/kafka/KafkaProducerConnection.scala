@@ -14,7 +14,7 @@ import fs2.kafka.producer.MkProducer
 import org.apache.kafka.common.PartitionInfo
 
 import scala.annotation.nowarn
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.Metric
 

@@ -13,8 +13,7 @@ import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.Chunk
 import fs2.kafka._
-import scala.jdk.CollectionConverters._
-import scala.jdk.DurationConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogEntry._

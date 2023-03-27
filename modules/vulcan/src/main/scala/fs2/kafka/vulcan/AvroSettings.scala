@@ -8,7 +8,7 @@ package fs2.kafka.vulcan
 
 import cats.effect.Sync
 import cats.syntax.all._
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import org.apache.avro.Schema

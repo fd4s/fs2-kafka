@@ -13,7 +13,7 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerGroupMetadata, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
@@ -99,7 +99,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                     )
                   )
                 )
-            ) -> (key, value)
+            ) -> ((key, value))
 
         }
         passthrough <- Stream

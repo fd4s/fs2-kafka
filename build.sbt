@@ -14,7 +14,9 @@ val vulcanVersion = "1.8.4"
 
 val munitVersion = "0.7.29"
 
-val scala2 = "2.13.10"
+val scala212 = "2.12.17"
+
+val scala213 = "2.13.10"
 
 val scala3 = "3.2.2"
 
@@ -135,7 +137,7 @@ lazy val dependencySettings = Seq(
 lazy val mdocSettings = Seq(
   mdoc := (Compile / run).evaluated,
   scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-  crossScalaVersions := Seq(scala2),
+  crossScalaVersions := Seq(scala213),
   ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
   ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
   cleanFiles += (ScalaUnidoc / unidoc / target).value,
@@ -201,7 +203,7 @@ ThisBuild / githubWorkflowTargetBranches := Seq("series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
-  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala2'"))
+  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
 )
 
 ThisBuild / githubWorkflowArtifactUpload := false
@@ -269,8 +271,8 @@ lazy val noPublishSettings =
     publishArtifact := false
   )
 
-ThisBuild / scalaVersion := scala2
-ThisBuild / crossScalaVersions := Seq(scala2, scala3)
+ThisBuild / scalaVersion := scala213
+ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
 
 lazy val scalaSettings = Seq(
   Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007 but also suppresses genunine problems

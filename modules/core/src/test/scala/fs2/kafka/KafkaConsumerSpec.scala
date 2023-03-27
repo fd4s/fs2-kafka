@@ -14,7 +14,7 @@ import cats.syntax.all._
 import cats.effect.unsafe.implicits.global
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.consumer.{
   ConsumerConfig,
   CooperativeStickyAssignor,

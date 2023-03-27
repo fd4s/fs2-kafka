@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.effect.Sync
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import java.util.UUID
 import scala.util.Failure
 import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}

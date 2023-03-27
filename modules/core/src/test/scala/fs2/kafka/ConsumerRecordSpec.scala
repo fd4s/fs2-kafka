@@ -13,8 +13,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord.{NULL_SIZE, NO_TIMESTAMP
 import org.apache.kafka.common.record.TimestampType
 import org.apache.kafka.common.record.TimestampType._
 import org.scalatest._
-import scala.jdk.OptionConverters._
-
+import fs2.kafka.internal.converters.option._
 final class ConsumerRecordSpec extends BaseSpec {
   describe("ConsumerRecord#fromJava") {
     it("should convert timestamps") {
