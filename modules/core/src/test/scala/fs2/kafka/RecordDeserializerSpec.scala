@@ -11,11 +11,11 @@ class RecordDeserializerSpec extends BaseSpec {
 
       val strRecordDes: RecordDeserializer[IO, String] =
         RecordDeserializer
-          .const(IO.pure(Deserializer[IO, Int]))
+          .lift(Deserializer[IO, Int])
           .transform(_.map(_.toString))
 
       strRecordDes.forKey
-        .flatMap(_.deserialize("T1", Headers.empty, serializeToBytes(1)))
+        .use(_.deserialize("T1", Headers.empty, serializeToBytes(1)))
         .unsafeRunSync() shouldBe "1"
     }
   }
@@ -27,18 +27,18 @@ class RecordDeserializerSpec extends BaseSpec {
 
       val attemptIntRecordDes: RecordDeserializer[IO, Either[Throwable, Int]] =
         RecordDeserializer
-          .const(IO.pure(Deserializer[IO, Int].flatMap {
+          .lift(Deserializer[IO, Int].flatMap {
             case 1 => Deserializer[IO, Int]
             case _ => Deserializer.failWith[IO, Int]("Unsupported value")
-          }))
+          })
           .attempt
 
       attemptIntRecordDes.forKey
-        .flatMap(_.deserialize("T1", Headers.empty, serializeToBytes(1)))
+        .use(_.deserialize("T1", Headers.empty, serializeToBytes(1)))
         .unsafeRunSync() shouldBe Right(1)
 
       attemptIntRecordDes.forKey
-        .flatMap(_.deserialize("T1", Headers.empty, null))
+        .use(_.deserialize("T1", Headers.empty, null))
         .unsafeRunSync()
         .isLeft shouldBe true
     }
@@ -49,15 +49,15 @@ class RecordDeserializerSpec extends BaseSpec {
 
       val optIntRecordDes: RecordDeserializer[IO, Option[Int]] =
         RecordDeserializer
-          .const(IO.pure(Deserializer[IO, Int]))
+          .lift(Deserializer[IO, Int])
           .option
 
       optIntRecordDes.forKey
-        .flatMap(_.deserialize("T1", Headers.empty, serializeToBytes(1)))
+        .use(_.deserialize("T1", Headers.empty, serializeToBytes(1)))
         .unsafeRunSync() shouldBe Some(1)
 
       optIntRecordDes.forKey
-        .flatMap(_.deserialize("T1", Headers.empty, null))
+        .use(_.deserialize("T1", Headers.empty, null))
         .unsafeRunSync() shouldBe None
     }
   }

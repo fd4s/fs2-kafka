@@ -24,7 +24,7 @@ sealed abstract class RecordDeserializer[F[_], A] {
     */
   final def transform[B](
     f: Deserializer[F, A] => Deserializer[F, B]
-  )(implicit F: Functor[F]): RecordDeserializer[F, B] =
+  ): RecordDeserializer[F, B] =
     RecordDeserializer.instance(
       forKey = forKey.map(des => f(des.asInstanceOf[Deserializer[F, A]])),
       forValue = forValue.map(des => f(des.asInstanceOf[Deserializer[F, A]]))
@@ -44,7 +44,7 @@ sealed abstract class RecordDeserializer[F[_], A] {
     *
     * See [[Deserializer.option]] for more details.
     */
-  final def option(implicit F: Functor[F]): RecordDeserializer[F, Option[A]] =
+  final def option: RecordDeserializer[F, Option[A]] =
     transform(_.option)
 }
 
@@ -66,8 +66,8 @@ object RecordDeserializer {
     forKey: => Resource[F, KeyDeserializer[F, A]],
     forValue: => Resource[F, ValueDeserializer[F, A]]
   ): RecordDeserializer[F, A] = {
-    def _forKey: F[KeyDeserializer[F, A]] = forKey
-    def _forValue: F[ValueDeserializer[F, A]] = forValue
+    def _forKey: Resource[F, KeyDeserializer[F, A]] = forKey
+    def _forValue: Resource[F, ValueDeserializer[F, A]] = forValue
 
     new RecordDeserializer[F, A] {
       override def forKey: Resource[F, KeyDeserializer[F, A]] =

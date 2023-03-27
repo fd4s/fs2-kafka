@@ -24,7 +24,7 @@ sealed abstract class RecordSerializer[F[_], A] {
     */
   final def transform[B](
     f: Serializer[F, A] => Serializer[F, B]
-  )(implicit F: Functor[F]): RecordSerializer[F, B] =
+  ): RecordSerializer[F, B] =
     RecordSerializer.instance(
       forKey = forKey.map(f.asInstanceOf[KeySerializer[F, A] => KeySerializer[F, B]]),
       forValue = forValue.map(f.asInstanceOf[ValueSerializer[F, A] => ValueSerializer[F, B]])
@@ -36,7 +36,7 @@ sealed abstract class RecordSerializer[F[_], A] {
     *
     * See [[Serializer.option]] for more details.
     */
-  final def option(implicit F: Functor[F]): RecordSerializer[F, Option[A]] =
+  final def option: RecordSerializer[F, Option[A]] =
     transform(_.option)
 }
 
@@ -58,8 +58,8 @@ object RecordSerializer {
     forKey: => Resource[F, KeySerializer[F, A]],
     forValue: => Resource[F, ValueSerializer[F, A]]
   ): RecordSerializer[F, A] = {
-    def _forKey: F[KeySerializer[F, A]] = forKey
-    def _forValue: F[ValueSerializer[F, A]] = forValue
+    def _forKey: Resource[F, KeySerializer[F, A]] = forKey
+    def _forValue: Resource[F, ValueSerializer[F, A]] = forValue
 
     new RecordSerializer[F, A] {
       override def forKey: Resource[F, KeySerializer[F, A]] =

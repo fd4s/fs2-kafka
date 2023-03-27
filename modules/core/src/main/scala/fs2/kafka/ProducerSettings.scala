@@ -43,8 +43,8 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * Replace the serializers with those provided in the arguments.
     */
   def withSerializers[K1, V1](
-    keySerializer: F[KeySerializer[F, K1]],
-    valueSerializer: F[ValueSerializer[F, V1]]
+    keySerializer: Resource[F, KeySerializer[F, K1]],
+    valueSerializer: Resource[F, ValueSerializer[F, V1]]
   ): ProducerSettings[F, K1, V1]
 
   /**
@@ -304,8 +304,8 @@ object ProducerSettings {
       s"ProducerSettings(closeTimeout = $closeTimeout)"
 
     override def withSerializers[K1, V1](
-      keySerializer: F[KeySerializer[F, K1]],
-      valueSerializer: F[ValueSerializer[F, V1]]
+      keySerializer: Resource[F, KeySerializer[F, K1]],
+      valueSerializer: Resource[F, ValueSerializer[F, V1]]
     ): ProducerSettings[F, K1, V1] =
       copy(keySerializer = keySerializer, valueSerializer = valueSerializer)
   }
