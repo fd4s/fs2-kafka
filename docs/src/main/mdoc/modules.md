@@ -53,11 +53,11 @@ We can then create a `Serializer` and `Deserializer` instance for `Person`.
 
 ```scala mdoc:silent
 import cats.effect.Resource
-import fs2.kafka.{RecordSerializer, ValueDeserializer}
+import fs2.kafka.{ValueSerializer, ValueDeserializer}
 import fs2.kafka.vulcan.{avroDeserializer, avroSerializer}
 
-implicit val personSerializer: RecordSerializer[IO, Person] =
-  avroSerializer[Person].using(avroSettings)
+implicit val personSerializer: Resource[IO, ValueSerializer[IO, Person]] =
+  avroSerializer[Person].forValue(avroSettings)
 
 implicit val personDeserializer: Resource[IO, ValueDeserializer[IO, Person]] =
   avroDeserializer[Person].forValue(avroSettings)
@@ -123,8 +123,8 @@ We can then create multiple `Serializer`s and `Deserializer`s using the `AvroSet
 
 ```scala mdoc:silent
 avroSettingsSharedClient.map { avroSettings =>
-  val personSerializer: RecordSerializer[IO, Person] =
-    avroSerializer[Person].using(avroSettings)
+  val personSerializer: Resource[IO, ValueSerializer[IO, Person]] =
+    avroSerializer[Person].forValue(avroSettings)
 
   val personDeserializer: Resource[IO, ValueDeserializer[IO, Person]] =
     avroDeserializer[Person].forValue(avroSettings)

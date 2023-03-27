@@ -7,8 +7,9 @@
 package fs2.kafka
 
 import cats.Contravariant
-import cats.effect.Sync
+import cats.effect.{Resource, Sync}
 import cats.syntax.all._
+
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
@@ -260,4 +261,8 @@ object GenericSerializer {
 
   implicit def uuid[F[_]](implicit F: Sync[F]): Serializer[F, UUID] =
     Serializer.string[F].contramap(_.toString)
+
+  implicit def resource[T <: KeyOrValue, F[_], A](
+    implicit ser: GenericSerializer[T, F, A]
+  ): Resource[F, GenericSerializer[T, F, A]] = Resource.pure(ser)
 }
