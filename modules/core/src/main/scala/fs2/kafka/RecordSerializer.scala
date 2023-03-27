@@ -73,6 +73,6 @@ object RecordSerializer {
     }
   }
 
-  implicit def lift[F[_], A](implicit serializer: => Serializer[F, A]): RecordSerializer[F, A] =
+  implicit def lift[F[_], A](implicit serializer: Serializer[F, A]): RecordSerializer[F, A] =
     RecordSerializer.const(Resource.pure(serializer))
 }
