@@ -27,9 +27,9 @@ class RecordDeserializerSpec extends BaseSpec {
 
       val attemptIntRecordDes: RecordDeserializer[IO, Either[Throwable, Int]] =
         RecordDeserializer
-          .const(IO.pure(Deserializer[IO, Int].flatMap[Int] {
+          .const(IO.pure(Deserializer[IO, Int].flatMap {
             case 1 => Deserializer[IO, Int]
-            case _ => Deserializer.failWith("Unsupported value")
+            case _ => Deserializer.failWith[IO, Int]("Unsupported value")
           }))
           .attempt
 
