@@ -22,14 +22,16 @@ final class AvroSerializer[A] private[vulcan] (
         case Left(e) => Resource.pure(Serializer.fail(e.throwable))
         case Right(writerSchema) =>
           Resource
-            .make(settings.createAvroSerializer(isKey, Some(writerSchema))) { case (ser, _) => F.delay(ser.close()) }
+            .make(settings.createAvroSerializer(isKey, Some(writerSchema))) {
+              case (ser, _) => F.delay(ser.close())
+            }
             .map {
               case (serializer, _) =>
                 Serializer.instance { (topic, _, a) =>
                   F.defer {
                     codec.encode(a) match {
                       case Right(value) => F.pure(serializer.serialize(topic, value))
-                      case Left(error) => F.raiseError(error.throwable)
+                      case Left(error)  => F.raiseError(error.throwable)
                     }
                   }
                 }
