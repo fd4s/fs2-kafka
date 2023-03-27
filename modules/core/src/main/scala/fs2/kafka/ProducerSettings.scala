@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -38,6 +38,14 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     * The `Serializer` to use for serializing record values.
     */
   def valueSerializer: Resource[F, ValueSerializer[F, V]]
+
+  /**
+    * Replace the serializers with those provided in the arguments.
+    */
+  def withSerializers[K1, V1](
+    keySerializer: F[KeySerializer[F, K1]],
+    valueSerializer: F[ValueSerializer[F, V1]]
+  ): ProducerSettings[F, K1, V1]
 
   /**
     * A custom [[ExecutionContext]] to use for blocking Kafka operations.
@@ -294,6 +302,12 @@ object ProducerSettings {
 
     override def toString: String =
       s"ProducerSettings(closeTimeout = $closeTimeout)"
+
+    override def withSerializers[K1, V1](
+      keySerializer: F[KeySerializer[F, K1]],
+      valueSerializer: F[ValueSerializer[F, V1]]
+    ): ProducerSettings[F, K1, V1] =
+      copy(keySerializer = keySerializer, valueSerializer = valueSerializer)
   }
 
   private[this] def create[F[_], K, V](
@@ -341,10 +355,7 @@ object ProducerSettings {
     implicit keySerializer: RecordSerializer[F, K],
     valueSerializer: RecordSerializer[F, V]
   ): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = keySerializer.forKey,
-      valueSerializer = valueSerializer.forValue
-    )
+    create(keySerializer = keySerializer.forKey, valueSerializer = valueSerializer.forValue)
 
   implicit def producerSettingsShow[F[_], K, V]: Show[ProducerSettings[F, K, V]] =
     Show.fromToString

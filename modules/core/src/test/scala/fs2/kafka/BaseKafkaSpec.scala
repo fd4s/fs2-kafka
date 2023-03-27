@@ -1,38 +1,16 @@
 /*
-This file contains code derived from the Embedded Kafka library
-(https://github.com/embeddedkafka/embedded-kafka), the license for which is reproduced below.
-
-   The MIT License (MIT)
-
-   Copyright (c) 2016 Emanuele Blanco
-
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to deal
-   in the Software without restriction, including without limitation the rights
-   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   copies of the Software, and to permit persons to whom the Software is
-   furnished to do so, subject to the following conditions:
-
-   The above copyright notice and this permission notice shall be included in all
-   copies or substantial portions of the Software.
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-   SOFTWARE.
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
  */
+
 package fs2.kafka
 
 import cats.effect.Sync
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import java.util.UUID
-
 import scala.util.Failure
-import com.dimafeng.testcontainers.{KafkaContainer, ForEachTestContainer}
-
+import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer}
 import org.apache.kafka.clients.producer.{
@@ -44,19 +22,22 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 import scala.concurrent.duration._
 import org.apache.kafka.clients.admin.NewTopic
+
 import scala.util.Try
 import org.apache.kafka.clients.admin.AdminClient
-
 import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
 import org.apache.kafka.common.{KafkaException, TopicPartition}
+
 import scala.collection.mutable.ListBuffer
 import java.util.concurrent.TimeoutException
 import org.apache.kafka.common.serialization.StringSerializer
+
 import java.util.concurrent.TimeUnit
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.Args
+import org.testcontainers.utility.DockerImageName
 
-abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
+abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
   final val adminClientCloseTimeout: FiniteDuration = 2.seconds
   final val transactionTimeoutInterval: FiniteDuration = 1.second
@@ -66,20 +47,25 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForEachTestContainer {
 
   override def runTest(testName: String, args: Args) = super.runTest(testName, args)
 
-  override val container: KafkaContainer = new KafkaContainer()
-    .configure { container =>
-      container
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
-        .withEnv(
-          "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
-          transactionTimeoutInterval.toMillis.toString
-        )
-        .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
-        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.auth.SimpleAclAuthorizer")
-        .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
+  private val imageVersion = "7.2.0"
 
-      ()
-    }
+  private lazy val imageName = "confluentinc/cp-kafka"
+
+  override val container: KafkaContainer =
+    new KafkaContainer(DockerImageName.parse(s"$imageName:$imageVersion"))
+      .configure { container =>
+        container
+          .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+          .withEnv(
+            "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
+            transactionTimeoutInterval.toMillis.toString
+          )
+          .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+          .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
+          .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
+
+        ()
+      }
 
   implicit final val stringSerializer: KafkaSerializer[String] = new StringSerializer
 

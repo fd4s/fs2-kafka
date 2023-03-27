@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -18,19 +18,23 @@ final class AvroSerializer[A] private[vulcan] (
     settings: AvroSettings[F]
   )(implicit F: Sync[F]): RecordSerializer[F, A] = {
     def createSerializer(isKey: Boolean): Resource[F, Serializer[F, A]] =
-      Resource
-        .make(settings.createAvroSerializer(isKey)) { case (ser, _) => F.delay(ser.close()) }
-        .map {
-          case (serializer, _) =>
-            Serializer.instance { (topic, _, a) =>
-              F.defer {
-                codec.encode(a) match {
-                  case Right(value) => F.pure(serializer.serialize(topic, value))
-                  case Left(error)  => F.raiseError(error.throwable)
+      codec.schema match {
+        case Left(e) => Resource.pure(Serializer.fail(e.throwable))
+        case Right(writerSchema) =>
+          Resource
+            .make(settings.createAvroSerializer(isKey, Some(writerSchema))) { case (ser, _) => F.delay(ser.close()) }
+            .map {
+              case (serializer, _) =>
+                Serializer.instance { (topic, _, a) =>
+                  F.defer {
+                    codec.encode(a) match {
+                      case Right(value) => F.pure(serializer.serialize(topic, value))
+                      case Left(error) => F.raiseError(error.throwable)
+                    }
+                  }
                 }
-              }
             }
-        }
+      }
 
     RecordSerializer.instance(
       forKey = createSerializer(true),

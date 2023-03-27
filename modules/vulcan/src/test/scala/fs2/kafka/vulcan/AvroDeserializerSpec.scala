@@ -1,10 +1,17 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka.vulcan
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import fs2.kafka.Headers
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
-import vulcan.{AvroError, Codec}
+import vulcan.Codec
 
 final class AvroDeserializerSpec extends AnyFunSpec {
   describe("AvroDeserializer") {
@@ -17,18 +24,21 @@ final class AvroDeserializerSpec extends AnyFunSpec {
     }
 
     it("raises schema errors") {
-      val codec: Codec[Int] =
-        Codec.instance(
-          Left(AvroError("error")),
-          _ => Left(AvroError("encode")),
-          (_, _) => Left(AvroError("decode"))
-        )
+      val codec: Codec[BigDecimal] =
+        Codec.decimal(-1, -1)
 
       val deserializer =
         avroDeserializer(codec).using(avroSettings)
 
       assert(deserializer.forKey.use(IO.pure).attempt.unsafeRunSync().isLeft)
       assert(deserializer.forValue.use(IO.pure).attempt.unsafeRunSync().isLeft)
+    }
+
+    it("raises IllegalArgumentException if the data is null") {
+      val deserializer = AvroDeserializer[String].using(avroSettings)
+      intercept[IllegalArgumentException] {
+        deserializer.forKey.flatMap(_.deserialize("foo", Headers.empty, null)).unsafeRunSync()
+      }
     }
 
     it("toString") {

@@ -1,32 +1,38 @@
-val catsEffectVersion = "3.3.7"
+val catsEffectVersion = "3.4.8"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "7.0.1"
+val confluentVersion = "7.3.2"
 
-val fs2Version = "3.2.5"
+val fs2Version = "3.6.1"
 
-val kafkaVersion = "3.1.0"
+val kafkaVersion = "3.3.2"
 
-val testcontainersScalaVersion = "0.40.0"
+val testcontainersScalaVersion = "0.40.14"
 
-val vulcanVersion = "1.8.0"
+val vulcanVersion = "1.9.0"
 
 val munitVersion = "0.7.29"
 
-val scala2 = "2.13.8"
+val scala212 = "2.12.17"
 
-val scala3 = "3.1.1"
+val scala213 = "2.13.10"
+
+val scala3 = "3.2.2"
+
+ThisBuild / tlBaseVersion := "3.0"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
   .settings(
-    mimaSettings,
+    // Prevent spurious "mimaPreviousArtifacts is empty, not analyzing binary compatibility" message for root project
+    mimaReportBinaryIssues := {},
     scalaSettings,
     noPublishSettings,
     console := (core / Compile / console).value,
     Test / console := (core / Test / console).value
   )
+  .enablePlugins(TypelevelMimaPlugin)
   .aggregate(core, vulcan, `vulcan-testkit-munit`)
 
 lazy val core = project
@@ -42,7 +48,6 @@ lazy val core = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
     testSettings
   )
@@ -59,7 +64,6 @@ lazy val vulcan = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
     testSettings
   )
@@ -76,9 +80,9 @@ lazy val `vulcan-testkit-munit` = project
       )
     ),
     publishSettings,
-    mimaSettings,
     scalaSettings,
-    testSettings
+    testSettings,
+    versionIntroduced("2.2.0")
   )
   .dependsOn(vulcan)
 
@@ -99,14 +103,12 @@ lazy val docs = project
 lazy val dependencySettings = Seq(
   resolvers += "confluent" at "https://packages.confluent.io/maven/",
   libraryDependencies ++= Seq(
-    ("com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion)
-      .cross(CrossVersion.for3Use2_13),
-    ("com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion)
-      .cross(CrossVersion.for3Use2_13),
-    "org.typelevel" %% "discipline-scalatest" % "2.1.5",
+    "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
+    "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
+    "org.typelevel" %% "discipline-scalatest" % "2.2.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.11"
+    "ch.qos.logback" % "logback-classic" % "1.3.6"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
@@ -135,7 +137,7 @@ lazy val dependencySettings = Seq(
 lazy val mdocSettings = Seq(
   mdoc := (Compile / run).evaluated,
   scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-  crossScalaVersions := Seq(scalaVersion.value),
+  crossScalaVersions := Seq(scala213),
   ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
   ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
   cleanFiles += (ScalaUnidoc / unidoc / target).value,
@@ -201,18 +203,19 @@ ThisBuild / githubWorkflowTargetBranches := Seq("series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
-  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala2'"))
+  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
 )
 
 ThisBuild / githubWorkflowArtifactUpload := false
 
-ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
+
 ThisBuild / githubWorkflowPublishTargetBranches :=
   Seq(RefPredicate.StartsWith(Ref.Tag("v")))
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
-    List("ci-release"), // For 3.0 release: List("ci-release", "docs/docusaurusPublishGhpages"),
+    List("tlRelease"), // For 3.0 release: List("tlRelease", "docs/docusaurusPublishGhpages"),
     env = Map(
       "GIT_DEPLOY_KEY" -> "${{ secrets.GIT_DEPLOY_KEY }}",
       "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
@@ -260,34 +263,6 @@ lazy val publishSettings =
     )
   )
 
-lazy val mimaSettings = Seq(
-  mimaPreviousArtifacts := {
-    if (publishArtifact.value) {
-      Set(organization.value %% moduleName.value % (ThisBuild / previousStableVersion).value.get)
-    } else Set()
-  },
-  mimaBinaryIssueFilters ++= {
-    import com.typesafe.tools.mima.core._
-    // format: off
-    Seq(
-      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.registerSchema"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withRegisterSchema"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.copy"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.apply"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.produce"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.metrics"),
-
-      // package-private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.from")
-    )
-    // format: on
-  }
-)
-
 lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
 
 lazy val noPublishSettings =
@@ -296,36 +271,11 @@ lazy val noPublishSettings =
     publishArtifact := false
   )
 
-ThisBuild / scalaVersion := scala2
-ThisBuild / crossScalaVersions := Seq(scala2, scala3)
+ThisBuild / scalaVersion := scala213
+ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
 
 lazy val scalaSettings = Seq(
-  scalacOptions ++= Seq(
-    "-deprecation",
-    "-encoding",
-    "UTF-8",
-    "-feature",
-    "-language:implicitConversions",
-    "-unchecked"
-  ) ++ (
-    if (scalaVersion.value.startsWith("2"))
-      Seq(
-        "-language:higherKinds",
-        "-Xlint",
-        "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-value-discard",
-        "-Ywarn-unused",
-        "-Xfatal-warnings"
-      )
-    else
-      Seq(
-        "-Ykind-projector",
-        "-source:3.0-migration",
-        "-Xignore-scala2-macros"
-      )
-  ),
-  Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007
+  Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007 but also suppresses genunine problems
   Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   Compile / unmanagedSourceDirectories ++=
@@ -352,16 +302,9 @@ def minorVersion(version: String): String = {
 }
 
 val latestVersion = settingKey[String]("Latest stable released version")
-ThisBuild / latestVersion := {
-  val snapshot = (ThisBuild / isSnapshot).value
-  val stable = (ThisBuild / isVersionStable).value
-
-  if (!snapshot && stable) {
-    (ThisBuild / version).value
-  } else {
-    (ThisBuild / previousStableVersion).value.get
-  }
-}
+ThisBuild / latestVersion := tlLatestVersion.value.getOrElse(
+  throw new IllegalStateException("No tagged version found")
+)
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 ThisBuild / updateSiteVariables := {
@@ -372,7 +315,7 @@ ThisBuild / updateSiteVariables := {
     Map[String, String](
       "organization" -> (LocalRootProject / organization).value,
       "coreModuleName" -> (core / moduleName).value,
-      "latestVersion" -> (ThisBuild / latestVersion).value,
+      "latestVersion" -> latestVersion.value,
       "scalaPublishVersions" -> {
         val minorVersions = (core / crossScalaVersions).value.map(minorVersion)
         if (minorVersions.size <= 2) minorVersions.mkString(" and ")
@@ -391,6 +334,10 @@ ThisBuild / updateSiteVariables := {
 
   IO.write(file, fileContents)
 }
+
+def versionIntroduced(v: String) = Seq(
+  tlVersionIntroduced := List("2.12", "2.13", "3").map(_ -> v).toMap
+)
 
 def addCommandsAlias(name: String, values: List[String]) =
   addCommandAlias(name, values.mkString(";", ";", ""))

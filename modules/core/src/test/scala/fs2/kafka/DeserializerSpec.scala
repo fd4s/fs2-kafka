@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.Eq
@@ -162,6 +168,18 @@ final class DeserializerSpec extends BaseCatsSpec {
           .unsafeRunSync()
           .isLeft
       }
+    }
+  }
+
+  test("Deserializer#attempt (implicit)") {
+    val deserializer =
+      Deserializer[IO, Either[Throwable, String]]
+
+    assert(deserializer.deserialize("topic", Headers.empty, null).unsafeRunSync().isLeft)
+
+    forAll { (s: String) =>
+      val serialized = Serializer[IO, String].serialize("topic", Headers.empty, s).unsafeRunSync()
+      deserializer.deserialize("topic", Headers.empty, serialized).unsafeRunSync() shouldBe Right(s)
     }
   }
 

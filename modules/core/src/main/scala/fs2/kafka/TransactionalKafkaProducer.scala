@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,7 +10,7 @@ import cats.effect.syntax.all._
 import cats.effect.{Async, Outcome, Resource}
 import cats.syntax.all._
 import fs2.kafka.internal._
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
 import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
@@ -137,27 +137,23 @@ object TransactionalKafkaProducer {
           records: Chunk[ProducerRecord[K, V]],
           sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-          if (records.isEmpty) F.pure(Chunk.empty)
-          else {
+          withProducer.exclusiveAccess { (producer, blocking) =>
+            blocking(producer.beginTransaction())
+              .bracketCase { _ =>
+                val produce = records
+                  .traverse(
+                    KafkaProducer
+                      .produceRecord(keySerializer, valueSerializer, producer, blocking)
+                  )
+                  .flatMap(_.sequence)
 
-            withProducer.exclusiveAccess { (producer, blocking) =>
-              blocking(producer.beginTransaction())
-                .bracketCase { _ =>
-                  val produce = records
-                    .traverse(
-                      KafkaProducer
-                        .produceRecord(keySerializer, valueSerializer, producer, blocking)
-                    )
-                    .map(_.sequence)
-
-                  sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
-                } {
-                  case (_, Outcome.Succeeded(_)) =>
-                    blocking(producer.commitTransaction())
-                  case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                    blocking(producer.abortTransaction())
-                }
-            }.flatten
+                sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
+              } {
+                case (_, Outcome.Succeeded(_)) =>
+                  blocking(producer.commitTransaction())
+                case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
+                  blocking(producer.abortTransaction())
+              }
           }
 
         override def metrics: F[Map[MetricName, Metric]] =
@@ -184,7 +180,7 @@ object TransactionalKafkaProducer {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
-    Stream.resource(resource(settings))
+    Stream.resource(resource(settings)(F, mk))
 
   def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
     new TransactionalProducerPartiallyApplied
@@ -206,7 +202,7 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
-      TransactionalKafkaProducer.resource(settings)
+      TransactionalKafkaProducer.resource(settings)(F, mk)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -222,7 +218,7 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
-      TransactionalKafkaProducer.stream(settings)
+      TransactionalKafkaProducer.stream(settings)(F, mk)
 
     override def toString: String =
       "TransactionalProducerPartiallyApplied$" + System.identityHashCode(this)
@@ -233,10 +229,10 @@ object TransactionalKafkaProducer {
    * to code defined in this object, ensuring factory methods require an instance
    * to be provided at the call site.
    */
-  @nowarn("cat=unused")
+  @nowarn("msg=never used")
   implicit private def mkAmbig1[F[_]]: MkProducer[F] =
     throw new AssertionError("should not be used")
-  @nowarn("cat=unused")
+  @nowarn("msg=never used")
   implicit private def mkAmbig2[F[_]]: MkProducer[F] =
     throw new AssertionError("should not be used")
 }

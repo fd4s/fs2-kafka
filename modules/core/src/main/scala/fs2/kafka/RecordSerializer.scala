@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,9 +14,30 @@ import cats.effect.Resource
   * a creation effect.
   */
 sealed abstract class RecordSerializer[F[_], A] {
+
   def forKey: Resource[F, KeySerializer[F, A]]
 
   def forValue: Resource[F, ValueSerializer[F, A]]
+
+  /**
+    * Returns a new [[RecordSerializer]] instance applying the mapping function to key and value serializers
+    */
+  final def transform[B](
+    f: Serializer[F, A] => Serializer[F, B]
+  )(implicit F: Functor[F]): RecordSerializer[F, B] =
+    RecordSerializer.instance(
+      forKey = forKey.map(f.asInstanceOf[KeySerializer[F, A] => KeySerializer[F, B]]),
+      forValue = forValue.map(f.asInstanceOf[ValueSerializer[F, A] => ValueSerializer[F, B]])
+    )
+
+  /**
+    * Returns a new [[RecordSerializer]] instance that will serialize key and value `Some` values
+    * using the specific [[Serializer]], and serialize `None` as `null`.
+    *
+    * See [[Serializer.option]] for more details.
+    */
+  final def option(implicit F: Functor[F]): RecordSerializer[F, Option[A]] =
+    transform(_.option)
 }
 
 object RecordSerializer {
@@ -37,8 +58,8 @@ object RecordSerializer {
     forKey: => Resource[F, KeySerializer[F, A]],
     forValue: => Resource[F, ValueSerializer[F, A]]
   ): RecordSerializer[F, A] = {
-    def _forKey = forKey
-    def _forValue = forValue
+    def _forKey: F[KeySerializer[F, A]] = forKey
+    def _forValue: F[ValueSerializer[F, A]] = forValue
 
     new RecordSerializer[F, A] {
       override def forKey: Resource[F, KeySerializer[F, A]] =

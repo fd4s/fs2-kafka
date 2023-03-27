@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka.vulcan
 
 import cats.effect.IO
@@ -89,10 +95,10 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
     it("should provide withCreateAvroSerializer") {
       assert {
         settings
-          .withCreateAvroSerializer {
-            case _ => IO.raiseError(new RuntimeException)
+          .withCreateAvroSerializer { (_, _, _, _) =>
+            IO.raiseError(new RuntimeException)
           }
-          .createAvroSerializer(isKey = false)
+          .createAvroSerializer(isKey = false, null)
           .attempt
           .unsafeRunSync()
           .isLeft

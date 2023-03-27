@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,11 +10,17 @@ import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
 import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.unsafeWrapArray
+import fs2.kafka.internal.converters.collection._
+
+import java.time.Duration
+import java.time.temporal.ChronoUnit
 import java.util
+import java.util.concurrent.TimeUnit
 import org.apache.kafka.common.KafkaFuture
-import org.apache.kafka.common.KafkaFuture.BaseFunction
-import scala.collection.immutable.{ArraySeq, SortedSet}
+
+import scala.collection.immutable.SortedSet
+import scala.concurrent.duration.FiniteDuration
 
 private[kafka] object syntax {
   implicit final class LoggingSyntax[F[_], A](
@@ -25,6 +31,23 @@ private[kafka] object syntax {
       logging: Logging[F]
     ): F[Unit] =
       fa.flatMap(a => logging.log(f(a)))
+  }
+
+  implicit final class FiniteDurationSyntax(
+    private val duration: FiniteDuration
+  ) extends AnyVal {
+    def toJava: Duration =
+      if (duration.length == 0L) Duration.ZERO
+      else
+        duration.unit match {
+          case TimeUnit.DAYS         => Duration.ofDays(duration.length)
+          case TimeUnit.HOURS        => Duration.ofHours(duration.length)
+          case TimeUnit.MINUTES      => Duration.ofMinutes(duration.length)
+          case TimeUnit.SECONDS      => Duration.ofSeconds(duration.length)
+          case TimeUnit.MILLISECONDS => Duration.ofMillis(duration.length)
+          case TimeUnit.MICROSECONDS => Duration.of(duration.length, ChronoUnit.MICROS)
+          case TimeUnit.NANOSECONDS  => Duration.ofNanos(duration.length)
+        }
   }
 
   implicit final class FoldableSyntax[F[_], A](
@@ -160,19 +183,11 @@ private[kafka] object syntax {
     }
   }
 
-  implicit final class KafkaFutureSyntax[A](
-    private val future: KafkaFuture[A]
+  implicit final class KafkaFutureSyntax[F[_], A](
+    private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
-    private[this] def baseFunction[B](f: A => B): BaseFunction[A, B] = f(_)
-
-    def map[B](f: A => B): KafkaFuture[B] =
-      future.thenApply(baseFunction(f))
-
-    def void: KafkaFuture[Unit] =
-      map(_ => ())
-
-    def cancelable[F[_]](implicit F: Async[F]): F[A] =
-      F.fromCompletableFuture(F.delay(future.toCompletionStage.toCompletableFuture))
+    def cancelable(implicit F: Async[F]): F[A] =
+      F.fromCompletableFuture(futureF.map(_.toCompletionStage.toCompletableFuture))
   }
 
   implicit final class KafkaHeadersSyntax(
@@ -180,7 +195,7 @@ private[kafka] object syntax {
   ) extends AnyVal {
     def asScala: Headers =
       Headers.fromSeq {
-        ArraySeq.unsafeWrapArray {
+        unsafeWrapArray {
           headers.toArray.map { header =>
             Header(header.key, header.value)
           }

@@ -266,7 +266,7 @@ Offsets commits are managed manually, which is important for ensuring at-least-o
 
 Offset commits are usually done in batches for performance reasons. We normally don't need to commit every offset, but only the last processed offset. There is a trade-off in how much reprocessing we have to do when we restart versus the performance implication of committing more frequently. Depending on our situation, we'll then choose an appropriate frequency for offset commits.
 
-We should keep the [`CommittableOffset`][committableoffset] in our `Stream` once we've finished processing the record. For at-least-once delivery, it's essential that offset commits preserve topic-partition ordering, so we have to make sure we keep offsets in the same order as we receive them. There are then several functions available for common batch committing scenarios, like `commitBatch`, `commitBatchOption`, and `commitBatchWithin`.
+We should keep the [`CommittableOffset`][committableoffset] in our `Stream` once we've finished processing the record. For at-least-once delivery, it's essential that offset commits preserve topic-partition ordering, so we have to make sure we keep offsets in the same order as we receive them. There is one convenience function for the most common batch committing scenario, `commitBatchWithin`.
 
 ```scala mdoc:silent
 object ConsumerCommitBatchExample extends IOApp.Simple {
@@ -289,7 +289,7 @@ object ConsumerCommitBatchExample extends IOApp.Simple {
 }
 ```
 
-The example above commits once every 500 offsets or 15 seconds, whichever happens first. Alternatively, `commitBatch` uses the underlying chunking of the `Stream`, committing once every `Chunk`, while the `commitBatchOption` function does the same except when offsets are wrapped in `Option`.
+The example above commits once every 500 offsets or 15 seconds, whichever happens first. The batch commit functions uses [`CommittableOffsetBatch`][committableoffsetbatch] and provided [functions][committableoffsetbatch$] for batching offsets. 
 
 The batch commit functions uses [`CommittableOffsetBatch`][committableoffsetbatch] and provided [functions][committableoffsetbatch$] for batching offsets. For more involved batch commit scenarios, we can use [`CommittableOffsetBatch`][committableoffsetbatch] to batch offsets, while having custom logic to determine batch frequency.
 

@@ -1,7 +1,13 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.data.Chain
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 
 final class HeadersSpec extends BaseSpec {
   describe("Headers#empty") {

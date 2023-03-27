@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.effect.IO
@@ -7,8 +13,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord.{NULL_SIZE, NO_TIMESTAMP
 import org.apache.kafka.common.record.TimestampType
 import org.apache.kafka.common.record.TimestampType._
 import org.scalatest._
-import scala.jdk.OptionConverters._
-
+import fs2.kafka.internal.converters.option._
 final class ConsumerRecordSpec extends BaseSpec {
   describe("ConsumerRecord#fromJava") {
     it("should convert timestamps") {

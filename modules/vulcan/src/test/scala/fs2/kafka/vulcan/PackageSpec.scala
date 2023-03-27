@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka.vulcan
 
 import java.time.Instant
@@ -27,17 +33,17 @@ final class PackageSpec extends AnyFunSpec {
   describe("avroSerializer/avroDeserializer") {
     it("should be able to do roundtrip serialization") {
       (
-        avroSerializer[Test].using(avroSettings).forValue,
-        avroDeserializer[Test].using(avroSettings).forValue
+        avroSerializer[Either[Test, Int]].using(avroSettings).forValue,
+        avroDeserializer[Either[Test, Int]].using(avroSettings).forValue
       ).parTupled
         .use {
           case (serializer, deserializer) =>
             val test = Test("test")
 
             for {
-              serialized <- serializer.serialize("topic", Headers.empty, test)
+              serialized <- serializer.serialize("topic", Headers.empty, Left(test))
               deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
-            } yield assert(deserialized == test)
+            } yield assert(deserialized == Left(test))
         }
         .unsafeRunSync()
     }

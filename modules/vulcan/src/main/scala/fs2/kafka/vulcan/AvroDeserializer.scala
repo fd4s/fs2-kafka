@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -30,7 +30,14 @@ final class AvroDeserializer[A] private[vulcan] (
               case (deserializer, schemaRegistryClient) =>
                 Deserializer.instance { (topic, _, bytes) =>
                   F.defer {
-                    val writerSchemaId =
+                    if (bytes == null || bytes.length == 0) {
+                    F.raiseError(
+                      new IllegalArgumentException(
+                        s"Invalid Avro record: bytes is null or empty"
+                      )
+                    )
+
+                  } else {val writerSchemaId =
                       ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
 
                     val writerSchema = {
@@ -47,7 +54,7 @@ final class AvroDeserializer[A] private[vulcan] (
                     }
                   }
                 }
-            }
+            }}
 
         RecordDeserializer.instance(
           forKey = createDeserializer(true),

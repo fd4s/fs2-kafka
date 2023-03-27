@@ -1,19 +1,25 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import java.util
-import cats.data.NonEmptyList
+import java.util.concurrent.atomic.AtomicBoolean
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerGroupMetadata, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.InvalidProducerEpochException
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.scalatest.EitherValues
-
 import scala.concurrent.duration._
 
 class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
@@ -68,7 +74,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       (for {
         producer <- TransactionalKafkaProducer.stream(
           TransactionalProducerSettings(
-            "id",
+            s"id-$topic",
             producerSettings[IO]
               .withRetries(Int.MaxValue)
           )
@@ -93,7 +99,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                     )
                   )
                 )
-            ) -> (key, value)
+            ) -> ((key, value))
 
         }
         passthrough <- Stream
@@ -143,6 +149,54 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     }
   }
 
+  it("should be able to commit offset without producing records in a transaction") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+      val commitState = new AtomicBoolean(false)
+      implicit val mk: MkProducer[IO] = new MkProducer[IO] {
+        def apply[G[_]](settings: ProducerSettings[G, _, _]): IO[KafkaByteProducer] =
+          IO.delay {
+            new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
+              (settings.properties: Map[String, AnyRef]).asJava,
+              new ByteArraySerializer,
+              new ByteArraySerializer
+            ) {
+              override def sendOffsetsToTransaction(
+                offsets: util.Map[TopicPartition, OffsetAndMetadata],
+                consumerGroupMetadata: ConsumerGroupMetadata
+              ): Unit = {
+                commitState.set(true)
+                super.sendOffsetsToTransaction(offsets, consumerGroupMetadata)
+              }
+            }
+          }
+      }
+      for {
+        producer <- TransactionalKafkaProducer.stream(
+          TransactionalProducerSettings(
+            s"id-$topic",
+            producerSettings[IO]
+              .withRetries(Int.MaxValue)
+          )
+        )
+        offsets = (i: Int) =>
+          CommittableOffset[IO](
+            new TopicPartition(topic, i % 3),
+            new OffsetAndMetadata(i.toLong),
+            Some("group"),
+            _ => IO.unit
+          )
+
+        records = Chunk.seq(0 to 100).map(i => CommittableProducerRecords(Chunk.empty, offsets(i)))
+
+        results <- Stream.eval(producer.produce(records))
+      } yield {
+        results should be(empty)
+        commitState.get shouldBe true
+      }
+    }.compile.lastOrError.unsafeRunSync()
+  }
+
   private def testMultiple(topic: String, makeOffset: Option[Int => CommittableOffset[IO]]) = {
     createCustomTopic(topic, partitions = 3)
     val toProduce =
@@ -154,7 +208,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       (for {
         producer <- TransactionalKafkaProducer.stream(
           TransactionalProducerSettings(
-            "id",
+            s"id-$topic",
             producerSettings[IO]
               .withRetries(Int.MaxValue)
           )
@@ -216,7 +270,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
-              "id",
+              s"id-$topic",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             )
@@ -268,7 +322,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   it("should abort transactions if committing offsets fails") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
-      val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n").toList
+      val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n")
       val toPassthrough = "passthrough"
 
       val error = new RuntimeException("BOOM")
@@ -298,7 +352,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
-              "id",
+              s"id-$topic",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             )
@@ -317,8 +371,8 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           }
           records = Chunk.seq(recordsToProduce.zip(offsets)).map {
             case (record, offset) =>
-              CommittableProducerRecords(
-                NonEmptyList.one(record),
+              CommittableProducerRecords.chunk(
+                Chunk.singleton(record),
                 offset
               )
           }
@@ -340,6 +394,36 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     }
   }
 
+  it("should get metrics") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+
+      val info =
+        TransactionalKafkaProducer[IO]
+          .stream(
+            TransactionalProducerSettings(
+              transactionalId = s"id-$topic",
+              producerSettings = producerSettings[IO].withRetries(Int.MaxValue)
+            )
+          )
+          .evalMap(_.metrics)
+
+      val res =
+        info
+          .take(1)
+          .compile
+          .lastOrError
+          .unsafeRunSync()
+
+      assert(res.nonEmpty)
+    }
+  }
+}
+
+// TODO: after switching from ForEachTestContainer to ForAllTestContainer, this fails
+// if run with a shared container with the following error:
+// org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one. was not an instance of org.apache.kafka.common.errors.InvalidProducerEpochException, but an instance of org.apache.kafka.common.errors.ProducerFencedException
+class TransactionalKafkaProducerTimeoutSpec extends BaseKafkaSpec with EitherValues {
   it("should use user-specified transaction timeouts") {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
@@ -364,7 +448,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         (for {
           producer <- TransactionalKafkaProducer.stream(
             TransactionalProducerSettings(
-              "id",
+              s"id-$topic",
               producerSettings[IO]
                 .withRetries(Int.MaxValue)
             ).withTransactionTimeout(transactionTimeoutInterval - 250.millis)
@@ -399,28 +483,4 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     }
   }
 
-  it("should get metrics") {
-    withTopic { topic =>
-      createCustomTopic(topic, partitions = 3)
-
-      val info =
-        TransactionalKafkaProducer[IO]
-          .stream(
-            TransactionalProducerSettings(
-              transactionalId = "id",
-              producerSettings = producerSettings[IO].withRetries(Int.MaxValue)
-            )
-          )
-          .evalMap(_.metrics)
-
-      val res =
-        info
-          .take(1)
-          .compile
-          .lastOrError
-          .unsafeRunSync()
-
-      assert(res.nonEmpty)
-    }
-  }
 }

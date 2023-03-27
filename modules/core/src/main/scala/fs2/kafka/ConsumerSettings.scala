@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -47,6 +47,14 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * The `Deserializer` to use for deserializing record values.
     */
   def valueDeserializer: Resource[F, ValueDeserializer[F, V]]
+
+  /** Creates a new `ConsumerSettings` instance that replaces the serializers with those provided.
+    * Note that this will remove any custom `recordMetadata` configuration.
+    **/
+  def withDeserializers[K0, V0](
+    keyDeserializer: F[KeyDeserializer[F, K0]],
+    valueDeserializer: F[ValueDeserializer[F, V0]]
+  ): ConsumerSettings[F, K0, V0]
 
   /**
     * A custom `ExecutionContext` to use for blocking Kafka operations. If not
@@ -361,6 +369,8 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
 
   /**
     * Creates a new [[ConsumerSettings]] with the specified [[recordMetadata]].
+    * Note that replacing the serializers via `withSerializers` will reset
+    * this to the default.
     */
   def withRecordMetadata(recordMetadata: ConsumerRecord[K, V] => String): ConsumerSettings[F, K, V]
 
@@ -528,6 +538,16 @@ object ConsumerSettings {
 
     override def toString: String =
       s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery)"
+
+    override def withDeserializers[K0, V0](
+      keyDeserializer: F[KeyDeserializer[F, K0]],
+      valueDeserializer: F[ValueDeserializer[F, V0]]
+    ): ConsumerSettings[F, K0, V0] =
+      copy(
+        keyDeserializer = keyDeserializer,
+        valueDeserializer = valueDeserializer,
+        recordMetadata = _ => OffsetFetchResponse.NO_METADATA
+      )
   }
 
   private[this] def create[F[_], K, V](

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,6 +7,8 @@
 package fs2.kafka.consumer
 
 import cats.Reducible
+import cats.data.NonEmptyList
+
 import scala.util.matching.Regex
 
 trait KafkaSubscription[F[_]] {
@@ -17,7 +19,8 @@ trait KafkaSubscription[F[_]] {
     * before using any of the provided `Stream`s, or a [[NotSubscribedException]]
     * will be raised in the `Stream`s.
     */
-  def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit]
+  def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
+    subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
   /**
     * Subscribes the consumer to the specified topics. Note that you have to

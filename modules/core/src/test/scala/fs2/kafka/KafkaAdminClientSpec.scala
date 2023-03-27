@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.effect.{IO, SyncIO}
@@ -181,27 +187,18 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
           .resource[IO](adminClientSettings)
           .use { adminClient =>
             for {
-              topicNames <- adminClient.listTopics.names.map(
-                _.filterNot(_.startsWith("__confluent"))
-              )
-              _ <- IO(assert(topicNames.size == 1))
-              topicListings <- adminClient.listTopics.listings.map(
-                _.filterNot(_.name.startsWith("__confluent"))
-              )
-              _ <- IO(assert(topicListings.size == 1))
-              topicNamesToListings <- adminClient.listTopics.namesToListings.map(_.filter {
-                case (key, _) => !key.startsWith("__confluent")
-              })
-              _ <- IO(assert(topicNamesToListings.size == 1))
+              topicNames <- adminClient.listTopics.names
+              topicCount = topicNames.size
+              topicListings <- adminClient.listTopics.listings
+              _ <- IO(assert(topicListings.size == topicCount))
+              topicNamesToListings <- adminClient.listTopics.namesToListings
+              _ <- IO(assert(topicNamesToListings.size == topicCount))
               topicNamesInternal <- adminClient.listTopics.includeInternal.names
-                .map(_.filterNot(_.startsWith("__confluent")))
-              _ <- IO(assert(topicNamesInternal.size == 2))
+              _ <- IO(assert(topicNamesInternal.size == topicCount + 1))
               topicListingsInternal <- adminClient.listTopics.includeInternal.listings
-                .map(_.filterNot(_.name.startsWith("__confluent")))
-              _ <- IO(assert(topicListingsInternal.size == 2))
+              _ <- IO(assert(topicListingsInternal.size == topicCount + 1))
               topicNamesToListingsInternal <- adminClient.listTopics.includeInternal.namesToListings
-                .map(_.filter { case (key, _) => !key.startsWith("__confluent") })
-              _ <- IO(assert(topicNamesToListingsInternal.size == 2))
+              _ <- IO(assert(topicNamesToListingsInternal.size == topicCount + 1))
               _ <- IO {
                 adminClient.listTopics.toString should startWith("ListTopics$")
               }
@@ -210,7 +207,7 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                   startWith("ListTopicsIncludeInternal$")
               }
               describedTopics <- adminClient.describeTopics(topicNames.toList)
-              _ <- IO(assert(describedTopics.size == 1))
+              _ <- IO(assert(describedTopics.size == topicCount))
               newTopic = new NewTopic("new-test-topic", 1, 1.toShort)
               preCreateNames <- adminClient.listTopics.names
               _ <- IO(assert(!preCreateNames.contains(newTopic.name)))

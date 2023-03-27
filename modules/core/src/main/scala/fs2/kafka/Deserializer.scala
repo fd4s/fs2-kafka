@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -209,7 +209,7 @@ object GenericDeserializer {
     * default `String` deserializer uses `UTF-8`.
     */
   def string[F[_]](charset: Charset)(implicit F: Sync[F]): Deserializer[F, String] =
-    Deserializer.lift(bytes => F.pure(new String(bytes, charset)))
+    Deserializer.lift(bytes => F.catchNonFatal(new String(bytes, charset)))
 
   /**
     * Creates a new [[Deserializer]] which deserializes `String`
@@ -225,6 +225,15 @@ object GenericDeserializer {
     */
   implicit def identity[F[_]](implicit F: Sync[F]): Deserializer[F, Array[Byte]] =
     Deserializer.lift(bytes => F.pure(bytes))
+
+  /**
+    * The attempt [[Deserializer]] try to deserialize to type `A`,
+    * When it fails returns `Left` containing the exception, otherwise returns `Right` with the value `A`
+    */
+  implicit def attempt[F[_], A](
+    implicit deserializer: Deserializer[F, A]
+  ): Deserializer[F, Either[Throwable, A]] =
+    deserializer.attempt
 
   /**
     * The option [[Deserializer]] returns `None` when the bytes are

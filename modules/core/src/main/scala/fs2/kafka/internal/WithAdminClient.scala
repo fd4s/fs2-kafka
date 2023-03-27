@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,7 +13,6 @@ import fs2.kafka.admin.MkAdminClient
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.common.KafkaFuture
-import scala.jdk.DurationConverters._
 
 private[kafka] sealed abstract class WithAdminClient[F[_]] {
   def apply[A](f: AdminClient => KafkaFuture[A]): F[A]
@@ -29,7 +28,7 @@ private[kafka] object WithAdminClient {
         val withAdminClient =
           new WithAdminClient[G] {
             override def apply[A](f: AdminClient => KafkaFuture[A]): G[A] =
-              G.defer(f(adminClient).cancelable)
+              G.delay(f(adminClient)).cancelable
           }
 
         val close =
