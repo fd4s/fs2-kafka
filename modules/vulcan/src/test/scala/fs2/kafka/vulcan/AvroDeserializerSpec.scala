@@ -37,7 +37,7 @@ final class AvroDeserializerSpec extends AnyFunSpec {
     it("raises IllegalArgumentException if the data is null") {
       val deserializer = AvroDeserializer[String].using(avroSettings)
       intercept[IllegalArgumentException] {
-        deserializer.forKey.flatMap(_.deserialize("foo", Headers.empty, null)).unsafeRunSync()
+        deserializer.forKey.use(_.deserialize("foo", Headers.empty, null)).unsafeRunSync()
       }
     }
 

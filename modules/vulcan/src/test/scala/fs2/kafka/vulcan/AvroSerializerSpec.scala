@@ -27,7 +27,7 @@ final class AvroSerializerSpec extends AnyFunSpec {
       (avroSerializer[Either[Int, Boolean]]
         .using(avroSettings)
         .forValue
-        .flatMap(
+        .use(
           _.serialize(
             "test-union-topic",
             Headers.empty,
