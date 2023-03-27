@@ -211,7 +211,7 @@ ThisBuild / githubWorkflowArtifactUpload := false
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
 
 ThisBuild / githubWorkflowPublishTargetBranches :=
-  Seq(RefPredicate.StartsWith(Ref.Branch("series/")))
+  Seq(RefPredicate.StartsWith(Ref.Tag("v")))
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
