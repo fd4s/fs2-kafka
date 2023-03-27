@@ -163,8 +163,12 @@ final class ProducerSettingsSpec extends BaseSpec {
         RecordSerializer.lift(serializerInstance)
 
       ProducerSettings[IO, Int, Int]
-      ProducerSettings[IO, String, Int].keySerializer.unsafeRunSync() shouldBe serializerInstance
-      ProducerSettings[IO, Int, String].valueSerializer.unsafeRunSync() shouldBe serializerInstance
+      ProducerSettings[IO, String, Int].keySerializer
+        .use(IO.pure)
+        .unsafeRunSync() shouldBe serializerInstance
+      ProducerSettings[IO, Int, String].valueSerializer
+        .use(IO.pure)
+        .unsafeRunSync() shouldBe serializerInstance
       ProducerSettings[IO, String, String]
     }
 

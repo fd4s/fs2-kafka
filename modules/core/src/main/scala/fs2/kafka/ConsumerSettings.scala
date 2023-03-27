@@ -6,7 +6,8 @@
 
 package fs2.kafka
 
-import cats.{Applicative, Show}
+import cats.Show
+import cats.effect.Resource
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.requests.OffsetFetchResponse
@@ -40,19 +41,19 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
   /**
     * The `Deserializer` to use for deserializing record keys.
     */
-  def keyDeserializer: F[KeyDeserializer[F, K]]
+  def keyDeserializer: Resource[F, KeyDeserializer[F, K]]
 
   /**
     * The `Deserializer` to use for deserializing record values.
     */
-  def valueDeserializer: F[ValueDeserializer[F, V]]
+  def valueDeserializer: Resource[F, ValueDeserializer[F, V]]
 
   /** Creates a new `ConsumerSettings` instance that replaces the serializers with those provided.
     * Note that this will remove any custom `recordMetadata` configuration.
     **/
   def withDeserializers[K0, V0](
-    keyDeserializer: F[KeyDeserializer[F, K0]],
-    valueDeserializer: F[ValueDeserializer[F, V0]]
+    keyDeserializer: Resource[F, KeyDeserializer[F, K0]],
+    valueDeserializer: Resource[F, ValueDeserializer[F, V0]]
   ): ConsumerSettings[F, K0, V0]
 
   /**
@@ -405,8 +406,8 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
 
 object ConsumerSettings {
   private[this] final case class ConsumerSettingsImpl[F[_], K, V](
-    override val keyDeserializer: F[KeyDeserializer[F, K]],
-    override val valueDeserializer: F[ValueDeserializer[F, V]],
+    override val keyDeserializer: Resource[F, KeyDeserializer[F, K]],
+    override val valueDeserializer: Resource[F, ValueDeserializer[F, V]],
     override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
@@ -539,8 +540,8 @@ object ConsumerSettings {
       s"ConsumerSettings(closeTimeout = $closeTimeout, commitTimeout = $commitTimeout, pollInterval = $pollInterval, pollTimeout = $pollTimeout, commitRecovery = $commitRecovery)"
 
     override def withDeserializers[K0, V0](
-      keyDeserializer: F[KeyDeserializer[F, K0]],
-      valueDeserializer: F[ValueDeserializer[F, V0]]
+      keyDeserializer: Resource[F, KeyDeserializer[F, K0]],
+      valueDeserializer: Resource[F, ValueDeserializer[F, V0]]
     ): ConsumerSettings[F, K0, V0] =
       copy(
         keyDeserializer = keyDeserializer,
@@ -550,8 +551,8 @@ object ConsumerSettings {
   }
 
   private[this] def create[F[_], K, V](
-    keyDeserializer: F[KeyDeserializer[F, K]],
-    valueDeserializer: F[ValueDeserializer[F, V]]
+    keyDeserializer: Resource[F, KeyDeserializer[F, K]],
+    valueDeserializer: Resource[F, ValueDeserializer[F, V]]
   ): ConsumerSettings[F, K, V] =
     ConsumerSettingsImpl(
       customBlockingContext = None,
@@ -573,27 +574,27 @@ object ConsumerSettings {
   def apply[F[_], K, V](
     keyDeserializer: KeyDeserializer[F, K],
     valueDeserializer: ValueDeserializer[F, V]
-  )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
+  ): ConsumerSettings[F, K, V] =
     create(
-      keyDeserializer = F.pure(keyDeserializer),
-      valueDeserializer = F.pure(valueDeserializer)
+      keyDeserializer = Resource.pure(keyDeserializer),
+      valueDeserializer = Resource.pure(valueDeserializer)
     )
 
   def apply[F[_], K, V](
     keyDeserializer: RecordDeserializer[F, K],
     valueDeserializer: ValueDeserializer[F, V]
-  )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
+  ): ConsumerSettings[F, K, V] =
     create(
       keyDeserializer = keyDeserializer.forKey,
-      valueDeserializer = F.pure(valueDeserializer)
+      valueDeserializer = Resource.pure(valueDeserializer)
     )
 
   def apply[F[_], K, V](
     keyDeserializer: KeyDeserializer[F, K],
     valueDeserializer: RecordDeserializer[F, V]
-  )(implicit F: Applicative[F]): ConsumerSettings[F, K, V] =
+  ): ConsumerSettings[F, K, V] =
     create(
-      keyDeserializer = F.pure(keyDeserializer),
+      keyDeserializer = Resource.pure(keyDeserializer),
       valueDeserializer = valueDeserializer.forValue
     )
 

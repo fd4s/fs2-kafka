@@ -11,11 +11,11 @@ class RecordSerializerSpec extends BaseSpec {
 
       val intRecordSer: RecordSerializer[IO, Int] =
         RecordSerializer
-          .const(IO.pure(Serializer[IO, String]))
+          .lift(Serializer[IO, String])
           .transform(_.contramap(_.toString))
 
       intRecordSer.forKey
-        .flatMap(_.serialize("T1", Headers.empty, 1))
+        .use(_.serialize("T1", Headers.empty, 1))
         .unsafeRunSync() shouldBe "1".getBytes
     }
   }
@@ -25,15 +25,15 @@ class RecordSerializerSpec extends BaseSpec {
 
       val optStrRecordSer: RecordSerializer[IO, Option[String]] =
         RecordSerializer
-          .const(IO.pure(Serializer[IO, String]))
+          .lift(Serializer[IO, String])
           .option
 
       optStrRecordSer.forKey
-        .flatMap(_.serialize("T1", Headers.empty, Some("1")))
+        .use(_.serialize("T1", Headers.empty, Some("1")))
         .unsafeRunSync() shouldBe "1".getBytes
 
       optStrRecordSer.forKey
-        .flatMap(_.serialize("T1", Headers.empty, None))
+        .use(_.serialize("T1", Headers.empty, None))
         .unsafeRunSync() shouldBe null
     }
   }

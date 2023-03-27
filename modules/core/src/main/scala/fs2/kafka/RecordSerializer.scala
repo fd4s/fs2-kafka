@@ -6,8 +6,7 @@
 
 package fs2.kafka
 
-import cats._
-import cats.syntax.all._
+import cats.effect.Resource
 
 /**
   * Serializer which may vary depending on whether a record
@@ -16,16 +15,16 @@ import cats.syntax.all._
   */
 sealed abstract class RecordSerializer[F[_], A] {
 
-  def forKey: F[KeySerializer[F, A]]
+  def forKey: Resource[F, KeySerializer[F, A]]
 
-  def forValue: F[ValueSerializer[F, A]]
+  def forValue: Resource[F, ValueSerializer[F, A]]
 
   /**
     * Returns a new [[RecordSerializer]] instance applying the mapping function to key and value serializers
     */
   final def transform[B](
     f: Serializer[F, A] => Serializer[F, B]
-  )(implicit F: Functor[F]): RecordSerializer[F, B] =
+  ): RecordSerializer[F, B] =
     RecordSerializer.instance(
       forKey = forKey.map(f.asInstanceOf[KeySerializer[F, A] => KeySerializer[F, B]]),
       forValue = forValue.map(f.asInstanceOf[ValueSerializer[F, A] => ValueSerializer[F, B]])
@@ -37,7 +36,7 @@ sealed abstract class RecordSerializer[F[_], A] {
     *
     * See [[Serializer.option]] for more details.
     */
-  final def option(implicit F: Functor[F]): RecordSerializer[F, Option[A]] =
+  final def option: RecordSerializer[F, Option[A]] =
     transform(_.option)
 }
 
@@ -47,26 +46,26 @@ object RecordSerializer {
   ): RecordSerializer[F, A] =
     serializer
 
-  def const[F[_]: Functor, A](
-    serializer: => F[Serializer[F, A]]
+  def const[F[_], A](
+    serializer: => Resource[F, Serializer[F, A]]
   ): RecordSerializer[F, A] =
     RecordSerializer.instance(
-      forKey = serializer.widen,
-      forValue = serializer.widen
+      forKey = serializer,
+      forValue = serializer
     )
 
   def instance[F[_], A](
-    forKey: => F[KeySerializer[F, A]],
-    forValue: => F[ValueSerializer[F, A]]
+    forKey: => Resource[F, KeySerializer[F, A]],
+    forValue: => Resource[F, ValueSerializer[F, A]]
   ): RecordSerializer[F, A] = {
-    def _forKey: F[KeySerializer[F, A]] = forKey
-    def _forValue: F[ValueSerializer[F, A]] = forValue
+    def _forKey: Resource[F, KeySerializer[F, A]] = forKey
+    def _forValue: Resource[F, ValueSerializer[F, A]] = forValue
 
     new RecordSerializer[F, A] {
-      override def forKey: F[KeySerializer[F, A]] =
+      override def forKey: Resource[F, KeySerializer[F, A]] =
         _forKey
 
-      override def forValue: F[ValueSerializer[F, A]] =
+      override def forValue: Resource[F, ValueSerializer[F, A]] =
         _forValue
 
       override def toString: String =
@@ -74,14 +73,6 @@ object RecordSerializer {
     }
   }
 
-  def lift[F[_], A](serializer: => Serializer[F, A])(
-    implicit F: Applicative[F]
-  ): RecordSerializer[F, A] =
-    RecordSerializer.const(F.pure(serializer))
-
-  implicit def lift[F[_], A](
-    implicit F: Applicative[F],
-    serializer: Serializer[F, A]
-  ): RecordSerializer[F, A] =
-    RecordSerializer.lift(serializer)
+  implicit def lift[F[_], A](implicit serializer: Serializer[F, A]): RecordSerializer[F, A] =
+    RecordSerializer.const(Resource.pure(serializer))
 }

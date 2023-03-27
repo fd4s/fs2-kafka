@@ -19,8 +19,8 @@ final class AvroDeserializerSpec extends AnyFunSpec {
       val deserializer =
         AvroDeserializer[Int].using(avroSettings)
 
-      assert(deserializer.forKey.attempt.unsafeRunSync().isRight)
-      assert(deserializer.forValue.attempt.unsafeRunSync().isRight)
+      assert(deserializer.forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(deserializer.forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
     }
 
     it("raises schema errors") {
@@ -30,14 +30,14 @@ final class AvroDeserializerSpec extends AnyFunSpec {
       val deserializer =
         avroDeserializer(codec).using(avroSettings)
 
-      assert(deserializer.forKey.attempt.unsafeRunSync().isLeft)
-      assert(deserializer.forValue.attempt.unsafeRunSync().isLeft)
+      assert(deserializer.forKey.use(IO.pure).attempt.unsafeRunSync().isLeft)
+      assert(deserializer.forValue.use(IO.pure).attempt.unsafeRunSync().isLeft)
     }
 
     it("raises IllegalArgumentException if the data is null") {
       val deserializer = AvroDeserializer[String].using(avroSettings)
       intercept[IllegalArgumentException] {
-        deserializer.forKey.flatMap(_.deserialize("foo", Headers.empty, null)).unsafeRunSync()
+        deserializer.forKey.use(_.deserialize("foo", Headers.empty, null)).unsafeRunSync()
       }
     }
 

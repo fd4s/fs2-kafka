@@ -54,7 +54,7 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     */
   def withSerializersFrom[K, V](
     settings: ProducerSettings[F, K, V]
-  ): F[KafkaProducer.PartitionsFor[F, K, V]]
+  ): Resource[F, KafkaProducer.PartitionsFor[F, K, V]]
 
   def partitionsFor(
     topic: String
@@ -142,7 +142,7 @@ object KafkaProducerConnection {
 
         override def withSerializersFrom[K, V](
           settings: ProducerSettings[G, K, V]
-        ): G[KafkaProducer.PartitionsFor[G, K, V]] =
+        ): Resource[G, KafkaProducer.PartitionsFor[G, K, V]] =
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
 
         override def partitionsFor(topic: String): G[List[PartitionInfo]] =
