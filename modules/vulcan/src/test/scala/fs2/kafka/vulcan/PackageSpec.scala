@@ -26,7 +26,8 @@ final class PackageSpec extends AnyFunSpec {
 
   describe("avroDeserializer") {
     it("should be available given explicit settings") {
-      avroDeserializer[Test].using(avroSettings)
+      avroDeserializer[Test].forKey(avroSettings)
+      avroDeserializer[Test].forValue(avroSettings)
     }
   }
 
@@ -34,7 +35,7 @@ final class PackageSpec extends AnyFunSpec {
     it("should be able to do roundtrip serialization") {
       (
         avroSerializer[Either[Test, Int]].using(avroSettings).forValue,
-        avroDeserializer[Either[Test, Int]].using(avroSettings).forValue
+        avroDeserializer[Either[Test, Int]].forValue(avroSettings)
       ).parTupled
         .use {
           case (serializer, deserializer) =>
@@ -51,7 +52,7 @@ final class PackageSpec extends AnyFunSpec {
     it("should be able to do roundtrip serialization using compatible schemas") {
       (
         avroSerializer[Test2].using(avroSettings).forValue,
-        avroDeserializer[Test].using(avroSettings).forValue
+        avroDeserializer[Test].forValue(avroSettings)
       ).parTupled
         .use {
           case (serializer, deserializer) =>
@@ -68,7 +69,7 @@ final class PackageSpec extends AnyFunSpec {
     it("should error when reader and writer schemas have mismatching logical types") {
       (
         avroSerializer[Long].using(avroSettings).forValue,
-        avroDeserializer[Instant].using(avroSettings).forValue
+        avroDeserializer[Instant].forValue(avroSettings)
       ).parTupled
         .use {
           case (serializer, deserializer) =>
