@@ -206,8 +206,4 @@ final class DeserializerSpec extends BaseCatsSpec {
   test("Deserializer#toString") {
     assert(Deserializer[IO, String].toString startsWith "Deserializer$")
   }
-
-  test("Deserializer.Record#toString") {
-    assert(RecordDeserializer[IO, String].toString startsWith "Deserializer.Record$")
-  }
 }

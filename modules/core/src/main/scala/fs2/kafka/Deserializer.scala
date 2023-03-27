@@ -7,8 +7,9 @@
 package fs2.kafka
 
 import cats.MonadError
-import cats.effect.Sync
+import cats.effect.{Resource, Sync}
 import cats.syntax.all._
+
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
@@ -336,4 +337,8 @@ object GenericDeserializer {
 
   implicit def uuid[F[_]](implicit F: Sync[F]): Deserializer[F, UUID] =
     Deserializer.string[F].map(UUID.fromString).suspend
+
+  implicit def resource[T <: KeyOrValue, F[_], A](
+    implicit des: GenericDeserializer[T, F, A]
+  ): Resource[F, GenericDeserializer[T, F, A]] = Resource.pure(des)
 }

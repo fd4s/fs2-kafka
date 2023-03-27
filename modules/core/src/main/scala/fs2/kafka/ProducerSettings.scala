@@ -334,28 +334,28 @@ object ProducerSettings {
     )
 
   def apply[F[_], K, V](
-    keySerializer: RecordSerializer[F, K],
+    keySerializer: Resource[F, KeySerializer[F, K]],
     valueSerializer: ValueSerializer[F, V]
   ): ProducerSettings[F, K, V] =
     create(
-      keySerializer = keySerializer.forKey,
+      keySerializer = keySerializer,
       valueSerializer = Resource.pure(valueSerializer)
     )
 
   def apply[F[_], K, V](
     keySerializer: KeySerializer[F, K],
-    valueSerializer: RecordSerializer[F, V]
+    valueSerializer: Resource[F, ValueSerializer[F, V]]
   ): ProducerSettings[F, K, V] =
     create(
       keySerializer = Resource.pure(keySerializer),
-      valueSerializer = valueSerializer.forValue
+      valueSerializer = valueSerializer
     )
 
   def apply[F[_], K, V](
-    implicit keySerializer: RecordSerializer[F, K],
-    valueSerializer: RecordSerializer[F, V]
+    implicit keySerializer: Resource[F, KeySerializer[F, K]],
+    valueSerializer: Resource[F, ValueSerializer[F, V]]
   ): ProducerSettings[F, K, V] =
-    create(keySerializer = keySerializer.forKey, valueSerializer = valueSerializer.forValue)
+    create(keySerializer, valueSerializer)
 
   implicit def producerSettingsShow[F[_], K, V]: Show[ProducerSettings[F, K, V]] =
     Show.fromToString

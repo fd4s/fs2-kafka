@@ -16,17 +16,16 @@ import vulcan.Codec
 final class AvroSerializerSpec extends AnyFunSpec {
   describe("AvroSerializer") {
     it("can create a serializer") {
-      val serializer =
-        AvroSerializer[Int].using(avroSettings)
+      val forKey = AvroSerializer[Int].forKey(avroSettings)
+      val forValue = AvroSerializer[Int].forValue(avroSettings)
 
-      assert(serializer.forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
-      assert(serializer.forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
     }
 
     it("auto-registers union schemas") {
       (avroSerializer[Either[Int, Boolean]]
-        .using(avroSettings)
-        .forValue
+        .forValue(avroSettings)
         .use(
           _.serialize(
             "test-union-topic",
@@ -46,11 +45,11 @@ final class AvroSerializerSpec extends AnyFunSpec {
       val codec: Codec[BigDecimal] =
         Codec.decimal(-1, -1)
 
-      val serializer =
-        avroSerializer(codec).using(avroSettings)
+      val forKey = avroSerializer(codec).forKey(avroSettings)
+      val forValue = avroSerializer(codec).forKey(avroSettings)
 
-      assert(serializer.forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
-      assert(serializer.forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
     }
 
     it("toString") {
