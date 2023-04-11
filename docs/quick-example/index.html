@@ -87,12 +87,17 @@
           processRecord(committable.record)
             .map { <span class="hljs-keyword">case</span> (key, value) =&gt;
               <span class="hljs-keyword">val</span> record = <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, key, value)
-              <span class="hljs-type">ProducerRecords</span>.one(record, committable.offset)
+              committable.offset -&gt; <span class="hljs-type">ProducerRecords</span>.one(record)
             }
-        }
-        .through(<span class="hljs-type">KafkaProducer</span>.pipe(producerSettings))
-        .map(_.passthrough)
-        .through(commitBatchWithin(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
+        }.through { offsetsAndProducerRecords =&gt;
+          <span class="hljs-type">KafkaProducer</span>.stream(producerSettings).flatMap { producer =&gt;
+            offsetsAndProducerRecords.evalMap { 
+              <span class="hljs-keyword">case</span> (offset, producerRecord) =&gt; 
+                producer.produce(producerRecord)
+                  .map(_.as(offset))
+            }.parEvalMap(<span class="hljs-type">Int</span>.<span class="hljs-type">MaxValue</span>)(identity)
+          }
+        }.through(commitBatchWithin(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
 
     stream.compile.drain
   }
