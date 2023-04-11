@@ -11,8 +11,8 @@ For the latest stable version, see the badge at the top of this page. If your pr
 ### Version matrix
 |fs2-kafka|scala|cats-effect/fs2|kafka-clients|
 |---------|-----|---------------|-------------|
-|3.x (milestones)|2.13, 3.1+|3.x|3.x|
-|2.x|2.12, 2.13, 3.1+|3.x|2.x|
+|3.x|2.12, 2.13, 3.2+|3.x|3.x|
+|2.x|2.12, 2.13, 3.2+|3.x|2.x|
 |1.x|2.12, 2.13, 3.0+|2.x|2.x|
 
 For further details, see the [microsite](https://fd4s.github.io/fs2-kafka/docs/overview).
