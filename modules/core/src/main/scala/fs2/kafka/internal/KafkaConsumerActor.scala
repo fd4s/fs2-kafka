@@ -113,7 +113,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     k: (Either[Throwable, Unit] => Unit) => F[Unit]
   ): F[Unit] =
     F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
-        k(cb).as(None)
+        k(cb).as(Some(F.unit))
       }
       .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
         CommitTimeoutException(
