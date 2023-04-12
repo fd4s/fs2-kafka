@@ -9,11 +9,11 @@
 For the latest stable version, see the badge at the top of this page. If your project uses cats-effect 2 you should instead use the latest release from the 1.x series.
 
 ### Version matrix
-|fs2-kafka| scala            |cats-effect/fs2|kafka-clients|
-|---------|------------------|---------------|-------------|
-|3.x| 2.12, 2.13, 3.2+ |3.x|3.x|
-|2.x| 2.12, 2.13, 3.2+ |3.x|2.x|
-|1.x| 2.12, 2.13, 3.0+ |2.x|2.x|
+|fs2-kafka| scala            |cats-effect/fs2|kafka-clients|status|
+|---------|------------------|---------------|-------------|------|
+|3.x| 2.12, 2.13, 3.2+ |3.x|3.x|Current|
+|2.x| 2.12, 2.13, 3.2+ |3.x|2.x|Deprecated|
+|1.x| 2.12, 2.13, 3.2+ |2.x|2.x|End-of-life|
 
 For further details, see the [microsite](https://fd4s.github.io/fs2-kafka/docs/overview).
 
