@@ -15,7 +15,6 @@ import cats.{Applicative, Functor}
   * a creation effect.
   */
 sealed abstract class RecordDeserializer[F[_], A] {
-
   def forKey: F[Deserializer[F, A]]
 
   def forValue: F[Deserializer[F, A]]

@@ -15,7 +15,6 @@ import cats.syntax.all._
   * a creation effect.
   */
 sealed abstract class RecordSerializer[F[_], A] {
-
   def forKey: F[Serializer[F, A]]
 
   def forValue: F[Serializer[F, A]]

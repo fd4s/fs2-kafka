@@ -17,7 +17,6 @@ private[kafka] final case class FakeFiber[F[_]](join: F[Unit], cancel: F[Unit])(
   implicit F: Concurrent[F]
 ) {
   def combine(that: FakeFiber[F]): FakeFiber[F] = {
-
     val fa0join =
       this.join.guaranteeCase {
         case Outcome.Canceled() => F.unit

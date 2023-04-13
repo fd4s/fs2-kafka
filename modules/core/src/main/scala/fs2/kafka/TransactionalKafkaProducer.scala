@@ -27,7 +27,6 @@ import scala.annotation.nowarn
   * arbitrary passthrough value to be included in the result.
   */
 abstract class TransactionalKafkaProducer[F[_], K, V] {
-
   /**
     * Produces the `ProducerRecord`s in the specified [[TransactionalProducerRecords]]
     * in four steps: first a transaction is initialized, then the records are placed
@@ -42,13 +41,11 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
 }
 
 object TransactionalKafkaProducer {
-
   /**
     * [[TransactionalKafkaProducer.Metrics]] extends [[TransactionalKafkaProducer]] to provide
     * access to the underlying producer metrics.
     */
   abstract class Metrics[F[_], K, V] extends TransactionalKafkaProducer[F, K, V] {
-
     /**
       * Returns producer metrics.
       *
@@ -62,7 +59,6 @@ object TransactionalKafkaProducer {
     * to allow producing of records without corresponding upstream offsets.
     */
   abstract class WithoutOffsets[F[_], K, V] extends Metrics[F, K, V] {
-
     /**
       * Produces the `ProducerRecord`s in the specified [[ProducerRecords]]
       * in three steps: first a transaction is initialized, then the records are placed
@@ -186,7 +182,6 @@ object TransactionalKafkaProducer {
 
   private[kafka] final class TransactionalProducerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
-
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can

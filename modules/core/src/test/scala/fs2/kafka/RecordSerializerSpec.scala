@@ -3,12 +3,10 @@ package fs2.kafka
 import cats.effect.IO
 
 class RecordSerializerSpec extends BaseSpec {
-
   import cats.effect.unsafe.implicits.global
 
   describe("RecordSerializer#transform") {
     it("should transform the RecordSerializer applying the function to inner Serializers") {
-
       val intRecordSer: RecordSerializer[IO, Int] =
         RecordSerializer
           .const(IO.pure(Serializer[IO, String]))
@@ -22,7 +20,6 @@ class RecordSerializerSpec extends BaseSpec {
 
   describe("RecordSerializer#option") {
     it("should transform the RecordSerializer[F, T] to RecordSerializer[F, Option[T]]") {
-
       val optStrRecordSer: RecordSerializer[IO, Option[String]] =
         RecordSerializer
           .const(IO.pure(Serializer[IO, String]))

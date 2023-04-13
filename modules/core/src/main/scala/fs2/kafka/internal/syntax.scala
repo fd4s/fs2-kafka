@@ -121,7 +121,6 @@ private[kafka] object syntax {
 
     def updatedIfAbsent(k: K, v: => V): Map[K, V] =
       if (map.contains(k)) map else map.updated(k, v)
-
   }
 
   implicit final class MapWrappedValueSyntax[F[_], K, V](
@@ -187,7 +186,6 @@ private[kafka] object syntax {
   implicit final class KafkaFutureSyntax[F[_], A](
     private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
-
     // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
     def cancelable(implicit F: Async[F]): F[A] =
       F.async { (cb: (Either[Throwable, A] => Unit)) =>

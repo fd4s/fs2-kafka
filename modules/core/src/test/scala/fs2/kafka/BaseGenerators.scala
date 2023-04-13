@@ -22,7 +22,6 @@ import fs2.Chunk
 import org.scalacheck.rng.Seed
 
 trait BaseGenerators {
-
   implicit def chunkCogen[A: Cogen]: Cogen[Chunk[A]] = Cogen.it(_.iterator)
 
   val genTopic: Gen[String] = arbitrary[String]
