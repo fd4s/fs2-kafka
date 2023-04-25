@@ -215,7 +215,7 @@ ThisBuild / githubWorkflowPublishTargetBranches :=
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
-    List("tlRelease"), // For 3.0 release: List("tlRelease", "docs/docusaurusPublishGhpages"),
+    List("tlRelease", "docs/docusaurusPublishGhpages"),
     env = Map(
       "GIT_DEPLOY_KEY" -> "${{ secrets.GIT_DEPLOY_KEY }}",
       "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
@@ -347,7 +347,7 @@ addCommandsAlias(
   List(
     "+clean",
     "+test",
-    //"+mimaReportBinaryIssues",
+    "+mimaReportBinaryIssues",
     "+scalafmtCheck",
     "scalafmtSbtCheck",
     "+headerCheck",
@@ -361,7 +361,7 @@ addCommandsAlias(
   List(
     "clean",
     "test",
-    // "mimaReportBinaryIssues",
+    "mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
     "headerCheck",
