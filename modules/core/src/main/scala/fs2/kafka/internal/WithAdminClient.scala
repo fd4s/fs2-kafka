@@ -28,7 +28,7 @@ private[kafka] object WithAdminClient {
         val withAdminClient =
           new WithAdminClient[G] {
             override def apply[A](f: AdminClient => KafkaFuture[A]): G[A] =
-              G.delay(f(adminClient)).cancelable
+              G.delay(f(adminClient)).cancelable_
           }
 
         val close =

@@ -102,7 +102,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
 
   private[this] def manualCommitSync(request: Request.ManualCommitSync[F]): F[Unit] = {
-    val commit = withConsumer.blocking(_.commitSync(request.offsets.asJava))
+    val commit =
+      withConsumer.blocking(_.commitSync(request.offsets.asJava, settings.commitTimeout.asJava))
     commit.attempt >>= request.callback
   }
 
@@ -112,7 +113,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     k: (Either[Throwable, Unit] => Unit) => F[Unit]
   ): F[Unit] =
     F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
-        k(cb).as(None)
+        k(cb).as(Some(F.unit))
       }
       .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
         CommitTimeoutException(
