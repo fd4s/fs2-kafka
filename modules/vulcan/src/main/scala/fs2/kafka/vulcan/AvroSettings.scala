@@ -10,9 +10,12 @@ import cats.effect.Sync
 import cats.syntax.all._
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
+import fs2.kafka.schemaregistry.client.{SchemaRegistryClient, SchemaRegistryClientSettings}
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import org.apache.avro.Schema
 import vulcan.Codec
+
+import java.util
 
 /**
   * Describes how to create a `KafkaAvroDeserializer` and a
@@ -28,7 +31,7 @@ sealed abstract class AvroSettings[F[_]] {
     * The `SchemaRegistryClient` to use for the serializers
     * and deserializers created from this [[AvroSettings]].
     */
-  def schemaRegistryClient: F[SchemaRegistryClient]
+  def schemaRegistryClient: F[SchemaRegistryClient[F]]
 
   /**
     * Creates a new `AvroSettings` instance with the specified
@@ -88,7 +91,7 @@ sealed abstract class AvroSettings[F[_]] {
     * specified `isKey` flag, denoting whether a record key or
     * value is being deserialized.
     */
-  def createAvroDeserializer(isKey: Boolean): F[(KafkaAvroDeserializer, SchemaRegistryClient)]
+  def createAvroDeserializer(isKey: Boolean): F[(KafkaAvroDeserializer, SchemaRegistryClient[F])]
 
   /**
     * Register a schema for a given `Codec` for some type `A`,
@@ -107,12 +110,12 @@ sealed abstract class AvroSettings[F[_]] {
   def createAvroSerializer(
     isKey: Boolean,
     writerSchema: Option[Schema]
-  ): F[(KafkaAvroSerializer, SchemaRegistryClient)]
+  ): F[(KafkaAvroSerializer, SchemaRegistryClient[F])]
 
   @deprecated("use the overload that takes an optional writer schema", "2.5.0-M3")
   final def createAvroSerializer(
     isKey: Boolean
-  ): F[(KafkaAvroSerializer, SchemaRegistryClient)] =
+  ): F[(KafkaAvroSerializer, SchemaRegistryClient[F])] =
     createAvroSerializer(isKey, writerSchema = None)
 
   /**
@@ -123,7 +126,7 @@ sealed abstract class AvroSettings[F[_]] {
     */
   def withCreateAvroDeserializer(
     // format: off
-    createAvroDeserializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroDeserializer, SchemaRegistryClient)]
+    createAvroDeserializerWith: (F[SchemaRegistryClient[F]], Boolean, Map[String, String]) => F[(KafkaAvroDeserializer, SchemaRegistryClient[F])]
     // format: on
   ): AvroSettings[F]
 
@@ -135,14 +138,14 @@ sealed abstract class AvroSettings[F[_]] {
     */
   def withCreateAvroSerializer(
     // format: off
-    createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Option[Schema], Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
+    createAvroSerializerWith: (F[SchemaRegistryClient[F]], Boolean, Option[Schema], Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient[F])]
     // format: on
   ): AvroSettings[F]
 
   @deprecated("use the overload that has an `Option[Schema]` argument", "2.5.0-M3")
   final def withCreateAvroSerializer(
     // format: off
-    createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
+    createAvroSerializerWith: (F[SchemaRegistryClient[F]], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient[F])]
     // format: on
   ): AvroSettings[F] =
     withCreateAvroSerializer(
@@ -155,18 +158,34 @@ sealed abstract class AvroSettings[F[_]] {
     * The arguments are [[schemaRegistryClient]], `subject`, and `codec`.
     */
   def withRegisterSchema(
-    registerSchemaWith: (F[SchemaRegistryClient], String, Codec[_]) => F[Int]
+    registerSchemaWith: (F[SchemaRegistryClient[F]], String, Codec[_]) => F[Int]
   ): AvroSettings[F]
 }
 
 object AvroSettings {
+
+  def apply[F[_]: Sync](
+    schemaRegistryClientSettings: SchemaRegistryClientSettings
+  ): AvroSettings[F] =
+    AvroSettings(SchemaRegistryClient[F](schemaRegistryClientSettings))
+
+  def apply[F[_]](
+    schemaRegistryClient: SchemaRegistryClient[F]
+  )(implicit F: Sync[F]): AvroSettings[F] =
+    AvroSettings(F.pure(schemaRegistryClient))
+
+  def apply[F[_]: Sync](
+    schemaRegistryClient: F[SchemaRegistryClient[F]]
+  ): AvroSettings[F] =
+    create(schemaRegistryClient)
+
   private[this] final case class AvroSettingsImpl[F[_]](
-    override val schemaRegistryClient: F[SchemaRegistryClient],
+    override val schemaRegistryClient: F[SchemaRegistryClient[F]],
     override val properties: Map[String, String],
     // format: off
-    val createAvroDeserializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroDeserializer, SchemaRegistryClient)],
-    val createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Option[Schema], Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)],
-    val registerSchemaWith: (F[SchemaRegistryClient], String, Codec[_]) => F[Int]
+    val createAvroDeserializerWith: (F[SchemaRegistryClient[F]], Boolean, Map[String, String]) => F[(KafkaAvroDeserializer, SchemaRegistryClient[F])],
+    val createAvroSerializerWith: (F[SchemaRegistryClient[F]], Boolean, Option[Schema], Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient[F])],
+    val registerSchemaWith: (F[SchemaRegistryClient[F]], String, Codec[_]) => F[Int]
     // format: on
   ) extends AvroSettings[F] {
     override def withAutoRegisterSchemas(autoRegisterSchemas: Boolean): AvroSettings[F] =
@@ -193,13 +212,13 @@ object AvroSettings {
 
     override def createAvroDeserializer(
       isKey: Boolean
-    ): F[(KafkaAvroDeserializer, SchemaRegistryClient)] =
+    ): F[(KafkaAvroDeserializer, SchemaRegistryClient[F])] =
       createAvroDeserializerWith(schemaRegistryClient, isKey, properties)
 
     override def createAvroSerializer(
       isKey: Boolean,
       writerSchema: Option[Schema]
-    ): F[(KafkaAvroSerializer, SchemaRegistryClient)] =
+    ): F[(KafkaAvroSerializer, SchemaRegistryClient[F])] =
       createAvroSerializerWith(schemaRegistryClient, isKey, writerSchema, properties)
 
     override def registerSchema[A](subject: String)(implicit codec: Codec[A]): F[Int] =
@@ -207,20 +226,20 @@ object AvroSettings {
 
     override def withCreateAvroDeserializer(
       // format: off
-      createAvroDeserializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroDeserializer, SchemaRegistryClient)]
+      createAvroDeserializerWith: (F[SchemaRegistryClient[F]], Boolean, Map[String, String]) => F[(KafkaAvroDeserializer, SchemaRegistryClient[F])]
       // format: on
     ): AvroSettings[F] =
       copy(createAvroDeserializerWith = createAvroDeserializerWith)
 
     override def withCreateAvroSerializer(
       // format: off
-      createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Option[Schema], Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
+      createAvroSerializerWith: (F[SchemaRegistryClient[F]], Boolean, Option[Schema], Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient[F])]
       // format: on
     ): AvroSettings[F] =
       copy(createAvroSerializerWith = createAvroSerializerWith)
 
     override def withRegisterSchema(
-      registerSchemaWith: (F[SchemaRegistryClient], String, Codec[_]) => F[Int]
+      registerSchemaWith: (F[SchemaRegistryClient[F]], String, Codec[_]) => F[Int]
     ): AvroSettings[F] =
       copy(registerSchemaWith = registerSchemaWith)
 
@@ -228,11 +247,11 @@ object AvroSettings {
       "AvroSettings$" + System.identityHashCode(this)
   }
 
-  private[this] def withDefaults(properties: Map[String, String]) =
+  private[this] def withDefaults(properties: Map[String, String]): util.Map[String, String] =
     properties.updatedIfAbsent("schema.registry.url", "").asJava
 
   private[this] def create[F[_]](
-    schemaRegistryClient: F[SchemaRegistryClient]
+    schemaRegistryClient: F[SchemaRegistryClient[F]]
   )(implicit F: Sync[F]): AvroSettings[F] =
     AvroSettingsImpl(
       schemaRegistryClient = schemaRegistryClient,
@@ -240,7 +259,7 @@ object AvroSettings {
       createAvroDeserializerWith = (schemaRegistryClient, isKey, properties) =>
         schemaRegistryClient.flatMap { schemaRegistryClient =>
           F.delay {
-            val deserializer = new KafkaAvroDeserializer(schemaRegistryClient)
+            val deserializer = new KafkaAvroDeserializer(schemaRegistryClient.javaClient)
             deserializer.configure(withDefaults(properties), isKey)
             (deserializer, schemaRegistryClient)
           }
@@ -249,9 +268,9 @@ object AvroSettings {
         schemaRegistryClient.flatMap { schemaRegistryClient =>
           F.delay {
             val serializer = schema match {
-              case None => new KafkaAvroSerializer(schemaRegistryClient)
+              case None => new KafkaAvroSerializer(schemaRegistryClient.javaClient)
               case Some(schema) =>
-                new KafkaAvroSerializer(schemaRegistryClient) {
+                new KafkaAvroSerializer(schemaRegistryClient.javaClient) {
                   // Overrides the default auto-registration behaviour, which attempts to guess the
                   // writer schema based on the encoded representation used by the Java Avro SDK.
                   // This works for types such as Records, which contain a reference to the exact schema
@@ -279,19 +298,9 @@ object AvroSettings {
       registerSchemaWith = (schemaRegistryClient, subjectName, codec) => {
         schemaRegistryClient.flatMap { client =>
           codec.schema.leftMap(_.throwable).liftTo[F].flatMap { schema =>
-            F.delay(client.register(subjectName, new AvroSchema(schema)))
+            client.register(subjectName, new AvroSchema(schema))
           }
         }
       }
     )
-
-  def apply[F[_]](
-    schemaRegistryClientSettings: SchemaRegistryClientSettings[F]
-  )(implicit F: Sync[F]): AvroSettings[F] =
-    create(schemaRegistryClientSettings.createSchemaRegistryClient)
-
-  def apply[F[_]](
-    schemaRegistryClient: SchemaRegistryClient
-  )(implicit F: Sync[F]): AvroSettings[F] =
-    create(F.pure(schemaRegistryClient))
 }

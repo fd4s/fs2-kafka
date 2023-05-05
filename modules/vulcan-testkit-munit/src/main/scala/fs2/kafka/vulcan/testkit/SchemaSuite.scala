@@ -6,13 +6,13 @@
 
 package fs2.kafka.vulcan.testkit
 
-import fs2.kafka.vulcan.SchemaRegistryClientSettings
 import munit.FunSuite
 import vulcan.Codec
 import org.apache.avro.SchemaCompatibility
 import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import fs2.kafka.schemaregistry.client.{SchemaRegistryClient, SchemaRegistryClientSettings}
 import org.apache.avro.Schema
 
 trait CompatibilityChecker[F[_]] {
@@ -32,24 +32,23 @@ trait SchemaSuite extends FunSuite {
   private def codecAsSchema[A](codec: Codec[A]) = codec.schema.fold(e => fail(e.message), ok => ok)
 
   def compatibilityChecker(
-    clientSettings: SchemaRegistryClientSettings[IO],
+    clientSettings: SchemaRegistryClientSettings,
     name: String = "schema-compatibility-checker"
-  ) = new Fixture[CompatibilityChecker[IO]](name) {
+  ): Fixture[CompatibilityChecker[IO]] = new Fixture[CompatibilityChecker[IO]](name) {
+
     private var checker: CompatibilityChecker[IO] = null
 
     override def apply(): CompatibilityChecker[IO] = checker
 
     override def beforeAll(): Unit =
-      checker = clientSettings.createSchemaRegistryClient
+      checker = SchemaRegistryClient[IO](clientSettings)
         .map { client =>
           new CompatibilityChecker[IO] {
 
             private def registrySchema(subject: String): IO[Schema] =
               for {
-                metadata <- IO.delay(client.getLatestSchemaMetadata(subject))
-                schema <- IO.delay(
-                  client.getSchemaById(metadata.getId).asInstanceOf[AvroSchema]
-                )
+                metadata <- client.getLatestSchemaMetadata(subject)
+                schema <- client.getSchemaById[AvroSchema](metadata.getId)
               } yield schema.rawSchema()
 
             def checkReaderCompatibility[A](

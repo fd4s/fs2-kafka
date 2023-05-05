@@ -8,12 +8,17 @@ package fs2.kafka.vulcan
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import fs2.kafka.schemaregistry.client.SchemaRegistryClient
 import fs2.kafka.Headers
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
 import vulcan.Codec
 
 final class AvroSerializerSpec extends AnyFunSpec {
+
+  val avroSettings: AvroSettings[IO] =
+    AvroSettings(SchemaRegistryClient.fromJava[IO](new MockSchemaRegistryClient()))
+
   describe("AvroSerializer") {
     it("can create a serializer") {
       val serializer =
@@ -35,11 +40,16 @@ final class AvroSerializerSpec extends AnyFunSpec {
           )
         ))
         .unsafeRunSync()
-      assert(
-        schemaRegistryClient
-          .getLatestSchemaMetadata("test-union-topic-value")
-          .getSchema === """["int","boolean"]"""
-      )
+
+      avroSettings.schemaRegistryClient
+        .flatMap(_.getLatestSchemaMetadata("test-union-topic-value"))
+        .map(
+          latestSchemaMetadata =>
+            assert(
+              latestSchemaMetadata.getSchema === """["int","boolean"]"""
+            )
+        )
+        .unsafeRunSync()
     }
 
     it("raises schema errors") {
@@ -59,18 +69,4 @@ final class AvroSerializerSpec extends AnyFunSpec {
       }
     }
   }
-
-  val schemaRegistryClient: MockSchemaRegistryClient =
-    new MockSchemaRegistryClient()
-
-  val schemaRegistryClientSettings: SchemaRegistryClientSettings[IO] =
-    SchemaRegistryClientSettings[IO]("baseUrl")
-      .withAuth(Auth.Basic("username", "password"))
-      .withMaxCacheSize(100)
-      .withCreateSchemaRegistryClient { (_, _, _) =>
-        IO.pure(schemaRegistryClient)
-      }
-
-  val avroSettings: AvroSettings[IO] =
-    AvroSettings(schemaRegistryClientSettings)
 }

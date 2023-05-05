@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package fs2.kafka.vulcan
+package fs2.kafka.schemaregistry.client
 
 /**
   * The available options for [[SchemaRegistryClientSettings#withAuth]].
@@ -17,15 +17,16 @@ package fs2.kafka.vulcan
 sealed abstract class Auth
 
 object Auth {
-  private[vulcan] final case class BasicAuth(username: String, password: String) extends Auth {
+  private[schemaregistry] final case class BasicAuth(username: String, password: String)
+      extends Auth {
     override def toString: String = s"Basic($username)"
   }
 
-  private[vulcan] final case class BearerAuth(token: String) extends Auth {
+  private[schemaregistry] final case class BearerAuth(token: String) extends Auth {
     override def toString: String = "Bearer"
   }
 
-  private[vulcan] case object NoAuth extends Auth {
+  private[schemaregistry] case object NoAuth extends Auth {
     override def toString: String = "None"
   }
 

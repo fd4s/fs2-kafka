@@ -6,18 +6,22 @@
 
 package fs2.kafka.vulcan
 
-import java.time.Instant
-
-import cats.syntax.all._
+import _root_.vulcan.Codec
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import cats.syntax.all._
 import fs2.kafka._
-
-import org.scalatest.funspec.AnyFunSpec
+import fs2.kafka.schemaregistry.client.SchemaRegistryClient
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
-import _root_.vulcan.Codec
+import org.scalatest.funspec.AnyFunSpec
+
+import java.time.Instant
 
 final class PackageSpec extends AnyFunSpec {
+
+  val avroSettings: AvroSettings[IO] =
+    AvroSettings(SchemaRegistryClient.fromJava[IO](new MockSchemaRegistryClient()))
+
   describe("avroSerializer") {
     it("should be available given explicit settings") {
       avroSerializer[Test].using(avroSettings)
@@ -87,18 +91,4 @@ final class PackageSpec extends AnyFunSpec {
         ).mapN(apply)
       }
   }
-
-  val schemaRegistryClient: MockSchemaRegistryClient =
-    new MockSchemaRegistryClient()
-
-  val schemaRegistryClientSettings: SchemaRegistryClientSettings[IO] =
-    SchemaRegistryClientSettings[IO]("baseUrl")
-      .withAuth(Auth.Basic("username", "password"))
-      .withMaxCacheSize(100)
-      .withCreateSchemaRegistryClient { (_, _, _) =>
-        IO.pure(schemaRegistryClient)
-      }
-
-  val avroSettings: AvroSettings[IO] =
-    AvroSettings(schemaRegistryClientSettings)
 }

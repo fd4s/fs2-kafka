@@ -16,6 +16,7 @@ import java.nio.ByteBuffer
 final class AvroDeserializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
+
   def using[F[_]](
     settings: AvroSettings[F]
   )(implicit F: Sync[F]): RecordDeserializer[F, A] =
@@ -26,31 +27,24 @@ final class AvroDeserializer[A] private[vulcan] (
             case (deserializer, schemaRegistryClient) =>
               Deserializer.instance { (topic, _, bytes) =>
                 F.defer {
-                  if (bytes == null || bytes.length == 0) {
-                    F.raiseError(
+                  for {
+                    _ <- F.raiseError(
                       new IllegalArgumentException(
                         s"Invalid Avro record: bytes is null or empty"
                       )
-                    )
-
-                  } else {
-                    val writerSchemaId =
-                      ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
-
-                    val writerSchema = {
-                      val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
-                      if (schema.isInstanceOf[AvroSchema])
-                        schema.asInstanceOf[AvroSchema].rawSchema()
-                      else
-                        null
-                    }
-
-                    codec
+                    ).whenA(bytes == null || bytes.length == 0)
+                    // skip magic byte
+                    writerSchemaId = ByteBuffer.wrap(bytes).getInt(1)
+                    writerSchema <- schemaRegistryClient
+                      .getSchemaById[AvroSchema](writerSchemaId)
+                      .map(_.rawSchema())
+                      .recover(_ => null)
+                    result <- codec
                       .decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
                       case Right(a)    => F.pure(a)
                       case Left(error) => F.raiseError(error.throwable)
                     }
-                  }
+                  } yield result
                 }
               }
           }

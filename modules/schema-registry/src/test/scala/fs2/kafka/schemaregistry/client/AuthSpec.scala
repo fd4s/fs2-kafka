@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package fs2.kafka.vulcan
+package fs2.kafka.schemaregistry.client
 
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatestplus.scalacheck._

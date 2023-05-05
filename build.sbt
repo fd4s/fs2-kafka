@@ -33,7 +33,7 @@ lazy val `fs2-kafka` = project
     Test / console := (core / Test / console).value
   )
   .enablePlugins(TypelevelMimaPlugin)
-  .aggregate(core, vulcan, `vulcan-testkit-munit`)
+  .aggregate(core, `schema-registry`, vulcan, `vulcan-testkit-munit`)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -52,6 +52,22 @@ lazy val core = project
     testSettings
   )
 
+lazy val `schema-registry` = project
+  .in(file("modules/schema-registry"))
+  .settings(
+    moduleName := "fs2-kafka-schema-registry",
+    name := moduleName.value,
+    dependencySettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "io.confluent" % "kafka-schema-registry-client" % confluentVersion
+      )
+    ),
+    publishSettings,
+    scalaSettings,
+    testSettings
+  )
+  .dependsOn(core)
+
 lazy val vulcan = project
   .in(file("modules/vulcan"))
   .settings(
@@ -67,7 +83,7 @@ lazy val vulcan = project
     scalaSettings,
     testSettings
   )
-  .dependsOn(core)
+  .dependsOn(core, `schema-registry`)
 
 lazy val `vulcan-testkit-munit` = project
   .in(file("modules/vulcan-testkit-munit"))
@@ -176,6 +192,9 @@ lazy val buildInfoSettings = Seq(
     },
     BuildInfoKey.map(core / crossScalaVersions) {
       case (k, v) => "core" ++ k.capitalize -> v
+    },
+    BuildInfoKey.map(`schema-registry` / moduleName) {
+      case (k, v) => "schemaRegistry" ++ k.capitalize -> v
     },
     BuildInfoKey.map(vulcan / moduleName) {
       case (k, v) => "vulcan" ++ k.capitalize -> v
