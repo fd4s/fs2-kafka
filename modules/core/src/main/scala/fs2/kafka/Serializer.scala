@@ -14,7 +14,6 @@ import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
 sealed abstract class GenericSerializer[-T <: KeyOrValue, F[_], A] {
-
   /**
     * Attempts to serialize the specified value of type `A` into
     * bytes. The Kafka topic name, to which the serialized bytes

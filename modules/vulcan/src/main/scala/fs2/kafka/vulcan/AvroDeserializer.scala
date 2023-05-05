@@ -41,7 +41,6 @@ final class AvroDeserializer[A] private[vulcan] (
                         s"Invalid Avro record: bytes is null or empty"
                       )
                     )
-
                   } else {
                     val writerSchemaId =
                       ByteBuffer.wrap(bytes).getInt(1) // skip magic byte

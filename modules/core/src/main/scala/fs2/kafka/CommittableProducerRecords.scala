@@ -30,7 +30,6 @@ import fs2.kafka.internal.syntax._
   * the same transaction as the offset is committed.
   */
 sealed abstract class CommittableProducerRecords[F[_], +K, +V] {
-
   /** The records to produce. Can be empty to simply commit the offset. */
   def records: Chunk[ProducerRecord[K, V]]
 

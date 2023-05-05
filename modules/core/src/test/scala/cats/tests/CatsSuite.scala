@@ -18,7 +18,6 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 
 trait TestSettings extends Configuration with Matchers {
-
   lazy val checkConfiguration: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
       minSuccessful = if (Platform.isJvm) PosInt(50) else PosInt(5),
@@ -58,7 +57,6 @@ trait CatsSuite
     with AllSyntaxBinCompat4
     with AllSyntaxBinCompat5
     with StrictCatsEquality {
-
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     checkConfiguration
 

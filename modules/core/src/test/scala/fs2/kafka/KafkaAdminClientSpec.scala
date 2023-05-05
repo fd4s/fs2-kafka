@@ -22,7 +22,6 @@ import org.apache.kafka.common.resource.{
 }
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
-
   describe("KafkaAdminClient") {
     it("should allow creating instances") {
       KafkaAdminClient.resource[IO](adminClientSettings).use(IO.pure).unsafeRunSync()
@@ -343,5 +342,4 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       .lastOrError
       .unsafeRunSync()
   }
-
 }
