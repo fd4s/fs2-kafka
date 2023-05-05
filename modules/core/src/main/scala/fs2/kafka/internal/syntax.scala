@@ -187,7 +187,7 @@ private[kafka] object syntax {
     private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
     // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
-    def cancelable(implicit F: Async[F]): F[A] =
+    def cancelable_(implicit F: Async[F]): F[A] =
       F.async { (cb: (Either[Throwable, A] => Unit)) =>
         futureF.flatMap { future =>
           F.blocking {

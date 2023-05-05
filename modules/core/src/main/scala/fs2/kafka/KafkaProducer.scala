@@ -212,7 +212,17 @@ object KafkaProducer {
                 else promise.failure(exception)
               }
             )
-          }.as(F.fromFuture(F.delay(promise.future)))
+          }.as {
+            F.delay(promise.future).flatMap { fut =>
+              F.executionContext.flatMap { implicit ec =>
+                F.async[(ProducerRecord[K, V], RecordMetadata)] { cb =>
+                  F.delay(fut.onComplete(t => cb(t.toEither))).as(Some(F.unit))
+                }
+              }
+            }
+            // TODO: replace the above with the following once CE3.5.0 is out
+            // F.fromFutureCancelable(F.delay(promise.future))
+          }
         }
       }
 
