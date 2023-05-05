@@ -35,7 +35,6 @@ import org.apache.kafka.common.TopicPartition
   * also achieve better performance.
   */
 sealed abstract class CommittableOffsetBatch[F[_]] {
-
   /**
     * Creates a new [[CommittableOffsetBatch]] with the specified offset
     * included. Note that this function requires offsets to be in-order

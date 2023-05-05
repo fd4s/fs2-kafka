@@ -28,7 +28,6 @@ import fs2.kafka.internal.syntax._
   * existing [[ProducerRecords]] instance.<br>
   */
 sealed abstract class ProducerRecords[+P, +K, +V] {
-
   /** The records to produce. Can be empty for passthrough-only. */
   def records: Chunk[ProducerRecord[K, V]]
 

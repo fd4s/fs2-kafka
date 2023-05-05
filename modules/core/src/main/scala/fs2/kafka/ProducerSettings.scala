@@ -27,7 +27,6 @@ import scala.concurrent.duration._
   * Use `ProducerSettings#apply` to create a new instance.
   */
 sealed abstract class ProducerSettings[F[_], K, V] {
-
   /**
     * The `Serializer` to use for serializing record keys.
     */

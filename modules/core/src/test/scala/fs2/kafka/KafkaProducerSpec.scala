@@ -11,7 +11,6 @@ import cats.effect.unsafe.implicits.global
 import fs2.{Chunk, Stream}
 
 final class KafkaProducerSpec extends BaseKafkaSpec {
-
   describe("creating producers") {
     it("should support defined syntax") {
       val settings =

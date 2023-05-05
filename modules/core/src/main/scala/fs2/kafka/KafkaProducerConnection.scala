@@ -23,7 +23,6 @@ import scala.annotation.nowarn
   * underlying connection.
   */
 sealed abstract class KafkaProducerConnection[F[_]] {
-
   def produce[P, K: Serializer[F, *], V: Serializer[F, *]](
     records: ProducerRecords[P, K, V]
   ): F[F[ProducerResult[P, K, V]]]
@@ -60,7 +59,6 @@ sealed abstract class KafkaProducerConnection[F[_]] {
 }
 
 object KafkaProducerConnection {
-
   /**
     * Creates a new [[KafkaProducerConnection]] in the `Stream` context,
     * using the specified [[ProducerSettings]].
