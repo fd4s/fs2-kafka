@@ -80,7 +80,6 @@ package object kafka {
 }
 
 package kafka {
-
   /** Phantom types to indicate whether a [[Serializer]]/[[Deserializer]] if for keys, values, or both
     */
   sealed trait KeyOrValue
@@ -88,11 +87,9 @@ package kafka {
   sealed trait Value extends KeyOrValue
 }
 package kafka {
-
   import cats.Foldable
 
   object ProducerRecords {
-
     def apply[F[+_], K, V](
       records: F[ProducerRecord[K, V]]
     )(
@@ -101,11 +98,9 @@ package kafka {
 
     def one[K, V](record: ProducerRecord[K, V]): ProducerRecords[K, V] =
       Chunk.singleton(record)
-
   }
 
   object TransactionalProducerRecords {
-
     @deprecated("this is now an identity operation", "3.0.0-M5")
     def apply[F[_], K, V](
       chunk: Chunk[CommittableProducerRecords[F, K, V]]
@@ -119,6 +114,5 @@ package kafka {
       record: CommittableProducerRecords[F, K, V]
     ): TransactionalProducerRecords[F, K, V] =
       Chunk.singleton(record)
-
   }
 }

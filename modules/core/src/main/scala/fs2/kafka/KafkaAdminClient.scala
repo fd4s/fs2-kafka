@@ -330,7 +330,6 @@ object KafkaAdminClient {
     partitions: G[TopicPartition]
   ): ListConsumerGroupOffsetsForPartitions[F] =
     new ListConsumerGroupOffsetsForPartitions[F] {
-
       private[this] val groupOffsets = Map(
         groupId -> new ListConsumerGroupOffsetsSpec().topicPartitions(partitions.asJava)
       ).asJava

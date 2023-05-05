@@ -145,7 +145,6 @@ object KafkaProducerConnection {
 
         override def partitionsFor(topic: String): G[List[PartitionInfo]] =
           withProducer.blocking { _.partitionsFor(topic).asScala.toList }
-
       }
     }
 

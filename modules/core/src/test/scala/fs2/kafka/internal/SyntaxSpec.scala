@@ -19,7 +19,6 @@ import org.apache.kafka.common.internals.KafkaFutureImpl
 import java.util.concurrent.CancellationException
 
 final class SyntaxSpec extends BaseSpec {
-
   describe("Map#filterKeysStrictValuesList") {
     it("should be the same as toList.collect") {
       forAll { (m: Map[Int, Int], p: Int => Boolean) =>

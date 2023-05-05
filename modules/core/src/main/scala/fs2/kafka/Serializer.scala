@@ -52,7 +52,6 @@ sealed abstract class GenericSerializer[-T <: KeyOrValue, F[_], A] {
   * support for effect types.
   */
 object GenericSerializer {
-
   def apply[F[_], A](implicit serializer: Serializer[F, A]): Serializer[F, A] = serializer
 
   /** Alias for [[Serializer#identity]]. */

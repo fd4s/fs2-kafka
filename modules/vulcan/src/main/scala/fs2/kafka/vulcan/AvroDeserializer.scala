@@ -16,7 +16,6 @@ import java.nio.ByteBuffer
 final class AvroDeserializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
-
   def forKey[F[_]: Sync](settings: AvroSettings[F]): Resource[F, KeyDeserializer[F, A]] =
     createDeserializer(isKey = true, settings)
 
