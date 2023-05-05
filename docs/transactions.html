@@ -104,6 +104,7 @@ To ensure the performance of <code>TransactionalKafkaProducer</code> aligns with
                 }
             }
             .groupWithin(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds)
+            .map(<span class="hljs-type">TransactionalProducerRecords</span>(_))
             .evalMap(producer.produce)
         }
 

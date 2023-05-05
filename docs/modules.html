@@ -107,15 +107,14 @@ resolvers += <span class="hljs-string">"confluent"</span> at <span class="hljs-s
   }
 </code></pre>
 <p>We can then create a <code>Serializer</code> and <code>Deserializer</code> instance for <code>Person</code>.</p>
-<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.<span class="hljs-type">Resource</span>
-<span class="hljs-keyword">import</span> fs2.kafka.{<span class="hljs-type">ValueSerializer</span>, <span class="hljs-type">ValueDeserializer</span>}
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> fs2.kafka.{<span class="hljs-type">RecordDeserializer</span>, <span class="hljs-type">RecordSerializer</span>}
 <span class="hljs-keyword">import</span> fs2.kafka.vulcan.{avroDeserializer, avroSerializer}
 
-<span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> personSerializer: <span class="hljs-type">Resource</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">ValueSerializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Person</span>]] =
-  avroSerializer[<span class="hljs-type">Person</span>].forValue(avroSettings)
+<span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> personSerializer: <span class="hljs-type">RecordSerializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Person</span>] =
+  avroSerializer[<span class="hljs-type">Person</span>].using(avroSettings)
 
-<span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> personDeserializer: <span class="hljs-type">Resource</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">ValueDeserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Person</span>]] =
-  avroDeserializer[<span class="hljs-type">Person</span>].forValue(avroSettings)
+<span class="hljs-keyword">implicit</span> <span class="hljs-keyword">val</span> personDeserializer: <span class="hljs-type">RecordDeserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Person</span>] =
+  avroDeserializer[<span class="hljs-type">Person</span>].using(avroSettings)
 </code></pre>
 <p>Finally, we can create settings, passing the <code>Serializer</code>s and <code>Deserializer</code>s implicitly.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> fs2.kafka.{<span class="hljs-type">AutoOffsetReset</span>, <span class="hljs-type">ConsumerSettings</span>, <span class="hljs-type">ProducerSettings</span>}
@@ -162,11 +161,11 @@ avroSettingsWithoutAutoRegister.registerSchema[<span class="hljs-type">String</s
 </code></pre>
 <p>We can then create multiple <code>Serializer</code>s and <code>Deserializer</code>s using the <code>AvroSettings</code>.</p>
 <pre><code class="hljs css language-scala">avroSettingsSharedClient.map { avroSettings =&gt;
-  <span class="hljs-keyword">val</span> personSerializer: <span class="hljs-type">Resource</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">ValueSerializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Person</span>]] =
-    avroSerializer[<span class="hljs-type">Person</span>].forValue(avroSettings)
+  <span class="hljs-keyword">val</span> personSerializer: <span class="hljs-type">RecordSerializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Person</span>] =
+    avroSerializer[<span class="hljs-type">Person</span>].using(avroSettings)
 
-  <span class="hljs-keyword">val</span> personDeserializer: <span class="hljs-type">Resource</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">ValueDeserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Person</span>]] =
-    avroDeserializer[<span class="hljs-type">Person</span>].forValue(avroSettings)
+  <span class="hljs-keyword">val</span> personDeserializer: <span class="hljs-type">RecordDeserializer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Person</span>] =
+    avroDeserializer[<span class="hljs-type">Person</span>].using(avroSettings)
 
   <span class="hljs-keyword">val</span> consumerSettings =
     <span class="hljs-type">ConsumerSettings</span>(
