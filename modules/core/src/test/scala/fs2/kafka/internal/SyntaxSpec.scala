@@ -83,7 +83,7 @@ final class SyntaxSpec extends BaseSpec {
             }
             future
           }
-          fiber <- futureIO.cancelable.start
+          fiber <- futureIO.cancelable_.start
           _ <- gate.get // wait for future to be created before canceling it
           _ <- IO(assert(!isFutureCancelled))
           _ <- fiber.cancel
