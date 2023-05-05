@@ -10,7 +10,6 @@ import cats.kernel.laws.discipline.EqTests
 import cats.laws.discipline.{BitraverseTests, TraverseTests}
 
 class ProducerRecordLawsSpec extends BaseCatsSpec {
-
   checkAll(
     "ProducerRecord.eqLaws",
     EqTests[ProducerRecord[Int, Int]].eqv

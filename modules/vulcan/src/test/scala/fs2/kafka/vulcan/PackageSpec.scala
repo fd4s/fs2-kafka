@@ -59,7 +59,6 @@ final class PackageSpec extends AnyFunSpec {
           case (serializer, deserializer) =>
             val test2 = Test2("test", 42)
             for {
-
               serialized <- serializer.serialize("topic2", Headers.empty, test2)
               deserialized <- deserializer.deserialize("topic2", Headers.empty, serialized)
             } yield assert(deserialized == Test("test"))

@@ -12,7 +12,6 @@ import org.apache.kafka.common.TopicPartition
 import scala.concurrent.duration.FiniteDuration
 
 trait KafkaOffsetsV2[F[_]] extends KafkaOffsets[F] {
-
   /**
     * Returns the last committed offsets for the given partitions.
     */

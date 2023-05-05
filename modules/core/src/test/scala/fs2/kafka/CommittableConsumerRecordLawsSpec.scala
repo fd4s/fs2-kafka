@@ -11,7 +11,6 @@ import cats.kernel.laws.discipline.EqTests
 import cats.laws.discipline.{BitraverseTests, TraverseTests}
 
 class CommittableConsumerRecordLawsSpec extends BaseCatsSpec {
-
   checkAll(
     "CommittableConsumerRecord.eqLaws",
     EqTests[CommittableConsumerRecord[IO, String, String]].eqv

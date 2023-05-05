@@ -14,7 +14,6 @@ import cats.effect.kernel.Resource
 final class AvroSerializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
-
   def forKey[F[_]: Sync](settings: AvroSettings[F]): Resource[F, KeySerializer[F, A]] =
     create(isKey = true, settings)
 

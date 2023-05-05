@@ -25,7 +25,6 @@ import org.apache.kafka.common.Metric
   * underlying connection.
   */
 sealed abstract class KafkaProducerConnection[F[_]] {
-
   def produce[K: KeySerializer[F, *], V: ValueSerializer[F, *]](
     records: ProducerRecords[K, V]
   ): F[F[ProducerResult[K, V]]]
@@ -62,7 +61,6 @@ sealed abstract class KafkaProducerConnection[F[_]] {
 }
 
 object KafkaProducerConnection {
-
   /**
     * Creates a new [[KafkaProducerConnection]] in the `Stream` context,
     * using the specified [[ProducerSettings]].
@@ -147,7 +145,6 @@ object KafkaProducerConnection {
 
         override def partitionsFor(topic: String): G[List[PartitionInfo]] =
           withProducer.blocking { _.partitionsFor(topic).asScala.toList }
-
       }
     }
 

@@ -120,7 +120,6 @@ private[kafka] object syntax {
 
     def updatedIfAbsent(k: K, v: => V): Map[K, V] =
       if (map.contains(k)) map else map.updated(k, v)
-
   }
 
   implicit final class MapWrappedValueSyntax[F[_], K, V](
@@ -186,7 +185,7 @@ private[kafka] object syntax {
   implicit final class KafkaFutureSyntax[F[_], A](
     private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
-    def cancelable(implicit F: Async[F]): F[A] =
+    def cancelable_(implicit F: Async[F]): F[A] =
       F.fromCompletableFuture(futureF.map(_.toCompletionStage.toCompletableFuture))
   }
 

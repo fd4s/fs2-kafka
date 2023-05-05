@@ -16,7 +16,6 @@ import java.nio.ByteBuffer
 final class AvroDeserializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
-
   def forKey[F[_]: Sync](settings: AvroSettings[F]): Resource[F, KeyDeserializer[F, A]] =
     createDeserializer(isKey = true, settings)
 
@@ -41,7 +40,6 @@ final class AvroDeserializer[A] private[vulcan] (
                         s"Invalid Avro record: bytes is null or empty"
                       )
                     )
-
                   } else {
                     val writerSchemaId =
                       ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
