@@ -154,8 +154,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
   def consumeFirstKeyedMessageFrom[K, V](
     topic: String,
     customProperties: Map[String, Object] = Map.empty
-  )(
-    implicit
+  )(implicit
     keyDeserializer: KafkaDeserializer[K],
     valueDeserializer: KafkaDeserializer[V]
   ): (K, V) =
@@ -168,8 +167,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     topic: String,
     number: Int,
     customProperties: Map[String, Object] = Map.empty
-  )(
-    implicit
+  )(implicit
     keyDeserializer: KafkaDeserializer[K],
     valueDeserializer: KafkaDeserializer[V]
   ): List[(K, V)] =
@@ -188,8 +186,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     timeout: Duration = 10.seconds,
     resetTimeoutOnEachMessage: Boolean = true,
     customProperties: Map[String, Object] = Map.empty
-  )(
-    implicit
+  )(implicit
     keyDeserializer: KafkaDeserializer[K],
     valueDeserializer: KafkaDeserializer[V]
   ): Map[String, List[(K, V)]] = {
@@ -232,8 +229,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     }
 
     consumer.close()
-    messages.recover {
-      case ex: KafkaException => throw new Exception("Kafka unavailable", ex)
+    messages.recover { case ex: KafkaException =>
+      throw new Exception("Kafka unavailable", ex)
     }.get
   }
 
@@ -274,8 +271,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     }
   }
 
-  def publishToKafka[K, T](topic: String, messages: Seq[(K, T)])(
-    implicit keySerializer: KafkaSerializer[K],
+  def publishToKafka[K, T](topic: String, messages: Seq[(K, T)])(implicit
+    keySerializer: KafkaSerializer[K],
     serializer: KafkaSerializer[T]
   ): Unit = {
     val producer =
@@ -298,8 +295,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
     producer.close()
 
-    val _ = records.collectFirst {
-      case Failure(ex) => throw new Exception("Kafka unavialable", ex)
+    val _ = records.collectFirst { case Failure(ex) =>
+      throw new Exception("Kafka unavialable", ex)
     }
   }
 }

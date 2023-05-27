@@ -20,26 +20,25 @@ final class AvroSerializer[A] private[vulcan] (
   def forValue[F[_]: Sync](settings: AvroSettings[F]): Resource[F, ValueSerializer[F, A]] =
     create(isKey = false, settings)
 
-  private def create[F[_]](isKey: Boolean, settings: AvroSettings[F])(
-    implicit F: Sync[F]
+  private def create[F[_]](isKey: Boolean, settings: AvroSettings[F])(implicit
+    F: Sync[F]
   ): Resource[F, Serializer[F, A]] =
     codec.schema match {
       case Left(e) => Resource.pure(Serializer.fail(e.throwable))
       case Right(writerSchema) =>
         Resource
-          .make(settings.createAvroSerializer(isKey, Some(writerSchema))) {
-            case (ser, _) => F.delay(ser.close())
+          .make(settings.createAvroSerializer(isKey, Some(writerSchema))) { case (ser, _) =>
+            F.delay(ser.close())
           }
-          .map {
-            case (serializer, _) =>
-              Serializer.instance { (topic, _, a) =>
-                F.defer {
-                  codec.encode(a) match {
-                    case Right(value) => F.pure(serializer.serialize(topic, value))
-                    case Left(error)  => F.raiseError(error.throwable)
-                  }
+          .map { case (serializer, _) =>
+            Serializer.instance { (topic, _, a) =>
+              F.defer {
+                codec.encode(a) match {
+                  case Right(value) => F.pure(serializer.serialize(topic, value))
+                  case Left(error)  => F.raiseError(error.throwable)
                 }
               }
+            }
           }
     }
 

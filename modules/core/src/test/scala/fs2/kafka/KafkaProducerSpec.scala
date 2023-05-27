@@ -63,9 +63,8 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       (for {
         producer <- KafkaProducer[IO].stream(producerSettings[IO])
-        records <- Stream.chunk(Chunk.seq(toProduce).map {
-          case (key, value) =>
-            ProducerRecords.one(ProducerRecord(topic, key, value))
+        records <- Stream.chunk(Chunk.seq(toProduce).map { case (key, value) =>
+          ProducerRecords.one(ProducerRecord(topic, key, value))
         })
         _ <- Stream.eval(producer.produce(records))
       } yield ()).compile.toVector.unsafeRunSync()
@@ -85,17 +84,15 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       val produced =
         (for {
           producer <- KafkaProducer.stream(producerSettings[IO])
-          records = ProducerRecords(toProduce.map {
-            case (key, value) =>
-              ProducerRecord(topic, key, value)
+          records = ProducerRecords(toProduce.map { case (key, value) =>
+            ProducerRecord(topic, key, value)
           })
           result <- Stream.eval(producer.produce(records).flatten)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       val records =
-        produced.map {
-          case (record, _) =>
-            record.key -> record.value
+        produced.map { case (record, _) =>
+          record.key -> record.value
         }.toList
 
       assert(records == toProduce)
@@ -233,17 +230,15 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       val produced =
         (for {
           producer <- KafkaProducer.stream(producerSettings[IO])
-          records = ProducerRecords(toProduce.map {
-            case (key, value) =>
-              ProducerRecord(topic, key, value)
+          records = ProducerRecords(toProduce.map { case (key, value) =>
+            ProducerRecord(topic, key, value)
           })
           result <- Stream.eval(producer.produce(records).flatten)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       val records =
-        produced.map {
-          case (record, _) =>
-            record.key -> record.value
+        produced.map { case (record, _) =>
+          record.key -> record.value
         }.toList
 
       assert(records == toProduce)

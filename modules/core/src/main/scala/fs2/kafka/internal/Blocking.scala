@@ -30,14 +30,12 @@ private[kafka] object Blocking {
     Resource
       .make(
         F.delay(
-          Executors.newSingleThreadExecutor(
-            (runnable: Runnable) => {
-              val thread = new Thread(runnable)
-              thread.setName(s"$name-${thread.getId}")
-              thread.setDaemon(true)
-              thread
-            }
-          )
+          Executors.newSingleThreadExecutor { (runnable: Runnable) =>
+            val thread = new Thread(runnable)
+            thread.setName(s"$name-${thread.getId}")
+            thread.setDaemon(true)
+            thread
+          }
         )
       )(ex => F.delay(ex.shutdown()))
       .map(ex => fromExecutionContext(ExecutionContext.fromExecutor(ex)))

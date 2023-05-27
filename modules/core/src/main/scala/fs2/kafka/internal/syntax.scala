@@ -26,8 +26,8 @@ private[kafka] object syntax {
   implicit final class LoggingSyntax[F[_], A](
     private val fa: F[A]
   ) extends AnyVal {
-    def log(f: A => LogEntry)(
-      implicit F: FlatMap[F],
+    def log(f: A => LogEntry)(implicit
+      F: FlatMap[F],
       logging: Logging[F]
     ): F[Unit] =
       fa.flatMap(a => logging.log(f(a)))
@@ -71,22 +71,22 @@ private[kafka] object syntax {
       builder.append(end).toString
     }
 
-    def mkStringMap(f: A => String)(start: String, sep: String, end: String)(
-      implicit F: Foldable[F]
+    def mkStringMap(f: A => String)(start: String, sep: String, end: String)(implicit
+      F: Foldable[F]
     ): String = mkStringAppend((append, a) => append(f(a)))(start, sep, end)
 
-    def mkString(start: String, sep: String, end: String)(
-      implicit F: Foldable[F]
+    def mkString(start: String, sep: String, end: String)(implicit
+      F: Foldable[F]
     ): String = mkStringMap(_.toString)(start, sep, end)
 
-    def mkStringShow(start: String, sep: String, end: String)(
-      implicit F: Foldable[F],
+    def mkStringShow(start: String, sep: String, end: String)(implicit
+      F: Foldable[F],
       A: Show[A]
     ): String = mkStringMap(_.show)(start, sep, end)
 
     def asJava(implicit F: Foldable[F]): util.List[A] = {
       val array = new util.ArrayList[A](fa.size.toInt)
-      fa.foldLeft(())((_, a) => { array.add(a); () })
+      fa.foldLeft(()) { (_, a) => array.add(a); () }
       util.Collections.unmodifiableList(array)
     }
   }

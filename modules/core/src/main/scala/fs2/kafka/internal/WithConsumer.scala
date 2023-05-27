@@ -34,7 +34,7 @@ private[kafka] object WithConsumer {
               b(f(consumer))
           }
         }
-      }(_.blocking { _.close(settings.closeTimeout.toJava) })
+      }(_.blocking(_.close(settings.closeTimeout.toJava)))
     }
   }
 }

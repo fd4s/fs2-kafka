@@ -13,20 +13,18 @@ import scala.collection.immutable.SortedSet
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaAssignment[F[_]] {
-  /**
-    * Returns the set of partitions currently assigned to this consumer.
+
+  /** Returns the set of partitions currently assigned to this consumer.
     */
   def assignment: F[SortedSet[TopicPartition]]
 
-  /**
-    * `Stream` where the elements are the set of `TopicPartition`s currently
+  /** `Stream` where the elements are the set of `TopicPartition`s currently
     * assigned to this consumer. The stream emits whenever a rebalance changes
     * partition assignments.
     */
   def assignmentStream: Stream[F, SortedSet[TopicPartition]]
 
-  /**
-    * Manually assigns the specified list of topic partitions to the consumer.
+  /** Manually assigns the specified list of topic partitions to the consumer.
     * This function does not allow for incremental assignment and will replace
     * the previous assignment (if there is one).
     *
@@ -45,8 +43,7 @@ trait KafkaAssignment[F[_]] {
     */
   def assign(partitions: NonEmptySet[TopicPartition]): F[Unit]
 
-  /**
-    * Manually assigns the specified list of partitions for the specified topic
+  /** Manually assigns the specified list of partitions for the specified topic
     * to the consumer. This function does not allow for incremental assignment
     * and will replace the previous assignment (if there is one).
     *
@@ -66,8 +63,7 @@ trait KafkaAssignment[F[_]] {
   def assign(topic: String, partitions: NonEmptySet[Int]): F[Unit] =
     assign(partitions.map(new TopicPartition(topic, _)))
 
-  /**
-    * Manually assigns all partitions for the specified topic to the consumer.
+  /** Manually assigns all partitions for the specified topic to the consumer.
     */
   def assign(topic: String): F[Unit]
 }

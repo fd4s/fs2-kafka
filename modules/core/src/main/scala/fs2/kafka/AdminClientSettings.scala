@@ -11,8 +11,7 @@ import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.admin.AdminClientConfig
 import scala.concurrent.duration._
 
-/**
-  * [[AdminClientSettings]] contain settings necessary to create a
+/** [[AdminClientSettings]] contain settings necessary to create a
   * [[KafkaAdminClient]]. Several convenience functions are provided
   * so that you don't have to work with `String` values and keys from
   * `AdminClientConfig`. It's still possible to set `AdminClientConfig`
@@ -25,15 +24,14 @@ import scala.concurrent.duration._
   * then apply any desired modifications on top of that instance.
   */
 sealed abstract class AdminClientSettings {
-  /**
-    * Properties which can be provided when creating a Java `KafkaAdminClient`
+
+  /** Properties which can be provided when creating a Java `KafkaAdminClient`
     * instance. Numerous functions in [[AdminClientSettings]] add properties
     * here if the settings are used by the Java `KafkaAdminClient`.
     */
   def properties: Map[String, String]
 
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the specified
+  /** Returns a new [[AdminClientSettings]] instance with the specified
     * bootstrap servers. This is equivalent to setting the following
     * property using the [[withProperty]] function.
     *
@@ -43,8 +41,7 @@ sealed abstract class AdminClientSettings {
     */
   def withBootstrapServers(bootstrapServers: String): AdminClientSettings
 
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the specified
+  /** Returns a new [[AdminClientSettings]] instance with the specified
     * client id. This is equivalent to setting the following property
     * using the [[withProperty]] function.
     *
@@ -54,8 +51,7 @@ sealed abstract class AdminClientSettings {
     */
   def withClientId(clientId: String): AdminClientSettings
 
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the specified
+  /** Returns a new [[AdminClientSettings]] instance with the specified
     * reconnect backoff. This is equivalent to setting the following
     * property using the [[withProperty]] function, except you can
     * specify it with a `FiniteDuration` instead of a `String`.
@@ -66,8 +62,7 @@ sealed abstract class AdminClientSettings {
     */
   def withReconnectBackoff(reconnectBackoff: FiniteDuration): AdminClientSettings
 
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the specified
+  /** Returns a new [[AdminClientSettings]] instance with the specified
     * max reconnect backoff. This is equivalent to setting the following
     * property using the [[withProperty]] function, except you can
     * specify it with a `FiniteDuration` instead of a `String`.
@@ -78,8 +73,7 @@ sealed abstract class AdminClientSettings {
     */
   def withReconnectBackoffMax(reconnectBackoffMax: FiniteDuration): AdminClientSettings
 
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the specified
+  /** Returns a new [[AdminClientSettings]] instance with the specified
     * retry backoff. This is equivalent to setting the following property
     * using the [[withProperty]] function, except you can specify it with
     * a `FiniteDuration` instead of a `String`.
@@ -90,8 +84,7 @@ sealed abstract class AdminClientSettings {
     */
   def withRetryBackoff(retryBackoff: FiniteDuration): AdminClientSettings
 
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the specified
+  /** Returns a new [[AdminClientSettings]] instance with the specified
     * max connection idle time. This is equivalent to setting the following
     * property using the [[withProperty]] function, except you can specify
     * it with a `FiniteDuration` instead of a `String`.
@@ -102,8 +95,7 @@ sealed abstract class AdminClientSettings {
     */
   def withConnectionsMaxIdle(connectionsMaxIdle: FiniteDuration): AdminClientSettings
 
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the specified
+  /** Returns a new [[AdminClientSettings]] instance with the specified
     * request timeout. This is equivalent to setting the following
     * property using the [[withProperty]] function, except you can
     * specify it with a `FiniteDuration` instead of a `String`.
@@ -114,8 +106,7 @@ sealed abstract class AdminClientSettings {
     */
   def withRequestTimeout(requestTimeout: FiniteDuration): AdminClientSettings
 
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the specified
+  /** Returns a new [[AdminClientSettings]] instance with the specified
     * max metadata age. This is equivalent to setting the following
     * property using the [[withProperty]] function, except you can
     * specify it with a `FiniteDuration` instead of a `String`.
@@ -126,8 +117,7 @@ sealed abstract class AdminClientSettings {
     */
   def withMetadataMaxAge(metadataMaxAge: FiniteDuration): AdminClientSettings
 
-  /**
-    * Returns a new [[AdminClientSettings]] instance with the specified
+  /** Returns a new [[AdminClientSettings]] instance with the specified
     * retries. This is equivalent to setting the following property
     * using the [[withProperty]] function, except you can specify
     * it with an `Int` instead of a `String`.
@@ -138,41 +128,35 @@ sealed abstract class AdminClientSettings {
     */
   def withRetries(retries: Int): AdminClientSettings
 
-  /**
-    * Includes a property with the specified `key` and `value`.
+  /** Includes a property with the specified `key` and `value`.
     * The key should be one of the keys in `AdminClientConfig`,
     * and the value should be a valid choice for the key.
     */
   def withProperty(key: String, value: String): AdminClientSettings
 
-  /**
-    * Includes the specified keys and values as properties. The
+  /** Includes the specified keys and values as properties. The
     * keys should be part of the `AdminClientConfig` keys, and
     * the values should be valid choices for the keys.
     */
   def withProperties(properties: (String, String)*): AdminClientSettings
 
-  /**
-    * Includes the specified keys and values as properties. The
+  /** Includes the specified keys and values as properties. The
     * keys should be part of the `AdminClientConfig` keys, and
     * the values should be valid choices for the keys.
     */
   def withProperties(properties: Map[String, String]): AdminClientSettings
 
-  /**
-    * The time to wait for the Java `KafkaAdminClient` to shutdown.<br>
+  /** The time to wait for the Java `KafkaAdminClient` to shutdown.<br>
     * <br>
     * The default value is 20 seconds.
     */
   def closeTimeout: FiniteDuration
 
-  /**
-    * Creates a new [[AdminClientSettings]] with the specified [[closeTimeout]].
+  /** Creates a new [[AdminClientSettings]] with the specified [[closeTimeout]].
     */
   def withCloseTimeout(closeTimeout: FiniteDuration): AdminClientSettings
 
-  /**
-    * Includes the credentials properties from the provided [[KafkaCredentialStore]]
+  /** Includes the credentials properties from the provided [[KafkaCredentialStore]]
     */
   def withCredentials(credentialsStore: KafkaCredentialStore): AdminClientSettings
 }

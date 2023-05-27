@@ -6,8 +6,7 @@
 
 package fs2.kafka
 
-/**
-  * The available options for [[ConsumerSettings#withAutoOffsetReset]].<br>
+/** The available options for [[ConsumerSettings#withAutoOffsetReset]].<br>
   * <br>
   * Available options include:<br>
   * - [[AutoOffsetReset#Earliest]] to reset to the earliest offsets,<br>
@@ -29,20 +28,17 @@ object AutoOffsetReset {
     override def toString: String = "None"
   }
 
-  /**
-    * Option to reset to the earliest available offsets if no
+  /** Option to reset to the earliest available offsets if no
     * initial or current offsets exist for the consumer group.
     */
   val Earliest: AutoOffsetReset = EarliestOffsetReset
 
-  /**
-    * Option to reset to the latest available offsets if no
+  /** Option to reset to the latest available offsets if no
     * initial or current offsets exist for the consumer group.
     */
   val Latest: AutoOffsetReset = LatestOffsetReset
 
-  /**
-    * Option to fail the consumer if there are no offsets
+  /** Option to fail the consumer if there are no offsets
     * available for the consumer group.
     */
   val None: AutoOffsetReset = NoneOffsetReset

@@ -193,8 +193,8 @@ final class SerializerSpec extends BaseCatsSpec {
 
   test("Serializer#topic.unknown") {
     val serializer =
-      Serializer.topic {
-        case "topic" => Serializer[IO, Int]
+      Serializer.topic { case "topic" =>
+        Serializer[IO, Int]
       }
 
     forAll { (headers: Headers, int: Int) =>

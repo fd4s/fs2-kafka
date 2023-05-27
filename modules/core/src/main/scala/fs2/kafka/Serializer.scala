@@ -14,41 +14,36 @@ import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
 sealed abstract class GenericSerializer[-T <: KeyOrValue, F[_], A] {
-  /**
-    * Attempts to serialize the specified value of type `A` into
+
+  /** Attempts to serialize the specified value of type `A` into
     * bytes. The Kafka topic name, to which the serialized bytes
     * are going to be sent, and record headers are available.
     */
   def serialize(topic: String, headers: Headers, a: A): F[Array[Byte]]
 
-  /**
-    * Creates a new [[Serializer]] which applies the specified
+  /** Creates a new [[Serializer]] which applies the specified
     * function `f` on a value of type `B`, and then serializes
     * the result with this [[Serializer]].
     */
   def contramap[B](f: B => A): GenericSerializer[T, F, B]
 
-  /**
-    * Creates a new [[Serializer]] which applies the specified
+  /** Creates a new [[Serializer]] which applies the specified
     * function `f` on the output bytes of this [[Serializer]].
     */
   def mapBytes(f: Array[Byte] => Array[Byte]): GenericSerializer[T, F, A]
 
-  /**
-    * Creates a new [[Serializer]] which serializes `Some` values
+  /** Creates a new [[Serializer]] which serializes `Some` values
     * using this [[Serializer]], and serializes `None` as `null`.
     */
   def option: GenericSerializer[T, F, Option[A]]
 
-  /**
-    * Creates a new [[Serializer]] which suspends serialization,
+  /** Creates a new [[Serializer]] which suspends serialization,
     * capturing any impure behaviours of this [[Serializer]].
     */
   def suspend: Serializer[F, A]
 }
 
-/**
-  * Functional composable Kafka key- and record serializer with
+/** Functional composable Kafka key- and record serializer with
   * support for effect types.
   */
 object GenericSerializer {
@@ -57,22 +52,19 @@ object GenericSerializer {
   /** Alias for [[Serializer#identity]]. */
   def apply[F[_]](implicit F: Sync[F]): Serializer[F, Array[Byte]] = identity
 
-  /**
-    * Creates a new [[Serializer]] which serializes
+  /** Creates a new [[Serializer]] which serializes
     * all values of type `A` as `null`.
     */
   def asNull[F[_], A](implicit F: Sync[F]): Serializer[F, A] =
     Serializer.const(null)
 
-  /**
-    * Creates a new [[Serializer]] which serializes
+  /** Creates a new [[Serializer]] which serializes
     * all values of type `A` to the specified `bytes`.
     */
   def const[F[_], A](bytes: Array[Byte])(implicit F: Sync[F]): Serializer[F, A] =
     Serializer.lift(_ => F.pure(bytes))
 
-  /**
-    * Creates a new [[Serializer]] which delegates serialization
+  /** Creates a new [[Serializer]] which delegates serialization
     * to the specified Kafka `Serializer`. Note the `close` and
     * `configure` functions won't be called for the delegate.<br>
     * <br>
@@ -80,37 +72,33 @@ object GenericSerializer {
     * If it's not pure, then use `suspend` after `delegate`,
     * so the impure behaviours can be captured properly.
     */
-  def delegate[F[_], A](serializer: KafkaSerializer[A])(
-    implicit F: Sync[F]
+  def delegate[F[_], A](serializer: KafkaSerializer[A])(implicit
+    F: Sync[F]
   ): Serializer[F, A] =
     Serializer.instance[F, A] { (topic, headers, a) =>
       F.pure(serializer.serialize(topic, headers.asJava, a))
     }
 
-  /**
-    * Creates a new [[Serializer]] which always fails
+  /** Creates a new [[Serializer]] which always fails
     * serialization with the specified exception `e`.
     */
   def fail[F[_], A](e: Throwable)(implicit F: Sync[F]): Serializer[F, A] =
     Serializer.lift(_ => F.raiseError(e))
 
-  /**
-    * Creates a new [[Serializer]] which always fails
+  /** Creates a new [[Serializer]] which always fails
     * serialization with a [[SerializationException]]
     * using the specified message.
     */
   def failWith[F[_], A](message: String)(implicit F: Sync[F]): Serializer[F, A] =
     Serializer.fail(SerializationException(message))
 
-  /**
-    * Creates a new [[Serializer]] which serializes all
+  /** Creates a new [[Serializer]] which serializes all
     * values of type `A` as the empty `Array[Byte]`.
     */
   def empty[F[_], A](implicit F: Sync[F]): Serializer[F, A] =
     Serializer.const(Array.emptyByteArray)
 
-  /**
-    * Creates a new [[Serializer]] which can use different
+  /** Creates a new [[Serializer]] which can use different
     * [[Serializer]]s depending on the record headers.
     */
   def headers[F[_], A](f: Headers => Serializer[F, A])(implicit F: Sync[F]): Serializer[F, A] =
@@ -118,8 +106,7 @@ object GenericSerializer {
       f(headers).serialize(topic, headers, a)
     }
 
-  /**
-    * Creates a new [[Serializer]] from the specified function.
+  /** Creates a new [[Serializer]] from the specified function.
     * Use [[lift]] instead if the serializer doesn't need
     * access to the Kafka topic name or record headers.
     */
@@ -155,8 +142,7 @@ object GenericSerializer {
         "Serializer$" + System.identityHashCode(this)
     }
 
-  /**
-    * Creates a new [[Serializer]] from the specified function,
+  /** Creates a new [[Serializer]] from the specified function,
     * ignoring to which Kafka topic the bytes are going to be
     * sent and any record headers. Use [[instance]] instead
     * if the serializer needs access to the Kafka topic
@@ -168,8 +154,7 @@ object GenericSerializer {
   private[this] def unexpectedTopic[F[_], A](implicit F: Sync[F]): String => Serializer[F, A] =
     topic => Serializer.fail(UnexpectedTopicException(topic))
 
-  /**
-    * Creates a new [[Serializer]] which can use different
+  /** Creates a new [[Serializer]] which can use different
     * [[Serializer]]s depending on the Kafka topic name to
     * which the bytes are going to be sent.
     */
@@ -181,35 +166,31 @@ object GenericSerializer {
         .serialize(topic, headers, a)
     }
 
-  /**
-    * Creates a new [[Serializer]] which serializes `String`
+  /** Creates a new [[Serializer]] which serializes `String`
     * values using the specified `Charset`. Note that the
     * default `String` serializer uses `UTF-8`.
     */
   def string[F[_]](charset: Charset)(implicit F: Sync[F]): Serializer[F, String] =
     Serializer.lift(s => F.pure(s.getBytes(charset)))
 
-  /**
-    * Creates a new [[Serializer]] which serializes `UUID` values
+  /** Creates a new [[Serializer]] which serializes `UUID` values
     * as `String`s with the specified `Charset`. Note that the
     * default `UUID` serializer uses `UTF-8.`
     */
   def uuid[F[_]](charset: Charset)(implicit F: Sync[F]): Serializer[F, UUID] =
     Serializer.string[F](charset).contramap(_.toString)
 
-  /**
-    * The identity [[Serializer]], which does not perform any kind
+  /** The identity [[Serializer]], which does not perform any kind
     * of serialization, simply using the input bytes as the output.
     */
   implicit def identity[F[_]](implicit F: Sync[F]): Serializer[F, Array[Byte]] =
     Serializer.lift(bytes => F.pure(bytes))
 
-  /**
-    * The option [[Serializer]] serializes `None` as `null`, and
+  /** The option [[Serializer]] serializes `None` as `null`, and
     * serializes `Some` values using the serializer for type `A`.
     */
-  implicit def option[T <: KeyOrValue, F[_], A](
-    implicit serializer: GenericSerializer[T, F, A]
+  implicit def option[T <: KeyOrValue, F[_], A](implicit
+    serializer: GenericSerializer[T, F, A]
   ): GenericSerializer[T, F, Option[A]] =
     serializer.option
 
@@ -260,7 +241,7 @@ object GenericSerializer {
   implicit def uuid[F[_]](implicit F: Sync[F]): Serializer[F, UUID] =
     Serializer.string[F].contramap(_.toString)
 
-  implicit def resource[T <: KeyOrValue, F[_], A](
-    implicit ser: GenericSerializer[T, F, A]
+  implicit def resource[T <: KeyOrValue, F[_], A](implicit
+    ser: GenericSerializer[T, F, A]
   ): Resource[F, GenericSerializer[T, F, A]] = Resource.pure(ser)
 }

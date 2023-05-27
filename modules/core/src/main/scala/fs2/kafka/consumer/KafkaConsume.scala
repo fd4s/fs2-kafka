@@ -11,14 +11,13 @@ import fs2.kafka.CommittableConsumerRecord
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaConsume[F[_], K, V] {
-  /**
-    * Consume from all assigned partitions, producing a stream
+
+  /** Consume from all assigned partitions, producing a stream
     * of [[CommittableConsumerRecord]]s. Alias for [[stream]].
     */
   final def records: Stream[F, CommittableConsumerRecord[F, K, V]] = stream
 
-  /**
-    * Alias for `partitionedStream.parJoinUnbounded`.
+  /** Alias for `partitionedStream.parJoinUnbounded`.
     * See [[partitionedRecords]] for more information.
     *
     * @note you have to first use `subscribe` or `assign` the consumer
@@ -27,14 +26,12 @@ trait KafkaConsume[F[_], K, V] {
     */
   def stream: Stream[F, CommittableConsumerRecord[F, K, V]]
 
-  /**
-    * Alias for [[partitionedStream]]
+  /** Alias for [[partitionedStream]]
     */
   final def partitionedRecords: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
     partitionedStream
 
-  /**
-    * `Stream` where the elements themselves are `Stream`s which continually
+  /** `Stream` where the elements themselves are `Stream`s which continually
     * request records for a single partition. These `Stream`s will have to be
     * processed in parallel, using `parJoin` or `parJoinUnbounded`. Note that
     * when using `parJoin(n)` and `n` is smaller than the number of currently
@@ -52,8 +49,7 @@ trait KafkaConsume[F[_], K, V] {
     */
   def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]]
 
-  /**
-    * `Stream` where each element contains a `Map` with all newly assigned partitions.
+  /** `Stream` where each element contains a `Map` with all newly assigned partitions.
     * Keys of this `Map` are `TopicPartition`s, and values are record streams for
     * the particular `TopicPartition`. These streams will be closed only when
     * a partition is revoked.<br>
@@ -85,8 +81,7 @@ trait KafkaConsume[F[_], K, V] {
   def partitionsMapStream
     : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]]
 
-  /**
-    * Stops consuming new messages from Kafka.
+  /** Stops consuming new messages from Kafka.
     * This method could be used to implement a graceful shutdown.<br>
     * <br>
     * This method has a few effects:

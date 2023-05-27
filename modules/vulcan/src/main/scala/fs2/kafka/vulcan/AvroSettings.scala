@@ -14,8 +14,7 @@ import io.confluent.kafka.schemaregistry.avro.AvroSchema
 import org.apache.avro.Schema
 import vulcan.Codec
 
-/**
-  * Describes how to create a `KafkaAvroDeserializer` and a
+/** Describes how to create a `KafkaAvroDeserializer` and a
   * `KafkaAvroSerializer` and which settings should be used.
   * Settings are tailored for the Confluent Kafka Avro
   * serializers and deserializers.
@@ -23,14 +22,13 @@ import vulcan.Codec
   * Use `AvroSettings.apply` to create an instance.
   */
 sealed abstract class AvroSettings[F[_]] {
-  /**
-    * The `SchemaRegistryClient` to use for the serializers
+
+  /** The `SchemaRegistryClient` to use for the serializers
     * and deserializers created from this [[AvroSettings]].
     */
   def schemaRegistryClient: F[SchemaRegistryClient]
 
-  /**
-    * Creates a new `AvroSettings` instance with the specified
+  /** Creates a new `AvroSettings` instance with the specified
     * setting for whether serializers should register schemas
     * automatically or not.
     *
@@ -38,8 +36,7 @@ sealed abstract class AvroSettings[F[_]] {
     */
   def withAutoRegisterSchemas(autoRegisterSchemas: Boolean): AvroSettings[F]
 
-  /**
-    * Creates a new `AvroSettings` instance with the specified
+  /** Creates a new `AvroSettings` instance with the specified
     * key subject name strategy. This is the class name of the
     * strategy which should be used.
     *
@@ -47,8 +44,7 @@ sealed abstract class AvroSettings[F[_]] {
     */
   def withKeySubjectNameStrategy(keySubjectNameStrategy: String): AvroSettings[F]
 
-  /**
-    * Creates a new `AvroSettings` instance with the specified
+  /** Creates a new `AvroSettings` instance with the specified
     * value subject name strategy. This is the class name of
     * the strategy which should be used.
     *
@@ -56,49 +52,42 @@ sealed abstract class AvroSettings[F[_]] {
     */
   def withValueSubjectNameStrategy(valueSubjectNameStrategy: String): AvroSettings[F]
 
-  /**
-    * Properties provided when creating a Confluent Kafka Avro
+  /** Properties provided when creating a Confluent Kafka Avro
     * serializer or deserializer. Functions in [[AvroSettings]]
     * add properties here as necessary.
     */
   def properties: Map[String, String]
 
-  /**
-    * Creates a new [[AvroSettings]] instance including a
+  /** Creates a new [[AvroSettings]] instance including a
     * property with the specified key and value.
     */
   def withProperty(key: String, value: String): AvroSettings[F]
 
-  /**
-    * Creates a new [[AvroSettings]] instance including
+  /** Creates a new [[AvroSettings]] instance including
     * properties with the specified keys and values.
     */
   def withProperties(properties: (String, String)*): AvroSettings[F]
 
-  /**
-    * Creates a new [[AvroSettings]] instance including
+  /** Creates a new [[AvroSettings]] instance including
     * properties with the specified keys and values.
     */
   def withProperties(properties: Map[String, String]): AvroSettings[F]
 
-  /**
-    * Creates a new `KafkaAvroDeserializer` using the settings
+  /** Creates a new `KafkaAvroDeserializer` using the settings
     * contained within this [[AvroSettings]] instance, and the
     * specified `isKey` flag, denoting whether a record key or
     * value is being deserialized.
     */
   def createAvroDeserializer(isKey: Boolean): F[(KafkaAvroDeserializer, SchemaRegistryClient)]
 
-  /**
-    * Register a schema for a given `Codec` for some type `A`,
+  /** Register a schema for a given `Codec` for some type `A`,
     * or return the existing schema id if it already exists.
     * @param subject The subject name
     * @return The schema id
     */
   def registerSchema[A](subject: String)(implicit codec: Codec[A]): F[Int]
 
-  /**
-    * Creates a new `KafkaAvroSerializer` using the settings
+  /** Creates a new `KafkaAvroSerializer` using the settings
     * contained within this [[AvroSettings]] instance, and the
     * specified `isKey` flag, denoting whether a record key or
     * value is being serialized.
@@ -114,8 +103,7 @@ sealed abstract class AvroSettings[F[_]] {
   ): F[(KafkaAvroSerializer, SchemaRegistryClient)] =
     createAvroSerializer(isKey, writerSchema = None)
 
-  /**
-    * Creates a new [[AvroSettings]] instance with the specified
+  /** Creates a new [[AvroSettings]] instance with the specified
     * function for creating `KafkaAvroDeserializer`s from settings.
     * The arguments are [[schemaRegistryClient]], `isKey`, and
     * [[properties]].
@@ -126,8 +114,7 @@ sealed abstract class AvroSettings[F[_]] {
     // format: on
   ): AvroSettings[F]
 
-  /**
-    * Creates a new [[AvroSettings]] instance with the specified
+  /** Creates a new [[AvroSettings]] instance with the specified
     * function for creating `KafkaAvroSerializer`s from settings.
     * The arguments are [[schemaRegistryClient]], `isKey`, and
     * [[properties]].
@@ -144,12 +131,11 @@ sealed abstract class AvroSettings[F[_]] {
     createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
     // format: on
   ): AvroSettings[F] =
-    withCreateAvroSerializer(
-      (client, isKey, _, properties) => createAvroSerializerWith(client, isKey, properties)
+    withCreateAvroSerializer((client, isKey, _, properties) =>
+      createAvroSerializerWith(client, isKey, properties)
     )
 
-  /**
-    * Creates a new [[AvroSettings]] instance with the specified
+  /** Creates a new [[AvroSettings]] instance with the specified
     * function for registering schemas from settings.
     * The arguments are [[schemaRegistryClient]], `subject`, and `codec`.
     */

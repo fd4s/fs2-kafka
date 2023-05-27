@@ -156,8 +156,8 @@ final class DeserializerSpec extends BaseCatsSpec {
 
   test("Deserializer#topic.unknown") {
     val deserializer =
-      Deserializer.topic {
-        case "topic" => Deserializer[IO, Int]
+      Deserializer.topic { case "topic" =>
+        Deserializer[IO, Int]
       }
 
     forAll { (headers: Headers, bytes: Array[Byte]) =>

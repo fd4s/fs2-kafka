@@ -43,14 +43,13 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     withTopic { topic =>
       testSingle(
         topic,
-        Some(
-          i =>
-            CommittableOffset[IO](
-              new TopicPartition(topic, (i % 3).toInt),
-              new OffsetAndMetadata(i),
-              Some("group"),
-              _ => IO.unit
-            )
+        Some(i =>
+          CommittableOffset[IO](
+            new TopicPartition(topic, (i % 3).toInt),
+            new OffsetAndMetadata(i),
+            Some("group"),
+            _ => IO.unit
+          )
         )
       )
     }
@@ -88,16 +87,15 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 ProducerRecords[String, String],
                 TransactionalProducerRecords[IO, String, String]
               ]
-            ](Left(ProducerRecords.one(record)))(
-              offset =>
-                Right(
-                  TransactionalProducerRecords.one(
-                    CommittableProducerRecords.one(
-                      record,
-                      offset(i)
-                    )
+            ](Left(ProducerRecords.one(record)))(offset =>
+              Right(
+                TransactionalProducerRecords.one(
+                  CommittableProducerRecords.one(
+                    record,
+                    offset(i)
                   )
                 )
+              )
             ) -> ((key, value))
         }
         passthrough <- Stream
@@ -110,13 +108,12 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
 
     produced should contain theSameElementsAs toProduce
 
-    val consumed = {
+    val consumed =
       consumeNumberKeyedMessagesFrom[String, String](
         topic,
         produced.size,
         customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
       )
-    }
 
     consumed should contain theSameElementsAs produced.toList
   }
@@ -125,14 +122,13 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     withTopic { topic =>
       testMultiple(
         topic,
-        Some(
-          i =>
-            CommittableOffset[IO](
-              new TopicPartition(topic, i % 3),
-              new OffsetAndMetadata(i.toLong),
-              Some("group"),
-              _ => IO.unit
-            )
+        Some(i =>
+          CommittableOffset[IO](
+            new TopicPartition(topic, i % 3),
+            new OffsetAndMetadata(i.toLong),
+            Some("group"),
+            _ => IO.unit
+          )
         )
       )
     }
@@ -211,22 +207,21 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
               .withRetries(Int.MaxValue)
           )
         )
-        recordsToProduce = toProduce.map {
-          case (key, value) => ProducerRecord(topic, key, value)
+        recordsToProduce = toProduce.map { case (key, value) =>
+          ProducerRecord(topic, key, value)
         }
 
         produce = makeOffset match {
           case Some(offset) =>
-            val offsets = toProduce.mapWithIndex {
-              case (_, i) => offset(i)
+            val offsets = toProduce.mapWithIndex { case (_, i) =>
+              offset(i)
             }
             val records =
-              recordsToProduce.zip(offsets).map {
-                case (record, offset) =>
-                  CommittableProducerRecords.one(
-                    record,
-                    offset
-                  )
+              recordsToProduce.zip(offsets).map { case (record, offset) =>
+                CommittableProducerRecords.one(
+                  record,
+                  offset
+                )
               }
             producer.produce(records).tupleLeft(toPassthrough)
           case None =>
@@ -238,9 +233,8 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       } yield result).compile.lastOrError.unsafeRunSync()
 
     val records =
-      produced._2.map {
-        case (record, _) =>
-          record.key -> record.value
+      produced._2.map { case (record, _) =>
+        record.key -> record.value
       }
 
     assert(records == toProduce && produced._1 == toPassthrough)
@@ -273,24 +267,22 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 .withRetries(Int.MaxValue)
             )
           )
-          recordsToProduce = toProduce.map {
-            case (key, value) => ProducerRecord(topic, key, value)
+          recordsToProduce = toProduce.map { case (key, value) =>
+            ProducerRecord(topic, key, value)
           }
-          offsets = toProduce.mapWithIndex {
-            case (_, i) =>
-              CommittableOffset[IO](
-                new TopicPartition(topic, i % 3),
-                new OffsetAndMetadata(i.toLong),
-                Some("group"),
-                _ => IO.unit
-              )
+          offsets = toProduce.mapWithIndex { case (_, i) =>
+            CommittableOffset[IO](
+              new TopicPartition(topic, i % 3),
+              new OffsetAndMetadata(i.toLong),
+              Some("group"),
+              _ => IO.unit
+            )
           }
-          records = recordsToProduce.zip(offsets).map {
-            case (record, offset) =>
-              CommittableProducerRecords.one(
-                record,
-                offset
-              )
+          records = recordsToProduce.zip(offsets).map { case (record, offset) =>
+            CommittableProducerRecords.one(
+              record,
+              offset
+            )
           }
           _ <- Stream
             .eval(producer.produce(records))
@@ -355,38 +347,35 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 .withRetries(Int.MaxValue)
             )
           )
-          recordsToProduce = toProduce.map {
-            case (key, value) => ProducerRecord(topic, key, value)
+          recordsToProduce = toProduce.map { case (key, value) =>
+            ProducerRecord(topic, key, value)
           }
-          offsets = toProduce.mapWithIndex {
-            case (_, i) =>
-              CommittableOffset(
-                new TopicPartition(topic, i % 3),
-                new OffsetAndMetadata(i.toLong),
-                Some("group"),
-                _ => IO.unit
-              )
+          offsets = toProduce.mapWithIndex { case (_, i) =>
+            CommittableOffset(
+              new TopicPartition(topic, i % 3),
+              new OffsetAndMetadata(i.toLong),
+              Some("group"),
+              _ => IO.unit
+            )
           }
-          records = Chunk.seq(recordsToProduce.zip(offsets)).map {
-            case (record, offset) =>
-              CommittableProducerRecords.chunk(
-                Chunk.singleton(record),
-                offset
-              )
+          records = Chunk.seq(recordsToProduce.zip(offsets)).map { case (record, offset) =>
+            CommittableProducerRecords.chunk(
+              Chunk.singleton(record),
+              offset
+            )
           }
           result <- Stream.eval(producer.produce(records).tupleLeft(toPassthrough).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       produced shouldBe Left(error)
 
-      val consumedOrError = {
+      val consumedOrError =
         Either.catchNonFatal(
           consumeFirstKeyedMessageFrom[String, String](
             topic,
             customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
           )
         )
-      }
 
       consumedOrError.isLeft shouldBe true
     }
@@ -451,8 +440,8 @@ class TransactionalKafkaProducerTimeoutSpec extends BaseKafkaSpec with EitherVal
                 .withRetries(Int.MaxValue)
             ).withTransactionTimeout(transactionTimeoutInterval - 250.millis)
           )
-          recordsToProduce = toProduce.map {
-            case (key, value) => ProducerRecord(topic, key, value)
+          recordsToProduce = toProduce.map { case (key, value) =>
+            ProducerRecord(topic, key, value)
           }
           offset = CommittableOffset(
             new TopicPartition(topic, 1),
@@ -468,14 +457,13 @@ class TransactionalKafkaProducerTimeoutSpec extends BaseKafkaSpec with EitherVal
 
       produced.left.value shouldBe an[InvalidProducerEpochException]
 
-      val consumedOrError = {
+      val consumedOrError =
         Either.catchNonFatal(
           consumeFirstKeyedMessageFrom[String, String](
             topic,
             customProperties = Map(ConsumerConfig.ISOLATION_LEVEL_CONFIG -> "read_committed")
           )
         )
-      }
 
       consumedOrError.isLeft shouldBe true
     }

@@ -8,8 +8,7 @@ package fs2.kafka
 
 import org.apache.kafka.common.KafkaException
 
-/**
-  * [[NotSubscribedException]] indicates that a `Stream` was started in
+/** [[NotSubscribedException]] indicates that a `Stream` was started in
   * [[KafkaConsumer]] even though the consumer had not been subscribed
   * to any topics before starting.
   */

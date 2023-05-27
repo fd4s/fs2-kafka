@@ -17,8 +17,7 @@ import cats.{Applicative, Bitraverse, Eq, Eval, Foldable, Show, Traverse}
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
 
-/**
-  * [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
+/** [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
   * and a [[CommittableOffset]], used by [[TransactionalKafkaProducer]] to
   * produce the records and commit the offset atomically.<br>
   * <br>
@@ -30,6 +29,7 @@ import fs2.kafka.internal.syntax._
   * the same transaction as the offset is committed.
   */
 sealed abstract class CommittableProducerRecords[F[_], +K, +V] {
+
   /** The records to produce. Can be empty to simply commit the offset. */
   def records: Chunk[ProducerRecord[K, V]]
 
@@ -47,8 +47,7 @@ object CommittableProducerRecords {
       else records.mkString("CommittableProducerRecords(", ", ", s", $offset)")
   }
 
-  /**
-    * Creates a new [[CommittableProducerRecords]] for producing zero or
+  /** Creates a new [[CommittableProducerRecords]] for producing zero or
     * more [[ProducerRecord]]s and committing an offset atomically within
     * a transaction.
     *
@@ -60,8 +59,7 @@ object CommittableProducerRecords {
   )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] =
     chunk(Chunk.iterable(Foldable[G].toIterable(records)), offset)
 
-  /**
-    * Creates a new [[CommittableProducerRecords]] for producing exactly
+  /** Creates a new [[CommittableProducerRecords]] for producing exactly
     * one [[ProducerRecord]] and committing an offset atomically within
     * a transaction.
     */
@@ -71,8 +69,7 @@ object CommittableProducerRecords {
   ): CommittableProducerRecords[F, K, V] =
     chunk(Chunk.singleton(record), offset)
 
-  /**
-    * Creates a new [[CommittableProducerRecords]] for producing zero or
+  /** Creates a new [[CommittableProducerRecords]] for producing zero or
     * more [[ProducerRecord]]s and committing an offset atomically within
     * a transaction.
     */
@@ -82,8 +79,7 @@ object CommittableProducerRecords {
   ): CommittableProducerRecords[F, K, V] =
     new CommittableProducerRecordsImpl(records, offset)
 
-  implicit def committableProducerRecordsShow[F[_], K, V](
-    implicit
+  implicit def committableProducerRecordsShow[F[_], K, V](implicit
     K: Show[K],
     V: Show[V]
   ): Show[CommittableProducerRecords[F, K, V]] =
@@ -100,9 +96,8 @@ object CommittableProducerRecords {
 
   implicit def committableProducerRecordsEq[F[_], K: Eq, V: Eq]
     : Eq[CommittableProducerRecords[F, K, V]] =
-    Eq.instance {
-      case (l, r) =>
-        l.records === r.records && l.offset === r.offset
+    Eq.instance { case (l, r) =>
+      l.records === r.records && l.offset === r.offset
     }
 
   implicit def committableProducerRecordsBitraverse[F[_]]
@@ -110,8 +105,8 @@ object CommittableProducerRecords {
     new Bitraverse[CommittableProducerRecords[F, *, *]] {
       override def bitraverse[G[_], A, B, C, D](
         fab: CommittableProducerRecords[F, A, B]
-      )(f: A => G[C], g: B => G[D])(
-        implicit G: Applicative[G]
+      )(f: A => G[C], g: B => G[D])(implicit
+        G: Applicative[G]
       ): G[CommittableProducerRecords[F, C, D]] =
         fab.records
           .traverse { record =>
@@ -125,18 +120,16 @@ object CommittableProducerRecords {
         fab: CommittableProducerRecords[F, A, B],
         c: C
       )(f: (C, A) => C, g: (C, B) => C): C =
-        fab.records.foldLeft(c) {
-          case (acc, record) =>
-            record.bifoldLeft(acc)(f, g)
+        fab.records.foldLeft(c) { case (acc, record) =>
+          record.bifoldLeft(acc)(f, g)
         }
 
       override def bifoldRight[A, B, C](
         fab: CommittableProducerRecords[F, A, B],
         c: Eval[C]
       )(f: (A, Eval[C]) => Eval[C], g: (B, Eval[C]) => Eval[C]): Eval[C] =
-        fab.records.foldRight(c) {
-          case (record, acc) =>
-            record.bifoldRight(acc)(f, g)
+        fab.records.foldRight(c) { case (record, acc) =>
+          record.bifoldRight(acc)(f, g)
         }
     }
 
@@ -157,18 +150,16 @@ object CommittableProducerRecords {
       override def foldLeft[A, B](fa: CommittableProducerRecords[F, K, A], b: B)(
         f: (B, A) => B
       ): B =
-        fa.records.foldLeft(b) {
-          case (acc, record) =>
-            record.foldLeft(acc)(f)
+        fa.records.foldLeft(b) { case (acc, record) =>
+          record.foldLeft(acc)(f)
         }
 
       override def foldRight[A, B](
         fa: CommittableProducerRecords[F, K, A],
         lb: Eval[B]
       )(f: (A, Eval[B]) => Eval[B]): Eval[B] =
-        fa.records.foldRight(lb) {
-          case (record, acc) =>
-            record.foldRight(acc)(f)
+        fa.records.foldRight(lb) { case (record, acc) =>
+          record.foldRight(acc)(f)
         }
     }
 }

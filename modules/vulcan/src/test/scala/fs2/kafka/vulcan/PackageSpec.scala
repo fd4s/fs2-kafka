@@ -38,14 +38,13 @@ final class PackageSpec extends AnyFunSpec {
         avroSerializer[Either[Test, Int]].forValue(avroSettings),
         avroDeserializer[Either[Test, Int]].forValue(avroSettings)
       ).parTupled
-        .use {
-          case (serializer, deserializer) =>
-            val test = Test("test")
+        .use { case (serializer, deserializer) =>
+          val test = Test("test")
 
-            for {
-              serialized <- serializer.serialize("topic", Headers.empty, Left(test))
-              deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
-            } yield assert(deserialized == Left(test))
+          for {
+            serialized <- serializer.serialize("topic", Headers.empty, Left(test))
+            deserialized <- deserializer.deserialize("topic", Headers.empty, serialized)
+          } yield assert(deserialized == Left(test))
         }
         .unsafeRunSync()
     }
@@ -55,13 +54,12 @@ final class PackageSpec extends AnyFunSpec {
         avroSerializer[Test2].forValue(avroSettings),
         avroDeserializer[Test].forValue(avroSettings)
       ).parTupled
-        .use {
-          case (serializer, deserializer) =>
-            val test2 = Test2("test", 42)
-            for {
-              serialized <- serializer.serialize("topic2", Headers.empty, test2)
-              deserialized <- deserializer.deserialize("topic2", Headers.empty, serialized)
-            } yield assert(deserialized == Test("test"))
+        .use { case (serializer, deserializer) =>
+          val test2 = Test2("test", 42)
+          for {
+            serialized <- serializer.serialize("topic2", Headers.empty, test2)
+            deserialized <- deserializer.deserialize("topic2", Headers.empty, serialized)
+          } yield assert(deserialized == Test("test"))
         }
         .unsafeRunSync()
     }
@@ -71,14 +69,13 @@ final class PackageSpec extends AnyFunSpec {
         avroSerializer[Long].forValue(avroSettings),
         avroDeserializer[Instant].forValue(avroSettings)
       ).parTupled
-        .use {
-          case (serializer, deserializer) =>
-            val rawLong = 42L
+        .use { case (serializer, deserializer) =>
+          val rawLong = 42L
 
-            for {
-              serialized <- serializer.serialize("topic3", Headers.empty, rawLong)
-              deserialized <- deserializer.deserialize("topic3", Headers.empty, serialized).attempt
-            } yield assert(deserialized.isLeft)
+          for {
+            serialized <- serializer.serialize("topic3", Headers.empty, rawLong)
+            deserialized <- deserializer.deserialize("topic3", Headers.empty, serialized).attempt
+          } yield assert(deserialized.isLeft)
         }
         .unsafeRunSync()
     }

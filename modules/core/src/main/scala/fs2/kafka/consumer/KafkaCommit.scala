@@ -10,8 +10,8 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaCommit[F[_]] {
-  /**
-    * Commit the specified offsets for the specified list of topics and partitions to Kafka.<br>
+
+  /** Commit the specified offsets for the specified list of topics and partitions to Kafka.<br>
     * <br>
     * This commits offsets to Kafka. The offsets committed using this API will be used on the first fetch after every
     * rebalance and also on startup. As such, if you need to store offsets in anything other than Kafka, this API
@@ -33,8 +33,7 @@ trait KafkaCommit[F[_]] {
     */
   def commitAsync(offsets: Map[TopicPartition, OffsetAndMetadata]): F[Unit]
 
-  /**
-    * Commit the specified offsets for the specified list of topics and partitions.<br>
+  /** Commit the specified offsets for the specified list of topics and partitions.<br>
     * <br>
     * This commits offsets to Kafka. The offsets committed using this API will be used on the first fetch after every
     * rebalance and also on startup. As such, if you need to store offsets in anything other than Kafka, this API

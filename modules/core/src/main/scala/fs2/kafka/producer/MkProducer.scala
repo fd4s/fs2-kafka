@@ -11,8 +11,7 @@ import fs2.kafka.{KafkaByteProducer, ProducerSettings}
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import fs2.kafka.internal.converters.collection._
 
-/**
-  * A capability trait representing the ability to instantiate the Java
+/** A capability trait representing the ability to instantiate the Java
   * `Producer` that underlies the fs2-kafka `KafkaProducer`. This is needed
   * in order to instantiate [[fs2.kafka.KafkaProducer]] and
   * [[fs2.kafka.TransactionalKafkaProducer]].

@@ -56,8 +56,8 @@ trait BaseGenerators {
       Cogen.perturbPair(seed, (offset.offset, offset.metadata()))
     }
 
-  def genCommittableOffset[F[_]](
-    implicit F: ApplicativeError[F, Throwable]
+  def genCommittableOffset[F[_]](implicit
+    F: ApplicativeError[F, Throwable]
   ): Gen[CommittableOffset[F]] =
     for {
       topicPartition <- genTopicPartition
@@ -70,8 +70,8 @@ trait BaseGenerators {
       commit = _ => F.unit
     )
 
-  implicit def arbCommittableOffset[F[_]](
-    implicit F: ApplicativeError[F, Throwable]
+  implicit def arbCommittableOffset[F[_]](implicit
+    F: ApplicativeError[F, Throwable]
   ): Arbitrary[CommittableOffset[F]] =
     Arbitrary(genCommittableOffset[F])
 
@@ -84,14 +84,14 @@ trait BaseGenerators {
         .apply(seed)
     }
 
-  def genCommittableOffsetBatch[F[_]](
-    implicit F: ApplicativeError[F, Throwable]
+  def genCommittableOffsetBatch[F[_]](implicit
+    F: ApplicativeError[F, Throwable]
   ): Gen[CommittableOffsetBatch[F]] =
     arbitrary[Map[TopicPartition, OffsetAndMetadata]]
       .map(CommittableOffsetBatch[F](_, Set.empty, false, _ => F.unit))
 
-  implicit def arbCommittableOffsetBatch[F[_]](
-    implicit F: ApplicativeError[F, Throwable]
+  implicit def arbCommittableOffsetBatch[F[_]](implicit
+    F: ApplicativeError[F, Throwable]
   ): Arbitrary[CommittableOffsetBatch[F]] =
     Arbitrary(genCommittableOffsetBatch[F])
 
@@ -117,13 +117,13 @@ trait BaseGenerators {
   def genDeserializerString[F[_]](implicit F: Sync[F]): Gen[Deserializer[F, String]] =
     genCharset.map(Deserializer.string[F])
 
-  implicit def arbDeserializerString[F[_]](
-    implicit F: Sync[F]
+  implicit def arbDeserializerString[F[_]](implicit
+    F: Sync[F]
   ): Arbitrary[Deserializer[F, String]] =
     Arbitrary(genDeserializerString)
 
-  implicit def arbDeserializerCombine[F[_], A, B](
-    implicit F: Sync[F],
+  implicit def arbDeserializerCombine[F[_], A, B](implicit
+    F: Sync[F],
     arbB: Arbitrary[Deserializer[F, B]],
     arbABA: Arbitrary[(A, B) => A]
   ): Arbitrary[Deserializer[F, A => A]] =
@@ -131,20 +131,18 @@ trait BaseGenerators {
       for {
         deserializer <- arbitrary[Deserializer[F, B]]
         combine <- arbitrary[(A, B) => A]
-      } yield {
-        Deserializer.instance { (topic, headers, bytes) =>
-          deserializer
-            .deserialize(topic, headers, bytes)
-            .map(b => (a: A) => combine(a, b))
-        }
+      } yield Deserializer.instance { (topic, headers, bytes) =>
+        deserializer
+          .deserialize(topic, headers, bytes)
+          .map(b => (a: A) => combine(a, b))
       }
     }
 
   def genSerializerString[F[_]](implicit F: Sync[F]): Gen[Serializer[F, String]] =
     genCharset.map(Serializer.string[F])
 
-  implicit def arbSerializerString[F[_]](
-    implicit F: Sync[F]
+  implicit def arbSerializerString[F[_]](implicit
+    F: Sync[F]
   ): Arbitrary[Serializer[F, String]] =
     Arbitrary(genSerializerString)
 
@@ -183,18 +181,16 @@ trait BaseGenerators {
   implicit val arbHeaderDeserializerString: Arbitrary[HeaderDeserializer[String]] =
     Arbitrary(genHeaderDeserializerString)
 
-  implicit def arbHeaderDeserializerCombine[A, B](
-    implicit arbB: Arbitrary[HeaderDeserializer[B]],
+  implicit def arbHeaderDeserializerCombine[A, B](implicit
+    arbB: Arbitrary[HeaderDeserializer[B]],
     arbABA: Arbitrary[(A, B) => A]
   ): Arbitrary[HeaderDeserializer[A => A]] =
     Arbitrary {
       for {
         deserializer <- arbitrary[HeaderDeserializer[B]]
         combine <- arbitrary[(A, B) => A]
-      } yield {
-        HeaderDeserializer.instance { bytes => (a: A) =>
-          combine(a, deserializer.deserialize(bytes))
-        }
+      } yield HeaderDeserializer.instance { bytes => (a: A) =>
+        combine(a, deserializer.deserialize(bytes))
       }
     }
 

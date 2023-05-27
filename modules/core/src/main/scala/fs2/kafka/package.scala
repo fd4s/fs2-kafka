@@ -57,14 +57,13 @@ package object kafka {
 
   type ProducerResult[K, V] = Chunk[(ProducerRecord[K, V], RecordMetadata)]
 
-  /**
-    * Commits offsets in batches of every `n` offsets or time window
+  /** Commits offsets in batches of every `n` offsets or time window
     * of length `d`, whichever happens first. If there are no offsets
     * to commit within a time window, no attempt will be made to commit
     * offsets for that time window.
     */
-  def commitBatchWithin[F[_]](n: Int, d: FiniteDuration)(
-    implicit F: Temporal[F]
+  def commitBatchWithin[F[_]](n: Int, d: FiniteDuration)(implicit
+    F: Temporal[F]
   ): Pipe[F, CommittableOffset[F], Unit] =
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
 
@@ -80,6 +79,7 @@ package object kafka {
 }
 
 package kafka {
+
   /** Phantom types to indicate whether a [[Serializer]]/[[Deserializer]] if for keys, values, or both
     */
   sealed trait KeyOrValue
@@ -92,8 +92,8 @@ package kafka {
   object ProducerRecords {
     def apply[F[+_], K, V](
       records: F[ProducerRecord[K, V]]
-    )(
-      implicit F: Traverse[F]
+    )(implicit
+      F: Traverse[F]
     ): ProducerRecords[K, V] = Chunk.iterable(Foldable[F].toIterable(records))
 
     def one[K, V](record: ProducerRecord[K, V]): ProducerRecords[K, V] =
@@ -106,8 +106,7 @@ package kafka {
       chunk: Chunk[CommittableProducerRecords[F, K, V]]
     ): Chunk[CommittableProducerRecords[F, K, V]] = chunk
 
-    /**
-      * Creates a new [[TransactionalProducerRecords]] for producing exactly
+    /** Creates a new [[TransactionalProducerRecords]] for producing exactly
       * one [[CommittableProducerRecords]]
       */
     def one[F[_], K, V](

@@ -15,8 +15,7 @@ import cats.syntax.eq._
 import cats.syntax.traverse._
 import cats.{Applicative, Bitraverse, Eq, Eval, Show, Traverse}
 
-/**
-  * [[CommittableConsumerRecord]] is a Kafka record along with an
+/** [[CommittableConsumerRecord]] is a Kafka record along with an
   * instance of [[CommittableOffset]], which can be used commit
   * the record offset to Kafka. Offsets are normally committed in
   * batches, either using [[CommittableOffsetBatch]] or via pipes,
@@ -28,15 +27,14 @@ import cats.{Applicative, Bitraverse, Eq, Eval, Show, Traverse}
   * can be used to create a new instance.
   */
 sealed abstract class CommittableConsumerRecord[F[_], +K, +V] {
-  /**
-    * The Kafka record for the [[CommittableConsumerRecord]]. If you
+
+  /** The Kafka record for the [[CommittableConsumerRecord]]. If you
     * are not committing offsets to Kafka, simply use this to get the
     * [[ConsumerRecord]] and discard the [[offset]].
     */
   def record: ConsumerRecord[K, V]
 
-  /**
-    * A [[CommittableOffset]] instance, providing a way to commit the
+  /** A [[CommittableOffset]] instance, providing a way to commit the
     * [[record]] offset to Kafka. This is normally done in batches as
     * it achieves better performance. Pipes like [[commitBatchWithin]]
     * use [[CommittableOffsetBatch]] to batch and commit offsets.
@@ -53,8 +51,7 @@ object CommittableConsumerRecord {
       s"CommittableConsumerRecord($record, $offset)"
   }
 
-  /**
-    * Creates a new [[CommittableConsumerRecord]] using the specified
+  /** Creates a new [[CommittableConsumerRecord]] using the specified
     * Kafka [[ConsumerRecord]] and [[CommittableOffset]], which can
     * be used to commit the record offset to Kafka.
     */
@@ -69,8 +66,7 @@ object CommittableConsumerRecord {
   ): Some[(ConsumerRecord[K, V], CommittableOffset[F])] =
     Some((committable.record, committable.offset))
 
-  implicit def committableConsumerRecordShow[F[_], K, V](
-    implicit
+  implicit def committableConsumerRecordShow[F[_], K, V](implicit
     K: Show[K],
     V: Show[V]
   ): Show[CommittableConsumerRecord[F, K, V]] = Show.show { cm =>
@@ -79,9 +75,8 @@ object CommittableConsumerRecord {
 
   implicit def committableConsumerRecordEq[F[_], K: Eq, V: Eq]
     : Eq[CommittableConsumerRecord[F, K, V]] =
-    Eq.instance {
-      case (l, r) =>
-        l.record === r.record && l.offset === r.offset
+    Eq.instance { case (l, r) =>
+      l.record === r.record && l.offset === r.offset
     }
 
   implicit def committableConsumerRecordBitraverse[F[_]]
@@ -89,8 +84,8 @@ object CommittableConsumerRecord {
     new Bitraverse[CommittableConsumerRecord[F, *, *]] {
       override def bitraverse[G[_], A, B, C, D](
         fab: CommittableConsumerRecord[F, A, B]
-      )(f: A => G[C], g: B => G[D])(
-        implicit G: Applicative[G]
+      )(f: A => G[C], g: B => G[D])(implicit
+        G: Applicative[G]
       ): G[CommittableConsumerRecord[F, C, D]] =
         fab.record.bitraverse(f, g).map { (cd: ConsumerRecord[C, D]) =>
           CommittableConsumerRecord(cd, fab.offset)
