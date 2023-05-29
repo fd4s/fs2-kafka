@@ -1,4 +1,4 @@
-val catsEffectVersion = "3.4.9"
+val catsEffectVersion = "3.4.11"
 
 val confluentVersion = "6.2.10"
 
