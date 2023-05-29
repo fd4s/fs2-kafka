@@ -38,17 +38,16 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
         }
       }
 
-      assert { sleeps.size == 15L }
+      assert(sleeps.size == 15L)
 
       assert {
-        sleeps.toList.take(10).zipWithIndex.forall {
-          case (sleep, attempt) =>
-            val max = 10 * Math.pow(2, attempt.toDouble + 1)
-            0 <= sleep.toMillis && sleep.toMillis < max
+        sleeps.toList.take(10).zipWithIndex.forall { case (sleep, attempt) =>
+          val max = 10 * Math.pow(2, attempt.toDouble + 1)
+          0 <= sleep.toMillis && sleep.toMillis < max
         }
       }
 
-      assert { sleeps.toList.drop(10).forall(_.toMillis == 10000L) }
+      assert(sleeps.toList.drop(10).forall(_.toMillis == 10000L))
     }
 
     it("should not recover non-retriable exceptions") {
@@ -56,7 +55,7 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
       val retry: IO[Unit] = IO.raiseError(new RuntimeException("retry"))
       val recovery = CommitRecovery.Default.recoverCommitWith(Map(), retry)
       val result = commit.handleErrorWith(recovery).attempt.unsafeRunSync()
-      assert { result.left.toOption.map(_.getMessage).contains("commit") }
+      assert(result.left.toOption.map(_.getMessage).contains("commit"))
     }
 
     it("should have Default as String representation") {
@@ -70,7 +69,7 @@ final class CommitRecoverySpec extends BaseAsyncSpec {
       val retry: IO[Unit] = IO.raiseError(new RuntimeException("retry"))
       val recovery = CommitRecovery.None.recoverCommitWith(Map(), retry)
       val result = commit.handleErrorWith(recovery).attempt.unsafeRunSync()
-      assert { result.left.toOption.map(_.getMessage).contains("commit") }
+      assert(result.left.toOption.map(_.getMessage).contains("commit"))
     }
 
     it("should have None as String representation") {

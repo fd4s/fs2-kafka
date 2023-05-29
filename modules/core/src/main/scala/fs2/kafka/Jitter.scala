@@ -10,8 +10,7 @@ import cats.Applicative
 import cats.effect.Sync
 import cats.syntax.functor._
 
-/**
-  * [[Jitter]] represents the ability to apply jitter to an existing value
+/** [[Jitter]] represents the ability to apply jitter to an existing value
   * `n`, effectively multiplying `n` with a pseudorandom value between `0`
   * and `1` (both inclusive, although implementation dependent).<br>
   * <br>
@@ -26,8 +25,7 @@ sealed abstract class Jitter[F[_]] {
 object Jitter {
   def apply[F[_]](implicit F: Jitter[F]): Jitter[F] = F
 
-  /**
-    * Creates a default [[Jitter]] instance, which uses `java.util.Random`
+  /** Creates a default [[Jitter]] instance, which uses `java.util.Random`
     * for generating pseudorandom values, always applying jitter with a
     * value between `0` (inclusive) and `1` (exclusive).
     */
@@ -39,8 +37,7 @@ object Jitter {
       }
     }
 
-  /**
-    * Creates a [[Jitter]] instance which does not apply jitter,
+  /** Creates a [[Jitter]] instance which does not apply jitter,
     * meaning all input values will be returned unmodified.
     */
   def none[F[_]](implicit F: Applicative[F]): Jitter[F] =

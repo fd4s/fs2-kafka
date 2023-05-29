@@ -12,46 +12,41 @@ import cats.instances.long._
 import cats.instances.option._
 import cats.instances.boolean._
 
-/**
-  * [[Timestamp]] is an optional timestamp value representing
+/** [[Timestamp]] is an optional timestamp value representing
   * a [[createTime]], [[logAppendTime]], [[unknownTime]], or
   * no timestamp at all.
   */
 sealed abstract class Timestamp {
-  /**
-    * Returns the timestamp value, if the timestamp is
+
+  /** Returns the timestamp value, if the timestamp is
     * representing the time when a record was created.
     */
   def createTime: Option[Long]
 
-  /**
-    * Returns the timestamp value, if the timestamp is
+  /** Returns the timestamp value, if the timestamp is
     * representing the time when a record was appended
     * to the log.
     */
   def logAppendTime: Option[Long]
 
-  /**
-    * Returns the timestamp value, if there is a
+  /** Returns the timestamp value, if there is a
     * timestamp, but the type is unknown.
     */
   def unknownTime: Option[Long]
 
-  /**
-    * Returns `true` if there is no timestamp value; otherwise `false`.
+  /** Returns `true` if there is no timestamp value; otherwise `false`.
     */
   def isEmpty: Boolean
 
-  /**
-    * Returns `true` if there is a timestamp value; otherwise `false`.
+  /** Returns `true` if there is a timestamp value; otherwise `false`.
     */
   final def nonEmpty: Boolean =
     !isEmpty
 }
 
 object Timestamp {
-  /**
-    * Creates a new [[Timestamp]] instance from the specified
+
+  /** Creates a new [[Timestamp]] instance from the specified
     * timestamp value representing the time when the record
     * was created.
     */
@@ -64,8 +59,7 @@ object Timestamp {
       override def toString: String = s"Timestamp(createTime = $value)"
     }
 
-  /**
-    * Creates a new [[Timestamp]] instance from the specified
+  /** Creates a new [[Timestamp]] instance from the specified
     * timestamp value representing the time when the record
     * was appended to the log.
     */
@@ -78,8 +72,7 @@ object Timestamp {
       override def toString: String = s"Timestamp(logAppendTime = $value)"
     }
 
-  /**
-    * Creates a new [[Timestamp]] instance from the specified
+  /** Creates a new [[Timestamp]] instance from the specified
     * timestamp value, when the timestamp type is unknown.
     */
   def unknownTime(value: Long): Timestamp =
@@ -91,8 +84,7 @@ object Timestamp {
       override def toString: String = s"Timestamp(unknownTime = $value)"
     }
 
-  /**
-    * The [[Timestamp]] instance without any timestamp values.
+  /** The [[Timestamp]] instance without any timestamp values.
     */
   val none: Timestamp =
     new Timestamp {
@@ -107,11 +99,10 @@ object Timestamp {
     Show.fromToString
 
   implicit val timestampEq: Eq[Timestamp] =
-    Eq.instance {
-      case (l, r) =>
-        l.createTime === r.createTime &&
-          l.logAppendTime === r.logAppendTime &&
-          l.unknownTime === r.unknownTime &&
-          l.isEmpty === r.isEmpty
+    Eq.instance { case (l, r) =>
+      l.createTime === r.createTime &&
+        l.logAppendTime === r.logAppendTime &&
+        l.unknownTime === r.unknownTime &&
+        l.isEmpty === r.isEmpty
     }
 }

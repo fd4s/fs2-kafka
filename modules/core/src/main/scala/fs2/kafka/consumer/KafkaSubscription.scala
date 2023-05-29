@@ -12,8 +12,8 @@ import cats.data.NonEmptyList
 import scala.util.matching.Regex
 
 trait KafkaSubscription[F[_]] {
-  /**
-    * Subscribes the consumer to the specified topics. Note that you have to
+
+  /** Subscribes the consumer to the specified topics. Note that you have to
     * use one of the `subscribe` functions to subscribe to one or more topics
     * before using any of the provided `Stream`s, or a [[NotSubscribedException]]
     * will be raised in the `Stream`s.
@@ -21,8 +21,7 @@ trait KafkaSubscription[F[_]] {
   def subscribeTo(firstTopic: String, remainingTopics: String*): F[Unit] =
     subscribe(NonEmptyList.of(firstTopic, remainingTopics: _*))
 
-  /**
-    * Subscribes the consumer to the specified topics. Note that you have to
+  /** Subscribes the consumer to the specified topics. Note that you have to
     * use one of the `subscribe` functions to subscribe to one or more topics
     * before using any of the provided `Stream`s, or a [[NotSubscribedException]]
     * will be raised in the `Stream`s.
@@ -31,8 +30,7 @@ trait KafkaSubscription[F[_]] {
     */
   def subscribe[G[_]: Reducible](topics: G[String]): F[Unit]
 
-  /**
-    * Subscribes the consumer to the topics matching the specified `Regex`.
+  /** Subscribes the consumer to the topics matching the specified `Regex`.
     * Note that you have to use one of the `subscribe` functions before you
     * can use any of the provided `Stream`s, or a [[NotSubscribedException]]
     * will be raised in the `Stream`s.
@@ -41,8 +39,7 @@ trait KafkaSubscription[F[_]] {
     */
   def subscribe(regex: Regex): F[Unit]
 
-  /**
-    * Unsubscribes the consumer from all topics and partitions assigned
+  /** Unsubscribes the consumer from all topics and partitions assigned
     * by `subscribe` or `assign`.
     */
   def unsubscribe: F[Unit]

@@ -32,8 +32,7 @@ trait TestSettings extends Configuration with Matchers {
     else PropertyCheckConfiguration(minSuccessful = 1, sizeRange = 1)
 }
 
-/**
-  * An opinionated stack of traits to improve consistency and reduce
+/** An opinionated stack of traits to improve consistency and reduce
   * boilerplate in Cats tests.
   */
 trait CatsSuite

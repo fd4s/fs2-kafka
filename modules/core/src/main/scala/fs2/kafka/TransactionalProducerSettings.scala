@@ -10,8 +10,7 @@ import cats.Show
 import org.apache.kafka.clients.producer.ProducerConfig
 import scala.concurrent.duration.FiniteDuration
 
-/**
-  * [[TransactionalProducerSettings]] contain settings necessary to create a
+/** [[TransactionalProducerSettings]] contain settings necessary to create a
   * [[TransactionalKafkaProducer]]. This includes a transactional ID and any
   * other [[ProducerSettings]].
   *
@@ -21,8 +20,8 @@ import scala.concurrent.duration.FiniteDuration
   * Use [[TransactionalProducerSettings.apply]] to create a new instance.
   */
 sealed abstract class TransactionalProducerSettings[F[_], K, V] {
-  /**
-    * The transactional ID which should be used in transactions.
+
+  /** The transactional ID which should be used in transactions.
     * This is the value for the following producer property.
     *
     * {{{
@@ -31,14 +30,12 @@ sealed abstract class TransactionalProducerSettings[F[_], K, V] {
     */
   def transactionalId: String
 
-  /**
-    * The producer settings including transactional properties,
+  /** The producer settings including transactional properties,
     * as configured by the [[TransactionalProducerSettings]].
     */
   def producerSettings: ProducerSettings[F, K, V]
 
-  /**
-    * Returns a new [[TransactionalProducerSettings]] instance
+  /** Returns a new [[TransactionalProducerSettings]] instance
     * with the specified transaction timeout. This is setting
     * the following producer property, except you can specify
     * it with a `FiniteDuration` instead of a `String`.

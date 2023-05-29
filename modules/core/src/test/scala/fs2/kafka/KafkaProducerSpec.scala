@@ -35,9 +35,8 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         (for {
           producer <- KafkaProducer.stream(producerSettings[IO])
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
-          records <- Stream.chunk(Chunk.seq(toProduce).map {
-            case passthrough @ (key, value) =>
-              ProducerRecords.one(ProducerRecord(topic, key, value), passthrough)
+          records <- Stream.chunk(Chunk.seq(toProduce).map { case passthrough @ (key, value) =>
+            ProducerRecords.one(ProducerRecord(topic, key, value), passthrough)
           })
           batched <- Stream
             .eval(producer.produce(records))
@@ -62,9 +61,8 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       (for {
         producer <- KafkaProducer[IO].stream(producerSettings[IO])
-        records <- Stream.chunk(Chunk.seq(toProduce).map {
-          case passthrough @ (key, value) =>
-            ProducerRecords.one(ProducerRecord(topic, key, value), passthrough)
+        records <- Stream.chunk(Chunk.seq(toProduce).map { case passthrough @ (key, value) =>
+          ProducerRecords.one(ProducerRecord(topic, key, value), passthrough)
         })
         _ <- Stream.eval(producer.produce(records))
       } yield ()).compile.toVector.unsafeRunSync()
@@ -85,17 +83,18 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       val produced =
         (for {
           producer <- KafkaProducer.stream(producerSettings[IO])
-          records = ProducerRecords(toProduce.map {
-            case (key, value) =>
+          records = ProducerRecords(
+            toProduce.map { case (key, value) =>
               ProducerRecord(topic, key, value)
-          }, toPassthrough)
+            },
+            toPassthrough
+          )
           result <- Stream.eval(producer.produce(records).flatten)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       val records =
-        produced.records.map {
-          case (record, _) =>
-            record.key -> record.value
+        produced.records.map { case (record, _) =>
+          record.key -> record.value
         }.toList
 
       assert(records == toProduce && produced.passthrough == toPassthrough)
@@ -230,17 +229,18 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
       val produced =
         (for {
           producer <- KafkaProducer.stream(producerSettings[IO])
-          records = ProducerRecords(toProduce.map {
-            case (key, value) =>
+          records = ProducerRecords(
+            toProduce.map { case (key, value) =>
               ProducerRecord(topic, key, value)
-          }, ())
+            },
+            ()
+          )
           result <- Stream.eval(producer.produce_(records).flatten)
         } yield result).compile.lastOrError.unsafeRunSync()
 
       val records =
-        produced.map {
-          case (record, _) =>
-            record.key -> record.value
+        produced.map { case (record, _) =>
+          record.key -> record.value
         }.toList
 
       assert(records == toProduce)

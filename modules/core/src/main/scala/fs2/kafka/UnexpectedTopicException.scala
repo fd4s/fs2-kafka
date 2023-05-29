@@ -8,8 +8,7 @@ package fs2.kafka
 
 import org.apache.kafka.common.KafkaException
 
-/**
-  * [[UnexpectedTopicException]] is raised when serialization or
+/** [[UnexpectedTopicException]] is raised when serialization or
   * deserialization occurred for an unexpected topic which isn't
   * supported by the [[Serializer]] or [[Deserializer]].
   */

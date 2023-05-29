@@ -168,23 +168,23 @@ lazy val buildInfoSettings = Seq(
     scalacOptions,
     sourceDirectory,
     ThisBuild / latestVersion,
-    BuildInfoKey.map(ThisBuild / version) {
-      case (_, v) => "latestSnapshotVersion" -> v
+    BuildInfoKey.map(ThisBuild / version) { case (_, v) =>
+      "latestSnapshotVersion" -> v
     },
-    BuildInfoKey.map(core / moduleName) {
-      case (k, v) => "core" ++ k.capitalize -> v
+    BuildInfoKey.map(core / moduleName) { case (k, v) =>
+      "core" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(core / crossScalaVersions) {
-      case (k, v) => "core" ++ k.capitalize -> v
+    BuildInfoKey.map(core / crossScalaVersions) { case (k, v) =>
+      "core" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(vulcan / moduleName) {
-      case (k, v) => "vulcan" ++ k.capitalize -> v
+    BuildInfoKey.map(vulcan / moduleName) { case (k, v) =>
+      "vulcan" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(vulcan / crossScalaVersions) {
-      case (k, v) => "vulcan" ++ k.capitalize -> v
+    BuildInfoKey.map(vulcan / crossScalaVersions) { case (k, v) =>
+      "vulcan" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) {
-      case (k, v) => "vulcanTestkitMunit" ++ k.capitalize -> v
+    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) { case (k, v) =>
+      "vulcanTestkitMunit" ++ k.capitalize -> v
     },
     LocalRootProject / organization,
     core / crossScalaVersions,

@@ -8,8 +8,7 @@ package fs2.kafka
 
 import org.apache.kafka.common.KafkaException
 
-/**
-  * Exception raised with [[Deserializer#failWith]] when
+/** Exception raised with [[Deserializer#failWith]] when
   * deserialization was unable to complete successfully.
   */
 sealed abstract class DeserializationException(message: String) extends KafkaException(message)

@@ -11,8 +11,7 @@ import cats.syntax.show._
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
 
-/**
-  * Represents zero or more [[CommittableProducerRecords]], together with
+/** Represents zero or more [[CommittableProducerRecords]], together with
   * arbitrary passthrough value, all of which can be used together with a
   * [[TransactionalKafkaProducer]] to produce records and commit offsets
   * within a single transaction.<br>
@@ -28,6 +27,7 @@ import fs2.kafka.internal.syntax._
   * results and specified passthrough value.
   */
 sealed abstract class TransactionalProducerRecords[F[_], +P, +K, +V] {
+
   /** The records to produce and commit. Can be empty for passthrough-only. */
   def records: Chunk[CommittableProducerRecords[F, K, V]]
 
@@ -45,8 +45,7 @@ object TransactionalProducerRecords {
       else records.mkString("TransactionalProducerRecords(", ", ", s", $passthrough)")
   }
 
-  /**
-    * Creates a new [[TransactionalProducerRecords]] for producing zero or
+  /** Creates a new [[TransactionalProducerRecords]] for producing zero or
     * more [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the results and `Unit` passthrough value.
     */
@@ -55,8 +54,7 @@ object TransactionalProducerRecords {
   ): TransactionalProducerRecords[F, Unit, K, V] =
     apply(records, ())
 
-  /**
-    * Creates a new [[TransactionalProducerRecords]] for producing zero or
+  /** Creates a new [[TransactionalProducerRecords]] for producing zero or
     * more [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the results and specified passthrough value.
     */
@@ -66,8 +64,7 @@ object TransactionalProducerRecords {
   ): TransactionalProducerRecords[F, P, K, V] =
     new TransactionalProducerRecordsImpl(records, passthrough)
 
-  /**
-    * Creates a new [[TransactionalProducerRecords]] for producing exactly
+  /** Creates a new [[TransactionalProducerRecords]] for producing exactly
     * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the result and `Unit` passthrough value.
     */
@@ -76,8 +73,7 @@ object TransactionalProducerRecords {
   ): TransactionalProducerRecords[F, Unit, K, V] =
     one(record, ())
 
-  /**
-    * Creates a new [[TransactionalProducerRecords]] for producing exactly
+  /** Creates a new [[TransactionalProducerRecords]] for producing exactly
     * one [[CommittableProducerRecords]], emitting a [[ProducerResult]]
     * with the result and specified passthrough value.
     */
@@ -87,8 +83,7 @@ object TransactionalProducerRecords {
   ): TransactionalProducerRecords[F, P, K, V] =
     apply(Chunk.singleton(record), passthrough)
 
-  implicit def transactionalProducerRecordsShow[F[_], P, K, V](
-    implicit
+  implicit def transactionalProducerRecordsShow[F[_], P, K, V](implicit
     K: Show[K],
     V: Show[V],
     P: Show[P]

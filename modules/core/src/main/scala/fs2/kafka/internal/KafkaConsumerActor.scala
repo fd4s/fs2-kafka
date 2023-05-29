@@ -30,8 +30,7 @@ import org.apache.kafka.common.TopicPartition
 
 import scala.collection.immutable.SortedSet
 
-/**
-  * [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to
+/** [[KafkaConsumerActor]] wraps a Java `KafkaConsumer` and works similar to
   * a traditional actor, in the sense that it receives requests one at-a-time
   * via a queue, which are received as calls to the `handle` function. `Poll`
   * requests are scheduled at a fixed interval and, when handled, calls the
@@ -52,8 +51,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
   val ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
   withConsumer: WithConsumer[F]
-)(
-  implicit F: Async[F],
+)(implicit
+  F: Async[F],
   dispatcher: Dispatcher[F],
   logging: Logging[F],
   jitter: Jitter[F]
@@ -113,14 +112,16 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     k: (Either[Throwable, Unit] => Unit) => F[Unit]
   ): F[Unit] =
     F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
-        k(cb).as(Some(F.unit))
-      }
-      .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
+      k(cb).as(Some(F.unit))
+    }.timeoutTo(
+      settings.commitTimeout,
+      F.raiseError[Unit] {
         CommitTimeoutException(
           settings.commitTimeout,
           offsets
         )
-      })
+      }
+    )
 
   private[this] def manualCommitAsync(request: Request.ManualCommitAsync[F]): F[Unit] = {
     val commit = runCommitAsync(request.offsets) { cb =>
@@ -493,8 +494,7 @@ private[kafka] object KafkaConsumerActor {
     def withOnRebalance(onRebalance: OnRebalance[F]): State[F, K, V] =
       copy(onRebalances = onRebalances append onRebalance)
 
-    /**
-      * @return (new-state, old-fetches-to-revoke)
+    /** @return (new-state, old-fetches-to-revoke)
       */
     def withFetch(
       partition: TopicPartition,
@@ -560,11 +560,10 @@ private[kafka] object KafkaConsumerActor {
       val fetchesString =
         fetches.toList
           .sortBy { case (tp, _) => tp }
-          .mkStringAppend {
-            case (append, (tp, fs)) =>
-              append(tp.toString)
-              append(" -> ")
-              append(fs.mkString("[", ", ", "]"))
+          .mkStringAppend { case (append, (tp, fs)) =>
+            append(tp.toString)
+            append(" -> ")
+            append(fs.mkString("[", ", ", "]"))
           }("", ", ", "")
 
       s"State(fetches = Map($fetchesString), records = Map(${recordsString(records)}), pendingCommits = $pendingCommits, onRebalances = $onRebalances, rebalancing = $rebalancing, subscribed = $subscribed, streaming = $streaming)"

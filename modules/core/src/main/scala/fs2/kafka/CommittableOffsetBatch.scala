@@ -16,8 +16,7 @@ import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
-/**
-  * [[CommittableOffsetBatch]] represents a batch of Kafka [[offsets]]
+/** [[CommittableOffsetBatch]] represents a batch of Kafka [[offsets]]
   * which can be committed together using [[commit]]. An offset, or one
   * more batch, can be added an existing batch using `updated`. Note that
   * this requires the offsets per topic-partition to be included in-order,
@@ -35,29 +34,26 @@ import org.apache.kafka.common.TopicPartition
   * also achieve better performance.
   */
 sealed abstract class CommittableOffsetBatch[F[_]] {
-  /**
-    * Creates a new [[CommittableOffsetBatch]] with the specified offset
+
+  /** Creates a new [[CommittableOffsetBatch]] with the specified offset
     * included. Note that this function requires offsets to be in-order
     * per topic-partition, as provided offsets will override existing
     * offsets for the same topic-partition.
     */
   def updated(that: CommittableOffset[F]): CommittableOffsetBatch[F]
 
-  /**
-    * Creates a new [[CommittableOffsetBatch]] with the specified offsets
+  /** Creates a new [[CommittableOffsetBatch]] with the specified offsets
     * included. Note that this function requires offsets to be in-order
     * per topic-partition, as provided offsets will override existing
     * offsets for the same topic-partition.
     */
   def updated(that: CommittableOffsetBatch[F]): CommittableOffsetBatch[F]
 
-  /**
-    * The offsets included in the [[CommittableOffsetBatch]].
+  /** The offsets included in the [[CommittableOffsetBatch]].
     */
   def offsets: Map[TopicPartition, OffsetAndMetadata]
 
-  /**
-    * The consumer group IDs for the [[offsets]] in the batch.
+  /** The consumer group IDs for the [[offsets]] in the batch.
     * For the batch to be valid and for [[commit]] to succeed,
     * there should be exactly one ID in the set and the flag
     * [[consumerGroupIdsMissing]] should be `false`.<br>
@@ -69,8 +65,7 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
     */
   def consumerGroupIds: Set[String]
 
-  /**
-    * `true` if any offset in the batch came from a consumer
+  /** `true` if any offset in the batch came from a consumer
     * without a group ID; `false` otherwise. For the batch to
     * be valid and for [[commit]] to succeed, this flag must
     * be `false` and there should be exactly one consumer
@@ -78,8 +73,7 @@ sealed abstract class CommittableOffsetBatch[F[_]] {
     */
   def consumerGroupIdsMissing: Boolean
 
-  /**
-    * Commits the [[offsets]] to Kafka in a single commit.
+  /** Commits the [[offsets]] to Kafka in a single commit.
     * For the batch to be valid and for commit to succeed,
     * the following conditions must hold:<br>
     * - [[consumerGroupIdsMissing]] must be false, and<br>
@@ -142,8 +136,7 @@ object CommittableOffsetBatch {
     }
   }
 
-  /**
-    * Creates a [[CommittableOffsetBatch]] from some [[CommittableOffset]]s,
+  /** Creates a [[CommittableOffsetBatch]] from some [[CommittableOffset]]s,
     * where the containing type has a `Foldable` instance. Guaranteed to be
     * equivalent to the following, but implemented more efficiently.
     *
@@ -157,14 +150,13 @@ object CommittableOffsetBatch {
     * @see [[CommittableOffsetBatch#fromFoldableMap]]
     * @see [[CommittableOffsetBatch#fromFoldableOption]]
     */
-  def fromFoldable[F[_], G[_]](offsets: G[CommittableOffset[F]])(
-    implicit F: ApplicativeError[F, Throwable],
+  def fromFoldable[F[_], G[_]](offsets: G[CommittableOffset[F]])(implicit
+    F: ApplicativeError[F, Throwable],
     G: Foldable[G]
   ): CommittableOffsetBatch[F] =
     fromFoldableMap(offsets)(identity)
 
-  /**
-    * Creates a [[CommittableOffsetBatch]] from a `Foldable` containing
+  /** Creates a [[CommittableOffsetBatch]] from a `Foldable` containing
     * `A`s, by applying `f` to each `A` to get the [[CommittableOffset]].
     * Guaranteed to be equivalent to the following, but implemented more
     * efficiently.
@@ -179,8 +171,8 @@ object CommittableOffsetBatch {
     * @see [[CommittableOffsetBatch#fromFoldable]]
     * @see [[CommittableOffsetBatch#fromFoldableOption]]
     */
-  def fromFoldableMap[F[_], G[_], A](ga: G[A])(f: A => CommittableOffset[F])(
-    implicit F: ApplicativeError[F, Throwable],
+  def fromFoldableMap[F[_], G[_], A](ga: G[A])(f: A => CommittableOffset[F])(implicit
+    F: ApplicativeError[F, Throwable],
     G: Foldable[G]
   ): CommittableOffsetBatch[F] = {
     var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
@@ -208,8 +200,7 @@ object CommittableOffsetBatch {
     else CommittableOffsetBatch(offsetsMap, consumerGroupIds, consumerGroupIdsMissing, commit)
   }
 
-  /**
-    * Creates a [[CommittableOffsetBatch]] from some [[CommittableOffset]]s wrapped
+  /** Creates a [[CommittableOffsetBatch]] from some [[CommittableOffset]]s wrapped
     * in `Option`, where the containing type has a `Foldable` instance. Guaranteed
     * to be equivalent to the following, but implemented more efficiently.
     *
@@ -226,8 +217,8 @@ object CommittableOffsetBatch {
     * @see [[CommittableOffsetBatch#fromFoldable]]
     * @see [[CommittableOffsetBatch#fromFoldableMap]]
     */
-  def fromFoldableOption[F[_], G[_]](offsets: G[Option[CommittableOffset[F]]])(
-    implicit F: ApplicativeError[F, Throwable],
+  def fromFoldableOption[F[_], G[_]](offsets: G[Option[CommittableOffset[F]]])(implicit
+    F: ApplicativeError[F, Throwable],
     G: Foldable[G]
   ): CommittableOffsetBatch[F] = {
     var commit: Map[TopicPartition, OffsetAndMetadata] => F[Unit] = null
@@ -255,8 +246,7 @@ object CommittableOffsetBatch {
     else CommittableOffsetBatch(offsetsMap, consumerGroupIds, consumerGroupIdsMissing, commit)
   }
 
-  /**
-    * An empty [[CommittableOffsetBatch]] which does not include any
+  /** An empty [[CommittableOffsetBatch]] which does not include any
     * offsets and `commit` will not commit offsets. This can be used
     * together with `updated` to create a batch from some offsets.
     *
@@ -291,11 +281,10 @@ object CommittableOffsetBatch {
     Show.show { cob =>
       if (cob.offsets.isEmpty) "CommittableOffsetBatch(<empty>)"
       else {
-        cob.offsets.toList.sorted.mkStringAppend {
-          case (append, (tp, oam)) =>
-            append(tp.show)
-            append(" -> ")
-            append(oam.show)
+        cob.offsets.toList.sorted.mkStringAppend { case (append, (tp, oam)) =>
+          append(tp.show)
+          append(" -> ")
+          append(oam.show)
         }(
           start = "CommittableOffsetBatch(",
           sep = ", ",

@@ -174,14 +174,13 @@ private[kafka] object LogEntry {
   ): String =
     records.toList
       .sortBy { case (tp, _) => tp }
-      .mkStringAppend {
-        case (append, (tp, ms)) =>
-          append(tp.show)
-          append(" -> { first: ")
-          append(ms.head.offset.offsetAndMetadata.show)
-          append(", last: ")
-          append(ms.last.offset.offsetAndMetadata.show)
-          append(" }")
+      .mkStringAppend { case (append, (tp, ms)) =>
+        append(tp.show)
+        append(" -> { first: ")
+        append(ms.head.offset.offsetAndMetadata.show)
+        append(", last: ")
+        append(ms.last.offset.offsetAndMetadata.show)
+        append(" }")
       }("", ", ", "")
 
   private[this] type Records[F[_]] =

@@ -22,36 +22,35 @@ final class AvroDeserializer[A] private[vulcan] (
     codec.schema match {
       case Right(schema) =>
         val createDeserializer: Boolean => F[Deserializer[F, A]] =
-          settings.createAvroDeserializer(_).map {
-            case (deserializer, schemaRegistryClient) =>
-              Deserializer.instance { (topic, _, bytes) =>
-                F.defer {
-                  if (bytes == null || bytes.length == 0) {
-                    F.raiseError(
-                      new IllegalArgumentException(
-                        s"Invalid Avro record: bytes is null or empty"
-                      )
+          settings.createAvroDeserializer(_).map { case (deserializer, schemaRegistryClient) =>
+            Deserializer.instance { (topic, _, bytes) =>
+              F.defer {
+                if (bytes == null || bytes.length == 0) {
+                  F.raiseError(
+                    new IllegalArgumentException(
+                      s"Invalid Avro record: bytes is null or empty"
                     )
-                  } else {
-                    val writerSchemaId =
-                      ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
+                  )
+                } else {
+                  val writerSchemaId =
+                    ByteBuffer.wrap(bytes).getInt(1) // skip magic byte
 
-                    val writerSchema = {
-                      val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
-                      if (schema.isInstanceOf[AvroSchema])
-                        schema.asInstanceOf[AvroSchema].rawSchema()
-                      else
-                        null
-                    }
+                  val writerSchema = {
+                    val schema = schemaRegistryClient.getSchemaById(writerSchemaId)
+                    if (schema.isInstanceOf[AvroSchema])
+                      schema.asInstanceOf[AvroSchema].rawSchema()
+                    else
+                      null
+                  }
 
-                    codec
-                      .decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
-                      case Right(a)    => F.pure(a)
-                      case Left(error) => F.raiseError(error.throwable)
-                    }
+                  codec
+                    .decode(deserializer.deserialize(topic, bytes, schema), writerSchema) match {
+                    case Right(a)    => F.pure(a)
+                    case Left(error) => F.raiseError(error.throwable)
                   }
                 }
               }
+            }
           }
 
         RecordDeserializer.instance(

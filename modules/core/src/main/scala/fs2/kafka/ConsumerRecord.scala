@@ -12,8 +12,7 @@ import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.consumer.ConsumerRecord.{NO_TIMESTAMP, NULL_SIZE}
 import org.apache.kafka.common.record.TimestampType.{CREATE_TIME, LOG_APPEND_TIME}
 
-/**
-  * [[ConsumerRecord]] represents a record which has been
+/** [[ConsumerRecord]] represents a record which has been
   * consumed from Kafka. At the very least, this includes
   * a key of type `K`, value of type `V`, and the topic,
   * partition, and offset of the consumed record.<br>
@@ -21,6 +20,7 @@ import org.apache.kafka.common.record.TimestampType.{CREATE_TIME, LOG_APPEND_TIM
   * To create a new instance, use [[ConsumerRecord#apply]]
   */
 sealed abstract class ConsumerRecord[+K, +V] {
+
   /** The topic from which the record has been consumed. */
   def topic: String
 
@@ -51,32 +51,27 @@ sealed abstract class ConsumerRecord[+K, +V] {
   /** The leader epoch if available. */
   def leaderEpoch: Option[Int]
 
-  /**
-    * Creates a new [[ConsumerRecord]] instance with the
+  /** Creates a new [[ConsumerRecord]] instance with the
     * specified headers as the headers for the record.
     */
   def withHeaders(headers: Headers): ConsumerRecord[K, V]
 
-  /**
-    * Creates a new [[ConsumerRecord]] instance with the
+  /** Creates a new [[ConsumerRecord]] instance with the
     * specified timestamp as the timestamp for the record.
     */
   def withTimestamp(timestamp: Timestamp): ConsumerRecord[K, V]
 
-  /**
-    * Creates a new [[ConsumerRecord]] instance with the
+  /** Creates a new [[ConsumerRecord]] instance with the
     * specified key size as the key size for the record.
     */
   def withSerializedKeySize(serializedKeySize: Int): ConsumerRecord[K, V]
 
-  /**
-    * Creates a new [[ConsumerRecord]] instance with the
+  /** Creates a new [[ConsumerRecord]] instance with the
     * specified value size as the size for the record.
     */
   def withSerializedValueSize(serializedValueSize: Int): ConsumerRecord[K, V]
 
-  /**
-    * Creates a new [[ConsumerRecord]] instance with the
+  /** Creates a new [[ConsumerRecord]] instance with the
     * specified leader epoch as the epoch for the record.
     */
   def withLeaderEpoch(leaderEpoch: Int): ConsumerRecord[K, V]
@@ -138,8 +133,7 @@ object ConsumerRecord {
       copy(key = k, value = v)
   }
 
-  /**
-    * Creates a new [[ConsumerRecord]] instance using the
+  /** Creates a new [[ConsumerRecord]] instance using the
     * specified key and value, and the topic, partition,
     * and offset of the record.
     */
@@ -189,16 +183,14 @@ object ConsumerRecord {
           key = key,
           value = value,
           headers = headers,
-          timestamp = {
-            if (record.timestamp != NO_TIMESTAMP) {
-              record.timestampType match {
-                case CREATE_TIME     => Timestamp.createTime(record.timestamp)
-                case LOG_APPEND_TIME => Timestamp.logAppendTime(record.timestamp)
-                case _               => Timestamp.unknownTime(record.timestamp)
-              }
-            } else {
-              Timestamp.none
+          timestamp = if (record.timestamp != NO_TIMESTAMP) {
+            record.timestampType match {
+              case CREATE_TIME     => Timestamp.createTime(record.timestamp)
+              case LOG_APPEND_TIME => Timestamp.logAppendTime(record.timestamp)
+              case _               => Timestamp.unknownTime(record.timestamp)
             }
+          } else {
+            Timestamp.none
           },
           serializedKeySize =
             if (record.serializedKeySize != NULL_SIZE)
@@ -216,8 +208,7 @@ object ConsumerRecord {
     }
   }
 
-  implicit def consumerRecordShow[K, V](
-    implicit
+  implicit def consumerRecordShow[K, V](implicit
     K: Show[K],
     V: Show[V]
   ): Show[ConsumerRecord[K, V]] = Show.show { record =>
@@ -241,18 +232,17 @@ object ConsumerRecord {
   }
 
   implicit def consumerRecordEq[K: Eq, V: Eq]: Eq[ConsumerRecord[K, V]] =
-    Eq.instance {
-      case (l, r) =>
-        l.topic === r.topic &&
-          l.partition === r.partition &&
-          l.offset === r.offset &&
-          l.key === r.key &&
-          l.value === r.value &&
-          l.headers === r.headers &&
-          l.timestamp === r.timestamp &&
-          l.serializedKeySize === r.serializedKeySize &&
-          l.serializedValueSize === r.serializedValueSize &&
-          l.leaderEpoch === r.leaderEpoch
+    Eq.instance { case (l, r) =>
+      l.topic === r.topic &&
+        l.partition === r.partition &&
+        l.offset === r.offset &&
+        l.key === r.key &&
+        l.value === r.value &&
+        l.headers === r.headers &&
+        l.timestamp === r.timestamp &&
+        l.serializedKeySize === r.serializedKeySize &&
+        l.serializedValueSize === r.serializedValueSize &&
+        l.leaderEpoch === r.leaderEpoch
     }
 
   implicit val consumerRecordBitraverse: Bitraverse[ConsumerRecord] =
@@ -260,9 +250,8 @@ object ConsumerRecord {
       override def bitraverse[G[_], A, B, C, D](
         fab: ConsumerRecord[A, B]
       )(f: A => G[C], g: B => G[D])(implicit G: Applicative[G]): G[ConsumerRecord[C, D]] =
-        G.product(f(fab.key), g(fab.value)).map {
-          case (c, d) =>
-            fab.withKeyValue(c, d)
+        G.product(f(fab.key), g(fab.value)).map { case (c, d) =>
+          fab.withKeyValue(c, d)
         }
 
       override def bifoldLeft[A, B, C](

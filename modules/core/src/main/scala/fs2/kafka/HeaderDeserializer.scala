@@ -12,20 +12,18 @@ import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 import scala.annotation.tailrec
 
-/**
-  * [[HeaderDeserializer]] is a functional deserializer for Kafka record
+/** [[HeaderDeserializer]] is a functional deserializer for Kafka record
   * header values. It's similar to [[Deserializer]], except it only has
   * access to the header bytes, and it does not interoperate with the
   * Kafka `Deserializer` interface.
   */
 sealed abstract class HeaderDeserializer[A] {
-  /**
-    * Deserializes the header value bytes into a value of type `A`.
+
+  /** Deserializes the header value bytes into a value of type `A`.
     */
   def deserialize(bytes: Array[Byte]): A
 
-  /**
-    * Creates a new [[HeaderDeserializer]] which applies the specified
+  /** Creates a new [[HeaderDeserializer]] which applies the specified
     * function `f` to the result of this [[HeaderDeserializer]].
     */
   final def map[B](f: A => B): HeaderDeserializer[B] =
@@ -33,8 +31,7 @@ sealed abstract class HeaderDeserializer[A] {
       f(deserialize(bytes))
     }
 
-  /**
-    * Creates a new [[HeaderDeserializer]] using the result of
+  /** Creates a new [[HeaderDeserializer]] using the result of
     * this [[HeaderDeserializer]] and the specified function.
     */
   final def flatMap[B](f: A => HeaderDeserializer[B]): HeaderDeserializer[B] =
@@ -42,8 +39,7 @@ sealed abstract class HeaderDeserializer[A] {
       f(deserialize(bytes)).deserialize(bytes)
     }
 
-  /**
-    * Creates a new [[HeaderDeserializer]] which deserializes both using
+  /** Creates a new [[HeaderDeserializer]] which deserializes both using
     * this [[HeaderDeserializer]] and that [[HeaderDeserializer]], and
     * returns both results in a tuple.
     */
@@ -54,8 +50,7 @@ sealed abstract class HeaderDeserializer[A] {
       (a, b)
     }
 
-  /**
-    * Creates a new [[HeaderDeserializer]] which does deserialization
+  /** Creates a new [[HeaderDeserializer]] which does deserialization
     * lazily by wrapping this [[HeaderDeserializer]] in `Eval.always`.
     */
   final def delay: HeaderDeserializer[Eval[A]] =
@@ -63,8 +58,7 @@ sealed abstract class HeaderDeserializer[A] {
       Eval.always(deserialize(bytes))
     }
 
-  /**
-    * Creates a new [[HeaderDeserializer]] which catches any non-fatal
+  /** Creates a new [[HeaderDeserializer]] which catches any non-fatal
     * exceptions during deserialization with this [[HeaderDeserializer]].
     */
   final def attempt: HeaderDeserializer.Attempt[A] =
@@ -72,8 +66,7 @@ sealed abstract class HeaderDeserializer[A] {
       Either.catchNonFatal(deserialize(bytes))
     }
 
-  /**
-    * Creates a new [[HeaderDeserializer]] which returns `None` when
+  /** Creates a new [[HeaderDeserializer]] which returns `None` when
     * the bytes are `null`, and otherwise returns the result of this
     * [[HeaderDeserializer]] wrapped in `Some`.
     */
@@ -87,28 +80,27 @@ sealed abstract class HeaderDeserializer[A] {
 }
 
 object HeaderDeserializer {
+
   /** Alias for `HeaderDeserializer[Either[Throwable, A]]`. */
   type Attempt[A] = HeaderDeserializer[Either[Throwable, A]]
 
-  def apply[A](
-    implicit deserializer: HeaderDeserializer[A]
+  def apply[A](implicit
+    deserializer: HeaderDeserializer[A]
   ): HeaderDeserializer[A] =
     deserializer
 
-  def attempt[A](
-    implicit deserializer: HeaderDeserializer.Attempt[A]
+  def attempt[A](implicit
+    deserializer: HeaderDeserializer.Attempt[A]
   ): HeaderDeserializer.Attempt[A] =
     deserializer
 
-  /**
-    * Creates a new [[HeaderDeserializer]] which deserializes
+  /** Creates a new [[HeaderDeserializer]] which deserializes
     * all bytes to the specified value of type `A`.
     */
   def const[A](a: A): HeaderDeserializer[A] =
     HeaderDeserializer.instance(_ => a)
 
-  /**
-    * Creates a new [[HeaderDeserializer]] which delegates deserialization
+  /** Creates a new [[HeaderDeserializer]] which delegates deserialization
     * to the specified Kafka `Deserializer`. Please note that the `close`
     * and `configure` functions won't be called for the delegate. Also,
     * the topic is an empty `String` and no headers are provided.
@@ -118,8 +110,7 @@ object HeaderDeserializer {
       deserializer.deserialize("", bytes)
     }
 
-  /**
-    * Creates a new [[HeaderDeserializer]] from the specified function.
+  /** Creates a new [[HeaderDeserializer]] from the specified function.
     */
   def instance[A](f: Array[Byte] => A): HeaderDeserializer[A] =
     new HeaderDeserializer[A] {
@@ -130,36 +121,32 @@ object HeaderDeserializer {
         "HeaderDeserializer$" + System.identityHashCode(this)
     }
 
-  /**
-    * Creates a new [[HeaderDeserializer]] which deserializes `String`
+  /** Creates a new [[HeaderDeserializer]] which deserializes `String`
     * values using the specified `Charset`. Note that the default
     * `String` deserializer uses `UTF-8`.
     */
   def string(charset: Charset): HeaderDeserializer[String] =
     HeaderDeserializer.instance(bytes => new String(bytes, charset))
 
-  /**
-    * Creates a new [[HeaderDeserializer]] which deserializes `String`
+  /** Creates a new [[HeaderDeserializer]] which deserializes `String`
     * values using the specified `Charset` as `UUID`s. Note that the
     * default `UUID` deserializer uses `UTF-8`.
     */
   def uuid(charset: Charset): HeaderDeserializer.Attempt[UUID] =
     HeaderDeserializer.string(charset).map(UUID.fromString).attempt
 
-  /**
-    * The identity [[HeaderDeserializer]], which does not perform any kind
+  /** The identity [[HeaderDeserializer]], which does not perform any kind
     * of deserialization, simply using the input bytes as the output.
     */
   implicit val identity: HeaderDeserializer[Array[Byte]] =
     HeaderDeserializer.instance(bytes => bytes)
 
-  /**
-    * The option [[HeaderDeserializer]] returns `None` when the bytes
+  /** The option [[HeaderDeserializer]] returns `None` when the bytes
     * are `null`, and otherwise deserializes using the deserializer
     * for the type `A`, wrapping the result in `Some`.
     */
-  implicit def option[A](
-    implicit deserializer: HeaderDeserializer[A]
+  implicit def option[A](implicit
+    deserializer: HeaderDeserializer[A]
   ): HeaderDeserializer[Option[A]] =
     deserializer.option
 

@@ -16,8 +16,7 @@ import org.apache.kafka.common.{Metric, MetricName, PartitionInfo}
 
 import scala.annotation.nowarn
 
-/**
-  * [[KafkaProducerConnection]] represents a connection to a Kafka broker
+/** [[KafkaProducerConnection]] represents a connection to a Kafka broker
   * that can be used to create [[KafkaProducer]] instances. All [[KafkaProducer]]
   * instances created from an given [[KafkaProducerConnection]] share a single
   * underlying connection.
@@ -29,8 +28,7 @@ sealed abstract class KafkaProducerConnection[F[_]] {
 
   def metrics: F[Map[MetricName, Metric]]
 
-  /**
-    * Creates a new [[KafkaProducer]]  using the provided serializers.
+  /** Creates a new [[KafkaProducer]]  using the provided serializers.
     *
     * {{{
     * KafkaProducerConnection.stream[F].using(settings).map(_.withSerializers(keySerializer, valueSerializer))
@@ -41,8 +39,7 @@ sealed abstract class KafkaProducerConnection[F[_]] {
     valueSerializer: Serializer[F, V]
   ): KafkaProducer.PartitionsFor[F, K, V]
 
-  /**
-    * Creates a new [[KafkaProducer]] in the `F` context,
+  /** Creates a new [[KafkaProducer]] in the `F` context,
     * using serializers from the specified [[ProducerSettings]].
     *
     * {{{
@@ -59,8 +56,8 @@ sealed abstract class KafkaProducerConnection[F[_]] {
 }
 
 object KafkaProducerConnection {
-  /**
-    * Creates a new [[KafkaProducerConnection]] in the `Stream` context,
+
+  /** Creates a new [[KafkaProducerConnection]] in the `Stream` context,
     * using the specified [[ProducerSettings]].
     *
     * {{{
@@ -69,25 +66,23 @@ object KafkaProducerConnection {
     */
   def stream[F[_]](
     settings: ProducerSettings[F, _, _]
-  )(
-    implicit F: Async[F],
+  )(implicit
+    F: Async[F],
     mk: MkProducer[F]
   ): Stream[F, KafkaProducerConnection[F]] = streamIn(settings)(F, F, mk)
 
-  /**
-    * Like [[stream]], but allows use of different effect types for
+  /** Like [[stream]], but allows use of different effect types for
     * the allocating `Stream` and the allocated `KafkaProducerConnection`.
     */
   def streamIn[F[_], G[_]](
     settings: ProducerSettings[G, _, _]
-  )(
-    implicit F: Async[F],
+  )(implicit
+    F: Async[F],
     G: Async[G],
     mk: MkProducer[F]
   ): Stream[F, KafkaProducerConnection[G]] = Stream.resource(resourceIn(settings)(F, G, mk))
 
-  /**
-    * Creates a new [[KafkaProducerConnection]] in the `Resource` context,
+  /** Creates a new [[KafkaProducerConnection]] in the `Resource` context,
     * using the specified [[ProducerSettings]].
     *
     * {{{
@@ -96,20 +91,19 @@ object KafkaProducerConnection {
     */
   def resource[F[_]](
     settings: ProducerSettings[F, _, _]
-  )(
-    implicit F: Async[F],
+  )(implicit
+    F: Async[F],
     mk: MkProducer[F]
   ): Resource[F, KafkaProducerConnection[F]] =
     resourceIn(settings)(F, F, mk)
 
-  /**
-    * Like [[resource]], but allows use of different effect types for
+  /** Like [[resource]], but allows use of different effect types for
     * the allocating `Resource` and the allocated `KafkaProducerConnection`.
     */
   def resourceIn[F[_], G[_]](
     settings: ProducerSettings[G, _, _]
-  )(
-    implicit F: Async[F],
+  )(implicit
+    F: Async[F],
     G: Async[G],
     mk: MkProducer[F]
   ): Resource[F, KafkaProducerConnection[G]] =
@@ -117,8 +111,8 @@ object KafkaProducerConnection {
       new KafkaProducerConnection[G] {
         override def produce[P, K, V](
           records: ProducerRecords[P, K, V]
-        )(
-          implicit keySerializer: Serializer[G, K],
+        )(implicit
+          keySerializer: Serializer[G, K],
           valueSerializer: Serializer[G, V]
         ): G[G[ProducerResult[P, K, V]]] =
           KafkaProducer.produce[G, P, K, V](
@@ -129,7 +123,7 @@ object KafkaProducerConnection {
           )
 
         override def metrics: G[Map[MetricName, Metric]] =
-          withProducer.blocking { _.metrics().asScala.toMap }
+          withProducer.blocking(_.metrics().asScala.toMap)
         override def withSerializers[K, V](
           keySerializer: Serializer[G, K],
           valueSerializer: Serializer[G, V]
@@ -142,7 +136,7 @@ object KafkaProducerConnection {
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
 
         override def partitionsFor(topic: String): G[List[PartitionInfo]] =
-          withProducer.blocking { _.partitionsFor(topic).asScala.toList }
+          withProducer.blocking(_.partitionsFor(topic).asScala.toList)
       }
     }
 

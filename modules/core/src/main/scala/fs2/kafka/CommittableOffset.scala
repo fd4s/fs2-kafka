@@ -13,8 +13,7 @@ import fs2.kafka.instances._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
-/**
-  * [[CommittableOffset]] represents an [[offsetAndMetadata]] for a
+/** [[CommittableOffset]] represents an [[offsetAndMetadata]] for a
   * [[topicPartition]], along with the ability to commit that offset
   * to Kafka with [[commit]]. Note that offsets are normally committed
   * in batches for performance reasons. Pipes like [[commitBatchWithin]]
@@ -24,20 +23,18 @@ import org.apache.kafka.common.TopicPartition
   * used to create a new instance.
   */
 sealed abstract class CommittableOffset[F[_]] {
-  /**
-    * The topic and partition for which [[offsetAndMetadata]]
+
+  /** The topic and partition for which [[offsetAndMetadata]]
     * can be committed using [[commit]].
     */
   def topicPartition: TopicPartition
 
-  /**
-    * The offset and metadata for the [[topicPartition]], which
+  /** The offset and metadata for the [[topicPartition]], which
     * can be committed using [[commit]].
     */
   def offsetAndMetadata: OffsetAndMetadata
 
-  /**
-    * The consumer group ID of the consumer that fetched the
+  /** The consumer group ID of the consumer that fetched the
     * [[offsetAndMetadata]] from the [[topicPartition]] from
     * Kafka.<br>
     * <br>
@@ -45,8 +42,7 @@ sealed abstract class CommittableOffset[F[_]] {
     */
   def consumerGroupId: Option[String]
 
-  /**
-    * The [[topicPartition]] and [[offsetAndMetadata]] as a `Map`.
+  /** The [[topicPartition]] and [[offsetAndMetadata]] as a `Map`.
     * This is provided for convenience and is always guaranteed to
     * be equivalent to the following.
     *
@@ -56,21 +52,18 @@ sealed abstract class CommittableOffset[F[_]] {
     */
   def offsets: Map[TopicPartition, OffsetAndMetadata]
 
-  /**
-    * The [[CommittableOffset]] as a [[CommittableOffsetBatch]].
+  /** The [[CommittableOffset]] as a [[CommittableOffsetBatch]].
     */
   def batch: CommittableOffsetBatch[F]
 
-  /**
-    * Commits the [[offsetAndMetadata]] for the [[topicPartition]] to
+  /** Commits the [[offsetAndMetadata]] for the [[topicPartition]] to
     * Kafka. Note that offsets are normally committed in batches for
     * performance reasons. Prefer pipes like [[commitBatchWithin]]
     * or [[CommittableOffsetBatch]] for that reason.
     */
   def commit: F[Unit]
 
-  /**
-    * The commit function we are using in [[commit]] to commit the
+  /** The commit function we are using in [[commit]] to commit the
     * [[offsetAndMetadata]] for the [[topicPartition]]. Is used to
     * help achieve better performance when batching offsets.
     */
@@ -78,8 +71,8 @@ sealed abstract class CommittableOffset[F[_]] {
 }
 
 object CommittableOffset {
-  /**
-    * Creates a new [[CommittableOffset]] with the specified `topicPartition`
+
+  /** Creates a new [[CommittableOffset]] with the specified `topicPartition`
     * and `offsetAndMetadata`, along with `commit`, describing how to commit
     * an arbitrary `Map` of topic-partition offsets.
     */
@@ -130,10 +123,9 @@ object CommittableOffset {
     Show.fromToString
 
   implicit def committableOffsetEq[F[_]]: Eq[CommittableOffset[F]] =
-    Eq.instance {
-      case (l, r) =>
-        l.topicPartition == r.topicPartition &&
-          l.offsetAndMetadata == r.offsetAndMetadata &&
-          l.consumerGroupId == r.consumerGroupId
+    Eq.instance { case (l, r) =>
+      l.topicPartition == r.topicPartition &&
+        l.offsetAndMetadata == r.offsetAndMetadata &&
+        l.consumerGroupId == r.consumerGroupId
     }
 }

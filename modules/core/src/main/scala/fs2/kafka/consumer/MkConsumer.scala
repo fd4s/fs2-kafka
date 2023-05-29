@@ -11,8 +11,7 @@ import fs2.kafka.{ConsumerSettings, KafkaByteConsumer}
 import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
-/**
-  * A capability trait representing the ability to instantiate the Java
+/** A capability trait representing the ability to instantiate the Java
   * `Consumer` that underlies the fs2-kafka `KafkaConsumer`. This is needed
   * in order to instantiate [[fs2.kafka.KafkaConsumer]].
   *

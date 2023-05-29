@@ -11,8 +11,7 @@ import cats.syntax.show._
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
 
-/**
-  * [[ProducerRecords]] represents zero or more `ProducerRecord`s,
+/** [[ProducerRecords]] represents zero or more `ProducerRecord`s,
   * together with an arbitrary passthrough value, all of which can
   * be used with [[KafkaProducer]]. [[ProducerRecords]]s can be
   * created using one of the following options.<br>
@@ -28,6 +27,7 @@ import fs2.kafka.internal.syntax._
   * existing [[ProducerRecords]] instance.<br>
   */
 sealed abstract class ProducerRecords[+P, +K, +V] {
+
   /** The records to produce. Can be empty for passthrough-only. */
   def records: Chunk[ProducerRecord[K, V]]
 
@@ -45,8 +45,7 @@ object ProducerRecords {
       else records.mkString("ProducerRecords(", ", ", s", $passthrough)")
   }
 
-  /**
-    * Creates a new [[ProducerRecords]] for producing zero or more
+  /** Creates a new [[ProducerRecords]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and `Unit` passthrough value.
     *
@@ -54,13 +53,12 @@ object ProducerRecords {
     */
   def apply[F[+_], K, V](
     records: F[ProducerRecord[K, V]]
-  )(
-    implicit F: Traverse[F]
+  )(implicit
+    F: Traverse[F]
   ): ProducerRecords[Unit, K, V] =
     apply(records, ())
 
-  /**
-    * Creates a new [[ProducerRecords]] for producing zero or more
+  /** Creates a new [[ProducerRecords]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
     *
@@ -70,13 +68,12 @@ object ProducerRecords {
   def apply[F[+_], P, K, V](
     records: F[ProducerRecord[K, V]],
     passthrough: P
-  )(
-    implicit F: Traverse[F]
+  )(implicit
+    F: Traverse[F]
   ): ProducerRecords[P, K, V] =
     chunk(Chunk.iterable(Foldable[F].toIterable(records)), passthrough)
 
-  /**
-    * Creates a new [[ProducerRecords]] for producing exactly one
+  /** Creates a new [[ProducerRecords]] for producing exactly one
     * `ProducerRecord`, then emitting a [[ProducerResult]] with
     * the result and `Unit` passthrough value.
     */
@@ -85,8 +82,7 @@ object ProducerRecords {
   ): ProducerRecords[Unit, K, V] =
     one(record, ())
 
-  /**
-    * Creates a new [[ProducerRecords]] for producing exactly one
+  /** Creates a new [[ProducerRecords]] for producing exactly one
     * `ProducerRecord`, then emitting a [[ProducerResult]] with
     * the result and specified passthrough value.
     */
@@ -96,8 +92,7 @@ object ProducerRecords {
   ): ProducerRecords[P, K, V] =
     apply(Chunk.singleton(record), passthrough)
 
-  /**
-    * Creates a new [[ProducerRecords]] for producing zero or more
+  /** Creates a new [[ProducerRecords]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and `Unit` passthrough value.
     */
@@ -106,8 +101,7 @@ object ProducerRecords {
   ): ProducerRecords[Unit, K, V] =
     chunk(records, ())
 
-  /**
-    * Creates a new [[ProducerRecords]] for producing zero or more
+  /** Creates a new [[ProducerRecords]] for producing zero or more
     * `ProducerRecords`s, then emitting a [[ProducerResult]] with
     * the results and specified passthrough value.
     */
@@ -117,8 +111,7 @@ object ProducerRecords {
   ): ProducerRecords[P, K, V] =
     new ProducerRecordsImpl(records, passthrough)
 
-  implicit def producerRecordsShow[P, K, V](
-    implicit
+  implicit def producerRecordsShow[P, K, V](implicit
     K: Show[K],
     V: Show[V],
     P: Show[P]

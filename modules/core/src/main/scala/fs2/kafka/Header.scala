@@ -10,8 +10,7 @@ import cats.{Eq, Show}
 import cats.syntax.eq._
 import cats.instances.string._
 
-/**
-  * [[Header]] represents a `String` key and `Array[Byte]` value
+/** [[Header]] represents a `String` key and `Array[Byte]` value
   * which can be included as part of [[Headers]] when creating a
   * [[ProducerRecord]]. [[Headers]] are included together with a
   * record once produced, and can be used by consumers.<br>
@@ -19,6 +18,7 @@ import cats.instances.string._
   * To create a new [[Header]], use [[Header#apply]].
   */
 sealed abstract class Header extends org.apache.kafka.common.header.Header {
+
   /** The header key. */
   override def key: String
 
@@ -30,8 +30,8 @@ sealed abstract class Header extends org.apache.kafka.common.header.Header {
     deserializer.deserialize(value)
 
   /** Attempts to deserialize the [[value]] to the specified type. */
-  final def attemptAs[A](
-    implicit deserializer: HeaderDeserializer.Attempt[A]
+  final def attemptAs[A](implicit
+    deserializer: HeaderDeserializer.Attempt[A]
   ): Either[Throwable, A] =
     deserializer.deserialize(value)
 }
@@ -45,13 +45,12 @@ object Header {
       s"Header($key -> ${java.util.Arrays.toString(value)})"
   }
 
-  /**
-    * Creates a new [[Header]] instance using the specified
+  /** Creates a new [[Header]] instance using the specified
     * `String` key and value of type `V`, which is going to
     * be serialized with the implicit `HeaderSerializer`.
     */
-  def apply[V](key: String, value: V)(
-    implicit serializer: HeaderSerializer[V]
+  def apply[V](key: String, value: V)(implicit
+    serializer: HeaderSerializer[V]
   ): Header =
     new HeaderImpl(
       key = key,
@@ -65,8 +64,7 @@ object Header {
     Show.fromToString
 
   implicit val headerEq: Eq[Header] =
-    Eq.instance {
-      case (l, r) =>
-        l.key === r.key && l.value.sameElements(r.value)
+    Eq.instance { case (l, r) =>
+      l.key === r.key && l.value.sameElements(r.value)
     }
 }

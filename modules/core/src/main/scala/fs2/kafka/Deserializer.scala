@@ -12,53 +12,46 @@ import cats.syntax.all._
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
-/**
-  * Functional composable Kafka key- and record deserializer with
+/** Functional composable Kafka key- and record deserializer with
   * support for effect types.
   */
 sealed abstract class Deserializer[F[_], A] {
-  /**
-    * Attempts to deserialize the specified bytes into a value of
+
+  /** Attempts to deserialize the specified bytes into a value of
     * type `A`. The Kafka topic name, from which the serialized
     * bytes came, and record headers are available.
     */
   def deserialize(topic: String, headers: Headers, bytes: Array[Byte]): F[A]
 
-  /**
-    * Creates a new [[Deserializer]] which applies the specified
+  /** Creates a new [[Deserializer]] which applies the specified
     * function to the result of this [[Deserializer]].
     */
   def map[B](f: A => B): Deserializer[F, B]
 
-  /**
-    * Creates a new [[Deserializer]] by first deserializing
+  /** Creates a new [[Deserializer]] by first deserializing
     * with this [[Deserializer]] and then using the result
     * as input to the specified function.
     */
   def flatMap[B](f: A => Deserializer[F, B]): Deserializer[F, B]
 
-  /**
-    * Creates a new [[Deserializer]] which deserializes both using
+  /** Creates a new [[Deserializer]] which deserializes both using
     * this [[Deserializer]] and that [[Deserializer]], and returns
     * both results in a tuple.
     */
   def product[B](that: Deserializer[F, B]): Deserializer[F, (A, B)]
 
-  /**
-    * Creates a new [[Deserializer]] which handles errors by
+  /** Creates a new [[Deserializer]] which handles errors by
     * turning them into `Either` values.
     */
   def attempt: Deserializer[F, Either[Throwable, A]]
 
-  /**
-    * Creates a new [[Deserializer]] which returns `None` when the
+  /** Creates a new [[Deserializer]] which returns `None` when the
     * bytes are `null`, and otherwise returns the result of this
     * [[Deserializer]] wrapped in `Some`.
     */
   def option: Deserializer[F, Option[A]]
 
-  /**
-    * Creates a new [[Deserializer]] which suspends deserialization,
+  /** Creates a new [[Deserializer]] which suspends deserialization,
     * capturing any impure behaviours of this [[Deserializer]].
     */
   def suspend: Deserializer[F, A]
@@ -70,15 +63,13 @@ object Deserializer {
   /** Alias for [[Deserializer#identity]]. */
   def apply[F[_]](implicit F: Sync[F]): Deserializer[F, Array[Byte]] = identity
 
-  /**
-    * Creates a new [[Deserializer]] which deserializes
+  /** Creates a new [[Deserializer]] which deserializes
     * all bytes to the specified value of type `A`.
     */
   def const[F[_], A](a: A)(implicit F: Sync[F]): Deserializer[F, A] =
     Deserializer.lift(_ => F.pure(a))
 
-  /**
-    * Creates a new [[Deserializer]] which delegates deserialization
+  /** Creates a new [[Deserializer]] which delegates deserialization
     * to the specified Kafka `Deserializer`. Note that the `close`
     * and `configure` functions won't be called for the delegate.<br>
     * <br>
@@ -93,25 +84,22 @@ object Deserializer {
       F.pure(deserializer.deserialize(topic, headers.asJava, bytes))
     }
 
-  /**
-    * Creates a new [[Deserializer]] which always fails
+  /** Creates a new [[Deserializer]] which always fails
     * deserialization with the specified exception `e`.
     */
-  def fail[F[_], A](e: Throwable)(
-    implicit F: Sync[F]
+  def fail[F[_], A](e: Throwable)(implicit
+    F: Sync[F]
   ): Deserializer[F, A] =
     Deserializer.lift(_ => F.raiseError(e))
 
-  /**
-    * Creates a new [[Deserializer]] which always fails
+  /** Creates a new [[Deserializer]] which always fails
     * deserialization with a [[DeserializationException]]
     * using the specified message.
     */
   def failWith[F[_], A](message: String)(implicit F: Sync[F]): Deserializer[F, A] =
     Deserializer.fail(DeserializationException(message))
 
-  /**
-    * Creates a new [[Deserializer]] which can use different
+  /** Creates a new [[Deserializer]] which can use different
     * [[Deserializer]]s depending on the record headers.
     */
   def headers[F[_], A](f: Headers => Deserializer[F, A])(implicit F: Sync[F]): Deserializer[F, A] =
@@ -119,8 +107,7 @@ object Deserializer {
       f(headers).deserialize(topic, headers, bytes)
     }
 
-  /**
-    * Creates a new [[Deserializer]] from the specified function.
+  /** Creates a new [[Deserializer]] from the specified function.
     * Use [[lift]] instead if the deserializer doesn't need
     * access to the Kafka topic name or record headers.
     */
@@ -172,8 +159,7 @@ object Deserializer {
         "Deserializer$" + System.identityHashCode(this)
     }
 
-  /**
-    * Creates a new [[Deserializer]] from the specified function,
+  /** Creates a new [[Deserializer]] from the specified function,
     * ignoring from which Kafka topic the bytes came and any
     * record headers. Use [[instance]] instead if the
     * deserializer needs access to the Kafka topic
@@ -185,8 +171,7 @@ object Deserializer {
   private[this] def unexpectedTopic[F[_], A](implicit F: Sync[F]): String => Deserializer[F, A] =
     topic => Deserializer.fail(UnexpectedTopicException(topic))
 
-  /**
-    * Creates a new [[Deserializer]] which can use different
+  /** Creates a new [[Deserializer]] which can use different
     * [[Deserializer]]s depending on the Kafka topic name
     * from which the serialized bytes came.
     */
@@ -198,45 +183,40 @@ object Deserializer {
         .deserialize(topic, headers, bytes)
     }
 
-  /**
-    * Creates a new [[Deserializer]] which deserializes `String`
+  /** Creates a new [[Deserializer]] which deserializes `String`
     * values using the specified `Charset`. Note that the
     * default `String` deserializer uses `UTF-8`.
     */
   def string[F[_]](charset: Charset)(implicit F: Sync[F]): Deserializer[F, String] =
     Deserializer.lift(bytes => F.catchNonFatal(new String(bytes, charset)))
 
-  /**
-    * Creates a new [[Deserializer]] which deserializes `String`
+  /** Creates a new [[Deserializer]] which deserializes `String`
     * values using the specified `Charset` as `UUID`s. Note that
     * the default `UUID` deserializer uses `UTF-8`.
     */
   def uuid[F[_]](charset: Charset)(implicit F: Sync[F]): Deserializer[F, UUID] =
     Deserializer.string[F](charset).map(UUID.fromString).suspend
 
-  /**
-    * The identity [[Deserializer]], which does not perform any kind
+  /** The identity [[Deserializer]], which does not perform any kind
     * of deserialization, simply using the input bytes as the output.
     */
   implicit def identity[F[_]](implicit F: Sync[F]): Deserializer[F, Array[Byte]] =
     Deserializer.lift(bytes => F.pure(bytes))
 
-  /**
-    * The attempt [[Deserializer]] try to deserialize to type `A`,
+  /** The attempt [[Deserializer]] try to deserialize to type `A`,
     * When it fails returns `Left` containing the exception, otherwise returns `Right` with the value `A`
     */
-  implicit def attempt[F[_], A](
-    implicit deserializer: Deserializer[F, A]
+  implicit def attempt[F[_], A](implicit
+    deserializer: Deserializer[F, A]
   ): Deserializer[F, Either[Throwable, A]] =
     deserializer.attempt
 
-  /**
-    * The option [[Deserializer]] returns `None` when the bytes are
+  /** The option [[Deserializer]] returns `None` when the bytes are
     * `null`, and otherwise deserializes using the deserializer for
     * the type `A`, wrapping the result in `Some`.
     */
-  implicit def option[F[_], A](
-    implicit deserializer: Deserializer[F, A]
+  implicit def option[F[_], A](implicit
+    deserializer: Deserializer[F, A]
   ): Deserializer[F, Option[A]] =
     deserializer.option
 

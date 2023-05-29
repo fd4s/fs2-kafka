@@ -11,50 +11,44 @@ import cats.{Eq, Show}
 import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 
-/**
-  * [[Headers]] represent an immutable append-only collection
+/** [[Headers]] represent an immutable append-only collection
   * of [[Header]]s. To create a new [[Headers]] instance, you
   * can use [[Headers#apply]] or [[Headers#empty]] and add an
   * instance of [[Header]] using `append`.
   */
 sealed abstract class Headers {
-  /**
-    * Returns the first header with the specified key,
+
+  /** Returns the first header with the specified key,
     * wrapped in `Some`, or `None` if no such header
     * exists. Alias for [[withKey]].
     */
   final def apply(key: String): Option[Header] =
     withKey(key)
 
-  /**
-    * Returns the first header with the specified key,
+  /** Returns the first header with the specified key,
     * wrapped in `Some`, or `None` if no such header
     * exists. The [[apply]] function is an alias.
     */
   def withKey(key: String): Option[Header]
 
-  /**
-    * Creates a new [[Headers]] instance with the specified
+  /** Creates a new [[Headers]] instance with the specified
     * [[Header]] included.
     */
   def append(header: Header): Headers
 
-  /**
-    * Creates a new [[Headers]] instance including a
+  /** Creates a new [[Headers]] instance including a
     * [[Header]] with the specified key and value.
     */
-  def append[V](key: String, value: V)(
-    implicit serializer: HeaderSerializer[V]
+  def append[V](key: String, value: V)(implicit
+    serializer: HeaderSerializer[V]
   ): Headers
 
-  /**
-    * Returns `true` if a header with the specified key
+  /** Returns `true` if a header with the specified key
     * exists; otherwise `false`.
     */
   def exists(key: String): Boolean
 
-  /**
-    * Appends the specified [[Headers]] after these headers.
+  /** Appends the specified [[Headers]] after these headers.
     */
   def concat(that: Headers): Headers
 
@@ -81,8 +75,8 @@ object Headers {
     override def append(header: Header): Headers =
       new HeadersImpl(headers.append(header))
 
-    override def append[V](key: String, value: V)(
-      implicit serializer: HeaderSerializer[V]
+    override def append[V](key: String, value: V)(implicit
+      serializer: HeaderSerializer[V]
     ): Headers = append(Header(key, value))
 
     override def exists(key: String): Boolean =
@@ -143,31 +137,27 @@ object Headers {
       )
   }
 
-  /**
-    * Creates a new [[Headers]] instance from the specified
+  /** Creates a new [[Headers]] instance from the specified
     * [[Header]]s.
     */
   def apply(headers: Header*): Headers =
     if (headers.isEmpty) empty
     else new HeadersImpl(NonEmptyChain.fromChainUnsafe(Chain(headers: _*)))
 
-  /**
-    * Creates a new [[Headers]] instance from the specified
+  /** Creates a new [[Headers]] instance from the specified
     * `Chain` of [[Header]]s.
     */
   def fromChain(headers: Chain[Header]): Headers =
     if (headers.isEmpty) empty
     else new HeadersImpl(NonEmptyChain.fromChainUnsafe(headers))
 
-  /**
-    * Creates a new [[Headers]] instance from the specified
+  /** Creates a new [[Headers]] instance from the specified
     * `Seq` of [[Header]]s.
     */
   def fromSeq(headers: Seq[Header]): Headers =
     fromChain(Chain.fromSeq(headers))
 
-  /**
-    * Creates a new [[Headers]] instance from the specified
+  /** Creates a new [[Headers]] instance from the specified
     * `Iterable` of [[Header]]s.
     */
   def fromIterable(headers: Iterable[Header]): Headers =
@@ -182,8 +172,8 @@ object Headers {
       override def append(header: Header): Headers =
         new HeadersImpl(NonEmptyChain.one(header))
 
-      override def append[V](key: String, value: V)(
-        implicit serializer: HeaderSerializer[V]
+      override def append[V](key: String, value: V)(implicit
+        serializer: HeaderSerializer[V]
       ): Headers = append(Header(key, value))
 
       override def exists(key: String): Boolean =
