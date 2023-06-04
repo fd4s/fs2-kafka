@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,22 +7,22 @@
 package fs2.kafka
 
 import java.util
+import java.util.concurrent.atomic.AtomicBoolean
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerGroupMetadata, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.InvalidProducerEpochException
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.scalatest.EitherValues
-
 import scala.concurrent.duration._
 
 class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
-
   describe("creating transactional producers") {
     it("should support defined syntax") {
       val settings = TransactionalProducerSettings("id", ProducerSettings[IO, String, String])
@@ -98,8 +98,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                     )
                   )
                 )
-            ) -> (key, value)
-
+            ) -> ((key, value))
         }
         passthrough <- Stream
           .eval(
@@ -146,6 +145,54 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
         None
       )
     }
+  }
+
+  it("should be able to commit offset without producing records in a transaction") {
+    withTopic { topic =>
+      createCustomTopic(topic, partitions = 3)
+      val commitState = new AtomicBoolean(false)
+      implicit val mk: MkProducer[IO] = new MkProducer[IO] {
+        def apply[G[_]](settings: ProducerSettings[G, _, _]): IO[KafkaByteProducer] =
+          IO.delay {
+            new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
+              (settings.properties: Map[String, AnyRef]).asJava,
+              new ByteArraySerializer,
+              new ByteArraySerializer
+            ) {
+              override def sendOffsetsToTransaction(
+                offsets: util.Map[TopicPartition, OffsetAndMetadata],
+                consumerGroupMetadata: ConsumerGroupMetadata
+              ): Unit = {
+                commitState.set(true)
+                super.sendOffsetsToTransaction(offsets, consumerGroupMetadata)
+              }
+            }
+          }
+      }
+      for {
+        producer <- TransactionalKafkaProducer.stream(
+          TransactionalProducerSettings(
+            s"id-$topic",
+            producerSettings[IO]
+              .withRetries(Int.MaxValue)
+          )
+        )
+        offsets = (i: Int) =>
+          CommittableOffset[IO](
+            new TopicPartition(topic, i % 3),
+            new OffsetAndMetadata(i.toLong),
+            Some("group"),
+            _ => IO.unit
+          )
+
+        records = Chunk.seq(0 to 100).map(i => CommittableProducerRecords(Chunk.empty, offsets(i)))
+
+        results <- Stream.eval(producer.produce(records))
+      } yield {
+        results should be(empty)
+        commitState.get shouldBe true
+      }
+    }.compile.lastOrError.unsafeRunSync()
   }
 
   private def testMultiple(topic: String, makeOffset: Option[Int => CommittableOffset[IO]]) = {
@@ -433,5 +480,4 @@ class TransactionalKafkaProducerTimeoutSpec extends BaseKafkaSpec with EitherVal
       consumedOrError.isLeft shouldBe true
     }
   }
-
 }

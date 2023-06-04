@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -30,7 +30,6 @@ import fs2.kafka.internal.syntax._
   * the same transaction as the offset is committed.
   */
 sealed abstract class CommittableProducerRecords[F[_], +K, +V] {
-
   /** The records to produce. Can be empty to simply commit the offset. */
   def records: Chunk[ProducerRecord[K, V]]
 

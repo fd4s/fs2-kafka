@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,9 +7,9 @@
 package fs2.kafka.internal
 
 import cats.effect.{Async, Resource}
-import fs2.kafka.{KafkaByteProducer, ProducerSettings}
-import scala.jdk.DurationConverters._
+import fs2.kafka.internal.syntax._
 import fs2.kafka.producer.MkProducer
+import fs2.kafka.{KafkaByteProducer, ProducerSettings}
 
 private[kafka] sealed abstract class WithProducer[F[_]] {
   def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A]

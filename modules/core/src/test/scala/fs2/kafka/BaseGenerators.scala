@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -22,7 +22,6 @@ import fs2.Chunk
 import org.scalacheck.rng.Seed
 
 trait BaseGenerators {
-
   implicit def chunkCogen[A: Cogen]: Cogen[Chunk[A]] = Cogen.it(_.iterator)
 
   val genTopic: Gen[String] = arbitrary[String]

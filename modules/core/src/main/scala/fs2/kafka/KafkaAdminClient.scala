@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,7 +13,7 @@ import fs2.Stream
 import fs2.kafka.KafkaAdminClient._
 import fs2.kafka.admin.MkAdminClient
 import fs2.kafka.internal.WithAdminClient
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
@@ -31,7 +31,6 @@ import scala.annotation.nowarn
   * Use [[KafkaAdminClient.resource]] or [[KafkaAdminClient.stream]] to create an instance.
   */
 sealed abstract class KafkaAdminClient[F[_]] {
-
   /**
     * Updates the configuration for the specified resources.
     */
@@ -216,7 +215,6 @@ sealed abstract class KafkaAdminClient[F[_]] {
 }
 
 object KafkaAdminClient {
-
   private[this] def alterConfigsWith[F[_]: Functor, G[_]: Foldable](
     withAdminClient: WithAdminClient[F],
     configs: Map[ConfigResource, G[AlterConfigOp]]
@@ -266,7 +264,6 @@ object KafkaAdminClient {
     withAdminClient(_.deleteAcls(filters.asJava).all).void
 
   sealed abstract class DescribeCluster[F[_]] {
-
     /** Lists available nodes in the cluster. */
     def nodes: F[Set[Node]]
 
@@ -323,7 +320,6 @@ object KafkaAdminClient {
     withAdminClient(_.describeAcls(filter).values()).map(_.toList)
 
   sealed abstract class ListConsumerGroupOffsetsForPartitions[F[_]] {
-
     /** Lists consumer group offsets on specified partitions for the consumer group. */
     def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]]
   }
@@ -334,15 +330,15 @@ object KafkaAdminClient {
     partitions: G[TopicPartition]
   ): ListConsumerGroupOffsetsForPartitions[F] =
     new ListConsumerGroupOffsetsForPartitions[F] {
-      private[this] def options: ListConsumerGroupOffsetsOptions =
-        new ListConsumerGroupOffsetsOptions().topicPartitions(partitions.asJava)
+      private[this] val groupOffsets = Map(
+        groupId -> new ListConsumerGroupOffsetsSpec().topicPartitions(partitions.asJava)
+      ).asJava
 
       override def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]] =
         withAdminClient { adminClient =>
           adminClient
-            .listConsumerGroupOffsets(groupId, options)
+            .listConsumerGroupOffsets(groupOffsets)
             .partitionsToOffsetAndMetadata
-
         }.map(_.toMap)
 
       override def toString: String =
@@ -350,7 +346,6 @@ object KafkaAdminClient {
     }
 
   sealed abstract class ListConsumerGroupOffsets[F[_]] {
-
     /** Lists consumer group offsets for the consumer group. */
     def partitionsToOffsetAndMetadata: F[Map[TopicPartition, OffsetAndMetadata]]
 
@@ -382,7 +377,6 @@ object KafkaAdminClient {
     }
 
   sealed abstract class ListConsumerGroups[F[_]] {
-
     /** Lists the available consumer group ids. */
     def groupIds: F[List[String]]
 
@@ -405,7 +399,6 @@ object KafkaAdminClient {
     }
 
   sealed abstract class ListTopicsIncludeInternal[F[_]] {
-
     /** Lists topic names. Includes internal topics. */
     def names: F[Set[String]]
 
@@ -437,7 +430,6 @@ object KafkaAdminClient {
     }
 
   sealed abstract class ListTopics[F[_]] {
-
     /** Lists topic names. */
     def names: F[Set[String]]
 
@@ -518,7 +510,6 @@ object KafkaAdminClient {
 
   private def create[F[_]: Functor](client: WithAdminClient[F]) =
     new KafkaAdminClient[F] {
-
       override def alterConfigs[G[_]](configs: Map[ConfigResource, G[AlterConfigOp]])(
         implicit G: Foldable[G]
       ): F[Unit] =

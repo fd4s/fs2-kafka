@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,7 +23,7 @@ final class KafkaProducerConnectionSpec extends BaseKafkaSpec with TypeCheckedTr
         (for {
           settings <- Stream(producerSettings[IO])
           producerConnection <- KafkaProducerConnection.stream(settings)
-          producer1 <- Stream.eval(producerConnection.withSerializersFrom(settings))
+          producer1 <- Stream.resource(producerConnection.withSerializersFrom(settings))
           serializer2 = Serializer.string[IO].contramap[Int](_.toString)
           producer2 = producerConnection.withSerializers(serializer2, serializer2)
           result1 <- Stream.eval(

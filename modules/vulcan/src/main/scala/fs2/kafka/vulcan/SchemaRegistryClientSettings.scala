@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,7 +8,7 @@ package fs2.kafka.vulcan
 
 import cats.effect.Sync
 import cats.Show
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 
 /**
   * Describes how to create a `SchemaRegistryClient` and which
@@ -18,7 +18,6 @@ import scala.jdk.CollectionConverters._
   * Use `SchemaRegistryClient#apply` to create an instance.
   */
 sealed abstract class SchemaRegistryClientSettings[F[_]] {
-
   /**
     * The base URL of the schema registry service.
     */

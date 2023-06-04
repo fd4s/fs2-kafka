@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,8 +13,7 @@ import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.Chunk
 import fs2.kafka._
-import scala.jdk.CollectionConverters._
-import scala.jdk.DurationConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.LogEntry._
@@ -103,7 +102,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
 
   private[this] def manualCommitSync(request: Request.ManualCommitSync[F]): F[Unit] = {
-    val commit = withConsumer.blocking(_.commitSync(request.offsets.asJava))
+    val commit =
+      withConsumer.blocking(_.commitSync(request.offsets.asJava, settings.commitTimeout.toJava))
     commit.attempt >>= request.callback
   }
 
@@ -113,7 +113,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     k: (Either[Throwable, Unit] => Unit) => F[Unit]
   ): F[Unit] =
     F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
-        k(cb).as(None)
+        k(cb).as(Some(F.unit))
       }
       .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
         CommitTimeoutException(
@@ -412,7 +412,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             case HandlePollResult.CompletedAndStored(completeFetches, completedLog, storedLog, _) =>
               completeFetches >> logging.log(completedLog) >> logging.log(storedLog)
           }) >> result.pendingCommits.traverse_(_.commit)
-
         }
     }
     ref.get.flatMap { state =>

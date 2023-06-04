@@ -1,22 +1,24 @@
-val catsEffectVersion = "3.3.13"
+val catsEffectVersion = "3.4.9"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "7.1.4"
+val confluentVersion = "7.3.3"
 
-val fs2Version = "3.2.5"
+val fs2Version = "3.6.1"
 
-val kafkaVersion = "3.2.1"
+val kafkaVersion = "3.4.0"
 
-val testcontainersScalaVersion = "0.40.8"
+val testcontainersScalaVersion = "0.40.15"
 
-val vulcanVersion = "1.8.3"
+val vulcanVersion = "1.9.0"
 
 val munitVersion = "0.7.29"
 
-val scala2 = "2.13.8"
+val scala212 = "2.12.17"
 
-val scala3 = "3.2.1"
+val scala213 = "2.13.10"
+
+val scala3 = "3.2.2"
 
 ThisBuild / tlBaseVersion := "3.0"
 
@@ -103,10 +105,10 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
     "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "2.1.5",
+    "org.typelevel" %% "discipline-scalatest" % "2.2.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.11"
+    "ch.qos.logback" % "logback-classic" % "1.3.7"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
@@ -135,7 +137,7 @@ lazy val dependencySettings = Seq(
 lazy val mdocSettings = Seq(
   mdoc := (Compile / run).evaluated,
   scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-  crossScalaVersions := Seq(scala2),
+  crossScalaVersions := Seq(scala213),
   ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
   ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
   cleanFiles += (ScalaUnidoc / unidoc / target).value,
@@ -201,7 +203,7 @@ ThisBuild / githubWorkflowTargetBranches := Seq("series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
-  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala2'"))
+  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
 )
 
 ThisBuild / githubWorkflowArtifactUpload := false
@@ -213,7 +215,7 @@ ThisBuild / githubWorkflowPublishTargetBranches :=
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
-    List("tlRelease"), // For 3.0 release: List("tlRelease", "docs/docusaurusPublishGhpages"),
+    List("tlRelease", "docs/docusaurusPublishGhpages"),
     env = Map(
       "GIT_DEPLOY_KEY" -> "${{ secrets.GIT_DEPLOY_KEY }}",
       "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
@@ -261,6 +263,15 @@ lazy val publishSettings =
     )
   )
 
+ThisBuild / mimaBinaryIssueFilters ++= {
+  import com.typesafe.tools.mima.core._
+  // format: off
+    Seq(
+      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*")
+    )
+    // format: on
+}
+
 lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
 
 lazy val noPublishSettings =
@@ -269,8 +280,8 @@ lazy val noPublishSettings =
     publishArtifact := false
   )
 
-ThisBuild / scalaVersion := scala2
-ThisBuild / crossScalaVersions := Seq(scala2, scala3)
+ThisBuild / scalaVersion := scala213
+ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
 
 lazy val scalaSettings = Seq(
   Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007 but also suppresses genunine problems
@@ -345,7 +356,7 @@ addCommandsAlias(
   List(
     "+clean",
     "+test",
-    //"+mimaReportBinaryIssues",
+    "+mimaReportBinaryIssues",
     "+scalafmtCheck",
     "scalafmtSbtCheck",
     "+headerCheck",
@@ -359,7 +370,7 @@ addCommandsAlias(
   List(
     "clean",
     "test",
-    // "mimaReportBinaryIssues",
+    "mimaReportBinaryIssues",
     "scalafmtCheck",
     "scalafmtSbtCheck",
     "headerCheck",

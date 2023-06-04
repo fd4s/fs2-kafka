@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,23 +11,22 @@ import cats.effect.unsafe.implicits.global
 import fs2.kafka.Headers
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
-import vulcan.{AvroError, Codec}
+import vulcan.Codec
 
 final class AvroSerializerSpec extends AnyFunSpec {
   describe("AvroSerializer") {
     it("can create a serializer") {
-      val serializer =
-        AvroSerializer[Int].using(avroSettings)
+      val forKey = AvroSerializer[Int].forKey(avroSettings)
+      val forValue = AvroSerializer[Int].forValue(avroSettings)
 
-      assert(serializer.forKey.attempt.unsafeRunSync().isRight)
-      assert(serializer.forValue.attempt.unsafeRunSync().isRight)
+      assert(forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
     }
 
     it("auto-registers union schemas") {
       (avroSerializer[Either[Int, Boolean]]
-        .using(avroSettings)
-        .forValue
-        .flatMap(
+        .forValue(avroSettings)
+        .use(
           _.serialize(
             "test-union-topic",
             Headers.empty,
@@ -43,18 +42,14 @@ final class AvroSerializerSpec extends AnyFunSpec {
     }
 
     it("raises schema errors") {
-      val codec: Codec[Int] =
-        Codec.instance(
-          Left(AvroError("error")),
-          _ => Left(AvroError("encode")),
-          (_, _) => Left(AvroError("decode"))
-        )
+      val codec: Codec[BigDecimal] =
+        Codec.decimal(-1, -1)
 
-      val serializer =
-        avroSerializer(codec).using(avroSettings)
+      val forKey = avroSerializer(codec).forKey(avroSettings)
+      val forValue = avroSerializer(codec).forKey(avroSettings)
 
-      assert(serializer.forKey.attempt.unsafeRunSync().isRight)
-      assert(serializer.forValue.attempt.unsafeRunSync().isRight)
+      assert(forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
     }
 
     it("toString") {

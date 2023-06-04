@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,20 +8,29 @@ package fs2.kafka.vulcan
 
 import _root_.vulcan.Codec
 import cats.effect.Sync
-import cats.syntax.all._
-import fs2.kafka.{RecordSerializer, Serializer}
+import fs2.kafka.{KeySerializer, Serializer, ValueSerializer}
+import cats.effect.kernel.Resource
 
 final class AvroSerializer[A] private[vulcan] (
   private val codec: Codec[A]
 ) extends AnyVal {
-  def using[F[_]](
-    settings: AvroSettings[F]
-  )(implicit F: Sync[F]): RecordSerializer[F, A] = {
-    val createSerializer: Boolean => F[Serializer[F, A]] = isKey => {
-      codec.schema match {
-        case Left(e) => F.pure(Serializer.fail(e.throwable))
-        case Right(writerSchema) =>
-          settings.createAvroSerializer(isKey, Some(writerSchema)).map {
+  def forKey[F[_]: Sync](settings: AvroSettings[F]): Resource[F, KeySerializer[F, A]] =
+    create(isKey = true, settings)
+
+  def forValue[F[_]: Sync](settings: AvroSettings[F]): Resource[F, ValueSerializer[F, A]] =
+    create(isKey = false, settings)
+
+  private def create[F[_]](isKey: Boolean, settings: AvroSettings[F])(
+    implicit F: Sync[F]
+  ): Resource[F, Serializer[F, A]] =
+    codec.schema match {
+      case Left(e) => Resource.pure(Serializer.fail(e.throwable))
+      case Right(writerSchema) =>
+        Resource
+          .make(settings.createAvroSerializer(isKey, Some(writerSchema))) {
+            case (ser, _) => F.delay(ser.close())
+          }
+          .map {
             case (serializer, _) =>
               Serializer.instance { (topic, _, a) =>
                 F.defer {
@@ -32,14 +41,7 @@ final class AvroSerializer[A] private[vulcan] (
                 }
               }
           }
-      }
     }
-
-    RecordSerializer.instance(
-      forKey = createSerializer(true).widen,
-      forValue = createSerializer(false).widen
-    )
-  }
 
   override def toString: String =
     "AvroSerializer$" + System.identityHashCode(this)

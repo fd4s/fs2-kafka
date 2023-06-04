@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,7 +11,6 @@ import cats.kernel.laws.discipline.EqTests
 import cats.laws.discipline.{BitraverseTests, TraverseTests}
 
 class CommittableConsumerRecordLawsSpec extends BaseCatsSpec {
-
   checkAll(
     "CommittableConsumerRecord.eqLaws",
     EqTests[CommittableConsumerRecord[IO, String, String]].eqv

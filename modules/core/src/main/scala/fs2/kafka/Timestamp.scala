@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -18,7 +18,6 @@ import cats.instances.boolean._
   * no timestamp at all.
   */
 sealed abstract class Timestamp {
-
   /**
     * Returns the timestamp value, if the timestamp is
     * representing the time when a record was created.
@@ -51,7 +50,6 @@ sealed abstract class Timestamp {
 }
 
 object Timestamp {
-
   /**
     * Creates a new [[Timestamp]] instance from the specified
     * timestamp value representing the time when the record

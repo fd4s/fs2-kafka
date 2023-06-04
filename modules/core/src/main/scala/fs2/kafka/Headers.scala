@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,7 +8,7 @@ package fs2.kafka
 
 import cats.data.{Chain, NonEmptyChain}
 import cats.{Eq, Show}
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.internal.syntax._
 
 /**
@@ -18,7 +18,6 @@ import fs2.kafka.internal.syntax._
   * instance of [[Header]] using `append`.
   */
 sealed abstract class Headers {
-
   /**
     * Returns the first header with the specified key,
     * wrapped in `Some`, or `None` if no such header

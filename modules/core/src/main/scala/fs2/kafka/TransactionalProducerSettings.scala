@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,7 +21,6 @@ import scala.concurrent.duration.FiniteDuration
   * Use [[TransactionalProducerSettings.apply]] to create a new instance.
   */
 sealed abstract class TransactionalProducerSettings[F[_], K, V] {
-
   /**
     * The transactional ID which should be used in transactions.
     * This is the value for the following producer property.

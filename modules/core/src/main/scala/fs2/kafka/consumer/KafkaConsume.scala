@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,7 +11,6 @@ import fs2.kafka.CommittableConsumerRecord
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaConsume[F[_], K, V] {
-
   /**
     * Consume from all assigned partitions, producing a stream
     * of [[CommittableConsumerRecord]]s. Alias for [[stream]].

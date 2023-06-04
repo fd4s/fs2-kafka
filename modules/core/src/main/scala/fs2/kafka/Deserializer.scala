@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,8 +7,9 @@
 package fs2.kafka
 
 import cats.MonadError
-import cats.effect.Sync
+import cats.effect.{Resource, Sync}
 import cats.syntax.all._
+
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.UUID
 
@@ -17,7 +18,6 @@ import java.util.UUID
   * support for effect types.
   */
 sealed abstract class GenericDeserializer[-T <: KeyOrValue, F[_], A] {
-
   /**
     * Attempts to deserialize the specified bytes into a value of
     * type `A`. The Kafka topic name, from which the serialized
@@ -336,4 +336,8 @@ object GenericDeserializer {
 
   implicit def uuid[F[_]](implicit F: Sync[F]): Deserializer[F, UUID] =
     Deserializer.string[F].map(UUID.fromString).suspend
+
+  implicit def resource[T <: KeyOrValue, F[_], A](
+    implicit des: GenericDeserializer[T, F, A]
+  ): Resource[F, GenericDeserializer[T, F, A]] = Resource.pure(des)
 }

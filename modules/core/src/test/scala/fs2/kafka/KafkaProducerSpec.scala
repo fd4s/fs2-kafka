@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,7 +12,6 @@ import cats.effect.unsafe.implicits.global
 import fs2.{Chunk, Stream}
 
 final class KafkaProducerSpec extends BaseKafkaSpec {
-
   describe("creating producers") {
     it("should support defined syntax") {
       val settings =
@@ -273,6 +272,28 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
           .unsafeRunSync()
 
       assert(res.nonEmpty)
+    }
+  }
+
+  describe("KafkaProducer#partitionsFor") {
+    it("should correctly return partitions for topic") {
+      withTopic { topic =>
+        val partitions = List(0, 1, 2)
+
+        createCustomTopic(topic, partitions = partitions.size)
+
+        val info =
+          KafkaProducer
+            .stream(producerSettings[IO])
+            .evalMap(_.partitionsFor(topic))
+
+        val res =
+          info.compile.lastOrError
+            .unsafeRunSync()
+
+        res.map(_.partition()) should contain theSameElementsAs partitions
+        res.map(_.topic()).toSet should contain theSameElementsAs Set(topic)
+      }
     }
   }
 }

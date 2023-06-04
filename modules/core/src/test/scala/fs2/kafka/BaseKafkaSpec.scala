@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,7 +7,7 @@
 package fs2.kafka
 
 import cats.effect.Sync
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import java.util.UUID
 import scala.util.Failure
 import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}
@@ -38,7 +38,6 @@ import org.scalatest.Args
 import org.testcontainers.utility.DockerImageName
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
-
   final val adminClientCloseTimeout: FiniteDuration = 2.seconds
   final val transactionTimeoutInterval: FiniteDuration = 1.second
 

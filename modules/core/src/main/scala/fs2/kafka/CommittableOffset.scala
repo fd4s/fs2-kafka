@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -24,7 +24,6 @@ import org.apache.kafka.common.TopicPartition
   * used to create a new instance.
   */
 sealed abstract class CommittableOffset[F[_]] {
-
   /**
     * The topic and partition for which [[offsetAndMetadata]]
     * can be committed using [[commit]].
@@ -79,7 +78,6 @@ sealed abstract class CommittableOffset[F[_]] {
 }
 
 object CommittableOffset {
-
   /**
     * Creates a new [[CommittableOffset]] with the specified `topicPartition`
     * and `offsetAndMetadata`, along with `commit`, describing how to commit

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -17,7 +17,6 @@ private[kafka] final case class FakeFiber[F[_]](join: F[Unit], cancel: F[Unit])(
   implicit F: Concurrent[F]
 ) {
   def combine(that: FakeFiber[F]): FakeFiber[F] = {
-
     val fa0join =
       this.join.guaranteeCase {
         case Outcome.Canceled() => F.unit

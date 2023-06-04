@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -22,7 +22,6 @@ import org.apache.kafka.common.resource.{
 }
 
 final class KafkaAdminClientSpec extends BaseKafkaSpec {
-
   describe("KafkaAdminClient") {
     it("should allow creating instances") {
       KafkaAdminClient.resource[IO](adminClientSettings).use(IO.pure).unsafeRunSync()
@@ -343,5 +342,4 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
       .lastOrError
       .unsafeRunSync()
   }
-
 }

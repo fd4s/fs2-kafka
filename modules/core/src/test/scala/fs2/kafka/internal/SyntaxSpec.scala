@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -19,7 +19,6 @@ import org.apache.kafka.common.internals.KafkaFutureImpl
 import java.util.concurrent.CancellationException
 
 final class SyntaxSpec extends BaseSpec {
-
   describe("Map#filterKeysStrictValuesList") {
     it("should be the same as toList.collect") {
       forAll { (m: Map[Int, Int], p: Int => Boolean) =>
@@ -54,9 +53,7 @@ final class SyntaxSpec extends BaseSpec {
   }
 
   describe("KafkaFuture.cancelable") {
-
     it("should cancel future when fiber is cancelled") {
-
       @volatile var isFutureCancelled = false
 
       val test =
@@ -72,7 +69,7 @@ final class SyntaxSpec extends BaseSpec {
             }
             future
           }
-          fiber <- futureIO.cancelable.start
+          fiber <- futureIO.cancelable_.start
           _ <- gate.get // wait for future to be created before canceling it
           _ <- IO(assert(!isFutureCancelled))
           _ <- fiber.cancel
@@ -80,6 +77,5 @@ final class SyntaxSpec extends BaseSpec {
         } yield ()
       test.unsafeRunSync()
     }
-
   }
 }

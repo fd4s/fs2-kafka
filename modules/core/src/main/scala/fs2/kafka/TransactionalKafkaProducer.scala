@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,7 +10,7 @@ import cats.effect.syntax.all._
 import cats.effect.{Async, Outcome, Resource}
 import cats.syntax.all._
 import fs2.kafka.internal._
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
 import fs2.{Chunk, Stream}
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
@@ -29,7 +29,6 @@ import scala.annotation.nowarn
   * a [[CommittableOffset]].
   */
 abstract class TransactionalKafkaProducer[F[_], K, V] {
-
   /**
     * Produces the `ProducerRecord`s in the specified [[TransactionalProducerRecords]]
     * in four steps: first a transaction is initialized, then the records are placed
@@ -44,13 +43,11 @@ abstract class TransactionalKafkaProducer[F[_], K, V] {
 }
 
 object TransactionalKafkaProducer {
-
   /**
     * [[TransactionalKafkaProducer.Metrics]] extends [[TransactionalKafkaProducer]] to provide
     * access to the underlying producer metrics.
     */
   abstract class Metrics[F[_], K, V] extends TransactionalKafkaProducer[F, K, V] {
-
     /**
       * Returns producer metrics.
       *
@@ -64,7 +61,6 @@ object TransactionalKafkaProducer {
     * to allow producing of records without corresponding upstream offsets.
     */
   abstract class WithoutOffsets[F[_], K, V] extends Metrics[F, K, V] {
-
     /**
       * Produces the `ProducerRecord`s in the specified [[ProducerRecords]]
       * in three steps: first a transaction is initialized, then the records are placed
@@ -92,8 +88,8 @@ object TransactionalKafkaProducer {
     mk: MkProducer[F]
   ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
     (
-      Resource.eval(settings.producerSettings.keySerializer),
-      Resource.eval(settings.producerSettings.valueSerializer),
+      settings.producerSettings.keySerializer,
+      settings.producerSettings.valueSerializer,
       WithTransactionalProducer(mk, settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
@@ -137,27 +133,23 @@ object TransactionalKafkaProducer {
           records: Chunk[ProducerRecord[K, V]],
           sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
-          if (records.isEmpty) F.pure(Chunk.empty)
-          else {
+          withProducer.exclusiveAccess { (producer, blocking) =>
+            blocking(producer.beginTransaction())
+              .bracketCase { _ =>
+                val produce = records
+                  .traverse(
+                    KafkaProducer
+                      .produceRecord(keySerializer, valueSerializer, producer, blocking)
+                  )
+                  .flatMap(_.sequence)
 
-            withProducer.exclusiveAccess { (producer, blocking) =>
-              blocking(producer.beginTransaction())
-                .bracketCase { _ =>
-                  val produce = records
-                    .traverse(
-                      KafkaProducer
-                        .produceRecord(keySerializer, valueSerializer, producer, blocking)
-                    )
-                    .map(_.sequence)
-
-                  sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
-                } {
-                  case (_, Outcome.Succeeded(_)) =>
-                    blocking(producer.commitTransaction())
-                  case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                    blocking(producer.abortTransaction())
-                }
-            }.flatten
+                sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
+              } {
+                case (_, Outcome.Succeeded(_)) =>
+                  blocking(producer.commitTransaction())
+                case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
+                  blocking(producer.abortTransaction())
+              }
           }
 
         override def metrics: F[Map[MetricName, Metric]] =
@@ -184,14 +176,13 @@ object TransactionalKafkaProducer {
     implicit F: Async[F],
     mk: MkProducer[F]
   ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
-    Stream.resource(resource(settings))
+    Stream.resource(resource(settings)(F, mk))
 
   def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
     new TransactionalProducerPartiallyApplied
 
   private[kafka] final class TransactionalProducerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
-
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can
@@ -206,7 +197,7 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
-      TransactionalKafkaProducer.resource(settings)
+      TransactionalKafkaProducer.resource(settings)(F, mk)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -222,7 +213,7 @@ object TransactionalKafkaProducer {
       implicit F: Async[F],
       mk: MkProducer[F]
     ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
-      TransactionalKafkaProducer.stream(settings)
+      TransactionalKafkaProducer.stream(settings)(F, mk)
 
     override def toString: String =
       "TransactionalProducerPartiallyApplied$" + System.identityHashCode(this)

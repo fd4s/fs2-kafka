@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,8 +14,7 @@ import cats.effect.implicits._
 import cats.syntax.all._
 import fs2.{Chunk, Stream}
 import fs2.kafka.internal._
-import scala.jdk.CollectionConverters._
-import scala.jdk.DurationConverters._
+import fs2.kafka.internal.converters.collection._
 import fs2.kafka.instances._
 import fs2.kafka.internal.KafkaConsumerActor._
 import fs2.kafka.internal.syntax._
@@ -127,7 +126,6 @@ object KafkaConsumer {
     stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
@@ -395,7 +393,6 @@ object KafkaConsumer {
               actor.ref.updateAndGet(_.withOnRebalance(on).asStreaming).flatTap { newState =>
                 logging.log(LogEntry.StoredOnRebalance(on, newState))
               }
-
             }
             .ensure(NotSubscribedException())(_.subscribed) >>
             withConsumer.blocking(_.assignment.toSortedSet)
@@ -628,8 +625,8 @@ object KafkaConsumer {
     mk: MkConsumer[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     for {
-      keyDeserializer <- Resource.eval(settings.keyDeserializer)
-      valueDeserializer <- Resource.eval(settings.valueDeserializer)
+      keyDeserializer <- settings.keyDeserializer
+      valueDeserializer <- settings.valueDeserializer
       id <- Resource.eval(F.delay(new Object().hashCode))
       jitter <- Resource.eval(Jitter.default[F])
       logging <- Resource.eval(Logging.default[F](id))
@@ -637,7 +634,7 @@ object KafkaConsumer {
       polls <- Resource.eval(Queue.bounded[F, Request.Poll[F]](1))
       ref <- Resource.eval(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.eval(Ref.of[F, StreamId](0))
-      dispatcher <- Dispatcher[F]
+      dispatcher <- Dispatcher.sequential[F]
       stopConsumingDeferred <- Resource.eval(Deferred[F, Unit])
       withConsumer <- WithConsumer(mk, settings)
       actor = {
@@ -681,14 +678,13 @@ object KafkaConsumer {
   def stream[F[_], K, V](
     settings: ConsumerSettings[F, K, V]
   )(implicit F: Async[F], mk: MkConsumer[F]): Stream[F, KafkaConsumer[F, K, V]] =
-    Stream.resource(resource(settings))
+    Stream.resource(resource(settings)(F, mk))
 
   def apply[F[_]]: ConsumerPartiallyApplied[F] =
     new ConsumerPartiallyApplied()
 
   private[kafka] final class ConsumerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
-
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can
@@ -703,7 +699,7 @@ object KafkaConsumer {
       implicit F: Async[F],
       mk: MkConsumer[F]
     ): Resource[F, KafkaConsumer[F, K, V]] =
-      KafkaConsumer.resource(settings)
+      KafkaConsumer.resource(settings)(F, mk)
 
     /**
       * Alternative version of `stream` where the `F[_]` is
@@ -719,7 +715,7 @@ object KafkaConsumer {
       implicit F: Async[F],
       mk: MkConsumer[F]
     ): Stream[F, KafkaConsumer[F, K, V]] =
-      KafkaConsumer.stream(settings)
+      KafkaConsumer.stream(settings)(F, mk)
 
     override def toString: String =
       "ConsumerPartiallyApplied$" + System.identityHashCode(this)
@@ -730,7 +726,6 @@ object KafkaConsumer {
    * to explicitly use operations such as `flatMap` and `evalTap`
    */
   implicit final class StreamOps[F[_]: Functor, K, V](self: Stream[F, KafkaConsumer[F, K, V]]) {
-
     /**
       * Subscribes a consumer to the specified topics within the [[Stream]] context.
       * See [[KafkaSubscription#subscribe]].

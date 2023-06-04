@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,7 +14,7 @@ import cats.syntax.all._
 import cats.effect.unsafe.implicits.global
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import scala.jdk.CollectionConverters._
+import fs2.kafka.internal.converters.collection._
 import org.apache.kafka.clients.consumer.{
   ConsumerConfig,
   CooperativeStickyAssignor,
@@ -28,7 +28,6 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
-
   type Consumer = KafkaConsumer[IO, String, String]
 
   type ConsumerStream = Stream[IO, CommittableConsumerRecord[IO, String, String]]
@@ -99,7 +98,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         // duplication is currently possible.
         res.distinct should contain theSameElementsAs produced
-
       }
     }
 
@@ -332,7 +330,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               "java.lang.IllegalStateException: Subscription to topics, partitions and pattern are mutually exclusive"
             }
         }
-
       }
     }
 

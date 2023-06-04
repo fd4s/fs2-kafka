@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -205,9 +205,5 @@ final class DeserializerSpec extends BaseCatsSpec {
 
   test("Deserializer#toString") {
     assert(Deserializer[IO, String].toString startsWith "Deserializer$")
-  }
-
-  test("Deserializer.Record#toString") {
-    assert(RecordDeserializer[IO, String].toString startsWith "Deserializer.Record$")
   }
 }
