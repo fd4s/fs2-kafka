@@ -11,12 +11,34 @@ import cats.effect.kernel.Resource
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.common.config.SaslConfigs
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 final class ConsumerSettingsSpec extends BaseSpec {
   describe("ConsumerSettings") {
+
+    it("should provide withPlainSasl") {
+
+      val usernameToken = "unToken"
+      val passwordToken = "pwToken"
+      val saslSettings = settings.withPlainSasl(usernameToken, passwordToken)
+
+      assert {
+        saslSettings
+          .properties(SaslConfigs.SASL_MECHANISM)
+          .contains("PLAIN") &&
+        saslSettings
+          .properties(SaslConfigs.SASL_JAAS_CONFIG)
+          .contains(s"""org.apache.kafka.common.security.plain.PlainLoginModule required username="${usernameToken}" password="${passwordToken}";""") &&
+        saslSettings
+          .properties(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)
+          .contains("SASL_SSL")
+      }
+    }
+
     it("should be able to set a custom blocking context") {
       assert {
         settings.customBlockingContext.isEmpty &&
