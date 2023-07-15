@@ -122,6 +122,23 @@ ConsumerSettings(
  .withGroupId("group")
 ```
 
+### Sasl setting
+
+When interacting with a Kafka host requiring authentication via SASL (Confluent Cloud, for example), you can use the `withPlainSasl` sugar function:
+
+```scala mdoc:silent
+ConsumerSettings(
+   keyDeserializer = Deserializer[IO, String],
+   valueDeserializer = Deserializer[IO, String]
+).withAutoOffsetReset(AutoOffsetReset.Earliest)
+ .withBootstrapServers("pkc-instanceName.us-west1.gcp.confluent.cloud:9092")
+ .withGroupId("group")
+ .withPlainSasl(
+   <idToken>,
+   <passwordToken>
+)
+```
+
 [`ConsumerSettings`][consumersettings] provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use `withProperty` or `withProperties` together with constants from [`ConsumerConfig`][consumerconfig]. Available properties for the Java Kafka consumer are described in the [documentation](http://kafka.apache.org/documentation/#consumerconfigs).
 
 ### Default Settings

@@ -404,6 +404,10 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     */
   def withCredentials(credentialsStore: KafkaCredentialStore): ConsumerSettings[F, K, V]
 
+  /**
+   * provides SASL credentials to Kafka host. A typical use case for this would be
+   * interacting with Confluent Cloud.
+   */
   def withPlainSasl(usernameToken: String, passwordToken: String): ConsumerSettings[F, K, V]
 }
 
