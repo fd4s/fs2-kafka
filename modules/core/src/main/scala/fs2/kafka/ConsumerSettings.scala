@@ -9,9 +9,9 @@ package fs2.kafka
 import cats.Show
 import cats.effect.Resource
 import fs2.kafka.security.KafkaCredentialStore
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.config.SaslConfigs
-import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.common.requests.OffsetFetchResponse
 
 import scala.concurrent.ExecutionContext
