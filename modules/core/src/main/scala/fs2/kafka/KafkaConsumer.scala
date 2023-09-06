@@ -79,47 +79,65 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaConsumerLifecycle[F]
 
 object KafkaConsumer {
-  private def spawnRepeating[F[_]: Concurrent, A](fa: F[A]): Resource[F, FakeFiber[F]] =
-    Resource.make {
-      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        fa.foreverM[Unit]
-          .guaranteeCase {
-            case Outcome.Errored(e) => deferred.complete(Left(e)).void
-            case _                  => deferred.complete(Right(())).void
-          }
-          .start
-          .map(fiber => FakeFiber(deferred.get.rethrow, fiber.cancel.start.void))
-      }
-    }(_.cancel)
-
-  private def startConsumerActor[F[_], K, V](
+  /**
+    * Processes requests from the queue, if there are pending requests, otherwise waits for the next poll.
+    *
+    * In particular, any newly queued requests may wait for up to pollInterval, and for the next poll to complete.
+    *
+    * The resulting effect runs forever, until canceled.
+    */
+  private def runConsumerActor[F[_], K, V](
     requests: QueueSource[F, Request[F, K, V]],
     polls: QueueSource[F, Request.Poll[F]],
     actor: KafkaConsumerActor[F, K, V]
   )(
     implicit F: Async[F]
-  ): Resource[F, FakeFiber[F]] =
-    spawnRepeating {
-      OptionT(requests.tryTake)
-        .getOrElseF(polls.take.widen)
-        .flatMap(actor.handle(_))
-    }
+  ): F[Unit] =
+    OptionT(requests.tryTake)
+      .getOrElseF(polls.take.widen)
+      .flatMap(actor.handle(_))
+      .foreverM[Unit]
 
-  private def startPollScheduler[F[_], K, V](
+  /**
+    * Schedules polls every pollInterval to be handled by runConsumerActor.
+    *
+    * The polls queue is assumed bounded to provide backpressure.
+    *
+    * The resulting effect runs forever, until canceled.
+    */
+  private def runPollScheduler[F[_], K, V](
     polls: QueueSink[F, Request.Poll[F]],
     pollInterval: FiniteDuration
   )(
     implicit F: Temporal[F]
-  ): Resource[F, FakeFiber[F]] =
-    spawnRepeating {
-      polls.offer(Request.poll) >> F.sleep(pollInterval)
-    }
+  ): F[Unit] =
+    polls
+      .offer(Request.poll)
+      .andWait(pollInterval)
+      .foreverM[Unit]
+
+  private def startBackgroundConsumer[F[_], K, V](
+    requests: QueueSource[F, Request[F, K, V]],
+    polls: Queue[F, Request.Poll[F]],
+    actor: KafkaConsumerActor[F, K, V],
+    pollInterval: FiniteDuration
+  )(
+    implicit F: Async[F]
+  ): Resource[F, Fiber[F, Throwable, Unit]] =
+    Resource.make {
+      F.race(
+          runConsumerActor(requests, polls, actor),
+          runPollScheduler(polls, pollInterval)
+        )
+        .void
+        .start
+    }(_.cancel.start.void)
 
   private def createKafkaConsumer[F[_], K, V](
     requests: QueueSink[F, Request[F, K, V]],
     settings: ConsumerSettings[F, K, V],
     actor: KafkaConsumerActor[F, K, V],
-    fiber: FakeFiber[F],
+    fiber: Fiber[F, Throwable, Unit],
     streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F],
@@ -602,9 +620,9 @@ object KafkaConsumer {
       override def toString: String =
         "KafkaConsumer$" + id
 
-      override def terminate: F[Unit] = fiber.cancel
+      override def terminate: F[Unit] = fiber.cancel.start.void
 
-      override def awaitTermination: F[Unit] = fiber.join
+      override def awaitTermination: F[Unit] = fiber.joinWithUnit
     }
 
   /**
@@ -651,13 +669,12 @@ object KafkaConsumer {
           withConsumer = withConsumer
         )
       }
-      actorFiber <- startConsumerActor(requests, polls, actor)
-      polls <- startPollScheduler(polls, settings.pollInterval)
+      fiber <- startBackgroundConsumer(requests, polls, actor, settings.pollInterval)
     } yield createKafkaConsumer(
       requests,
       settings,
       actor,
-      actorFiber.combine(polls),
+      fiber,
       streamId,
       id,
       withConsumer,
