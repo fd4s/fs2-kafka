@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.12.17, 2.13.10, 3.2.2]
+        scala: [2.12.17, 2.13.12, 3.2.2]
         java: [temurin@8, temurin@17]
         exclude:
           - scala: 2.12.17
@@ -91,7 +91,7 @@ jobs:
 
       - run: sbt '++ ${{ matrix.scala }}' ci
 
-      - if: matrix.scala == '2.13.10'
+      - if: matrix.scala == '2.13.12'
         run: sbt '++ ${{ matrix.scala }}' docs/run
 
   publish:
@@ -101,7 +101,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.10]
+        scala: [2.13.12]
         java: [temurin@8]
     runs-on: ${{ matrix.os }}
     steps:

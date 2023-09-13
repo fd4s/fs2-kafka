@@ -14,7 +14,7 @@ val munitVersion = "0.7.29"
 
 val scala212 = "2.12.17"
 
-val scala213 = "2.13.10"
+val scala213 = "2.13.12"
 
 val scala3 = "3.2.2"
 
