@@ -6,7 +6,7 @@ val fs2Version = "3.6.1"
 
 val kafkaVersion = "2.8.2"
 
-val testcontainersScalaVersion = "0.40.15"
+val testcontainersScalaVersion = "0.40.17"
 
 val vulcanVersion = "1.9.0"
 
@@ -108,7 +108,7 @@ lazy val dependencySettings = Seq(
     "org.typelevel" %% "discipline-scalatest" % "2.2.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.3.7"
+    "ch.qos.logback" % "logback-classic" % "1.3.11"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
