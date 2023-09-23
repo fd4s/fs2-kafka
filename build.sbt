@@ -267,7 +267,8 @@ ThisBuild / mimaBinaryIssueFilters ++= {
   import com.typesafe.tools.mima.core._
   // format: off
     Seq(
-      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*")
+      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
+      ProblemFilters.exclude[MissingClassProblem]("kafka.utils.VerifiableProperties")
     )
     // format: on
 }
