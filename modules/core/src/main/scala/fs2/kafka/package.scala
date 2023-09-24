@@ -94,7 +94,7 @@ package kafka {
       records: F[ProducerRecord[K, V]]
     )(
       implicit F: Traverse[F]
-    ): ProducerRecords[K, V] = Chunk.iterable(Foldable[F].toIterable(records))
+    ): ProducerRecords[K, V] = Chunk.from(Foldable[F].toIterable(records))
 
     def one[K, V](record: ProducerRecord[K, V]): ProducerRecords[K, V] =
       Chunk.singleton(record)
