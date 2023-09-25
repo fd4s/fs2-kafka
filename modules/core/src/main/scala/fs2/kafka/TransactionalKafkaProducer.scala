@@ -70,6 +70,20 @@ object TransactionalKafkaProducer {
   }
 
   /**
+    * [[TransactionalKafkaProducer.WithTransaction]] extends [[TransactionalKafkaProducer.WithoutOffsets]]
+    * to allow the creation of [[Transaction]].
+    */
+  abstract class WithTransaction[F[_], K, V] extends WithoutOffsets[F, K, V] {
+
+    /**
+      * Creates a new [[Transaction]] in the `Resource` context. This operation will block until the previous
+      * transaction is finished, if any. Once this resource is released, the transaction and offsets will be committed,
+      * or aborted if an exception is thrown.
+      */
+    def createTransaction: Resource[F, Transaction.WithoutOffsets[F, K, V]]
+  }
+
+  /**
     * Creates a new [[TransactionalKafkaProducer]] in the `Resource` context,
     * using the specified [[TransactionalProducerSettings]]. Note that there
     * is another version where `F[_]` is specified explicitly and the key and
@@ -84,13 +98,13 @@ object TransactionalKafkaProducer {
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
-  ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
+  ): Resource[F, TransactionalKafkaProducer.WithTransaction[F, K, V]] =
     (
       Resource.eval(settings.producerSettings.keySerializer),
       Resource.eval(settings.producerSettings.valueSerializer),
       WithTransactionalProducer(mk, settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
-      new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
+      new TransactionalKafkaProducer.WithTransaction[F, K, V] {
         override def produce[P](
           records: TransactionalProducerRecords[F, P, K, V]
         ): F[ProducerResult[P, K, V]] =
@@ -156,6 +170,9 @@ object TransactionalKafkaProducer {
 
         override def toString: String =
           "TransactionalKafkaProducer$" + System.identityHashCode(this)
+
+        override def createTransaction: Resource[F, Transaction.WithoutOffsets[F, K, V]] =
+          Transaction.resource[F, K, V](withProducer, keySerializer, valueSerializer)
       }
     }
 
@@ -174,7 +191,7 @@ object TransactionalKafkaProducer {
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
-  ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
+  ): Stream[F, TransactionalKafkaProducer.WithTransaction[F, K, V]] =
     Stream.resource(resource(settings)(F, mk))
 
   def apply[F[_]]: TransactionalProducerPartiallyApplied[F] =
@@ -195,7 +212,7 @@ object TransactionalKafkaProducer {
     def resource[K, V](settings: TransactionalProducerSettings[F, K, V])(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Resource[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
+    ): Resource[F, TransactionalKafkaProducer.WithTransaction[F, K, V]] =
       TransactionalKafkaProducer.resource(settings)(F, mk)
 
     /**
@@ -211,7 +228,7 @@ object TransactionalKafkaProducer {
     def stream[K, V](settings: TransactionalProducerSettings[F, K, V])(
       implicit F: Async[F],
       mk: MkProducer[F]
-    ): Stream[F, TransactionalKafkaProducer.WithoutOffsets[F, K, V]] =
+    ): Stream[F, TransactionalKafkaProducer.WithTransaction[F, K, V]] =
       TransactionalKafkaProducer.stream(settings)(F, mk)
 
     override def toString: String =
