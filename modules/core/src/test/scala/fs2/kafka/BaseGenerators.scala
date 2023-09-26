@@ -88,7 +88,17 @@ trait BaseGenerators {
     implicit F: ApplicativeError[F, Throwable]
   ): Gen[CommittableOffsetBatch[F]] =
     arbitrary[Map[TopicPartition, OffsetAndMetadata]]
-      .map(CommittableOffsetBatch[F](_, Set.empty, false, _ => F.unit))
+      .map(_.toList)
+      .map(
+        CommittableOffsetBatch.fromFoldableMap(_)(a => {
+          CommittableOffset(
+            topicPartition = a._1,
+            offsetAndMetadata = a._2,
+            consumerGroupId = None,
+            commit = _ => F.unit
+          )
+        })
+      )
 
   implicit def arbCommittableOffsetBatch[F[_]](
     implicit F: ApplicativeError[F, Throwable]
