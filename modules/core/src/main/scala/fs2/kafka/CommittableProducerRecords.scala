@@ -58,7 +58,7 @@ object CommittableProducerRecords {
     records: G[ProducerRecord[K, V]],
     offset: CommittableOffset[F]
   )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] =
-    chunk(Chunk.iterable(Foldable[G].toIterable(records)), offset)
+    chunk(Chunk.from(Foldable[G].toIterable(records)), offset)
 
   /**
     * Creates a new [[CommittableProducerRecords]] for producing exactly

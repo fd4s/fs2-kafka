@@ -152,7 +152,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
         val action = st.fetches.filterKeysStrictList(withRecords).traverse {
           case (partition, partitionFetches) =>
-            val records = Chunk.vector(st.records(partition).toVector)
+            val records = Chunk.from(st.records(partition).toVector)
             partitionFetches.values.toList.traverse(_.completeRevoked(records))
         } >> logging.log(
           RevokedFetchesWithRecords(st.records.filterKeysStrict(withRecords), newState)
@@ -317,7 +317,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             def completeFetches: F[Unit] =
               state.fetches.filterKeysStrictList(canBeCompleted).traverse_ {
                 case (partition, fetches) =>
-                  val records = Chunk.vector(allRecords(partition).toVector)
+                  val records = Chunk.from(allRecords(partition).toVector)
                   fetches.values.toList.traverse_(_.completeRecords(records))
               }
 

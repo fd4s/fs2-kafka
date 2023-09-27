@@ -1,10 +1,10 @@
-val catsEffectVersion = "3.4.9"
+val catsEffectVersion = "3.5.1"
 
 val catsVersion = "2.6.1"
 
 val confluentVersion = "7.4.0"
 
-val fs2Version = "3.6.1"
+val fs2Version = "3.9.2"
 
 val kafkaVersion = "3.4.1"
 
@@ -18,7 +18,7 @@ val scala212 = "2.12.17"
 
 val scala213 = "2.13.10"
 
-val scala3 = "3.2.2"
+val scala3 = "3.3.1"
 
 ThisBuild / tlBaseVersion := "3.0"
 
@@ -267,7 +267,8 @@ ThisBuild / mimaBinaryIssueFilters ++= {
   import com.typesafe.tools.mima.core._
   // format: off
     Seq(
-      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*")
+      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
+      ProblemFilters.exclude[MissingClassProblem]("kafka.utils.VerifiableProperties")
     )
     // format: on
 }
