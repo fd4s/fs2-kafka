@@ -36,7 +36,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         (for {
           producer <- KafkaProducer.stream(producerSettings[IO])
           _ <- Stream.eval(IO(producer.toString should startWith("KafkaProducer$")))
-          (records, passthrough) <- Stream.chunk(Chunk.seq(toProduce).map {
+          (records, passthrough) <- Stream.chunk(Chunk.from(toProduce).map {
             case passthrough @ (key, value) =>
               (ProducerRecords.one(ProducerRecord(topic, key, value)), passthrough)
           })
@@ -63,7 +63,7 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       (for {
         producer <- KafkaProducer[IO].stream(producerSettings[IO])
-        records <- Stream.chunk(Chunk.seq(toProduce).map {
+        records <- Stream.chunk(Chunk.from(toProduce).map {
           case (key, value) =>
             ProducerRecords.one(ProducerRecord(topic, key, value))
         })

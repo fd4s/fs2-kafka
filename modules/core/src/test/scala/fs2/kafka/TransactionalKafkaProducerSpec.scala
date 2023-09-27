@@ -79,7 +79,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
           )
         )
         _ <- Stream.eval(IO(producer.toString should startWith("TransactionalKafkaProducer$")))
-        (records, passthrough) <- Stream.chunk(Chunk.seq(toProduce)).zipWithIndex.map {
+        (records, passthrough) <- Stream.chunk(Chunk.from(toProduce)).zipWithIndex.map {
           case ((key, value), i) =>
             val record = ProducerRecord(topic, key, value)
 
@@ -185,7 +185,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
             _ => IO.unit
           )
 
-        records = Chunk.seq(0 to 100).map(i => CommittableProducerRecords(Chunk.empty, offsets(i)))
+        records = Chunk.from(0 to 100).map(i => CommittableProducerRecords(Chunk.empty, offsets(i)))
 
         results <- Stream.eval(producer.produce(records))
       } yield {
@@ -198,7 +198,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   private def testMultiple(topic: String, makeOffset: Option[Int => CommittableOffset[IO]]) = {
     createCustomTopic(topic, partitions = 3)
     val toProduce =
-      Chunk.seq((0 to 100).toList.map(n => s"key-$n" -> s"value-$n"))
+      Chunk.from((0 to 100).toList.map(n => s"key-$n" -> s"value-$n"))
 
     val toPassthrough = "passthrough"
 
@@ -262,7 +262,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
     withTopic { topic =>
       createCustomTopic(topic, partitions = 3)
       val toProduce =
-        Chunk.seq((0 to 1000000).toList.map(n => s"key-$n" -> s"value-$n"))
+        Chunk.from((0 to 1000000).toList.map(n => s"key-$n" -> s"value-$n"))
 
       val result =
         (for {
@@ -367,7 +367,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 _ => IO.unit
               )
           }
-          records = Chunk.seq(recordsToProduce.zip(offsets)).map {
+          records = Chunk.from(recordsToProduce.zip(offsets)).map {
             case (record, offset) =>
               CommittableProducerRecords.chunk(
                 Chunk.singleton(record),
