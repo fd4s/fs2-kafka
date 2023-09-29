@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,7 +7,6 @@
 package fs2.kafka.consumer
 
 trait KafkaConsumerLifecycle[F[_]] {
-
   /**
     * Whenever `terminate` is invoked, an attempt will be made to stop the
     * underlying consumer. The `terminate` operation will not wait for the

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,7 +21,6 @@ import org.apache.kafka.common.record.TimestampType.{CREATE_TIME, LOG_APPEND_TIM
   * To create a new instance, use [[ConsumerRecord#apply]]
   */
 sealed abstract class ConsumerRecord[+K, +V] {
-
   /** The topic from which the record has been consumed. */
   def topic: String
 
@@ -167,8 +166,8 @@ object ConsumerRecord {
   private[this] def deserializeFromBytes[F[_], K, V](
     record: KafkaByteConsumerRecord,
     headers: Headers,
-    keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer[F, V]
+    keyDeserializer: KeyDeserializer[F, K],
+    valueDeserializer: ValueDeserializer[F, V]
   )(implicit F: Apply[F]): F[(K, V)] = {
     val key = keyDeserializer.deserialize(record.topic, headers, record.key)
     val value = valueDeserializer.deserialize(record.topic, headers, record.value)
@@ -177,8 +176,8 @@ object ConsumerRecord {
 
   private[kafka] def fromJava[F[_], K, V](
     record: KafkaByteConsumerRecord,
-    keyDeserializer: Deserializer[F, K],
-    valueDeserializer: Deserializer[F, V]
+    keyDeserializer: KeyDeserializer[F, K],
+    valueDeserializer: ValueDeserializer[F, V]
   )(implicit F: Apply[F]): F[ConsumerRecord[K, V]] = {
     val headers = record.headers.asScala
     deserializeFromBytes(record, headers, keyDeserializer, valueDeserializer).map {

@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.{ApplicativeError, ApplicativeThrow}
@@ -16,7 +22,6 @@ import fs2.Chunk
 import org.scalacheck.rng.Seed
 
 trait BaseGenerators {
-
   implicit def chunkCogen[A: Cogen]: Cogen[Chunk[A]] = Cogen.it(_.iterator)
 
   val genTopic: Gen[String] = arbitrary[String]

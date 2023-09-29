@@ -1,6 +1,13 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.effect.IO
+import cats.effect.kernel.Resource
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all._
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -267,12 +274,12 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
     it("should be able to create with and without deserializer creation effects") {
       val deserializer = Deserializer[IO, String]
-      val recordDeserializer = RecordDeserializer.lift(deserializer)
+      val deserializerResource = Resource.pure[IO, Deserializer[IO, String]](deserializer)
 
       ConsumerSettings(deserializer, deserializer)
-      ConsumerSettings(recordDeserializer, deserializer)
-      ConsumerSettings(deserializer, recordDeserializer)
-      ConsumerSettings(recordDeserializer, recordDeserializer)
+      ConsumerSettings(deserializerResource, deserializer)
+      ConsumerSettings(deserializer, deserializerResource)
+      ConsumerSettings(deserializerResource, deserializerResource)
     }
 
     it("should be able to implicitly create with and without deserializer creation effects") {
@@ -280,13 +287,15 @@ final class ConsumerSettingsSpec extends BaseSpec {
         Deserializer[IO, String]
           .map(identity)
 
-      implicit val deserializer: RecordDeserializer[IO, String] =
-        RecordDeserializer.lift(deserializerInstance)
+      implicit val deserializer: Resource[IO, Deserializer[IO, String]] =
+        Resource.pure(deserializerInstance)
 
       ConsumerSettings[IO, Int, Int]
       ConsumerSettings[IO, String, Int].keyDeserializer
+        .use(IO.pure)
         .unsafeRunSync() shouldBe deserializerInstance
       ConsumerSettings[IO, Int, String].valueDeserializer
+        .use(IO.pure)
         .unsafeRunSync() shouldBe deserializerInstance
       ConsumerSettings[IO, String, String]
     }

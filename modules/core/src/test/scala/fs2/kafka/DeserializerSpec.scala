@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.Eq
@@ -199,9 +205,5 @@ final class DeserializerSpec extends BaseCatsSpec {
 
   test("Deserializer#toString") {
     assert(Deserializer[IO, String].toString startsWith "Deserializer$")
-  }
-
-  test("Deserializer.Record#toString") {
-    assert(RecordDeserializer[IO, String].toString startsWith "Deserializer.Record$")
   }
 }

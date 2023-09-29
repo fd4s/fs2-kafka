@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,6 +10,9 @@ import scala.collection.immutable.ArraySeq
 
 private[kafka] object converters {
   val collection = scala.jdk.CollectionConverters
+  val option = scala.jdk.OptionConverters
+
+  val duration = scala.jdk.DurationConverters
 
   def unsafeWrapArray[A](array: Array[A]): Seq[A] =
     ArraySeq.unsafeWrapArray(array)

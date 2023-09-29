@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,7 +12,6 @@ import org.apache.kafka.common.TopicPartition
 import scala.concurrent.duration.FiniteDuration
 
 trait KafkaOffsetsV2[F[_]] extends KafkaOffsets[F] {
-
   /**
     * Returns the last committed offsets for the given partitions.
     */

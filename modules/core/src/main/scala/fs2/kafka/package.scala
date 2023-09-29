@@ -1,13 +1,16 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2
 
+import cats.Traverse
 import cats.effect._
+
 import scala.concurrent.duration.FiniteDuration
+import org.apache.kafka.clients.producer.RecordMetadata
 
 package object kafka {
   type Id[+A] = A
@@ -48,6 +51,12 @@ package object kafka {
   type KafkaByteProducerRecord =
     org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]]
 
+  type ProducerRecords[K, V] = Chunk[ProducerRecord[K, V]]
+
+  type TransactionalProducerRecords[F[_], +K, +V] = Chunk[CommittableProducerRecords[F, K, V]]
+
+  type ProducerResult[K, V] = Chunk[(ProducerRecord[K, V], RecordMetadata)]
+
   /**
     * Commits offsets in batches of every `n` offsets or time window
     * of length `d`, whichever happens first. If there are no offsets
@@ -58,4 +67,52 @@ package object kafka {
     implicit F: Temporal[F]
   ): Pipe[F, CommittableOffset[F], Unit] =
     _.groupWithin(n, d).evalMap(CommittableOffsetBatch.fromFoldable(_).commit)
+
+  type Serializer[F[_], A] = GenericSerializer[KeyOrValue, F, A]
+  type KeySerializer[F[_], A] = GenericSerializer[Key, F, A]
+  type ValueSerializer[F[_], A] = GenericSerializer[Value, F, A]
+  val Serializer: GenericSerializer.type = GenericSerializer
+
+  type Deserializer[F[_], A] = GenericDeserializer[KeyOrValue, F, A]
+  type KeyDeserializer[F[_], A] = GenericDeserializer[Key, F, A]
+  type ValueDeserializer[F[_], A] = GenericDeserializer[Value, F, A]
+  val Deserializer: GenericDeserializer.type = GenericDeserializer
+}
+
+package kafka {
+  /** Phantom types to indicate whether a [[Serializer]]/[[Deserializer]] if for keys, values, or both
+    */
+  sealed trait KeyOrValue
+  sealed trait Key extends KeyOrValue
+  sealed trait Value extends KeyOrValue
+}
+package kafka {
+  import cats.Foldable
+
+  object ProducerRecords {
+    def apply[F[+_], K, V](
+      records: F[ProducerRecord[K, V]]
+    )(
+      implicit F: Traverse[F]
+    ): ProducerRecords[K, V] = Chunk.from(Foldable[F].toIterable(records))
+
+    def one[K, V](record: ProducerRecord[K, V]): ProducerRecords[K, V] =
+      Chunk.singleton(record)
+  }
+
+  object TransactionalProducerRecords {
+    @deprecated("this is now an identity operation", "3.0.0-M5")
+    def apply[F[_], K, V](
+      chunk: Chunk[CommittableProducerRecords[F, K, V]]
+    ): Chunk[CommittableProducerRecords[F, K, V]] = chunk
+
+    /**
+      * Creates a new [[TransactionalProducerRecords]] for producing exactly
+      * one [[CommittableProducerRecords]]
+      */
+    def one[F[_], K, V](
+      record: CommittableProducerRecords[F, K, V]
+    ): TransactionalProducerRecords[F, K, V] =
+      Chunk.singleton(record)
+  }
 }

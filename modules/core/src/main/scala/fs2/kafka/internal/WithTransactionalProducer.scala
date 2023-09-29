@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -54,7 +54,7 @@ private[kafka] object WithTransactionalProducer {
           setting
            */
           val close = withProducer.blocking {
-            _.close(settings.producerSettings.closeTimeout.asJava)
+            _.close(settings.producerSettings.closeTimeout.toJava)
           }
 
           initTransactions.as((withProducer, close))

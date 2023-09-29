@@ -1,10 +1,15 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.kernel.laws.discipline.EqTests
 import cats.laws.discipline.{BitraverseTests, TraverseTests}
 
 class ConsumerRecordLawsSpec extends BaseCatsSpec {
-
   checkAll(
     "ConsumerRecord.eqLaws",
     EqTests[ConsumerRecord[Int, Int]].eqv

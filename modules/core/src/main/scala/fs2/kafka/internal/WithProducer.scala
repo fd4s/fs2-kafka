@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -35,7 +35,7 @@ private[kafka] object WithProducer {
     Resource
       .make(
         mk(settings)
-      )(producer => blockingF { producer.close(settings.closeTimeout.asJava) })
+      )(producer => blockingF { producer.close(settings.closeTimeout.toJava) })
       .map(create(_, blockingG))
   }
 

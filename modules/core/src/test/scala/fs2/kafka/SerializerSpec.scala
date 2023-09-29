@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats._
@@ -240,10 +246,6 @@ final class SerializerSpec extends BaseCatsSpec {
 
   test("Serializer#toString") {
     assert(Serializer[IO, Int].toString startsWith "Serializer$")
-  }
-
-  test("Serializer.Record#toString") {
-    assert(RecordSerializer[IO, Int].toString startsWith "Serializer.Record$")
   }
 
   def roundtrip[A: Arbitrary: Eq](

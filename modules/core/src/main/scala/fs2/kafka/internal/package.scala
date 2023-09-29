@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,5 +8,4 @@ package fs2.kafka
 
 package object internal {
   private[kafka] type ExclusiveAccess[F[_], A] = F[A] => F[A]
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,7 +11,6 @@ import scala.concurrent.duration.FiniteDuration
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaTopics[F[_]] {
-
   /**
     * Returns the partitions for the specified topic.
     *
