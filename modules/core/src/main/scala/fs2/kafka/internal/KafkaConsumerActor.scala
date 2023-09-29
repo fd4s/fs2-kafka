@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -47,8 +47,8 @@ import scala.collection.immutable.SortedSet
   */
 private[kafka] final class KafkaConsumerActor[F[_], K, V](
   settings: ConsumerSettings[F, K, V],
-  keyDeserializer: Deserializer[F, K],
-  valueDeserializer: Deserializer[F, V],
+  keyDeserializer: KeyDeserializer[F, K],
+  valueDeserializer: ValueDeserializer[F, V],
   val ref: Ref[F, State[F, K, V]],
   requests: Queue[F, Request[F, K, V]],
   withConsumer: WithConsumer[F]
@@ -102,7 +102,8 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       }
 
   private[this] def manualCommitSync(request: Request.ManualCommitSync[F]): F[Unit] = {
-    val commit = withConsumer.blocking(_.commitSync(request.offsets.asJava))
+    val commit =
+      withConsumer.blocking(_.commitSync(request.offsets.asJava, settings.commitTimeout.toJava))
     commit.attempt >>= request.callback
   }
 
@@ -112,14 +113,14 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     k: (Either[Throwable, Unit] => Unit) => F[Unit]
   ): F[Unit] =
     F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
-        k(cb).as(None)
+        k(cb).as(Some(F.unit))
       }
-      .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
+      .timeoutTo(settings.commitTimeout, F.defer(F.raiseError[Unit] {
         CommitTimeoutException(
           settings.commitTimeout,
           offsets
         )
-      })
+      }))
 
   private[this] def manualCommitAsync(request: Request.ManualCommitAsync[F]): F[Unit] = {
     val commit = runCommitAsync(request.offsets) { cb =>
@@ -151,7 +152,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
 
         val action = st.fetches.filterKeysStrictList(withRecords).traverse {
           case (partition, partitionFetches) =>
-            val records = Chunk.vector(st.records(partition).toVector)
+            val records = Chunk.from(st.records(partition).toVector)
             partitionFetches.values.toList.traverse(_.completeRevoked(records))
         } >> logging.log(
           RevokedFetchesWithRecords(st.records.filterKeysStrict(withRecords), newState)
@@ -269,7 +270,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       .map(_.toMap)
 
   private[this] val pollTimeout: Duration =
-    settings.pollTimeout.asJava
+    settings.pollTimeout.toJava
 
   private[this] val poll: F[Unit] = {
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords] =
@@ -316,7 +317,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             def completeFetches: F[Unit] =
               state.fetches.filterKeysStrictList(canBeCompleted).traverse_ {
                 case (partition, fetches) =>
-                  val records = Chunk.vector(allRecords(partition).toVector)
+                  val records = Chunk.from(allRecords(partition).toVector)
                   fetches.values.toList.traverse_(_.completeRecords(records))
               }
 
@@ -401,7 +402,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
             case HandlePollResult.CompletedAndStored(completeFetches, completedLog, storedLog, _) =>
               completeFetches >> logging.log(completedLog) >> logging.log(storedLog)
           }) >> result.pendingCommits.traverse_(_.commit)
-
         }
     }
     ref.get.flatMap { state =>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -17,8 +17,6 @@ import cats.{Applicative, Bitraverse, Eq, Eval, Foldable, Show, Traverse}
 import fs2.Chunk
 import fs2.kafka.internal.syntax._
 
-import scala.collection.mutable
-
 /**
   * [[CommittableProducerRecords]] represents zero or more [[ProducerRecord]]s
   * and a [[CommittableOffset]], used by [[TransactionalKafkaProducer]] to
@@ -32,7 +30,6 @@ import scala.collection.mutable
   * the same transaction as the offset is committed.
   */
 sealed abstract class CommittableProducerRecords[F[_], +K, +V] {
-
   /** The records to produce. Can be empty to simply commit the offset. */
   def records: Chunk[ProducerRecord[K, V]]
 
@@ -54,29 +51,14 @@ object CommittableProducerRecords {
     * Creates a new [[CommittableProducerRecords]] for producing zero or
     * more [[ProducerRecord]]s and committing an offset atomically within
     * a transaction.
+    *
+    * @see [[chunk]] if your `records` are already contained in an [[fs2.Chunk]]
     */
   def apply[F[_], G[+_], K, V](
     records: G[ProducerRecord[K, V]],
     offset: CommittableOffset[F]
-  )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] = {
-    val numRecords = G.size(records).toInt
-    val chunk = if (numRecords <= 1) {
-      G.get(records)(0) match {
-        case None         => Chunk.empty[ProducerRecord[K, V]]
-        case Some(record) => Chunk.singleton(record)
-      }
-    } else {
-      val buf = new mutable.ArrayBuffer[ProducerRecord[K, V]](numRecords)
-      G.foldLeft(records, ()) {
-        case (_, record) =>
-          buf += record
-          ()
-      }
-      Chunk.array(buf.toArray)
-    }
-
-    new CommittableProducerRecordsImpl(chunk, offset)
-  }
+  )(implicit G: Foldable[G]): CommittableProducerRecords[F, K, V] =
+    chunk(Chunk.from(Foldable[G].toIterable(records)), offset)
 
   /**
     * Creates a new [[CommittableProducerRecords]] for producing exactly
@@ -87,7 +69,18 @@ object CommittableProducerRecords {
     record: ProducerRecord[K, V],
     offset: CommittableOffset[F]
   ): CommittableProducerRecords[F, K, V] =
-    new CommittableProducerRecordsImpl(Chunk.singleton(record), offset)
+    chunk(Chunk.singleton(record), offset)
+
+  /**
+    * Creates a new [[CommittableProducerRecords]] for producing zero or
+    * more [[ProducerRecord]]s and committing an offset atomically within
+    * a transaction.
+    */
+  def chunk[F[_], K, V](
+    records: Chunk[ProducerRecord[K, V]],
+    offset: CommittableOffset[F]
+  ): CommittableProducerRecords[F, K, V] =
+    new CommittableProducerRecordsImpl(records, offset)
 
   implicit def committableProducerRecordsShow[F[_], K, V](
     implicit

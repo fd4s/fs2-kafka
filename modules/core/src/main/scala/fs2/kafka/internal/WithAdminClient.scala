@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -28,11 +28,11 @@ private[kafka] object WithAdminClient {
         val withAdminClient =
           new WithAdminClient[G] {
             override def apply[A](f: AdminClient => KafkaFuture[A]): G[A] =
-              G.defer(f(adminClient).cancelable)
+              G.delay(f(adminClient)).cancelable_
           }
 
         val close =
-          F.blocking(adminClient.close(settings.closeTimeout.asJava))
+          F.blocking(adminClient.close(settings.closeTimeout.toJava))
 
         (withAdminClient, close)
       }

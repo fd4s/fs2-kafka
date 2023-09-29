@@ -1,18 +1,18 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka
 
-import cats.effect.Sync
-import cats.{Applicative, Show}
+import cats.Show
 import fs2.kafka.security.KafkaCredentialStore
 import org.apache.kafka.clients.producer.ProducerConfig
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import cats.effect.Resource
 
 /**
   * [[ProducerSettings]] contain settings necessary to create a [[KafkaProducer]].
@@ -28,23 +28,22 @@ import scala.concurrent.duration._
   * Use `ProducerSettings#apply` to create a new instance.
   */
 sealed abstract class ProducerSettings[F[_], K, V] {
-
   /**
     * The `Serializer` to use for serializing record keys.
     */
-  def keySerializer: F[Serializer[F, K]]
+  def keySerializer: Resource[F, KeySerializer[F, K]]
 
   /**
     * The `Serializer` to use for serializing record values.
     */
-  def valueSerializer: F[Serializer[F, V]]
+  def valueSerializer: Resource[F, ValueSerializer[F, V]]
 
   /**
     * Replace the serializers with those provided in the arguments.
     */
   def withSerializers[K1, V1](
-    keySerializer: F[Serializer[F, K1]],
-    valueSerializer: F[Serializer[F, V1]]
+    keySerializer: Resource[F, KeySerializer[F, K1]],
+    valueSerializer: Resource[F, ValueSerializer[F, V1]]
   ): ProducerSettings[F, K1, V1]
 
   /**
@@ -225,18 +224,6 @@ sealed abstract class ProducerSettings[F[_], K, V] {
   def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V]
 
   /**
-    * The maximum number of [[ProducerRecords]] to produce in the same batch.<br>
-    * <br>
-    * The default value is 10000.
-    */
-  def parallelism: Int
-
-  /**
-    * Creates a new [[ProducerSettings]] with the specified [[parallelism]].
-    */
-  def withParallelism(parallelism: Int): ProducerSettings[F, K, V]
-
-  /**
     * Includes the credentials properties from the provided [[KafkaCredentialStore]]
     */
   def withCredentials(credentialsStore: KafkaCredentialStore): ProducerSettings[F, K, V]
@@ -244,12 +231,11 @@ sealed abstract class ProducerSettings[F[_], K, V] {
 
 object ProducerSettings {
   private[this] final case class ProducerSettingsImpl[F[_], K, V](
-    override val keySerializer: F[Serializer[F, K]],
-    override val valueSerializer: F[Serializer[F, V]],
+    override val keySerializer: Resource[F, KeySerializer[F, K]],
+    override val valueSerializer: Resource[F, ValueSerializer[F, V]],
     override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
-    override val closeTimeout: FiniteDuration,
-    override val parallelism: Int
+    override val closeTimeout: FiniteDuration
   ) extends ProducerSettings[F, K, V] {
     override def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings[F, K, V] =
       copy(customBlockingContext = Some(ec))
@@ -305,9 +291,6 @@ object ProducerSettings {
     override def withCloseTimeout(closeTimeout: FiniteDuration): ProducerSettings[F, K, V] =
       copy(closeTimeout = closeTimeout)
 
-    override def withParallelism(parallelism: Int): ProducerSettings[F, K, V] =
-      copy(parallelism = parallelism)
-
     /**
       * Includes the credentials properties from the provided [[KafkaCredentialStore]]
       */
@@ -320,15 +303,15 @@ object ProducerSettings {
       s"ProducerSettings(closeTimeout = $closeTimeout)"
 
     override def withSerializers[K1, V1](
-      keySerializer: F[Serializer[F, K1]],
-      valueSerializer: F[Serializer[F, V1]]
+      keySerializer: Resource[F, KeySerializer[F, K1]],
+      valueSerializer: Resource[F, ValueSerializer[F, V1]]
     ): ProducerSettings[F, K1, V1] =
       copy(keySerializer = keySerializer, valueSerializer = valueSerializer)
   }
 
   private[this] def create[F[_], K, V](
-    keySerializer: F[Serializer[F, K]],
-    valueSerializer: F[Serializer[F, V]]
+    keySerializer: Resource[F, KeySerializer[F, K]],
+    valueSerializer: Resource[F, ValueSerializer[F, V]]
   ): ProducerSettings[F, K, V] =
     ProducerSettingsImpl(
       keySerializer = keySerializer,
@@ -337,55 +320,41 @@ object ProducerSettings {
       properties = Map(
         ProducerConfig.RETRIES_CONFIG -> "0"
       ),
-      closeTimeout = 60.seconds,
-      parallelism = 10000
+      closeTimeout = 60.seconds
     )
 
   def apply[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
-  )(implicit F: Applicative[F]): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = F.pure(keySerializer),
-      valueSerializer = F.pure(valueSerializer)
-    )
-
-  def apply[F[_], K, V](
-    keySerializer: RecordSerializer[F, K],
-    valueSerializer: Serializer[F, V]
-  )(implicit F: Applicative[F]): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = keySerializer.forKey,
-      valueSerializer = F.pure(valueSerializer)
-    )
-
-  def apply[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: RecordSerializer[F, V]
-  )(implicit F: Applicative[F]): ProducerSettings[F, K, V] =
-    create(
-      keySerializer = F.pure(keySerializer),
-      valueSerializer = valueSerializer.forValue
-    )
-
-  def apply[F[_], K, V](
-    implicit keySerializer: RecordSerializer[F, K],
-    valueSerializer: RecordSerializer[F, V]
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V]
   ): ProducerSettings[F, K, V] =
-    create(keySerializer = keySerializer.forKey, valueSerializer = valueSerializer.forValue)
-
-  /**
-    * Create a `ProducerSettings` instance using placeholder serializers that serialize nothing.
-    * These can be subsequently replaced using `withSerializers`, allowing configuration of
-    * serializers to be decoupled from other configuration.
-    */
-  def nothing[F[_]](implicit F: Sync[F]): ProducerSettings[F, Nothing, Nothing] = {
-    val nothingSerializer = F.pure(Serializer.fail[F, Nothing](new AssertionError("impossible")))
-    create[F, Nothing, Nothing](
-      keySerializer = nothingSerializer,
-      valueSerializer = nothingSerializer
+    create(
+      keySerializer = Resource.pure(keySerializer),
+      valueSerializer = Resource.pure(valueSerializer)
     )
-  }
+
+  def apply[F[_], K, V](
+    keySerializer: Resource[F, KeySerializer[F, K]],
+    valueSerializer: ValueSerializer[F, V]
+  ): ProducerSettings[F, K, V] =
+    create(
+      keySerializer = keySerializer,
+      valueSerializer = Resource.pure(valueSerializer)
+    )
+
+  def apply[F[_], K, V](
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: Resource[F, ValueSerializer[F, V]]
+  ): ProducerSettings[F, K, V] =
+    create(
+      keySerializer = Resource.pure(keySerializer),
+      valueSerializer = valueSerializer
+    )
+
+  def apply[F[_], K, V](
+    implicit keySerializer: Resource[F, KeySerializer[F, K]],
+    valueSerializer: Resource[F, ValueSerializer[F, V]]
+  ): ProducerSettings[F, K, V] =
+    create(keySerializer, valueSerializer)
 
   implicit def producerSettingsShow[F[_], K, V]: Show[ProducerSettings[F, K, V]] =
     Show.fromToString

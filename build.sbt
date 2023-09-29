@@ -1,24 +1,26 @@
-val catsEffectVersion = "3.3.13"
+val catsEffectVersion = "3.5.1"
 
-val confluentVersion = "6.2.5"
+val catsVersion = "2.6.1"
 
-val fs2Version = "3.2.5"
+val confluentVersion = "7.3.4"
 
-val kafkaVersion = "2.8.1"
+val fs2Version = "3.9.2"
 
-val testcontainersScalaVersion = "0.40.8"
+val kafkaVersion = "3.4.1"
 
-val vulcanVersion = "1.8.3"
+val testcontainersScalaVersion = "0.40.15"
+
+val vulcanVersion = "1.9.0"
 
 val munitVersion = "0.7.29"
 
-val scala212 = "2.12.15"
+val scala212 = "2.12.17"
 
-val scala213 = "2.13.8"
+val scala213 = "2.13.10"
 
-val scala3 = "3.1.3"
+val scala3 = "3.3.1"
 
-ThisBuild / tlVersionIntroduced := Map("3" -> "2.1.0")
+ThisBuild / tlBaseVersion := "3.0"
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -103,10 +105,10 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
     "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "2.1.5",
+    "org.typelevel" %% "discipline-scalatest" % "2.2.0",
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.11"
+    "ch.qos.logback" % "logback-classic" % "1.3.7"
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
@@ -213,7 +215,7 @@ ThisBuild / githubWorkflowPublishTargetBranches :=
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
-    List("ci-release", "docs/docusaurusPublishGhpages"),
+    List("tlRelease", "docs/docusaurusPublishGhpages"),
     env = Map(
       "GIT_DEPLOY_KEY" -> "${{ secrets.GIT_DEPLOY_KEY }}",
       "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
@@ -266,28 +268,7 @@ ThisBuild / mimaBinaryIssueFilters ++= {
   // format: off
     Seq(
       ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[IncompatibleSignatureProblem]("*"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.registerSchema"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withRegisterSchema"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.copy"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.this"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.apply"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaAdminClient.deleteConsumerGroups"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.produce"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.KafkaProducerConnection.metrics"),
-      ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.committed"),
-
-      // package-private
-      ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.from"),
-
-      // sealed
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ConsumerSettings.withDeserializers"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withSerializers"),
-      ProblemFilters.exclude[ReversedMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
-      ProblemFilters.exclude[FinalMethodProblem]("fs2.kafka.vulcan.AvroSettings.*"),
-
-      // private
-        ProblemFilters.exclude[Problem]("fs2.kafka.vulcan.AvroSettings#AvroSettingsImpl.*")
+      ProblemFilters.exclude[MissingClassProblem]("kafka.utils.VerifiableProperties")
     )
     // format: on
 }
@@ -306,6 +287,9 @@ ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
 lazy val scalaSettings = Seq(
   Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007 but also suppresses genunine problems
   Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
+  Compile / compile / scalacOptions --= {
+    if (tlIsScala3.value) Seq("-Wvalue-discard", "-Wunused:privates") else Seq.empty
+  },
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   Compile / unmanagedSourceDirectories ++=
     Seq(
@@ -331,16 +315,9 @@ def minorVersion(version: String): String = {
 }
 
 val latestVersion = settingKey[String]("Latest stable released version")
-ThisBuild / latestVersion := {
-  val snapshot = (ThisBuild / isSnapshot).value
-  val stable = (ThisBuild / isVersionStable).value
-
-  if (!snapshot && stable) {
-    (ThisBuild / version).value
-  } else {
-    (ThisBuild / previousStableVersion).value.get
-  }
-}
+ThisBuild / latestVersion := tlLatestVersion.value.getOrElse(
+  throw new IllegalStateException("No tagged version found")
+)
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 ThisBuild / updateSiteVariables := {
@@ -351,7 +328,7 @@ ThisBuild / updateSiteVariables := {
     Map[String, String](
       "organization" -> (LocalRootProject / organization).value,
       "coreModuleName" -> (core / moduleName).value,
-      "latestVersion" -> (ThisBuild / latestVersion).value,
+      "latestVersion" -> latestVersion.value,
       "scalaPublishVersions" -> {
         val minorVersions = (core / crossScalaVersions).value.map(minorVersion)
         if (minorVersions.size <= 2) minorVersions.mkString(" and ")

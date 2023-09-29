@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,17 +8,16 @@ package fs2.kafka.internal
 
 import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
-import cats.effect.syntax.all._
 import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
 import fs2.kafka.internal.converters.unsafeWrapArray
-import fs2.kafka.internal.converters.collection._
+
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util
-import java.util.concurrent.{CancellationException, CompletionException, TimeUnit}
+import java.util.concurrent.TimeUnit
 import org.apache.kafka.common.KafkaFuture
-import org.apache.kafka.common.KafkaFuture.{BaseFunction, BiConsumer}
+
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
@@ -36,7 +35,7 @@ private[kafka] object syntax {
   implicit final class FiniteDurationSyntax(
     private val duration: FiniteDuration
   ) extends AnyVal {
-    def asJava: Duration =
+    def toJava: Duration =
       if (duration.length == 0L) Duration.ZERO
       else
         duration.unit match {
@@ -120,12 +119,12 @@ private[kafka] object syntax {
 
     def updatedIfAbsent(k: K, v: => V): Map[K, V] =
       if (map.contains(k)) map else map.updated(k, v)
-
   }
 
   implicit final class MapWrappedValueSyntax[F[_], K, V](
     private val map: Map[K, F[V]]
   ) extends AnyVal {
+    import fs2.kafka.internal.converters.collection._
     def asJavaMap(implicit F: Foldable[F]): util.Map[K, util.Collection[V]] =
       map.map { case (k, fv) => k -> (fv.asJava: util.Collection[V]) }.asJava
   }
@@ -183,37 +182,11 @@ private[kafka] object syntax {
     }
   }
 
-  implicit final class KafkaFutureSyntax[A](
-    private val future: KafkaFuture[A]
+  implicit final class KafkaFutureSyntax[F[_], A](
+    private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
-    private[this] def baseFunction[B](f: A => B): BaseFunction[A, B] =
-      new BaseFunction[A, B] { override def apply(a: A): B = f(a) }
-
-    def map[B](f: A => B): KafkaFuture[B] =
-      future.thenApply(baseFunction(f))
-
-    def void: KafkaFuture[Unit] =
-      map(_ => ())
-
-    def cancelToken[F[_]](implicit F: Async[F]): F[Option[F[Unit]]] =
-      F.blocking { future.cancel(true); () }.start.map(_.cancel.some)
-
-    // Inspired by Monix's `CancelableFuture#fromJavaCompletable`.
-    def cancelable[F[_]](implicit F: Async[F]): F[A] =
-      F.async { (cb: (Either[Throwable, A] => Unit)) =>
-        F.blocking {
-            future
-              .whenComplete(new BiConsumer[A, Throwable] {
-                override def accept(a: A, t: Throwable): Unit = t match {
-                  case null                                         => cb(a.asRight)
-                  case _: CancellationException                     => ()
-                  case e: CompletionException if e.getCause != null => cb(e.getCause.asLeft)
-                  case e                                            => cb(e.asLeft)
-                }
-              })
-          }
-          .flatMap(_.cancelToken)
-      }
+    def cancelable_(implicit F: Async[F]): F[A] =
+      F.fromCompletableFuture(futureF.map(_.toCompletionStage.toCompletableFuture))
   }
 
   implicit final class KafkaHeadersSyntax(

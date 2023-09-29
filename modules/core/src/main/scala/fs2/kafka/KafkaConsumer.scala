@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -79,54 +79,71 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaConsumerLifecycle[F]
 
 object KafkaConsumer {
-  private def spawnRepeating[F[_]: Concurrent, A](fa: F[A]): Resource[F, FakeFiber[F]] =
-    Resource.make {
-      Deferred[F, Either[Throwable, Unit]].flatMap { deferred =>
-        fa.foreverM[Unit]
-          .guaranteeCase {
-            case Outcome.Errored(e) => deferred.complete(Left(e)).void
-            case _                  => deferred.complete(Right(())).void
-          }
-          .start
-          .map(fiber => FakeFiber(deferred.get.rethrow, fiber.cancel.start.void))
-      }
-    }(_.cancel)
-
-  private def startConsumerActor[F[_], K, V](
+  /**
+    * Processes requests from the queue, if there are pending requests, otherwise waits for the next poll.
+    *
+    * In particular, any newly queued requests may wait for up to pollInterval, and for the next poll to complete.
+    *
+    * The resulting effect runs forever, until canceled.
+    */
+  private def runConsumerActor[F[_], K, V](
     requests: QueueSource[F, Request[F, K, V]],
     polls: QueueSource[F, Request.Poll[F]],
     actor: KafkaConsumerActor[F, K, V]
   )(
     implicit F: Async[F]
-  ): Resource[F, FakeFiber[F]] =
-    spawnRepeating {
-      OptionT(requests.tryTake)
-        .getOrElseF(polls.take.widen)
-        .flatMap(actor.handle(_))
-    }
+  ): F[Unit] =
+    OptionT(requests.tryTake)
+      .getOrElseF(polls.take.widen)
+      .flatMap(actor.handle(_))
+      .foreverM[Unit]
 
-  private def startPollScheduler[F[_], K, V](
+  /**
+    * Schedules polls every pollInterval to be handled by runConsumerActor.
+    *
+    * The polls queue is assumed bounded to provide backpressure.
+    *
+    * The resulting effect runs forever, until canceled.
+    */
+  private def runPollScheduler[F[_], K, V](
     polls: QueueSink[F, Request.Poll[F]],
     pollInterval: FiniteDuration
   )(
     implicit F: Temporal[F]
-  ): Resource[F, FakeFiber[F]] =
-    spawnRepeating {
-      polls.offer(Request.poll) >> F.sleep(pollInterval)
-    }
+  ): F[Unit] =
+    polls
+      .offer(Request.poll)
+      .andWait(pollInterval)
+      .foreverM[Unit]
+
+  private def startBackgroundConsumer[F[_], K, V](
+    requests: QueueSource[F, Request[F, K, V]],
+    polls: Queue[F, Request.Poll[F]],
+    actor: KafkaConsumerActor[F, K, V],
+    pollInterval: FiniteDuration
+  )(
+    implicit F: Async[F]
+  ): Resource[F, Fiber[F, Throwable, Unit]] =
+    Resource.make {
+      F.race(
+          runConsumerActor(requests, polls, actor),
+          runPollScheduler(polls, pollInterval)
+        )
+        .void
+        .start
+    }(_.cancel.start.void)
 
   private def createKafkaConsumer[F[_], K, V](
     requests: QueueSink[F, Request[F, K, V]],
     settings: ConsumerSettings[F, K, V],
     actor: KafkaConsumerActor[F, K, V],
-    fiber: FakeFiber[F],
+    fiber: Fiber[F, Throwable, Unit],
     streamIdRef: Ref[F, StreamId],
     id: Int,
     withConsumer: WithConsumer[F],
     stopConsumingDeferred: Deferred[F, Unit]
   )(implicit F: Async[F], logging: Logging[F]): KafkaConsumer[F, K, V] =
     new KafkaConsumer[F, K, V] {
-
       override def partitionsMapStream
         : Stream[F, Map[TopicPartition, Stream[F, CommittableConsumerRecord[F, K, V]]]] = {
         val chunkQueue: F[Queue[F, Option[Chunk[CommittableConsumerRecord[F, K, V]]]]] =
@@ -394,7 +411,6 @@ object KafkaConsumer {
               actor.ref.updateAndGet(_.withOnRebalance(on).asStreaming).flatTap { newState =>
                 logging.log(LogEntry.StoredOnRebalance(on, newState))
               }
-
             }
             .ensure(NotSubscribedException())(_.subscribed) >>
             withConsumer.blocking(_.assignment.toSortedSet)
@@ -470,13 +486,13 @@ object KafkaConsumer {
         topic: String,
         timeout: FiniteDuration
       ): F[List[PartitionInfo]] =
-        withConsumer.blocking { _.partitionsFor(topic, timeout.asJava).asScala.toList }
+        withConsumer.blocking { _.partitionsFor(topic, timeout.toJava).asScala.toList }
 
       override def position(partition: TopicPartition): F[Long] =
         withConsumer.blocking { _.position(partition) }
 
       override def position(partition: TopicPartition, timeout: FiniteDuration): F[Long] =
-        withConsumer.blocking { _.position(partition, timeout.asJava) }
+        withConsumer.blocking { _.position(partition, timeout.toJava) }
 
       override def committed(
         partitions: Set[TopicPartition]
@@ -492,7 +508,7 @@ object KafkaConsumer {
         timeout: FiniteDuration
       ): F[Map[TopicPartition, OffsetAndMetadata]] =
         withConsumer.blocking {
-          _.committed(partitions.asJava, timeout.asJava)
+          _.committed(partitions.asJava, timeout.toJava)
             .asInstanceOf[util.Map[TopicPartition, OffsetAndMetadata]]
             .toMap
         }
@@ -547,7 +563,6 @@ object KafkaConsumer {
           } >> actor.ref
             .updateAndGet(_.asSubscribed)
             .log(LogEntry.ManuallyAssignedPartitions(partitions, _))
-
         }
 
       override def assign(topic: String): F[Unit] =
@@ -575,7 +590,7 @@ object KafkaConsumer {
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
         withConsumer.blocking {
-          _.beginningOffsets(partitions.asJava, timeout.asJava)
+          _.beginningOffsets(partitions.asJava, timeout.toJava)
             .asInstanceOf[util.Map[TopicPartition, Long]]
             .toMap
         }
@@ -594,7 +609,7 @@ object KafkaConsumer {
         timeout: FiniteDuration
       ): F[Map[TopicPartition, Long]] =
         withConsumer.blocking {
-          _.endOffsets(partitions.asJava, timeout.asJava)
+          _.endOffsets(partitions.asJava, timeout.toJava)
             .asInstanceOf[util.Map[TopicPartition, Long]]
             .toMap
         }
@@ -605,9 +620,9 @@ object KafkaConsumer {
       override def toString: String =
         "KafkaConsumer$" + id
 
-      override def terminate: F[Unit] = fiber.cancel
+      override def terminate: F[Unit] = fiber.cancel.start.void
 
-      override def awaitTermination: F[Unit] = fiber.join
+      override def awaitTermination: F[Unit] = fiber.joinWithUnit
     }
 
   /**
@@ -628,8 +643,8 @@ object KafkaConsumer {
     mk: MkConsumer[F]
   ): Resource[F, KafkaConsumer[F, K, V]] =
     for {
-      keyDeserializer <- Resource.eval(settings.keyDeserializer)
-      valueDeserializer <- Resource.eval(settings.valueDeserializer)
+      keyDeserializer <- settings.keyDeserializer
+      valueDeserializer <- settings.valueDeserializer
       id <- Resource.eval(F.delay(new Object().hashCode))
       jitter <- Resource.eval(Jitter.default[F])
       logging <- Resource.eval(Logging.default[F](id))
@@ -637,7 +652,7 @@ object KafkaConsumer {
       polls <- Resource.eval(Queue.bounded[F, Request.Poll[F]](1))
       ref <- Resource.eval(Ref.of[F, State[F, K, V]](State.empty))
       streamId <- Resource.eval(Ref.of[F, StreamId](0))
-      dispatcher <- Dispatcher[F]
+      dispatcher <- Dispatcher.sequential[F]
       stopConsumingDeferred <- Resource.eval(Deferred[F, Unit])
       withConsumer <- WithConsumer(mk, settings)
       actor = {
@@ -654,13 +669,12 @@ object KafkaConsumer {
           withConsumer = withConsumer
         )
       }
-      actorFiber <- startConsumerActor(requests, polls, actor)
-      polls <- startPollScheduler(polls, settings.pollInterval)
+      fiber <- startBackgroundConsumer(requests, polls, actor, settings.pollInterval)
     } yield createKafkaConsumer(
       requests,
       settings,
       actor,
-      actorFiber.combine(polls),
+      fiber,
       streamId,
       id,
       withConsumer,
@@ -688,7 +702,6 @@ object KafkaConsumer {
 
   private[kafka] final class ConsumerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
-
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can
@@ -730,7 +743,6 @@ object KafkaConsumer {
    * to explicitly use operations such as `flatMap` and `evalTap`
    */
   implicit final class StreamOps[F[_]: Functor, K, V](self: Stream[F, KafkaConsumer[F, K, V]]) {
-
     /**
       * Subscribes a consumer to the specified topics within the [[Stream]] context.
       * See [[KafkaSubscription#subscribe]].

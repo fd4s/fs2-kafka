@@ -1,34 +1,48 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka.vulcan
 
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.effect.unsafe.implicits.global
+import fs2.kafka.{Headers, KeyDeserializer, ValueDeserializer}
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
-import vulcan.{AvroError, Codec}
+import vulcan.Codec
 
 final class AvroDeserializerSpec extends AnyFunSpec {
   describe("AvroDeserializer") {
     it("can create a deserializer") {
-      val deserializer =
-        AvroDeserializer[Int].using(avroSettings)
+      val forKey: Resource[IO, KeyDeserializer[IO, Int]] =
+        AvroDeserializer[Int].forKey(avroSettings)
 
-      assert(deserializer.forKey.attempt.unsafeRunSync().isRight)
-      assert(deserializer.forValue.attempt.unsafeRunSync().isRight)
+      val forValue: Resource[IO, ValueDeserializer[IO, Int]] =
+        AvroDeserializer[Int].forValue(avroSettings)
+
+      assert(forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
+      assert(forValue.use(IO.pure).attempt.unsafeRunSync().isRight)
     }
 
     it("raises schema errors") {
-      val codec: Codec[Int] =
-        Codec.instance(
-          Left(AvroError("error")),
-          _ => Left(AvroError("encode")),
-          (_, _) => Left(AvroError("decode"))
-        )
+      val codec: Codec[BigDecimal] =
+        Codec.decimal(-1, -1)
 
-      val deserializer =
-        avroDeserializer(codec).using(avroSettings)
+      val forKey = avroDeserializer(codec).forKey(avroSettings)
 
-      assert(deserializer.forKey.attempt.unsafeRunSync().isLeft)
-      assert(deserializer.forValue.attempt.unsafeRunSync().isLeft)
+      val forValue = avroDeserializer(codec).forValue(avroSettings)
+
+      assert(forKey.use(IO.pure).attempt.unsafeRunSync().isLeft)
+      assert(forValue.use(IO.pure).attempt.unsafeRunSync().isLeft)
+    }
+
+    it("raises IllegalArgumentException if the data is null") {
+      val deserializer = AvroDeserializer[String].forKey(avroSettings)
+      intercept[IllegalArgumentException] {
+        deserializer.use(_.deserialize("foo", Headers.empty, null)).unsafeRunSync()
+      }
     }
 
     it("toString") {

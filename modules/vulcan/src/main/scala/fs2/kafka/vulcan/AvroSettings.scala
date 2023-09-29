@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,7 +23,6 @@ import vulcan.Codec
   * Use `AvroSettings.apply` to create an instance.
   */
 sealed abstract class AvroSettings[F[_]] {
-
   /**
     * The `SchemaRegistryClient` to use for the serializers
     * and deserializers created from this [[AvroSettings]].

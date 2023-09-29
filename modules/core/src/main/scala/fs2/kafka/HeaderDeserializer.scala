@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -19,7 +19,6 @@ import scala.annotation.tailrec
   * Kafka `Deserializer` interface.
   */
 sealed abstract class HeaderDeserializer[A] {
-
   /**
     * Deserializes the header value bytes into a value of type `A`.
     */
@@ -88,7 +87,6 @@ sealed abstract class HeaderDeserializer[A] {
 }
 
 object HeaderDeserializer {
-
   /** Alias for `HeaderDeserializer[Either[Throwable, A]]`. */
   type Attempt[A] = HeaderDeserializer[Either[Throwable, A]]
 

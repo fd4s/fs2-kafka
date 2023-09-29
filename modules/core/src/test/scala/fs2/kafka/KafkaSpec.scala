@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.ApplicativeError
@@ -17,7 +23,7 @@ final class KafkaSpec extends BaseAsyncSpec {
         (for {
           ref <- Stream.eval(Ref[IO].of(Option.empty[Map[TopicPartition, OffsetAndMetadata]]))
           commit = (offsets: Map[TopicPartition, OffsetAndMetadata]) => ref.set(Some(offsets))
-          offsets = Chunk.seq(exampleOffsets(commit))
+          offsets = Chunk.from(exampleOffsets(commit))
           _ <- Stream
             .chunk(offsets)
             .covary[IO]

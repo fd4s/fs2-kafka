@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,7 +12,6 @@ import cats.data.NonEmptyList
 import scala.util.matching.Regex
 
 trait KafkaSubscription[F[_]] {
-
   /**
     * Subscribes the consumer to the specified topics. Note that you have to
     * use one of the `subscribe` functions to subscribe to one or more topics
@@ -47,5 +46,4 @@ trait KafkaSubscription[F[_]] {
     * by `subscribe` or `assign`.
     */
   def unsubscribe: F[Unit]
-
 }

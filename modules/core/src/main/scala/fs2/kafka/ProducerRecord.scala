@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -26,7 +26,6 @@ import cats.instances.option._
   * To create a new instance, use [[ProducerRecord#apply]].
   */
 sealed abstract class ProducerRecord[+K, +V] {
-
   /** The topic to which the record should be produced. */
   def topic: String
 

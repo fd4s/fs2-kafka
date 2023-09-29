@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -19,7 +19,6 @@ import cats.instances.string._
   * To create a new [[Header]], use [[Header#apply]].
   */
 sealed abstract class Header extends org.apache.kafka.common.header.Header {
-
   /** The header key. */
   override def key: String
 

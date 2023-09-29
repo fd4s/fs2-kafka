@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.effect.IO
@@ -17,7 +23,7 @@ final class KafkaProducerConnectionSpec extends BaseKafkaSpec with TypeCheckedTr
         (for {
           settings <- Stream(producerSettings[IO])
           producerConnection <- KafkaProducerConnection.stream(settings)
-          producer1 <- Stream.eval(producerConnection.withSerializersFrom(settings))
+          producer1 <- Stream.resource(producerConnection.withSerializersFrom(settings))
           serializer2 = Serializer.string[IO].contramap[Int](_.toString)
           producer2 = producerConnection.withSerializers(serializer2, serializer2)
           result1 <- Stream.eval(
@@ -26,8 +32,8 @@ final class KafkaProducerConnectionSpec extends BaseKafkaSpec with TypeCheckedTr
           result2 <- Stream.eval(producer2.produce(ProducerRecords.one(producerRecordInt)).flatten)
         } yield (result1, result2)).compile.lastOrError.unsafeRunSync()
 
-      result1.records.toList.map(_._1) should ===(List(producerRecordString))
-      result2.records.toList.map(_._1) should ===(List(producerRecordInt))
+      result1.toList.map(_._1) should ===(List(producerRecordString))
+      result2.toList.map(_._1) should ===(List(producerRecordInt))
 
       val consumed =
         consumeNumberKeyedMessagesFrom[String, String](topic, 2)

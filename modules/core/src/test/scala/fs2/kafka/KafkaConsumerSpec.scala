@@ -1,3 +1,9 @@
+/*
+ * Copyright 2018-2023 OVO Energy Limited
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package fs2.kafka
 
 import cats.data.NonEmptySet
@@ -22,7 +28,6 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
-
   type Consumer = KafkaConsumer[IO, String, String]
 
   type ConsumerStream = Stream[IO, CommittableConsumerRecord[IO, String, String]]
@@ -93,7 +98,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         // duplication is currently possible.
         res.distinct should contain theSameElementsAs produced
-
       }
     }
 
@@ -326,7 +330,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               "java.lang.IllegalStateException: Subscription to topics, partitions and pattern are mutually exclusive"
             }
         }
-
       }
     }
 

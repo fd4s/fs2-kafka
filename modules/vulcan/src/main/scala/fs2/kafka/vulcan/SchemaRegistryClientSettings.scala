@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -18,7 +18,6 @@ import fs2.kafka.internal.converters.collection._
   * Use `SchemaRegistryClient#apply` to create an instance.
   */
 sealed abstract class SchemaRegistryClientSettings[F[_]] {
-
   /**
     * The base URL of the schema registry service.
     */

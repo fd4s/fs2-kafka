@@ -5,13 +5,17 @@ title: Transactions
 
 Kafka transactions are supported through a [`TransactionalKafkaProducer`][transactionalkafkaproducer]. In order to use transactions, the following steps should be taken. For details on [consumers](consumers.md) and [producers](producers.md), see the respective sections.
 
-- Create a `TransactionalProducerSettings` specifying the transactional ID.
+- Create `KafkaConsumer` then split its stream into sub-streams - one for each topic.
 
 - Use `withIsolationLevel(IsolationLevel.ReadCommitted)` on `ConsumerSettings`.
 
-- Use `TransactionalKafkaProducer.stream` to create a producer with support for transactions.
+- Create `TransactionalKafkaProducer` for each sub-stream with `TransactionalProducerSettings` to create a producer with support for transactions with **partition unique** transaction id. Kafka requires partition unique transactional ids for producer "handover" and zombie fencing.   
+
+- Use `.withEnableIdempotence(true)` and `.withRetries(n)` where `n > 0` on `ProducerSettings`
 
 - Create `CommittableProducerRecords` and wrap them in `TransactionalProducerRecords`.
+
+- Combine all sub-streams into one stream.
 
 > Note that calls to `produce` are sequenced in the `TransactionalKafkaProducer` to ensure that, when used concurrently, transactions don't run into each other resulting in an invalid transaction transition exception.
 >
@@ -22,7 +26,10 @@ Following is an example where transactions are used to consume, process, produce
 
 ```scala mdoc
 import cats.effect.{IO, IOApp}
+import fs2.Stream
 import fs2.kafka._
+import org.apache.kafka.common.TopicPartition
+
 import scala.concurrent.duration._
 
 object Main extends IOApp.Simple {
@@ -37,34 +44,45 @@ object Main extends IOApp.Simple {
         .withBootstrapServers("localhost:9092")
         .withGroupId("group")
 
-    val producerSettings =
+    def producerSettings(partition: TopicPartition) =
       TransactionalProducerSettings(
-        "transactional-id",
+        s"transactional-id-$partition",
         ProducerSettings[IO, String, String]
           .withBootstrapServers("localhost:9092")
+          .withEnableIdempotence(true)
+          .withRetries(10)
       )
 
-    val stream =
-      TransactionalKafkaProducer.stream(producerSettings)
-        .flatMap { producer =>
-          KafkaConsumer.stream(consumerSettings)
-            .subscribeTo("topic")
-            .stream
-            .mapAsync(25) { committable =>
-              processRecord(committable.record)
-                .map { case (key, value) =>
-                  val record = ProducerRecord("topic", key, value)
-                  CommittableProducerRecords.one(record, committable.offset)
+    KafkaConsumer
+      .stream(consumerSettings)
+      .subscribeTo("topic")
+      .flatMap(_.partitionsMapStream)
+      .map(
+        _.map {
+          case (partition, stream) =>
+            TransactionalKafkaProducer.stream(producerSettings(partition)).flatMap { producer =>
+              stream
+                .mapAsync(25) { committable =>
+                  processRecord(committable.record)
+                    .map {
+                      case (key, value) =>
+                        val record = ProducerRecord("topic", key, value)
+                        CommittableProducerRecords.one(record, committable.offset)
+                    }
                 }
+                .groupWithin(500, 15.seconds)
+                .evalMap(producer.produce)
             }
-            .groupWithin(500, 15.seconds)
-            .map(TransactionalProducerRecords(_))
-            .evalMap(producer.produce)
         }
-
-    stream.compile.drain
+      )
+      .flatMap { partitionsMap =>
+        Stream.emits(partitionsMap.toVector).parJoinUnbounded
+      }
+      .compile
+      .drain
   }
 }
+
 ```
 
 [transactionalkafkaproducer]: @API_BASE_URL@/TransactionalKafkaProducer.html

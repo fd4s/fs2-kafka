@@ -1,35 +1,28 @@
 /*
- * Copyright 2018-2022 OVO Energy Limited
+ * Copyright 2018-2023 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 package fs2.kafka
 
+import cats.{Apply, Functor}
 import cats.effect._
 import cats.syntax.all._
-import cats.Apply
 import fs2._
 import fs2.kafka.internal._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.producer.RecordMetadata
-import org.apache.kafka.common.{Metric, MetricName}
-import fs2.Chunk
-import cats.Functor
+import org.apache.kafka.common.{Metric, MetricName, PartitionInfo}
 
 import scala.annotation.nowarn
 import scala.concurrent.Promise
 
 /**
   * [[KafkaProducer]] represents a producer of Kafka records, with the
-  * ability to produce `ProducerRecord`s using [[produce]]. Records are
-  * wrapped in [[ProducerRecords]] which allow an arbitrary value, that
-  * is a passthrough, to be included in the result. Most often this is
-  * used for keeping the [[CommittableOffset]]s, in order to commit
-  * offsets, but any value can be used as passthrough value.
+  * ability to produce `ProducerRecord`s using [[produce]].
   */
 abstract class KafkaProducer[F[_], K, V] {
-
   /**
     * Produces the specified [[ProducerRecords]] in two steps: the
     * first effect puts the records in the buffer of the producer,
@@ -53,59 +46,45 @@ abstract class KafkaProducer[F[_], K, V] {
     *   have `otherAction` execute after records have been sent,
     *   but losing the order of produced records.
     */
-  def produce[P](
-    records: ProducerRecords[P, K, V]
-  ): F[F[ProducerResult[P, K, V]]]
+  def produce(
+    records: ProducerRecords[K, V]
+  ): F[F[ProducerResult[K, V]]]
 }
 
 object KafkaProducer {
-
   implicit class ProducerOps[F[_], K, V](private val producer: KafkaProducer[F, K, V])
       extends AnyVal {
-
     /**
-      * Produce a single [[ProducerRecord]] without a passthrough value,
-      * see [[KafkaProducer.produce]] for general semantics.
+      * Produce a single [[ProducerRecord]], see [[KafkaProducer.produce]] for general semantics.
       */
     def produceOne_(record: ProducerRecord[K, V])(implicit F: Functor[F]): F[F[RecordMetadata]] =
-      produceOne(record, ()).map(_.map { res =>
-        res.records.head.get._2 //Should always be present so get is ok
+      produceOne(record).map(_.map { res =>
+        res.head.get._2 //Should always be present so get is ok
       })
-
-    /**
-      * Produce a single record to the specified topic using the provided key and value
-      * without a passthrough value, see [[KafkaProducer.produce]] for general semantics.
-      */
-    def produceOne_(topic: String, key: K, value: V)(implicit F: Functor[F]): F[F[RecordMetadata]] =
-      produceOne_(ProducerRecord(topic, key, value))
-
-    /**
-      * Produces the specified [[ProducerRecords]] without a passthrough value,
-      * see [[KafkaProducer.produce]] for general semantics.
-      */
-    def produce_(
-      records: ProducerRecords[_, K, V]
-    )(implicit F: Functor[F]): F[F[Chunk[(ProducerRecord[K, V], RecordMetadata)]]] =
-      producer.produce(records).map(_.map(_.records))
 
     /**
       * Produce a single record to the specified topic using the provided key and value,
       * see [[KafkaProducer.produce]] for general semantics.
       */
-    def produceOne[P](
+    def produceOne_(topic: String, key: K, value: V)(implicit F: Functor[F]): F[F[RecordMetadata]] =
+      produceOne_(ProducerRecord(topic, key, value))
+
+    /**
+      * Produce a single record to the specified topic using the provided key and value,
+      * see [[KafkaProducer.produce]] for general semantics.
+      */
+    def produceOne(
       topic: String,
       key: K,
-      value: V,
-      passthrough: P
-    ): F[F[ProducerResult[P, K, V]]] =
-      produceOne(ProducerRecord(topic, key, value), passthrough)
+      value: V
+    ): F[F[ProducerResult[K, V]]] =
+      produceOne(ProducerRecord(topic, key, value))
 
     /**
       * Produce a single [[ProducerRecord]], see [[KafkaProducer.produce]] for general semantics.
       */
-    def produceOne[P](record: ProducerRecord[K, V], passthrough: P): F[F[ProducerResult[P, K, V]]] =
-      producer.produce(ProducerRecords.one(record, passthrough))
-
+    def produceOne(record: ProducerRecord[K, V]): F[F[ProducerResult[K, V]]] =
+      producer.produce(ProducerRecords.one(record))
   }
 
   /**
@@ -113,13 +92,25 @@ object KafkaProducer {
     * access to the underlying producer metrics.
     */
   abstract class Metrics[F[_], K, V] extends KafkaProducer[F, K, V] {
-
     /**
       * Returns producer metrics.
       *
       * @see org.apache.kafka.clients.producer.KafkaProducer#metrics
       */
     def metrics: F[Map[MetricName, Metric]]
+  }
+
+  /**
+    * [[KafkaProducer.PartitionsFor]] extends [[KafkaProducer.Metrics]] to provide
+    * access to the underlying producer partitions.
+    */
+  abstract class PartitionsFor[F[_], K, V] extends KafkaProducer.Metrics[F, K, V] {
+    /**
+      * Returns partition metadata for the given topic.
+      *
+      * @see org.apache.kafka.clients.producer.KafkaProducer#partitionsFor
+      */
+    def partitionsFor(topic: String): F[List[PartitionInfo]]
   }
 
   /**
@@ -135,18 +126,18 @@ object KafkaProducer {
     */
   def resource[F[_], K, V](
     settings: ProducerSettings[F, K, V]
-  )(implicit F: Async[F], mk: MkProducer[F]): Resource[F, KafkaProducer.Metrics[F, K, V]] =
-    KafkaProducerConnection.resource(settings)(F, mk).evalMap(_.withSerializersFrom(settings))
+  )(implicit F: Async[F], mk: MkProducer[F]): Resource[F, KafkaProducer.PartitionsFor[F, K, V]] =
+    KafkaProducerConnection.resource(settings)(F, mk).flatMap(_.withSerializersFrom(settings))
 
   private[kafka] def from[F[_], K, V](
     connection: KafkaProducerConnection[F],
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V]
-  ): KafkaProducer.Metrics[F, K, V] =
-    new KafkaProducer.Metrics[F, K, V] {
-      override def produce[P](
-        records: ProducerRecords[P, K, V]
-      ): F[F[ProducerResult[P, K, V]]] =
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V]
+  ): KafkaProducer.PartitionsFor[F, K, V] =
+    new KafkaProducer.PartitionsFor[F, K, V] {
+      override def produce(
+        records: ProducerRecords[K, V]
+      ): F[F[ProducerResult[K, V]]] =
         connection.produce(records)(keySerializer, valueSerializer)
 
       override def metrics: F[Map[MetricName, Metric]] =
@@ -154,6 +145,9 @@ object KafkaProducer {
 
       override def toString: String =
         "KafkaProducer$" + System.identityHashCode(this)
+
+      override def partitionsFor(topic: String): F[List[PartitionInfo]] =
+        connection.partitionsFor(topic)
     }
 
   /**
@@ -169,24 +163,24 @@ object KafkaProducer {
     */
   def stream[F[_], K, V](
     settings: ProducerSettings[F, K, V]
-  )(implicit F: Async[F], mk: MkProducer[F]): Stream[F, KafkaProducer.Metrics[F, K, V]] =
+  )(implicit F: Async[F], mk: MkProducer[F]): Stream[F, KafkaProducer.PartitionsFor[F, K, V]] =
     Stream.resource(KafkaProducer.resource(settings)(F, mk))
 
-  private[kafka] def produce[F[_]: Async, P, K, V](
+  private[kafka] def produce[F[_]: Async, K, V](
     withProducer: WithProducer[F],
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
-    records: ProducerRecords[P, K, V]
-  ): F[F[ProducerResult[P, K, V]]] =
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V],
+    records: ProducerRecords[K, V]
+  ): F[F[ProducerResult[K, V]]] =
     withProducer { (producer, blocking) =>
-      records.records
+      records
         .traverse(produceRecord(keySerializer, valueSerializer, producer, blocking))
-        .map(_.sequence.map(ProducerResult(_, records.passthrough)))
+        .map(_.sequence)
     }
 
   private[kafka] def produceRecord[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V],
     producer: KafkaByteProducer,
     blocking: Blocking[F]
   )(
@@ -203,37 +197,38 @@ object KafkaProducer {
                 else promise.failure(exception)
               }
             )
-          }.as(F.fromFuture(F.delay(promise.future)))
+          }.map(
+            javaFuture =>
+              F.fromFutureCancelable(
+                F.delay((promise.future, F.delay(javaFuture.cancel(true)).void))
+              )
+          )
         }
       }
 
   /**
     * Creates a [[KafkaProducer]] using the provided settings and
-    * produces record in batches, limiting the number of records
-    * in the same batch using [[ProducerSettings#parallelism]].
+    * produces record in batches.
     */
-  def pipe[F[_], K, V, P](
+  def pipe[F[_], K, V](
     settings: ProducerSettings[F, K, V]
   )(
     implicit F: Async[F],
     mk: MkProducer[F]
-  ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
-    records => stream(settings)(F, mk).flatMap(pipe(settings, _).apply(records))
+  ): Pipe[F, ProducerRecords[K, V], ProducerResult[K, V]] =
+    records => stream(settings)(F, mk).flatMap(pipe(_).apply(records))
 
   /**
     * Produces records in batches using the provided [[KafkaProducer]].
-    * The number of records in the same batch is limited using the
-    * [[ProducerSettings#parallelism]] setting.
     */
-  def pipe[F[_]: Concurrent, K, V, P](
-    settings: ProducerSettings[F, K, V],
+  def pipe[F[_]: Concurrent, K, V](
     producer: KafkaProducer[F, K, V]
-  ): Pipe[F, ProducerRecords[P, K, V], ProducerResult[P, K, V]] =
-    _.evalMap(producer.produce).mapAsync(settings.parallelism)(identity)
+  ): Pipe[F, ProducerRecords[K, V], ProducerResult[K, V]] =
+    _.evalMap(producer.produce).parEvalMap(Int.MaxValue)(identity)
 
   private[this] def serializeToBytes[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V],
     record: ProducerRecord[K, V]
   )(implicit F: Apply[F]): F[(Array[Byte], Array[Byte])] = {
     val keyBytes =
@@ -246,8 +241,8 @@ object KafkaProducer {
   }
 
   private[this] def asJavaRecord[F[_], K, V](
-    keySerializer: Serializer[F, K],
-    valueSerializer: Serializer[F, V],
+    keySerializer: KeySerializer[F, K],
+    valueSerializer: ValueSerializer[F, V],
     record: ProducerRecord[K, V]
   )(implicit F: Apply[F]): F[KafkaByteProducerRecord] =
     serializeToBytes(keySerializer, valueSerializer, record).map {
@@ -267,7 +262,6 @@ object KafkaProducer {
 
   private[kafka] final class ProducerPartiallyApplied[F[_]](val dummy: Boolean = true)
       extends AnyVal {
-
     /**
       * Alternative version of `resource` where the `F[_]` is
       * specified explicitly, and where the key and value type can
