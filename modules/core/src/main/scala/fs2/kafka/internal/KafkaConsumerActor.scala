@@ -115,12 +115,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     F.async[Unit] { (cb: Either[Throwable, Unit] => Unit) =>
         k(cb).as(Some(F.unit))
       }
-      .timeoutTo(settings.commitTimeout, F.raiseError[Unit] {
+      .timeoutTo(settings.commitTimeout, F.defer(F.raiseError[Unit] {
         CommitTimeoutException(
           settings.commitTimeout,
           offsets
         )
-      })
+      }))
 
   private[this] def manualCommitAsync(request: Request.ManualCommitAsync[F]): F[Unit] = {
     val commit = runCommitAsync(request.offsets) { cb =>
