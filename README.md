@@ -23,7 +23,7 @@ For further details, see the [microsite](https://fd4s.github.io/fs2-kafka/docs/o
 
 ## Contributing
 
-Pull requests and feedback are welcome. Pull requests should usually target the `series/3.x` branch
+Pull requests and feedback are welcome. Pull requests should usually target the `series/3.x` branch.
 
 ## Adopters
 
