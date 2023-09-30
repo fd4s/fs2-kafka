@@ -10,6 +10,10 @@ val kafkaVersion = "3.4.1"
 
 val testcontainersScalaVersion = "0.40.15"
 
+val disciplineVersion = "2.2.0"
+
+val logbackVersion = "1.3.7"
+
 val vulcanVersion = "1.9.0"
 
 val munitVersion = "0.7.29"
@@ -105,10 +109,10 @@ lazy val dependencySettings = Seq(
   libraryDependencies ++= Seq(
     "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
     "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "2.2.0",
+    "org.typelevel" %% "discipline-scalatest" % disciplineVersion,
     "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
     "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.3.7"
+    "ch.qos.logback" % "logback-classic" % logbackVersion
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
