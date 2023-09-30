@@ -12,7 +12,7 @@ val testcontainersScalaVersion = "0.41.0"
 
 val disciplineVersion = "2.2.0"
 
-val logbackVersion = "1.3.7"
+val logbackVersion = "1.3.11"
 
 val vulcanVersion = "1.9.0"
 
