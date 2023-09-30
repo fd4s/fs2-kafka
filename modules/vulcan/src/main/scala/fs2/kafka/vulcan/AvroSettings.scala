@@ -264,7 +264,7 @@ object AvroSettings {
                       return null
                     }
                     serializeImpl(
-                      getSubjectName(topic, isKey, record, parsedSchema),
+                      getSubjectName(topic, this.isKey, record, parsedSchema),
                       record,
                       parsedSchema
                     )
