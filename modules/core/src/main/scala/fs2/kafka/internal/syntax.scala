@@ -7,7 +7,6 @@
 package fs2.kafka.internal
 
 import cats.effect.Async
-import cats.effect.kernel.Outcome
 import cats.syntax.all.*
 import cats.{FlatMap, Foldable, Show}
 import fs2.kafka.internal.converters.unsafeWrapArray
@@ -186,10 +185,16 @@ private[kafka] object syntax {
     private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
     def cancelable_(implicit F: Async[F]): F[A] =
-      F.flatMap(futureF) { f =>
-        F.guaranteeCase(F.fromCompletionStage(F.delay(f.toCompletionStage))) {
-          case Outcome.Canceled() => F.delay(f.cancel(true)).void
-          case _                  => F.unit
+      futureF.flatMap { f =>
+        F.async { cb =>
+          F.delay(
+              f.whenComplete {
+                case (result, null) => cb(Right(result))
+                case (null, ex)     => cb(Left(ex))
+                case _              => ()
+              }
+            )
+            .as(Some(F.delay(f.cancel(true)).void))
         }
       }
   }
