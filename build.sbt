@@ -24,7 +24,11 @@ val scala213 = "2.13.10"
 
 val scala3 = "3.3.1"
 
-ThisBuild / tlBaseVersion := "3.0"
+ThisBuild / tlBaseVersion := "3.1"
+
+ThisBuild / tlCiReleaseBranches := Seq("series/3.x")
+
+ThisBuild / tlSonatypeUseLegacyHost := true
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -213,9 +217,6 @@ ThisBuild / githubWorkflowBuild := Seq(
 ThisBuild / githubWorkflowArtifactUpload := false
 
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
-
-ThisBuild / githubWorkflowPublishTargetBranches :=
-  Seq(RefPredicate.StartsWith(Ref.Tag("v")))
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(

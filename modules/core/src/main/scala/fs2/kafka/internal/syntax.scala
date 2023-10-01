@@ -186,7 +186,7 @@ private[kafka] object syntax {
     private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
     def cancelable_(implicit F: Async[F]): F[A] =
-      F.fromCompletableFuture(futureF.map(_.toCompletionStage.toCompletableFuture))
+      F.fromCompletionStage(futureF.map(_.toCompletionStage))
   }
 
   implicit final class KafkaHeadersSyntax(
