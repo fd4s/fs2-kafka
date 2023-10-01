@@ -6,17 +6,18 @@
 
 package fs2.kafka.internal
 
-import cats.effect.Async
-import cats.syntax.all.*
 import cats.{FlatMap, Foldable, Show}
-import fs2.kafka.internal.converters.unsafeWrapArray
+import cats.effect.Async
+import cats.syntax.all._
 import fs2.kafka.{Header, Headers, KafkaHeaders}
-import org.apache.kafka.common.KafkaFuture
+import fs2.kafka.internal.converters.unsafeWrapArray
 
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util
 import java.util.concurrent.TimeUnit
+import org.apache.kafka.common.KafkaFuture
+
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
@@ -123,7 +124,7 @@ private[kafka] object syntax {
   implicit final class MapWrappedValueSyntax[F[_], K, V](
     private val map: Map[K, F[V]]
   ) extends AnyVal {
-    import fs2.kafka.internal.converters.collection.*
+    import fs2.kafka.internal.converters.collection._
     def asJavaMap(implicit F: Foldable[F]): util.Map[K, util.Collection[V]] =
       map.map { case (k, fv) => k -> (fv.asJava: util.Collection[V]) }.asJava
   }

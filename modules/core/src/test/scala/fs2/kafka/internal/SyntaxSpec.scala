@@ -6,11 +6,13 @@
 
 package fs2.kafka.internal
 
-import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import fs2.kafka.*
-import fs2.kafka.internal.syntax.*
+import cats.effect.IO
+import fs2.kafka._
+import fs2.kafka.BaseSpec
+import fs2.kafka.internal.syntax._
 import org.apache.kafka.common.KafkaFuture
+
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.internals.KafkaFutureImpl
 
