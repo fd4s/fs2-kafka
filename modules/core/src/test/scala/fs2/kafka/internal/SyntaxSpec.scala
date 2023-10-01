@@ -6,13 +6,11 @@
 
 package fs2.kafka.internal
 
-import cats.effect.unsafe.implicits.global
 import cats.effect.IO
-import fs2.kafka._
-import fs2.kafka.BaseSpec
-import fs2.kafka.internal.syntax._
+import cats.effect.unsafe.implicits.global
+import fs2.kafka.*
+import fs2.kafka.internal.syntax.*
 import org.apache.kafka.common.KafkaFuture
-
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.internals.KafkaFutureImpl
 
@@ -56,21 +54,20 @@ final class SyntaxSpec extends BaseSpec {
     it("should cancel future when fiber is cancelled") {
       @volatile var isFutureCancelled = false
 
+      val futureIO: IO[KafkaFuture[Unit]] = IO.pure {
+        // We need to return the original future after calling `whenComplete`, because the future returned by
+        // `whenComplete` doesn't propagate cancellation back to the original future.
+        val future = new KafkaFutureImpl[Unit]
+        future.whenComplete {
+          case (_, _: CancellationException) => isFutureCancelled = true
+          case _                             => ()
+        }
+        future
+      }
+
       val test =
         for {
-          gate <- IO.deferred[Unit]
-          futureIO: IO[KafkaFuture[Unit]] = gate.complete(()) >> IO {
-            // We need to return the original future after calling `whenComplete`, because the future returned by
-            // `whenComplete` doesn't propagate cancellation back to the original future.
-            val future = new KafkaFutureImpl[Unit]
-            future.whenComplete {
-              case (_, _: CancellationException) => isFutureCancelled = true
-              case _                             => ()
-            }
-            future
-          }
           fiber <- futureIO.cancelable_.start
-          _ <- gate.get // wait for future to be created before canceling it
           _ <- IO(assert(!isFutureCancelled))
           _ <- fiber.cancel
           _ <- IO(assert(isFutureCancelled))

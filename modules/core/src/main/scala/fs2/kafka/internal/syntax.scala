@@ -6,18 +6,18 @@
 
 package fs2.kafka.internal
 
-import cats.{FlatMap, Foldable, Show}
 import cats.effect.Async
-import cats.syntax.all._
-import fs2.kafka.{Header, Headers, KafkaHeaders}
+import cats.effect.kernel.Outcome
+import cats.syntax.all.*
+import cats.{FlatMap, Foldable, Show}
 import fs2.kafka.internal.converters.unsafeWrapArray
+import fs2.kafka.{Header, Headers, KafkaHeaders}
+import org.apache.kafka.common.KafkaFuture
 
 import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util
 import java.util.concurrent.TimeUnit
-import org.apache.kafka.common.KafkaFuture
-
 import scala.collection.immutable.SortedSet
 import scala.concurrent.duration.FiniteDuration
 
@@ -124,7 +124,7 @@ private[kafka] object syntax {
   implicit final class MapWrappedValueSyntax[F[_], K, V](
     private val map: Map[K, F[V]]
   ) extends AnyVal {
-    import fs2.kafka.internal.converters.collection._
+    import fs2.kafka.internal.converters.collection.*
     def asJavaMap(implicit F: Foldable[F]): util.Map[K, util.Collection[V]] =
       map.map { case (k, fv) => k -> (fv.asJava: util.Collection[V]) }.asJava
   }
@@ -186,7 +186,12 @@ private[kafka] object syntax {
     private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
     def cancelable_(implicit F: Async[F]): F[A] =
-      F.fromCompletableFuture(futureF.map(_.toCompletionStage.toCompletableFuture))
+      F.flatMap(futureF) { f =>
+        F.guaranteeCase(F.fromCompletionStage(F.delay(f.toCompletionStage))) {
+          case Outcome.Canceled() => F.delay(f.cancel(true)).void
+          case _                  => F.unit
+        }
+      }
   }
 
   implicit final class KafkaHeadersSyntax(
