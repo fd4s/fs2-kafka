@@ -332,7 +332,7 @@ We could combine `stopConsuming` with the custom resource handling and implement
 ```scala mdoc:silent
 import cats.effect.{Deferred, Ref}
 
-object WithGracefulShutdownExample extends IOApp.Simple {
+object WithGracefulShutdownExampleCE2 extends IOApp.Simple {
   val run: IO[Unit] = {
     def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
@@ -395,7 +395,7 @@ object WithGracefulShutdownExample extends IOApp.Simple {
 For cats-effect 3 the example above will not work as in cats-effect 2, because in cats-effect 3 cancelation semantics [was changed](https://typelevel.org/cats-effect/docs/typeclasses/monadcancel). Here is the example of graceful shutdown for cats-effect 3:
 
 ```scala mdoc:silent
-object WithGracefulShutdownExample extends IOApp.Simple {
+object WithGracefulShutdownExampleCE3 extends IOApp.Simple {
   val run: IO[Unit] = {
     def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
