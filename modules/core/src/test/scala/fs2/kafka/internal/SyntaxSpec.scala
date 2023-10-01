@@ -15,6 +15,7 @@ import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.internals.KafkaFutureImpl
 
 import java.util.concurrent.CancellationException
+import java.util.concurrent.atomic.AtomicBoolean
 
 final class SyntaxSpec extends BaseSpec {
   describe("Map#filterKeysStrictValuesList") {
@@ -54,20 +55,22 @@ final class SyntaxSpec extends BaseSpec {
     it("should cancel future when fiber is cancelled") {
       @volatile var isFutureCancelled = false
 
-      val futureIO: IO[KafkaFuture[Unit]] = IO.pure {
-        // We need to return the original future after calling `whenComplete`, because the future returned by
-        // `whenComplete` doesn't propagate cancellation back to the original future.
-        val future = new KafkaFutureImpl[Unit]
-        future.whenComplete {
-          case (_, _: CancellationException) => isFutureCancelled = true
-          case _                             => ()
-        }
-        future
-      }
-
       val test =
         for {
+          started <- IO(new AtomicBoolean)
+          futureIO: IO[KafkaFuture[Unit]] = IO {
+            started.set(true)
+            // We need to return the original future after calling `whenComplete`, because the future returned by
+            // `whenComplete` doesn't propagate cancellation back to the original future.
+            val future = new KafkaFutureImpl[Unit]
+            future.whenComplete {
+              case (_, _: CancellationException) => isFutureCancelled = true
+              case _                             => ()
+            }
+            future
+          }
           fiber <- futureIO.cancelable_.start
+          _ <- IO.cede.whileM_(IO(!started.get))
           _ <- IO(assert(!isFutureCancelled))
           _ <- fiber.cancel
           _ <- IO(assert(isFutureCancelled))

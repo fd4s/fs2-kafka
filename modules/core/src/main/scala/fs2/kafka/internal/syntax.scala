@@ -185,18 +185,7 @@ private[kafka] object syntax {
     private val futureF: F[KafkaFuture[A]]
   ) extends AnyVal {
     def cancelable_(implicit F: Async[F]): F[A] =
-      futureF.flatMap { f =>
-        F.async { cb =>
-          F.delay(
-              f.whenComplete {
-                case (result, null) => cb(Right(result))
-                case (null, ex)     => cb(Left(ex))
-                case _              => ()
-              }
-            )
-            .as(Some(F.delay(f.cancel(true)).void))
-        }
-      }
+      F.fromCompletionStage(futureF.map(_.toCompletionStage))
   }
 
   implicit final class KafkaHeadersSyntax(
