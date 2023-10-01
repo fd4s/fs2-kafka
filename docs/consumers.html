@@ -54,7 +54,7 @@
                 };
               }
             });
-        </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Consumers</h1></header><article><div><span><p>Consumers support subscribing to topics, record streaming and deserialization, as well as miscellaneous utility functionality, such as seeking to offsets, or checking what the end offsets are for a topic. Consumers make use of the <a href="https://kafka.apache.org/34/javadoc/?org/apache/kafka/clients/consumer/KafkaConsumer.html">Java Kafka consumer</a>, which becomes especially important for <a href="#settings">settings</a>. For consumer implementation details, refer to the <a href="/fs2-kafka/docs/technical-details">technical details</a> section.</p>
+        </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Consumers</h1></header><article><div><span><p>Consumers support subscribing to topics, record streaming and deserialization, as well as miscellaneous utility functionality, such as seeking to offsets, or checking what the end offsets are for a topic. Consumers make use of the <a href="https://kafka.apache.org/35/javadoc/?org/apache/kafka/clients/consumer/KafkaConsumer.html">Java Kafka consumer</a>, which becomes especially important for <a href="#settings">settings</a>. For consumer implementation details, refer to the <a href="/fs2-kafka/docs/technical-details">technical details</a> section.</p>
 <p>The following imports are assumed throughout this page.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect._
 <span class="hljs-keyword">import</span> cats.syntax.all._
@@ -136,7 +136,7 @@
  .withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
  .withGroupId(<span class="hljs-string">"group"</span>)
 </code></pre>
-<p><a href="/fs2-kafka/api/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a> provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use <code>withProperty</code> or <code>withProperties</code> together with constants from <a href="https://kafka.apache.org/34/javadoc/?org/apache/kafka/clients/consumer/ConsumerConfig.html"><code>ConsumerConfig</code></a>. Available properties for the Java Kafka consumer are described in the <a href="http://kafka.apache.org/documentation/#consumerconfigs">documentation</a>.</p>
+<p><a href="/fs2-kafka/api/fs2/kafka/ConsumerSettings.html"><code>ConsumerSettings</code></a> provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use <code>withProperty</code> or <code>withProperties</code> together with constants from <a href="https://kafka.apache.org/35/javadoc/?org/apache/kafka/clients/consumer/ConsumerConfig.html"><code>ConsumerConfig</code></a>. Available properties for the Java Kafka consumer are described in the <a href="http://kafka.apache.org/documentation/#consumerconfigs">documentation</a>.</p>
 <h3><a class="anchor" aria-hidden="true" id="default-settings"></a><a href="#default-settings" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Default Settings</h3>
 <p>The following Java Kafka consumer properties are overridden by default.</p>
 <ul>
@@ -285,10 +285,10 @@
 <li>All currently running streams will continue to run until all in-flight messages will be processed.
 It means that streams will be completed when all fetched messages will be processed.</li>
 </ol>
-<p>We could combine <code>stopConsuming</code> with the custom resource handling and implement a graceful shutdown. Let's try it:</p>
+<p>We could combine <code>stopConsuming</code> with the custom resource handling and implement a graceful shutdown. Let's try it. For cats-effect 2 it may looks like this:</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">Deferred</span>, <span class="hljs-type">Ref</span>}
 
-<span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">WithGracefulShutdownExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+<span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">WithGracefulShutdownExampleCE2</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
   <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">CommittableConsumerRecord</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
       <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
@@ -347,6 +347,56 @@ It means that streams will be completed when all fetched messages will be proces
 <li>Let's add a timeout for our graceful shutdown. This is not absolutely necessary, but if your processing contains many steps, a graceful shutdown may take a while.</li>
 <li>When <code>stoppedDeferred</code> returns some result, we could somehow handle it. For example, we could handle an error case.</li>
 <li>Don't forget to call the <code>closeConsumer</code> function.</li>
+</ol>
+<p>For cats-effect 3 the example above will not work as in cats-effect 2, because in cats-effect 3 cancelation semantics <a href="https://typelevel.org/cats-effect/docs/typeclasses/monadcancel">was changed</a>. Here is the example of graceful shutdown for cats-effect 3:</p>
+<pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">WithGracefulShutdownExampleCE3</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+  <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">CommittableConsumerRecord</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] =
+      <span class="hljs-type">IO</span>(println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>))
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span></span>(consumer: <span class="hljs-type">KafkaConsumer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
+      consumer.subscribeTo(<span class="hljs-string">"topic"</span>) &gt;&gt; consumer.stream.evalMap { msg =&gt;
+        processRecord(msg).as(msg.offset)
+      }.through(commitBatchWithin(<span class="hljs-number">100</span>, <span class="hljs-number">15.</span>seconds)).compile.drain
+    }
+
+    <span class="hljs-type">KafkaConsumer</span>.resource(consumerSettings).use { consumer =&gt; <span class="hljs-comment">// [1]</span>
+      <span class="hljs-type">IO</span>.uncancelable { poll =&gt; <span class="hljs-comment">// [2]</span>
+        <span class="hljs-keyword">for</span> {
+          runFiber &lt;- run(consumer).start <span class="hljs-comment">// [3]</span>
+          _ &lt;- poll(runFiber.join).onCancel { <span class="hljs-comment">// [4]</span>
+            <span class="hljs-keyword">for</span> {
+              _ &lt;- <span class="hljs-type">IO</span>(println(<span class="hljs-string">"Starting graceful shutdown"</span>))
+              _ &lt;- consumer.stopConsuming <span class="hljs-comment">// [5]</span>
+              shutdownOutcome &lt;- runFiber.join.timeoutTo[<span class="hljs-type">Outcome</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">Throwable</span>, <span class="hljs-type">Unit</span>]]( <span class="hljs-comment">// [6]</span>
+                <span class="hljs-number">20.</span>seconds,
+                <span class="hljs-type">IO</span>.pure(<span class="hljs-type">Outcome</span>.<span class="hljs-type">Errored</span>(<span class="hljs-keyword">new</span> <span class="hljs-type">RuntimeException</span>(<span class="hljs-string">"Graceful shutdown timed out"</span>)))
+              )
+              _ &lt;- shutdownOutcome <span class="hljs-keyword">match</span> { <span class="hljs-comment">// [7]</span>
+                <span class="hljs-keyword">case</span> <span class="hljs-type">Outcome</span>.<span class="hljs-type">Succeeded</span>(_) =&gt;
+                  <span class="hljs-type">IO</span>(println(<span class="hljs-string">"Succeeded in graceful shutdown"</span>))
+                <span class="hljs-keyword">case</span> <span class="hljs-type">Outcome</span>.<span class="hljs-type">Canceled</span>() =&gt;
+                  <span class="hljs-type">IO</span>(println(<span class="hljs-string">"Canceled in graceful shutdown"</span>)) &gt;&gt; runFiber.cancel
+                <span class="hljs-keyword">case</span> <span class="hljs-type">Outcome</span>.<span class="hljs-type">Errored</span>(e) =&gt;
+                  <span class="hljs-type">IO</span>(println(<span class="hljs-string">"Failed to shutdown gracefully"</span>)) &gt;&gt; runFiber.cancel &gt;&gt; <span class="hljs-type">IO</span>.raiseError(e)
+              }
+            } <span class="hljs-keyword">yield</span> ()
+          }
+        } <span class="hljs-keyword">yield</span> ()
+      }
+    }
+  }
+}
+</code></pre>
+<p><code>processRecord</code> and <code>run</code> functions are the same. But resource handling part is changed:</p>
+<ol>
+<li>Here we allocated <code>KafkaConsumer</code> as a resource. Unlike the cats-effect 2 example, you don't need to use <code>allocated</code>.</li>
+<li>We created an <code>uncancelable</code> block. You can get more information about this in the <a href="https://typelevel.org/cats-effect/docs/typeclasses/monadcancel"><code>MonadCancel</code> docs</a>. But shortly — everything inside an <code>uncancelable</code> block ignores <code>cancel</code> signals. But if you want to create a <em>cancelable</em> block inside, you can use <code>poll</code> for this. We will use it in our example.</li>
+<li>We started our application's main logic by calling the <code>run</code> function. An important note here: we are starting in a separate fiber. It's because we want to manually control the lifecycle of this fiber.</li>
+<li>We called the <code>join</code> method on <code>runFiber</code> to wait for fiber completion. This call is wrapped in the <code>poll</code> function to make this awaiting cancellable. Also, on this line, we are calling the <code>onCancel</code> callback to add custom logic for cancelation.</li>
+<li>If <code>runFiber.join</code> call is canceled we have to call the <code>stopConsuming</code> to get a graceful shutdown.</li>
+<li>We joined on <code>runFiber</code> one more time, this time after the <code>stopConsuming</code> call. After the <code>stopConsuming</code> call the <code>runFiber</code> will work until an internal <code>IO</code> is finished. And internal <code>IO</code> finishes when a consumer stream will be finished. That's the main graceful shutdown point. Also, we added the <code>timeoutTo</code> on <code>join</code> to not wait for too long.</li>
+<li>We handled all possible outcomes after <code>runFiber.join</code>. In the case of <code>Outcome.Canceled</code> (note, that it means that <code>join</code> call is canceled, not the fiber itself) we have to cancel <code>runFiber</code> manually. In the case of <code>Outcome.Errored</code> we again have to cancel <code>runFiber</code>, and also it will be useful to re-raise an error.</li>
 </ol>
 <p>You may notice, that actual graceful shutdown implementation requires a decent amount of low-level handwork. <code>stopConsuming</code> is just a building block for making your own graceful shutdown, not a ready-made solution for all needs. This design is intentional, because different applications may need different graceful shutdown logic. For example, what if your application has multiple consumers? Or some other components in your application may also need to participate in a graceful shutdown somehow? Because of that graceful shutdown with <code>stopConsuming</code> considered as a low level and advanced feature.</p>
 <p>Also note, that even if you implement a graceful shutdown your application may fall with an error. And in this case, a graceful shutdown will not be invoked. It means that your application should be ready to an <em>at least once</em> semantic even when a graceful shutdown is implemented. Or, if you need an <em>exactly once</em> semantic, consider using <a href="/fs2-kafka/docs/transactions">transactions</a>.</p>

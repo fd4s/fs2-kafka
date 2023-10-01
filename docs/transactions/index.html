@@ -56,10 +56,12 @@
             });
         </script></nav></div><div class="container mainContainer docsContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1 id="__docusaurus" class="postHeaderTitle">Transactions</h1></header><article><div><span><p>Kafka transactions are supported through a <a href="/fs2-kafka/api/fs2/kafka/TransactionalKafkaProducer.html"><code>TransactionalKafkaProducer</code></a>. In order to use transactions, the following steps should be taken. For details on <a href="/fs2-kafka/docs/consumers">consumers</a> and <a href="/fs2-kafka/docs/producers">producers</a>, see the respective sections.</p>
 <ul>
-<li><p>Create a <code>TransactionalProducerSettings</code> specifying the transactional ID.</p></li>
+<li><p>Create <code>KafkaConsumer</code> then split its stream into sub-streams - one for each topic.</p></li>
 <li><p>Use <code>withIsolationLevel(IsolationLevel.ReadCommitted)</code> on <code>ConsumerSettings</code>.</p></li>
-<li><p>Use <code>TransactionalKafkaProducer.stream</code> to create a producer with support for transactions.</p></li>
+<li><p>Create <code>TransactionalKafkaProducer</code> for each sub-stream with <code>TransactionalProducerSettings</code> to create a producer with support for transactions with <strong>partition unique</strong> transaction id. Kafka requires partition unique transactional ids for producer &quot;handover&quot; and zombie fencing.</p></li>
+<li><p>Use <code>.withEnableIdempotence(true)</code> and <code>.withRetries(n)</code> where <code>n &gt; 0</code> on <code>ProducerSettings</code></p></li>
 <li><p>Create <code>CommittableProducerRecords</code> and wrap them in <code>TransactionalProducerRecords</code>.</p></li>
+<li><p>Combine all sub-streams into one stream.</p></li>
 </ul>
 <blockquote>
 <p>Note that calls to <code>produce</code> are sequenced in the <code>TransactionalKafkaProducer</code> to ensure that, when used concurrently, transactions don't run into each other resulting in an invalid transaction transition exception.</p>
@@ -68,7 +70,10 @@ To ensure the performance of <code>TransactionalKafkaProducer</code> aligns with
 </blockquote>
 <p>Following is an example where transactions are used to consume, process, produce, and commit.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">IO</span>, <span class="hljs-type">IOApp</span>}
+<span class="hljs-keyword">import</span> fs2.<span class="hljs-type">Stream</span>
 <span class="hljs-keyword">import</span> fs2.kafka._
+<span class="hljs-keyword">import</span> org.apache.kafka.common.<span class="hljs-type">TopicPartition</span>
+
 <span class="hljs-keyword">import</span> scala.concurrent.duration._
 
 <span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">Main</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
@@ -83,31 +88,42 @@ To ensure the performance of <code>TransactionalKafkaProducer</code> aligns with
         .withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
         .withGroupId(<span class="hljs-string">"group"</span>)
 
-    <span class="hljs-keyword">val</span> producerSettings =
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">producerSettings</span></span>(partition: <span class="hljs-type">TopicPartition</span>) =
       <span class="hljs-type">TransactionalProducerSettings</span>(
-        <span class="hljs-string">"transactional-id"</span>,
+        <span class="hljs-string">s"transactional-id-<span class="hljs-subst">$partition</span>"</span>,
         <span class="hljs-type">ProducerSettings</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]
           .withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
+          .withEnableIdempotence(<span class="hljs-literal">true</span>)
+          .withRetries(<span class="hljs-number">10</span>)
       )
 
-    <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">TransactionalKafkaProducer</span>.stream(producerSettings)
-        .flatMap { producer =&gt;
-          <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
-            .subscribeTo(<span class="hljs-string">"topic"</span>)
-            .stream
-            .mapAsync(<span class="hljs-number">25</span>) { committable =&gt;
-              processRecord(committable.record)
-                .map { <span class="hljs-keyword">case</span> (key, value) =&gt;
-                  <span class="hljs-keyword">val</span> record = <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, key, value)
-                  <span class="hljs-type">CommittableProducerRecords</span>.one(record, committable.offset)
+    <span class="hljs-type">KafkaConsumer</span>
+      .stream(consumerSettings)
+      .subscribeTo(<span class="hljs-string">"topic"</span>)
+      .flatMap(_.partitionsMapStream)
+      .map(
+        _.map {
+          <span class="hljs-keyword">case</span> (partition, stream) =&gt;
+            <span class="hljs-type">TransactionalKafkaProducer</span>.stream(producerSettings(partition)).flatMap { producer =&gt;
+              stream
+                .mapAsync(<span class="hljs-number">25</span>) { committable =&gt;
+                  processRecord(committable.record)
+                    .map {
+                      <span class="hljs-keyword">case</span> (key, value) =&gt;
+                        <span class="hljs-keyword">val</span> record = <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, key, value)
+                        <span class="hljs-type">CommittableProducerRecords</span>.one(record, committable.offset)
+                    }
                 }
+                .groupWithin(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds)
+                .evalMap(producer.produce)
             }
-            .groupWithin(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds)
-            .evalMap(producer.produce)
         }
-
-    stream.compile.drain
+      )
+      .flatMap { partitionsMap =&gt;
+        <span class="hljs-type">Stream</span>.emits(partitionsMap.toVector).parJoinUnbounded
+      }
+      .compile
+      .drain
   }
 }
 </code></pre>
