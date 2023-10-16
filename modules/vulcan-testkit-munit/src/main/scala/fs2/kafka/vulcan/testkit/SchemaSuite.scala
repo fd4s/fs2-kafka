@@ -39,42 +39,51 @@ trait SchemaSuite extends FunSuite {
     override def apply(): CompatibilityChecker[IO] = checker
 
     override def beforeAll(): Unit =
-      checker = clientSettings.createSchemaRegistryClient
-        .map { client =>
-          new CompatibilityChecker[IO] {
-            private def registrySchema(subject: String): IO[Schema] =
-              for {
-                metadata <- IO.delay(client.getLatestSchemaMetadata(subject))
-                schema <- IO.delay(
-                  client.getSchemaById(metadata.getId).asInstanceOf[AvroSchema]
-                )
-              } yield schema.rawSchema()
-
-            def checkReaderCompatibility[A](
-              reader: Codec[A],
-              writerSubject: String
-            ): IO[SchemaCompatibility.SchemaPairCompatibility] = {
-              val vulcanSchema = codecAsSchema(reader)
-              registrySchema(writerSubject).map { regSchema =>
-                SchemaCompatibility.checkReaderWriterCompatibility(
-                  vulcanSchema,
-                  regSchema
-                )
-              }
-            }
-
-            def checkWriterCompatibility[A](writer: Codec[A], readerSubject: String)
-              : IO[SchemaCompatibility.SchemaPairCompatibility] = {
-              val vulcanSchema = codecAsSchema(writer)
-              registrySchema(readerSubject).map { regSchema =>
-                SchemaCompatibility.checkReaderWriterCompatibility(
-                  regSchema,
-                  vulcanSchema
-                )
-              }
-            }
-          }
-        }
+      checker = newCompatibilityChecker(clientSettings)
         .unsafeRunSync()
   }
+
+  def newCompatibilityChecker(
+    clientSettings: SchemaRegistryClientSettings[IO]
+  ): IO[CompatibilityChecker[IO]] =
+    clientSettings.createSchemaRegistryClient
+      .map { client =>
+        new CompatibilityChecker[IO] {
+
+          private def registrySchema(subject: String): IO[Schema] =
+            for {
+              metadata <- IO.delay(client.getLatestSchemaMetadata(subject))
+              schema <- IO.delay(
+                client.getSchemaById(metadata.getId).asInstanceOf[AvroSchema]
+              )
+            } yield schema.rawSchema()
+
+          def checkReaderCompatibility[A](
+            reader: Codec[A],
+            writerSubject: String
+          ): IO[SchemaCompatibility.SchemaPairCompatibility] = {
+            val vulcanSchema = codecAsSchema(reader)
+            registrySchema(writerSubject).map { regSchema =>
+              SchemaCompatibility.checkReaderWriterCompatibility(
+                vulcanSchema,
+                regSchema
+              )
+            }
+          }
+
+          def checkWriterCompatibility[A](
+            writer: Codec[A],
+            readerSubject: String
+          ): IO[SchemaCompatibility.SchemaPairCompatibility] = {
+            val vulcanSchema = codecAsSchema(writer)
+            registrySchema(readerSubject).map { regSchema =>
+              SchemaCompatibility.checkReaderWriterCompatibility(
+                regSchema,
+                vulcanSchema
+              )
+            }
+          }
+
+        }
+      }
 }
