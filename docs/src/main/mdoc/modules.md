@@ -169,9 +169,7 @@ class MySpec extends SchemaSuite {
   test("my codec is compatible") {
     val myCodec: Codec[String] = ???
 
-    val compatibility = checker().checkReaderCompatibility(myCodec, "my-schema-subject").unsafeRunSync()
-
-    assertEquals(compatibility.getType(), SchemaCompatibilityType.COMPATIBLE, compatibility.getResult().getIncompatibilities())
+    val compatibility = checker().assertReaderCompatibility(myCodec, "my-schema-subject").unsafeRunSync()
   }
 }
 ```
