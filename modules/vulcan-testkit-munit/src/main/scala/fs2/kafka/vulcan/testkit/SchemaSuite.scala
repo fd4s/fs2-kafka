@@ -49,7 +49,6 @@ trait SchemaSuite extends FunSuite {
     clientSettings.createSchemaRegistryClient
       .map { client =>
         new CompatibilityChecker[IO] {
-
           private def registrySchema(subject: String): IO[Schema] =
             for {
               metadata <- IO.delay(client.getLatestSchemaMetadata(subject))
@@ -83,7 +82,6 @@ trait SchemaSuite extends FunSuite {
               )
             }
           }
-
         }
       }
 }
