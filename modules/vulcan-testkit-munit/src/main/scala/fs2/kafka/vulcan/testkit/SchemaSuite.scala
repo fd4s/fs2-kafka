@@ -31,11 +31,9 @@ trait CompatibilityChecker[F[_]] {
 }
 
 trait AssertableCompatibilityChecker[F[_]] extends CompatibilityChecker[F] {
-
   def assertReaderCompatibility[A](reader: Codec[A], writerSubject: String): F[Unit]
 
   def assertWriterCompatibility[A](writer: Codec[A], readerSubject: String): F[Unit]
-
 }
 
 trait SchemaSuite extends FunSuite {
@@ -106,29 +104,33 @@ trait SchemaSuite extends FunSuite {
             }
           }
 
-                      override def assertWriterCompatibility[A](writer: Codec[A], readerSubject: String)
-              : IO[Unit] =
-              checkReaderCompatibility(writer, readerSubject).flatMap { compat =>
-                IO.delay {
-                  assertEquals(
-                    compat.getResult().getCompatibility(),
-                    SchemaCompatibilityType.COMPATIBLE,
-                    renderIncompatibilities(compat.getResult.getIncompatibilities.toList)
-                  )
-                }
+          def assertWriterCompatibility[A](
+            writer: Codec[A],
+            readerSubject: String
+          ): IO[Unit] =
+            checkReaderCompatibility(writer, readerSubject).flatMap { compat =>
+              IO.delay {
+                assertEquals(
+                  compat.getResult().getCompatibility(),
+                  SchemaCompatibilityType.COMPATIBLE,
+                  renderIncompatibilities(compat.getResult.getIncompatibilities.toList)
+                )
               }
+            }
 
-            override def assertReaderCompatibility[A](reader: Codec[A], writerSubject: String)
-              : IO[Unit] =
-              checkReaderCompatibility(reader, writerSubject).flatMap { compat =>
-                IO.delay {
-                  assertEquals(
-                    compat.getResult().getCompatibility(),
-                    SchemaCompatibilityType.COMPATIBLE,
-                    renderIncompatibilities(compat.getResult.getIncompatibilities.toList)
-                  )
-                }
+          def assertReaderCompatibility[A](
+            reader: Codec[A],
+            writerSubject: String
+          ): IO[Unit] =
+            checkReaderCompatibility(reader, writerSubject).flatMap { compat =>
+              IO.delay {
+                assertEquals(
+                  compat.getResult().getCompatibility(),
+                  SchemaCompatibilityType.COMPATIBLE,
+                  renderIncompatibilities(compat.getResult.getIncompatibilities.toList)
+                )
               }
+            }
         }
       }
 }
