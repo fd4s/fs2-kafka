@@ -203,9 +203,7 @@ codecs against a <a href="https://docs.confluent.io/platform/current/schema-regi
   test(<span class="hljs-string">"my codec is compatible"</span>) {
     <span class="hljs-keyword">val</span> myCodec: <span class="hljs-type">Codec</span>[<span class="hljs-type">String</span>] = ???
 
-    <span class="hljs-keyword">val</span> compatibility = checker().checkReaderCompatibility(myCodec, <span class="hljs-string">"my-schema-subject"</span>).unsafeRunSync()
-
-    assertEquals(compatibility.getType(), <span class="hljs-type">SchemaCompatibilityType</span>.<span class="hljs-type">COMPATIBLE</span>, compatibility.getResult().getIncompatibilities())
+    <span class="hljs-keyword">val</span> compatibility = checker().assertReaderCompatibility(myCodec, <span class="hljs-string">"my-schema-subject"</span>).unsafeRunSync()
   }
 }
 </code></pre>
