@@ -17,7 +17,7 @@ import fs2.kafka.internal.converters.collection._
 import fs2.kafka.producer.MkProducer
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerGroupMetadata, OffsetAndMetadata}
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.errors.InvalidProducerEpochException
+import org.apache.kafka.common.errors.ProducerFencedException
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.scalatest.EitherValues
 import scala.concurrent.duration._
@@ -418,9 +418,6 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 }
 
-// TODO: after switching from ForEachTestContainer to ForAllTestContainer, this fails
-// if run with a shared container with the following error:
-// org.apache.kafka.common.errors.ProducerFencedException: There is a newer producer with the same transactionalId which fences the current one. was not an instance of org.apache.kafka.common.errors.InvalidProducerEpochException, but an instance of org.apache.kafka.common.errors.ProducerFencedException
 class TransactionalKafkaProducerTimeoutSpec extends BaseKafkaSpec with EitherValues {
   it("should use user-specified transaction timeouts") {
     withTopic { topic =>
@@ -466,7 +463,7 @@ class TransactionalKafkaProducerTimeoutSpec extends BaseKafkaSpec with EitherVal
           result <- Stream.eval(producer.produce(records).attempt)
         } yield result).compile.lastOrError.unsafeRunSync()
 
-      produced.left.value shouldBe an[InvalidProducerEpochException]
+      produced.left.value shouldBe an[ProducerFencedException]
 
       val consumedOrError = {
         Either.catchNonFatal(
