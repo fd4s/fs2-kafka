@@ -135,13 +135,39 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     res.start.void
   }
 
-  private[this] def assigned(assigned: SortedSet[TopicPartition]): F[Unit] =
+  private[this] def assigned(assigned: SortedSet[TopicPartition]): F[Unit] = {
+    def withState[A] = StateT.apply[Id, State[F, K, V], A](_)
+
+    val removeRevokedRecords = withState { st =>
+      val assignments = st.assignments
+      val revokedRecords = st.records.filterKeysStrict(!assignments(_))
+
+      if (revokedRecords.nonEmpty) {
+        val newState = st.withoutRecords(revokedRecords.keySet)
+
+        val action = logging.log(RemovedRevokedRecords(revokedRecords, newState))
+
+        (newState, action)
+      } else (st, F.unit)
+    }
+
     ref
-      .updateAndGet(_.withRebalancing(false))
-      .flatMap { state =>
-        log(AssignedPartitions(assigned, state)) >>
-          state.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned))
+      .modify { state =>
+        removeRevokedRecords
+          .run(
+            state
+              .withRebalancing(false)
+              .withAssignments(assigned)
+          )
+          .map(stateWithAction => stateWithAction._1 -> stateWithAction)
       }
+      .flatMap {
+        case (updatedState, action) =>
+          action >>
+            log(AssignedPartitions(assigned, updatedState)) >>
+            updatedState.onRebalances.foldLeft(F.unit)(_ >> _.onAssigned(assigned))
+      }
+  }
 
   private[this] def revoked(revoked: SortedSet[TopicPartition]): F[Unit] = {
     def withState[A] = StateT.apply[Id, State[F, K, V], A](_)
@@ -175,29 +201,16 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
       } else (st, F.unit)
     }
 
-    def removeRevokedRecords(revokedNonFetches: SortedSet[TopicPartition]) = withState { st =>
-      if (revokedNonFetches.nonEmpty) {
-        val revokedRecords = st.records.filterKeysStrict(revokedNonFetches)
-
-        if (revokedRecords.nonEmpty) {
-          val newState = st.withoutRecords(revokedRecords.keySet)
-
-          val action = logging.log(RemovedRevokedRecords(revokedRecords, newState))
-
-          (newState, action)
-        } else (st, F.unit)
-      } else (st, F.unit)
-    }
-
     ref
       .modify { state =>
-        val withRebalancing = state.withRebalancing(true)
+        val updatedState = state
+          .withRebalancing(true)
+          .withoutAssignments(revoked)
 
-        val fetches = withRebalancing.fetches.keySetStrict
-        val records = withRebalancing.records.keySetStrict
+        val fetches = updatedState.fetches.keySetStrict
+        val records = updatedState.records.keySetStrict
 
         val revokedFetches = revoked intersect fetches
-        val revokedNonFetches = revoked diff revokedFetches
 
         val withRecords = records intersect revokedFetches
         val withoutRecords = revokedFetches diff records
@@ -205,14 +218,12 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         (for {
           completeWithRecords <- completeWithRecords(withRecords)
           completeWithoutRecords <- completeWithoutRecords(withoutRecords)
-          removeRevokedRecords <- removeRevokedRecords(revokedNonFetches)
         } yield RevokedResult(
-          logRevoked = logging.log(RevokedPartitions(revoked, withRebalancing)),
+          logRevoked = logging.log(RevokedPartitions(revoked, updatedState)),
           completeWithRecords = completeWithRecords,
           completeWithoutRecords = completeWithoutRecords,
-          removeRevokedRecords = removeRevokedRecords,
-          onRebalances = withRebalancing.onRebalances
-        )).run(withRebalancing)
+          onRebalances = updatedState.onRebalances
+        )).run(updatedState)
       }
       .flatMap { res =>
         val onRevoked =
@@ -221,7 +232,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
         res.logRevoked >>
           res.completeWithRecords >>
           res.completeWithoutRecords >>
-          res.removeRevokedRecords >>
           onRevoked
       }
   }
@@ -276,7 +286,7 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     def pollConsumer(state: State[F, K, V]): F[ConsumerRecords] =
       withConsumer
         .blocking { consumer =>
-          val assigned = consumer.assignment.toSet
+          val assigned = state.assignments
           val requested = state.fetches.keySetStrict
           val available = state.records.keySetStrict
 
@@ -425,7 +435,6 @@ private[kafka] final class KafkaConsumerActor[F[_], K, V](
     logRevoked: F[Unit],
     completeWithRecords: F[Unit],
     completeWithoutRecords: F[Unit],
-    removeRevokedRecords: F[Unit],
     onRebalances: Chain[OnRebalance[F]]
   )
 
@@ -482,6 +491,7 @@ private[kafka] object KafkaConsumerActor {
   type StreamId = Int
 
   final case class State[F[_], K, V](
+    assignments: Set[TopicPartition],
     fetches: Map[TopicPartition, Map[StreamId, FetchRequest[F, K, V]]],
     records: Map[TopicPartition, NonEmptyVector[CommittableConsumerRecord[F, K, V]]],
     pendingCommits: Chain[Request.Commit[F]],
@@ -490,6 +500,23 @@ private[kafka] object KafkaConsumerActor {
     subscribed: Boolean,
     streaming: Boolean
   ) {
+
+    /** Add new assignments to state.
+      *
+      * @param assignments assignments to add
+      * @return updated state with assignments added
+      */
+    def withAssignments(assignments: Set[TopicPartition]): State[F, K, V] =
+      copy(assignments = this.assignments ++ assignments)
+
+    /** Remove assignments to state.
+      *
+      * @param assignments assignments to remove
+      * @return updated state with assignments removed
+      */
+    def withoutAssignments(assignments: Set[TopicPartition]): State[F, K, V] =
+      copy(assignments = this.assignments diff assignments)
+
     def withOnRebalance(onRebalance: OnRebalance[F]): State[F, K, V] =
       copy(onRebalances = onRebalances append onRebalance)
 
@@ -574,6 +601,7 @@ private[kafka] object KafkaConsumerActor {
   object State {
     def empty[F[_], K, V]: State[F, K, V] =
       State(
+        assignments = Set.empty,
         fetches = Map.empty,
         records = Map.empty,
         pendingCommits = Chain.empty,

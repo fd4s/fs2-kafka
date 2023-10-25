@@ -556,7 +556,7 @@ object KafkaConsumer {
               partitions.toList.asJava
             )
           } >> actor.ref
-            .updateAndGet(_.asSubscribed)
+            .updateAndGet(_.asSubscribed.withAssignments(partitions.toSortedSet))
             .log(LogEntry.ManuallyAssignedPartitions(partitions, _))
         }
 
