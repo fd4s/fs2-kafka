@@ -9,7 +9,9 @@ package fs2.kafka
 import cats.Show
 import cats.effect.Resource
 import fs2.kafka.security.KafkaCredentialStore
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.requests.OffsetFetchResponse
 
 import scala.concurrent.ExecutionContext
@@ -401,6 +403,12 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * Includes the credentials properties from the provided [[KafkaCredentialStore]]
     */
   def withCredentials(credentialsStore: KafkaCredentialStore): ConsumerSettings[F, K, V]
+
+  /**
+   * provides SASL credentials to Kafka host. A typical use case for this would be
+   * interacting with Confluent Cloud.
+   */
+  def withPlainSasl(usernameToken: String, passwordToken: String): ConsumerSettings[F, K, V]
 }
 
 object ConsumerSettings {
@@ -417,6 +425,15 @@ object ConsumerSettings {
     override val recordMetadata: ConsumerRecord[K, V] => String,
     override val maxPrefetchBatches: Int
   ) extends ConsumerSettings[F, K, V] {
+
+    def withPlainSasl(usernameToken: String, passwordToken: String): ConsumerSettings[F, K, V] =
+      withProperties(
+        SaslConfigs.SASL_MECHANISM -> "PLAIN",
+        SaslConfigs.SASL_JAAS_CONFIG ->
+          s"""org.apache.kafka.common.security.plain.PlainLoginModule required username="${usernameToken}" password="${passwordToken}";""",
+        CommonClientConfigs.SECURITY_PROTOCOL_CONFIG -> "SASL_SSL"
+      )
+
     override def withCustomBlockingContext(ec: ExecutionContext): ConsumerSettings[F, K, V] =
       copy(customBlockingContext = Some(ec))
 
