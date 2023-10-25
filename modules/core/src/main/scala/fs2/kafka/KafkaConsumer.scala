@@ -365,12 +365,7 @@ object KafkaConsumer {
       }
 
       override def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
-        partitionsMapStream.flatMap { partitionsMap =>
-          Stream.emits(partitionsMap.toVector.map {
-            case (_, partitionStream) =>
-              partitionStream
-          })
-        }
+        partitionsMapStream.flatMap(partitionsMap => Stream.iterable(partitionsMap.values))
 
       override def stream: Stream[F, CommittableConsumerRecord[F, K, V]] =
         partitionedStream.parJoinUnbounded
