@@ -269,13 +269,11 @@ lazy val publishSettings =
   )
 
 ThisBuild / mimaBinaryIssueFilters ++= {
-  import com.typesafe.tools.mima.core._
-  // format: off
-    Seq(
-      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-      ProblemFilters.exclude[MissingClassProblem]("kafka.utils.VerifiableProperties")
-    )
-    // format: on
+  import com.typesafe.tools.mima.core.*
+  Seq(
+    ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
+    ProblemFilters.exclude[MissingClassProblem]("kafka.utils.VerifiableProperties")
+  )
 }
 
 lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
@@ -294,6 +292,9 @@ lazy val scalaSettings = Seq(
   Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
   Compile / compile / scalacOptions --= {
     if (tlIsScala3.value) Seq("-Wvalue-discard", "-Wunused:privates") else Seq.empty
+  },
+  Compile / compile / scalacOptions ++= {
+    if (tlIsScala3.value) Seq.empty else Seq("-Xsource:3")
   },
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   Compile / unmanagedSourceDirectories ++=
