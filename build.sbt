@@ -274,6 +274,8 @@ lazy val publishSettings =
 ThisBuild / mimaBinaryIssueFilters ++= {
   import com.typesafe.tools.mima.core.*
   Seq(
+    ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.FakeFiber"),
+    ProblemFilters.exclude[MissingClassProblem]("fs2.kafka.internal.FakeFiber$"),
     ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.AdminClientSettings.apply"),
     ProblemFilters
       .exclude[DirectMissingMethodProblem]("fs2.kafka.TransactionalProducerRecords.apply"),
