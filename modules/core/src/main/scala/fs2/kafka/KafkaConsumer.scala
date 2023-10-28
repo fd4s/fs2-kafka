@@ -659,14 +659,24 @@ object KafkaConsumer {
         implicit val dispatcher0: Dispatcher[F] = dispatcher
 
         new KafkaConsumerActor(
-          settings = settings, keyDeserializer = keyDeserializer,
-          valueDeserializer = valueDeserializer, ref = ref, requests = requests,
+          settings = settings,
+          keyDeserializer = keyDeserializer,
+          valueDeserializer = valueDeserializer,
+          ref = ref,
+          requests = requests,
           withConsumer = withConsumer
         )
       }
       fiber <- startBackgroundConsumer(requests, polls, actor, settings.pollInterval)
     } yield createKafkaConsumer(
-      requests, settings, actor, fiber, streamId, id, withConsumer, stopConsumingDeferred
+      requests,
+      settings,
+      actor,
+      fiber,
+      streamId,
+      id,
+      withConsumer,
+      stopConsumingDeferred
     )(F, logging)
 
   /**
