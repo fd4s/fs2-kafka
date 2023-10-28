@@ -1065,7 +1065,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         res.left.toOption match {
           case Some(e) => e shouldBe a[TimeoutException]
-          case _       => fail("No exception was rised!")
+          case _       => fail("No exception was raised!")
         }
       }
     }

@@ -292,7 +292,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     producer.close()
 
     val _ = records.collectFirst { case Failure(ex) =>
-      throw new Exception("Kafka unavialable", ex)
+      throw new Exception("Kafka unavailable", ex)
     }
   }
 
