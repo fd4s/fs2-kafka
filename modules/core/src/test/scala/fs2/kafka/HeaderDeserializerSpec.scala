@@ -45,7 +45,8 @@ final class HeaderDeserializerSpec extends BaseCatsSpec {
 
   test("HeaderDeserializer#unit") {
     forAll { (bytes: Array[Byte]) =>
-      HeaderDeserializer[Unit].deserialize(bytes) shouldBe ()
+      val unit: Unit = ()
+      HeaderDeserializer[Unit].deserialize(bytes) shouldBe unit
     }
   }
 

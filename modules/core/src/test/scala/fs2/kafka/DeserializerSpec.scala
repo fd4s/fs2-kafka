@@ -187,7 +187,10 @@ final class DeserializerSpec extends BaseCatsSpec {
 
   test("Deserializer#unit") {
     forAll { (bytes: Array[Byte]) =>
-      Deserializer[IO, Unit].deserialize("topic", Headers.empty, bytes).unsafeRunSync() shouldBe ()
+      val unit: Unit = ()
+      Deserializer[IO, Unit]
+        .deserialize("topic", Headers.empty, bytes)
+        .unsafeRunSync() shouldBe unit
     }
   }
 
