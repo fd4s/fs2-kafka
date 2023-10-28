@@ -6,16 +6,18 @@
 
 package fs2.kafka.consumer
 
-import org.apache.kafka.common.PartitionInfo
 import scala.concurrent.duration.FiniteDuration
+
+import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
 
 trait KafkaTopics[F[_]] {
+
   /**
     * Returns the partitions for the specified topic.
     *
-    * Timeout is determined by `default.api.timeout.ms`, which
-    * is set using [[ConsumerSettings#withDefaultApiTimeout]].
+    * Timeout is determined by `default.api.timeout.ms`, which is set using
+    * [[ConsumerSettings#withDefaultApiTimeout]].
     */
   def partitionsFor(topic: String): F[List[PartitionInfo]]
 
@@ -25,10 +27,10 @@ trait KafkaTopics[F[_]] {
   def partitionsFor(topic: String, timeout: FiniteDuration): F[List[PartitionInfo]]
 
   /**
-    * Returns the first offset for the specified partitions.<br>
-    * <br>
-    * Timeout is determined by `default.api.timeout.ms`, which
-    * is set using [[ConsumerSettings#withDefaultApiTimeout]].
+    * Returns the first offset for the specified partitions.<br><br>
+    *
+    * Timeout is determined by `default.api.timeout.ms`, which is set using
+    * [[ConsumerSettings#withDefaultApiTimeout]].
     */
   def beginningOffsets(partitions: Set[TopicPartition]): F[Map[TopicPartition, Long]]
 
@@ -41,10 +43,10 @@ trait KafkaTopics[F[_]] {
   ): F[Map[TopicPartition, Long]]
 
   /**
-    * Returns the last offset for the specified partitions.<br>
-    * <br>
-    * Timeout is determined by `request.timeout.ms`, which
-    * is set using [[ConsumerSettings#withRequestTimeout]].
+    * Returns the last offset for the specified partitions.<br><br>
+    *
+    * Timeout is determined by `request.timeout.ms`, which is set using
+    * [[ConsumerSettings#withRequestTimeout]].
     */
   def endOffsets(partitions: Set[TopicPartition]): F[Map[TopicPartition, Long]]
 
@@ -55,4 +57,5 @@ trait KafkaTopics[F[_]] {
     partitions: Set[TopicPartition],
     timeout: FiniteDuration
   ): F[Map[TopicPartition, Long]]
+
 }

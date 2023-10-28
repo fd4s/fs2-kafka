@@ -6,15 +6,18 @@
 
 package fs2.kafka
 
-import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.syntax.all._
-import org.apache.kafka.clients.consumer.ConsumerRecord.{NULL_SIZE, NO_TIMESTAMP}
+import cats.effect.IO
+import cats.syntax.all.*
+import fs2.kafka.internal.converters.option.*
+
+import org.apache.kafka.clients.consumer.ConsumerRecord.{NO_TIMESTAMP, NULL_SIZE}
 import org.apache.kafka.common.record.TimestampType
-import org.apache.kafka.common.record.TimestampType._
-import org.scalatest._
-import fs2.kafka.internal.converters.option._
+import org.apache.kafka.common.record.TimestampType.*
+import org.scalatest.*
+
 final class ConsumerRecordSpec extends BaseSpec {
+
   describe("ConsumerRecord#fromJava") {
     it("should convert timestamps") {
       def check(timestamp: Long, timestampType: TimestampType)(
@@ -157,8 +160,7 @@ final class ConsumerRecordSpec extends BaseSpec {
 
     it("should include timestamp if present") {
       val record =
-        ConsumerRecord("topic", 0, 1, "key", "value")
-          .withTimestamp(Timestamp.createTime(0))
+        ConsumerRecord("topic", 0, 1, "key", "value").withTimestamp(Timestamp.createTime(0))
 
       val expected =
         "ConsumerRecord(topic = topic, partition = 0, offset = 1, key = key, value = value, timestamp = Timestamp(createTime = 0))"
@@ -169,8 +171,7 @@ final class ConsumerRecordSpec extends BaseSpec {
 
     it("should include serialized key size if present") {
       val record =
-        ConsumerRecord("topic", 0, 1, "key", "value")
-          .withSerializedKeySize(1)
+        ConsumerRecord("topic", 0, 1, "key", "value").withSerializedKeySize(1)
 
       val expected =
         "ConsumerRecord(topic = topic, partition = 0, offset = 1, key = key, value = value, serializedKeySize = 1)"
@@ -181,8 +182,7 @@ final class ConsumerRecordSpec extends BaseSpec {
 
     it("should include serialized value size if present") {
       val record =
-        ConsumerRecord("topic", 0, 1, "key", "value")
-          .withSerializedValueSize(1)
+        ConsumerRecord("topic", 0, 1, "key", "value").withSerializedValueSize(1)
 
       val expected =
         "ConsumerRecord(topic = topic, partition = 0, offset = 1, key = key, value = value, serializedValueSize = 1)"
@@ -193,8 +193,7 @@ final class ConsumerRecordSpec extends BaseSpec {
 
     it("should include leader epoch if present") {
       val record =
-        ConsumerRecord("topic", 0, 1, "key", "value")
-          .withLeaderEpoch(1)
+        ConsumerRecord("topic", 0, 1, "key", "value").withLeaderEpoch(1)
 
       val expected =
         "ConsumerRecord(topic = topic, partition = 0, offset = 1, key = key, value = value, leaderEpoch = 1)"
@@ -203,4 +202,5 @@ final class ConsumerRecordSpec extends BaseSpec {
       record.show shouldBe expected
     }
   }
+
 }

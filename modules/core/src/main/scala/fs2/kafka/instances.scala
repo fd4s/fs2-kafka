@@ -6,17 +6,19 @@
 
 package fs2.kafka
 
-import cats.instances.int._
-import cats.instances.long._
-import cats.instances.string._
-import cats.instances.tuple._
-import cats.syntax.show._
 import cats.{Order, Show}
+import cats.instances.int.*
+import cats.instances.long.*
+import cats.instances.string.*
+import cats.instances.tuple.*
+import cats.syntax.show.*
+
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
 
 object instances {
+
   implicit val fs2KafkaOffsetAndMetadataOrder: Order[OffsetAndMetadata] =
     Order.by(oam => (oam.offset, oam.metadata))
 
@@ -41,4 +43,5 @@ object instances {
 
   implicit val fs2KafkaTopicPartitionShow: Show[TopicPartition] =
     Show.show(tp => show"${tp.topic}-${tp.partition}")
+
 }

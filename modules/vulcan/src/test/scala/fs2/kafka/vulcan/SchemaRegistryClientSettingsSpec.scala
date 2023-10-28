@@ -6,19 +6,19 @@
 
 package fs2.kafka.vulcan
 
-import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.syntax.all._
+import cats.effect.IO
+import cats.syntax.all.*
+
 import org.scalatest.funspec.AnyFunSpec
-import org.scalatestplus.scalacheck._
+import org.scalatestplus.scalacheck.*
 
 final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
+
   describe("SchemaRegistryClientSettings") {
     it("should provide withMaxCacheSize") {
       assert {
-        settings
-          .withMaxCacheSize(10)
-          .maxCacheSize == 10
+        settings.withMaxCacheSize(10).maxCacheSize == 10
       }
     }
 
@@ -28,13 +28,12 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
           settings.withAuth(Auth.Basic(username, password))
 
         assert {
-          settingsWithAuth.properties
-            .get("basic.auth.credentials.source")
-            .contains("USER_INFO")
+          settingsWithAuth.properties.get("basic.auth.credentials.source").contains("USER_INFO")
         }
 
         assert {
-          settingsWithAuth.properties
+          settingsWithAuth
+            .properties
             .get("schema.registry.basic.auth.user.info")
             .contains(s"$username:$password")
         }
@@ -47,15 +46,11 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
           settings.withAuth(Auth.Bearer(token))
 
         assert {
-          settingsWithAuth.properties
-            .get("bearer.auth.credentials.source")
-            .contains("STATIC_TOKEN")
+          settingsWithAuth.properties.get("bearer.auth.credentials.source").contains("STATIC_TOKEN")
         }
 
         assert {
-          settingsWithAuth.properties
-            .get("bearer.auth.token")
-            .contains(token)
+          settingsWithAuth.properties.get("bearer.auth.token").contains(token)
         }
       }
     }
@@ -65,53 +60,37 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
         settings.withAuth(Auth.None)
 
       assert {
-        settingsWithAuth.properties
-          .get("basic.auth.credentials.source")
-          .isEmpty
+        !settingsWithAuth.properties.contains("basic.auth.credentials.source")
       }
 
       assert {
-        settingsWithAuth.properties
-          .get("schema.registry.basic.auth.user.info")
-          .isEmpty
+        !settingsWithAuth.properties.contains("schema.registry.basic.auth.user.info")
       }
     }
 
     it("should provide withProperty") {
       forAll { (key: String, value: String) =>
-        settings
-          .withProperty(key, value)
-          .properties
-          .get(key)
-          .contains(value)
+        settings.withProperty(key, value).properties.get(key).contains(value)
       }
     }
 
     it("should provide withProperties") {
       forAll { (key: String, value: String) =>
-        settings
-          .withProperties(key -> value)
-          .properties
-          .get(key)
-          .contains(value)
+        settings.withProperties(key -> value).properties.get(key).contains(value)
       }
     }
 
     it("should provide withProperties(Map)") {
       forAll { (key: String, value: String) =>
-        settings
-          .withProperties(Map(key -> value))
-          .properties
-          .get(key)
-          .contains(value)
+        settings.withProperties(Map(key -> value)).properties.get(key).contains(value)
       }
     }
 
     it("should provide withCreateSchemaRegistryClient") {
       assert {
         settings
-          .withCreateSchemaRegistryClient {
-            case _ => IO.raiseError(new RuntimeException)
+          .withCreateSchemaRegistryClient { case _ =>
+            IO.raiseError(new RuntimeException)
           }
           .createSchemaRegistryClient
           .attempt
@@ -135,4 +114,5 @@ final class SchemaRegistryClientSettingsSpec extends AnyFunSpec with ScalaCheckP
 
   val settings: SchemaRegistryClientSettings[IO] =
     SchemaRegistryClientSettings("baseUrl")
+
 }

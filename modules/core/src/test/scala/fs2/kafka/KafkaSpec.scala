@@ -6,28 +6,27 @@
 
 package fs2.kafka
 
-import cats.ApplicativeError
-import cats.effect.IO
+import scala.concurrent.duration.*
+
 import cats.effect.unsafe.implicits.global
+import cats.effect.IO
 import cats.effect.Ref
+import cats.ApplicativeError
 import fs2.{Chunk, Stream}
+
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
-import scala.concurrent.duration._
-
 final class KafkaSpec extends BaseAsyncSpec {
+
   describe("commitBatchWithin") {
     it("should batch commit according specified arguments") {
       val committed =
         (for {
-          ref <- Stream.eval(Ref[IO].of(Option.empty[Map[TopicPartition, OffsetAndMetadata]]))
-          commit = (offsets: Map[TopicPartition, OffsetAndMetadata]) => ref.set(Some(offsets))
+          ref    <- Stream.eval(Ref[IO].of(Option.empty[Map[TopicPartition, OffsetAndMetadata]]))
+          commit  = (offsets: Map[TopicPartition, OffsetAndMetadata]) => ref.set(Some(offsets))
           offsets = Chunk.from(exampleOffsets(commit))
-          _ <- Stream
-            .chunk(offsets)
-            .covary[IO]
-            .through(commitBatchWithin(offsets.size, 10.seconds))
+          _      <- Stream.chunk(offsets).covary[IO].through(commitBatchWithin(offsets.size, 10.seconds))
           result <- Stream.eval(ref.get)
         } yield result).compile.lastOrError.unsafeRunSync()
 
@@ -74,4 +73,5 @@ final class KafkaSpec extends BaseAsyncSpec {
     new TopicPartition("topic", 0) -> new OffsetAndMetadata(2L),
     new TopicPartition("topic", 1) -> new OffsetAndMetadata(3L)
   )
+
 }

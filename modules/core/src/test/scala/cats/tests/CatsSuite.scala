@@ -7,9 +7,10 @@
 package cats
 package tests
 
-import cats.instances._
+import cats.instances.*
 import cats.platform.Platform
-import cats.syntax._
+import cats.syntax.*
+
 import org.scalactic.anyvals.{PosInt, PosZDouble, PosZInt}
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
@@ -18,6 +19,7 @@ import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 
 trait TestSettings extends Configuration with Matchers {
+
   lazy val checkConfiguration: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
       minSuccessful = if (Platform.isJvm) PosInt(50) else PosInt(5),
@@ -30,11 +32,11 @@ trait TestSettings extends Configuration with Matchers {
   lazy val slowCheckConfiguration: PropertyCheckConfiguration =
     if (Platform.isJvm) checkConfiguration
     else PropertyCheckConfiguration(minSuccessful = 1, sizeRange = 1)
+
 }
 
 /**
-  * An opinionated stack of traits to improve consistency and reduce
-  * boilerplate in Cats tests.
+  * An opinionated stack of traits to improve consistency and reduce boilerplate in Cats tests.
   */
 trait CatsSuite
     extends AnyFunSuiteLike
@@ -57,6 +59,7 @@ trait CatsSuite
     with AllSyntaxBinCompat4
     with AllSyntaxBinCompat5
     with StrictCatsEquality {
+
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     checkConfiguration
 
@@ -67,9 +70,12 @@ trait CatsSuite
   def even(i: Int): Boolean = i % 2 == 0
 
   val evenPf: PartialFunction[Int, Int] = { case i if even(i) => i }
+
 }
 
 trait SlowCatsSuite extends CatsSuite {
+
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     slowCheckConfiguration
+
 }

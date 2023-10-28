@@ -6,12 +6,14 @@
 
 package fs2.kafka.vulcan
 
-import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import cats.effect.IO
+
 import org.scalatest.funspec.AnyFunSpec
-import org.scalatestplus.scalacheck._
+import org.scalatestplus.scalacheck.*
 
 final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
+
   describe("AvroSettings") {
     it("should provide withAutoRegisterSchemas") {
       forAll { (value: Boolean) =>
@@ -51,40 +53,26 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
 
     it("should provide withProperty") {
       forAll { (key: String, value: String) =>
-        settings
-          .withProperty(key, value)
-          .properties
-          .get(key)
-          .contains(value)
+        settings.withProperty(key, value).properties.get(key).contains(value)
       }
     }
 
     it("should provide withProperties") {
       forAll { (key: String, value: String) =>
-        settings
-          .withProperties(key -> value)
-          .properties
-          .get(key)
-          .contains(value)
+        settings.withProperties(key -> value).properties.get(key).contains(value)
       }
     }
 
     it("should provide withProperties(Map)") {
       forAll { (key: String, value: String) =>
-        settings
-          .withProperties(Map(key -> value))
-          .properties
-          .get(key)
-          .contains(value)
+        settings.withProperties(Map(key -> value)).properties.get(key).contains(value)
       }
     }
 
     it("should provide withCreateAvroDeserializer") {
       assert {
         settings
-          .withCreateAvroDeserializer {
-            case _ => IO.raiseError(new RuntimeException)
-          }
+          .withCreateAvroDeserializer { case _ => IO.raiseError(new RuntimeException) }
           .createAvroDeserializer(isKey = false)
           .attempt
           .unsafeRunSync()
@@ -95,9 +83,7 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
     it("should provide withCreateAvroSerializer") {
       assert {
         settings
-          .withCreateAvroSerializer { (_, _, _, _) =>
-            IO.raiseError(new RuntimeException)
-          }
+          .withCreateAvroSerializer((_, _, _, _) => IO.raiseError(new RuntimeException))
           .createAvroSerializer(isKey = false, null)
           .attempt
           .unsafeRunSync()
@@ -108,9 +94,7 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
     it("should provide withRegisterSchema") {
       assert {
         settings
-          .withRegisterSchema {
-            case _ => IO.raiseError(new RuntimeException)
-          }
+          .withRegisterSchema { case _ => IO.raiseError(new RuntimeException) }
           .registerSchema[String]("example-key")
           .attempt
           .unsafeRunSync()
@@ -130,4 +114,5 @@ final class AvroSettingsSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
 
   val settingsWithClient: AvroSettings[IO] =
     AvroSettings(null: SchemaRegistryClient)
+
 }

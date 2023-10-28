@@ -6,15 +6,17 @@
 
 package fs2.kafka
 
+import scala.concurrent.duration.*
+import scala.concurrent.ExecutionContext
+
 import cats.effect.{IO, Resource}
 import cats.effect.unsafe.implicits.global
-import cats.syntax.all._
+import cats.syntax.all.*
+
 import org.apache.kafka.clients.producer.ProducerConfig
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-
 final class ProducerSettingsSpec extends BaseSpec {
+
   describe("ProducerSettings") {
     it("should provide apply") {
       ProducerSettings[IO, String, String]
@@ -32,27 +34,15 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withAcks") {
       assert {
-        settings
-          .withAcks(Acks.All)
-          .properties(ProducerConfig.ACKS_CONFIG)
-          .contains("all") &&
-        settings
-          .withAcks(Acks.One)
-          .properties(ProducerConfig.ACKS_CONFIG)
-          .contains("1") &&
-        settings
-          .withAcks(Acks.Zero)
-          .properties(ProducerConfig.ACKS_CONFIG)
-          .contains("0")
+        settings.withAcks(Acks.All).properties(ProducerConfig.ACKS_CONFIG).contains("all") &&
+        settings.withAcks(Acks.One).properties(ProducerConfig.ACKS_CONFIG).contains("1") &&
+        settings.withAcks(Acks.Zero).properties(ProducerConfig.ACKS_CONFIG).contains("0")
       }
     }
 
     it("should provide withBatchSize") {
       assert {
-        settings
-          .withBatchSize(10)
-          .properties(ProducerConfig.BATCH_SIZE_CONFIG)
-          .contains("10")
+        settings.withBatchSize(10).properties(ProducerConfig.BATCH_SIZE_CONFIG).contains("10")
       }
     }
 
@@ -67,10 +57,7 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should provide withRetries") {
       assert {
-        settings
-          .withRetries(10)
-          .properties(ProducerConfig.RETRIES_CONFIG)
-          .contains("10")
+        settings.withRetries(10).properties(ProducerConfig.RETRIES_CONFIG).contains("10")
       }
     }
 
@@ -145,7 +132,7 @@ final class ProducerSettingsSpec extends BaseSpec {
     }
 
     it("should be able to create with and without serializer creation effects") {
-      val serializer = Serializer[IO, String]
+      val serializer                                               = Serializer[IO, String]
       val serializerResource: Resource[IO, Serializer[IO, String]] = Resource.pure(serializer)
 
       ProducerSettings(serializer, serializer)
@@ -156,17 +143,18 @@ final class ProducerSettingsSpec extends BaseSpec {
 
     it("should be able to implicitly create with and without serializer creation effects") {
       val serializerInstance =
-        Serializer[IO, String]
-          .mapBytes(identity)
+        Serializer[IO, String].mapBytes(identity)
 
       implicit val serializerResource: Resource[IO, Serializer[IO, String]] =
         Resource.pure(serializerInstance)
 
       ProducerSettings[IO, Int, Int]
-      ProducerSettings[IO, String, Int].keySerializer
+      ProducerSettings[IO, String, Int]
+        .keySerializer
         .use(IO.pure)
         .unsafeRunSync() shouldBe serializerInstance
-      ProducerSettings[IO, Int, String].valueSerializer
+      ProducerSettings[IO, Int, String]
+        .valueSerializer
         .use(IO.pure)
         .unsafeRunSync() shouldBe serializerInstance
       ProducerSettings[IO, String, String]
@@ -183,4 +171,5 @@ final class ProducerSettingsSpec extends BaseSpec {
   }
 
   val settings = ProducerSettings[IO, String, String]
+
 }

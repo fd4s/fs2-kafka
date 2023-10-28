@@ -6,19 +6,22 @@
 
 package fs2.kafka
 
-import cats.laws.discipline._
+import cats.laws.discipline.*
 
 final class HeaderDeserializerSpec extends BaseCatsSpec {
+
   checkAll("HeaderDeserializer", MonadTests[HeaderDeserializer].monad[String, String, String])
 
   test("HeaderDeserializer#delay") {
     var deserialized = false
 
     val deserializer =
-      HeaderDeserializer.instance { bytes =>
-        deserialized = true
-        bytes
-      }.delay
+      HeaderDeserializer
+        .instance { bytes =>
+          deserialized = true
+          bytes
+        }
+        .delay
 
     val eval = deserializer.deserialize(Array())
     assert(!deserialized)
@@ -42,11 +45,12 @@ final class HeaderDeserializerSpec extends BaseCatsSpec {
 
   test("HeaderDeserializer#unit") {
     forAll { (bytes: Array[Byte]) =>
-      HeaderDeserializer[Unit].deserialize(bytes) shouldBe (())
+      HeaderDeserializer[Unit].deserialize(bytes) shouldBe ()
     }
   }
 
   test("HeaderDeserializer#toString") {
-    assert(HeaderDeserializer[String].toString startsWith "HeaderDeserializer$")
+    assert(HeaderDeserializer[String].toString.startsWith("HeaderDeserializer$"))
   }
+
 }

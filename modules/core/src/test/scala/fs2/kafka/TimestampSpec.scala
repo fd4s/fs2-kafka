@@ -6,9 +6,10 @@
 
 package fs2.kafka
 
-import cats.syntax.show._
+import cats.syntax.show.*
 
 final class TimestampSpec extends BaseSpec {
+
   describe("Timeout#createTime") {
     it("should have a createTime") {
       forAll { (value: Long) =>
@@ -125,4 +126,5 @@ final class TimestampSpec extends BaseSpec {
       Timestamp.none.show shouldBe Timestamp.none.toString
     }
   }
+
 }

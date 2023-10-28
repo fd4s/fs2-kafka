@@ -7,12 +7,14 @@
 package fs2.kafka
 
 import cats.effect.IO
-import cats.syntax.all._
+import cats.syntax.all.*
+
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.scalacheck.Gen
 
 final class CommittableOffsetBatchSpec extends BaseSpec {
+
   describe("CommittableOffsetBatch#empty") {
     val empty: CommittableOffsetBatch[IO] =
       CommittableOffsetBatch.empty
@@ -32,7 +34,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
   describe("CommittableOffsetBatch#updated") {
     it("should include the provided offset") {
       forAll { (batch: CommittableOffsetBatch[IO], offset: CommittableOffset[IO]) =>
-        val updatedBatch = batch.updated(offset)
+        val updatedBatch  = batch.updated(offset)
         val updatedOffset = updatedBatch.offsets.get(offset.topicPartition)
 
         assert {
@@ -44,23 +46,26 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
     it("should override using the provided offset") {
       forAll { (batch: CommittableOffsetBatch[IO]) =>
         whenever(batch.offsets.nonEmpty) {
-          Gen.oneOf(batch.offsets.toList).sample.foreach { offset =>
-            val (topicPartition, offsetAndMetadata) = offset
+          Gen
+            .oneOf(batch.offsets.toList)
+            .sample
+            .foreach { offset =>
+              val (topicPartition, offsetAndMetadata) = offset
 
-            val newOffsetAndMetadata =
-              new OffsetAndMetadata(Long.MaxValue, offsetAndMetadata.metadata)
+              val newOffsetAndMetadata =
+                new OffsetAndMetadata(Long.MaxValue, offsetAndMetadata.metadata)
 
-            val committable =
-              CommittableOffset[IO](
-                topicPartition = topicPartition,
-                offsetAndMetadata = newOffsetAndMetadata,
-                consumerGroupId = None,
-                commit = _ => IO.unit
-              )
+              val committable =
+                CommittableOffset[IO](
+                  topicPartition = topicPartition,
+                  offsetAndMetadata = newOffsetAndMetadata,
+                  consumerGroupId = None,
+                  commit = _ => IO.unit
+                )
 
-            val updatedOffset = batch.updated(committable).offsets.get(topicPartition)
-            assert(updatedOffset.contains(newOffsetAndMetadata))
-          }
+              val updatedOffset = batch.updated(committable).offsets.get(topicPartition)
+              assert(updatedOffset.contains(newOffsetAndMetadata))
+            }
         }
       }
     }
@@ -69,10 +74,11 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
       forAll { (batch1: CommittableOffsetBatch[IO], batch2: CommittableOffsetBatch[IO]) =>
         val result = batch1.updated(batch2)
 
-        val offsets = batch2.offsets.map {
-          case (topicPartition, offsetAndMetadata) =>
+        val offsets = batch2
+          .offsets
+          .map { case (topicPartition, offsetAndMetadata) =>
             CommittableOffset[IO](topicPartition, offsetAndMetadata, None, _ => IO.unit)
-        }
+          }
 
         val expected = offsets.foldLeft(batch1)(_ updated _)
 
@@ -114,7 +120,7 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
         oneMetadata.show == oneMetadata.toString
       }
 
-      val two = one updated oneMetadata
+      val two = one.updated(oneMetadata)
 
       assert {
         two.toString == "CommittableOffsetBatch(topic-0 -> 0, topic-1 -> (0, metadata))" &&
@@ -122,4 +128,5 @@ final class CommittableOffsetBatchSpec extends BaseSpec {
       }
     }
   }
+
 }
