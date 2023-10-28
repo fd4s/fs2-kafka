@@ -353,7 +353,7 @@ sealed abstract class ConsumerSettings[F[_], K, V] {
     * You can use [[withMaxPollRecords]] to control the `max.poll.records` setting.<br><br>
     *
     * This setting effectively controls backpressure, i.e. the maximum number of batches to prefetch
-    * per topic-parititon before starting to slow down (not fetching more records) until processing
+    * per topic-partition before starting to slow down (not fetching more records) until processing
     * has caught-up.<br><br>
     *
     * Note that prefetching cannot be disabled and is generally preferred since it yields improved

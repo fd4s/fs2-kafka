@@ -10,7 +10,7 @@ import fs2.kafka.BaseSpec
 
 final class KafkaCredentialStoreSpec extends BaseSpec {
   describe("KafkaCredentialStore") {
-    describe("fromPemStrigs") {
+    describe("fromPemStrings") {
       it("should create a KafkaCredentialStore with the expected properties") {
         val caCert =
           """-----BEGIN CERTIFICATE-----
