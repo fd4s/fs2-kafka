@@ -6,22 +6,24 @@
 
 package fs2.kafka
 
-import cats.{ApplicativeError, ApplicativeThrow}
-import cats.effect._
-import cats.syntax.all._
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
-import org.apache.kafka.common.TopicPartition
-import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.{Arbitrary, Cogen, Gen}
-import java.nio.charset._
+import java.nio.charset.*
 import java.util.UUID
 
+import cats.{ApplicativeError, ApplicativeThrow}
 import cats.data.Chain
-import cats.laws.discipline.arbitrary._
+import cats.effect.*
+import cats.laws.discipline.arbitrary.*
+import cats.syntax.all.*
 import fs2.Chunk
+
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.common.TopicPartition
+import org.scalacheck.{Arbitrary, Cogen, Gen}
 import org.scalacheck.rng.Seed
+import org.scalacheck.Arbitrary.arbitrary
 
 trait BaseGenerators {
+
   implicit def chunkCogen[A: Cogen]: Cogen[Chunk[A]] = Cogen.it(_.iterator)
 
   val genTopic: Gen[String] = arbitrary[String]
@@ -30,7 +32,7 @@ trait BaseGenerators {
 
   val genTopicPartition: Gen[TopicPartition] =
     for {
-      topic <- genTopic
+      topic     <- genTopic
       partition <- genPartition
     } yield new TopicPartition(topic, partition)
 
@@ -44,7 +46,7 @@ trait BaseGenerators {
 
   val genOffsetAndMetadata: Gen[OffsetAndMetadata] =
     for {
-      offset <- Gen.chooseNum(1L, Long.MaxValue)
+      offset   <- Gen.chooseNum(1L, Long.MaxValue)
       metadata <- arbitrary[String]
     } yield new OffsetAndMetadata(offset, metadata)
 
@@ -56,13 +58,13 @@ trait BaseGenerators {
       Cogen.perturbPair(seed, (offset.offset, offset.metadata()))
     }
 
-  def genCommittableOffset[F[_]](
-    implicit F: ApplicativeError[F, Throwable]
+  def genCommittableOffset[F[_]](implicit
+    F: ApplicativeError[F, Throwable]
   ): Gen[CommittableOffset[F]] =
     for {
-      topicPartition <- genTopicPartition
+      topicPartition    <- genTopicPartition
       offsetAndMetadata <- genOffsetAndMetadata
-      groupId <- arbitrary[Option[String]]
+      groupId           <- arbitrary[Option[String]]
     } yield CommittableOffset[F](
       topicPartition = topicPartition,
       offsetAndMetadata = offsetAndMetadata,
@@ -70,8 +72,8 @@ trait BaseGenerators {
       commit = _ => F.unit
     )
 
-  implicit def arbCommittableOffset[F[_]](
-    implicit F: ApplicativeError[F, Throwable]
+  implicit def arbCommittableOffset[F[_]](implicit
+    F: ApplicativeError[F, Throwable]
   ): Arbitrary[CommittableOffset[F]] =
     Arbitrary(genCommittableOffset[F])
 
@@ -84,14 +86,14 @@ trait BaseGenerators {
         .apply(seed)
     }
 
-  def genCommittableOffsetBatch[F[_]](
-    implicit F: ApplicativeError[F, Throwable]
+  def genCommittableOffsetBatch[F[_]](implicit
+    F: ApplicativeError[F, Throwable]
   ): Gen[CommittableOffsetBatch[F]] =
     arbitrary[Map[TopicPartition, OffsetAndMetadata]]
-      .map(CommittableOffsetBatch[F](_, Set.empty, false, _ => F.unit))
+      .map(CommittableOffsetBatch[F](_, Set.empty, consumerGroupIdsMissing = false, _ => F.unit))
 
-  implicit def arbCommittableOffsetBatch[F[_]](
-    implicit F: ApplicativeError[F, Throwable]
+  implicit def arbCommittableOffsetBatch[F[_]](implicit
+    F: ApplicativeError[F, Throwable]
   ): Arbitrary[CommittableOffsetBatch[F]] =
     Arbitrary(genCommittableOffsetBatch[F])
 
@@ -117,25 +119,23 @@ trait BaseGenerators {
   def genDeserializerString[F[_]](implicit F: Sync[F]): Gen[Deserializer[F, String]] =
     genCharset.map(Deserializer.string[F])
 
-  implicit def arbDeserializerString[F[_]](
-    implicit F: Sync[F]
+  implicit def arbDeserializerString[F[_]](implicit
+    F: Sync[F]
   ): Arbitrary[Deserializer[F, String]] =
     Arbitrary(genDeserializerString)
 
-  implicit def arbDeserializerCombine[F[_], A, B](
-    implicit F: Sync[F],
+  implicit def arbDeserializerCombine[F[_], A, B](implicit
+    F: Sync[F],
     arbB: Arbitrary[Deserializer[F, B]],
     arbABA: Arbitrary[(A, B) => A]
   ): Arbitrary[Deserializer[F, A => A]] =
     Arbitrary {
       for {
         deserializer <- arbitrary[Deserializer[F, B]]
-        combine <- arbitrary[(A, B) => A]
+        combine      <- arbitrary[(A, B) => A]
       } yield {
         Deserializer.instance { (topic, headers, bytes) =>
-          deserializer
-            .deserialize(topic, headers, bytes)
-            .map(b => (a: A) => combine(a, b))
+          deserializer.deserialize(topic, headers, bytes).map(b => (a: A) => combine(a, b))
         }
       }
     }
@@ -143,14 +143,14 @@ trait BaseGenerators {
   def genSerializerString[F[_]](implicit F: Sync[F]): Gen[Serializer[F, String]] =
     genCharset.map(Serializer.string[F])
 
-  implicit def arbSerializerString[F[_]](
-    implicit F: Sync[F]
+  implicit def arbSerializerString[F[_]](implicit
+    F: Sync[F]
   ): Arbitrary[Serializer[F, String]] =
     Arbitrary(genSerializerString)
 
   val genHeader: Gen[Header] =
     for {
-      key <- arbitrary[String]
+      key   <- arbitrary[String]
       value <- arbitrary[Array[Byte]]
     } yield Header(key, value)
 
@@ -183,14 +183,14 @@ trait BaseGenerators {
   implicit val arbHeaderDeserializerString: Arbitrary[HeaderDeserializer[String]] =
     Arbitrary(genHeaderDeserializerString)
 
-  implicit def arbHeaderDeserializerCombine[A, B](
-    implicit arbB: Arbitrary[HeaderDeserializer[B]],
+  implicit def arbHeaderDeserializerCombine[A, B](implicit
+    arbB: Arbitrary[HeaderDeserializer[B]],
     arbABA: Arbitrary[(A, B) => A]
   ): Arbitrary[HeaderDeserializer[A => A]] =
     Arbitrary {
       for {
         deserializer <- arbitrary[HeaderDeserializer[B]]
-        combine <- arbitrary[(A, B) => A]
+        combine      <- arbitrary[(A, B) => A]
       } yield {
         HeaderDeserializer.instance { bytes => (a: A) =>
           combine(a, deserializer.deserialize(bytes))
@@ -201,13 +201,13 @@ trait BaseGenerators {
   val genTimestamp: Gen[Timestamp] = for {
     long <- Gen.choose(1L, Long.MaxValue)
     timestamp <- Gen.oneOf(
-      Seq(
-        Timestamp.createTime(long),
-        Timestamp.logAppendTime(long),
-        Timestamp.unknownTime(long),
-        Timestamp.none
-      )
-    )
+                   Seq(
+                     Timestamp.createTime(long),
+                     Timestamp.logAppendTime(long),
+                     Timestamp.unknownTime(long),
+                     Timestamp.none
+                   )
+                 )
   } yield timestamp
 
   implicit val arbTimestamp: Arbitrary[Timestamp] = Arbitrary(genTimestamp)
@@ -224,13 +224,13 @@ trait BaseGenerators {
 
   def genConsumerRecord[K: Arbitrary, V: Arbitrary]: Gen[ConsumerRecord[K, V]] =
     for {
-      k <- Arbitrary.arbitrary[K]
-      v <- Arbitrary.arbitrary[V]
+      k              <- Arbitrary.arbitrary[K]
+      v              <- Arbitrary.arbitrary[V]
       topicPartition <- genTopicPartition
-      offset <- genOffsetAndMetadata
-      headers <- Arbitrary.arbitrary[Option[Headers]]
-      timestamp <- Arbitrary.arbitrary[Option[Timestamp]]
-      leaderEpoch <- Arbitrary.arbitrary[Option[Int]]
+      offset         <- genOffsetAndMetadata
+      headers        <- Arbitrary.arbitrary[Option[Headers]]
+      timestamp      <- Arbitrary.arbitrary[Option[Timestamp]]
+      leaderEpoch    <- Arbitrary.arbitrary[Option[Int]]
     } yield {
       val record = ConsumerRecord(
         topic = topicPartition.topic,
@@ -265,11 +265,11 @@ trait BaseGenerators {
 
   def genProducerRecord[K: Arbitrary, V: Arbitrary]: Gen[ProducerRecord[K, V]] =
     for {
-      k <- Arbitrary.arbitrary[K]
-      v <- Arbitrary.arbitrary[V]
-      topic <- genTopic
+      k         <- Arbitrary.arbitrary[K]
+      v         <- Arbitrary.arbitrary[V]
+      topic     <- genTopic
       partition <- Gen.option(genPartition)
-      headers <- Arbitrary.arbitrary[Option[Headers]]
+      headers   <- Arbitrary.arbitrary[Option[Headers]]
       timestamp <- Gen.option(Gen.choose(1L, Long.MaxValue))
     } yield {
       val record = ProducerRecord(
@@ -328,7 +328,7 @@ trait BaseGenerators {
   ]: Gen[CommittableProducerRecords[F, K, V]] =
     for {
       records <- Arbitrary.arbitrary[List[ProducerRecord[K, V]]]
-      offset <- Arbitrary.arbitrary[CommittableOffset[F]]
+      offset  <- Arbitrary.arbitrary[CommittableOffset[F]]
     } yield CommittableProducerRecords(records, offset)
 
   implicit def arbCommittableProducerRecords[
@@ -343,4 +343,5 @@ trait BaseGenerators {
     Cogen { (seed: Seed, records: CommittableProducerRecords[F, K, V]) =>
       Cogen.perturbPair(seed, (records.records, records.offset))
     }
+
 }

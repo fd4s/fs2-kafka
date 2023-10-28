@@ -6,13 +6,16 @@
 
 package fs2.kafka
 
-import cats._
-import cats.laws.discipline._
-import java.nio.charset._
-import org.scalacheck._
-import org.scalatest._
+import java.nio.charset.*
+
+import cats.*
+import cats.laws.discipline.*
+
+import org.scalacheck.*
+import org.scalatest.*
 
 final class HeaderSerializerSpec extends BaseCatsSpec {
+
   checkAll(
     "HeaderSerializer",
     ContravariantTests[HeaderSerializer].contravariant[String, String, String]
@@ -20,8 +23,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
 
   test("HeaderSerializer#mapBytes") {
     val serializer =
-      HeaderSerializer.identity
-        .mapBytes(Array(0.toByte) ++ _)
+      HeaderSerializer.identity.mapBytes(Array(0.toByte) ++ _)
 
     forAll { (bytes: Array[Byte]) =>
       serializer.serialize(bytes) shouldBe (Array(0.toByte) ++ bytes)
@@ -74,14 +76,14 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
   }
 
   test("HeaderSerializer#toString") {
-    assert(HeaderSerializer[Int].toString startsWith "HeaderSerializer$")
+    assert(HeaderSerializer[Int].toString.startsWith("HeaderSerializer$"))
   }
 
   def roundtrip[A: Arbitrary: Eq](
     serializer: HeaderSerializer[A],
     deserializer: HeaderDeserializer[A]
   ): Assertion = forAll { (a: A) =>
-    val serialized = serializer.serialize(a)
+    val serialized   = serializer.serialize(a)
     val deserialized = deserializer.deserialize(serialized)
     assert(deserialized === a)
   }
@@ -90,7 +92,7 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
     serializer: HeaderSerializer[A],
     deserializer: HeaderDeserializer.Attempt[A]
   ): Assertion = forAll { (a: A) =>
-    val serialized = serializer.serialize(a)
+    val serialized   = serializer.serialize(a)
     val deserialized = deserializer.deserialize(serialized)
     assert(deserialized.toOption === Option(a))
   }
@@ -143,4 +145,5 @@ final class HeaderSerializerSpec extends BaseCatsSpec {
       HeaderDeserializer.short
     )
   }
+
 }

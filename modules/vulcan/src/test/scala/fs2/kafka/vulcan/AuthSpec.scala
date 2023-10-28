@@ -7,9 +7,10 @@
 package fs2.kafka.vulcan
 
 import org.scalatest.funspec.AnyFunSpec
-import org.scalatestplus.scalacheck._
+import org.scalatestplus.scalacheck.*
 
 final class AuthSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
+
   describe("Auth.Basic") {
     it("should include the username in toString") {
       forAll { (username: String, password: String) =>
@@ -44,4 +45,5 @@ final class AuthSpec extends AnyFunSpec with ScalaCheckPropertyChecks {
       assert(Auth.None.toString == "None")
     }
   }
+
 }

@@ -7,24 +7,27 @@
 package fs2.kafka.internal
 
 import cats.effect.{Async, Resource}
-import fs2.kafka.internal.syntax._
-import fs2.kafka.producer.MkProducer
 import fs2.kafka.{KafkaByteProducer, ProducerSettings}
+import fs2.kafka.internal.syntax.*
+import fs2.kafka.producer.MkProducer
 
-private[kafka] sealed abstract class WithProducer[F[_]] {
+sealed abstract private[kafka] class WithProducer[F[_]] {
+
   def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A]
 
-  def blocking[A](f: KafkaByteProducer => A): F[A] = apply {
-    case (producer, blocking) => blocking(f(producer))
+  def blocking[A](f: KafkaByteProducer => A): F[A] = apply { case (producer, blocking) =>
+    blocking(f(producer))
   }
+
 }
 
 private[kafka] object WithProducer {
+
   def apply[F[_], G[_]](
     mk: MkProducer[F],
-    settings: ProducerSettings[G, _, _]
-  )(
-    implicit F: Async[F],
+    settings: ProducerSettings[G, ?, ?]
+  )(implicit
+    F: Async[F],
     G: Async[G]
   ): Resource[F, WithProducer[G]] = {
     val blockingF =
@@ -35,7 +38,7 @@ private[kafka] object WithProducer {
     Resource
       .make(
         mk(settings)
-      )(producer => blockingF { producer.close(settings.closeTimeout.toJava) })
+      )(producer => blockingF(producer.close(settings.closeTimeout.toJava)))
       .map(create(_, blockingG))
   }
 
@@ -43,7 +46,10 @@ private[kafka] object WithProducer {
     producer: KafkaByteProducer,
     _blocking: Blocking[F]
   ): WithProducer[F] = new WithProducer[F] {
+
     override def apply[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A] =
       f(producer, _blocking)
+
   }
+
 }

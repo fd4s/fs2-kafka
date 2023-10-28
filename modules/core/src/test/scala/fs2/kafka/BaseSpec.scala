@@ -6,10 +6,10 @@
 
 package fs2.kafka
 
-import org.scalatest._
-import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.scalacheck._
+import org.scalatest.*
 import org.scalatest.funspec.AnyFunSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatestplus.scalacheck.*
 
 abstract class BaseSpec
     extends AnyFunSpec

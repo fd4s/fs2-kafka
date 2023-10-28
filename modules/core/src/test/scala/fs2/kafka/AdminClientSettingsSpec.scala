@@ -6,11 +6,14 @@
 
 package fs2.kafka
 
-import cats.syntax.all._
+import scala.concurrent.duration.*
+
+import cats.syntax.all.*
+
 import org.apache.kafka.clients.admin.AdminClientConfig
-import scala.concurrent.duration._
 
 final class AdminClientSettingsSpec extends BaseSpec {
+
   describe("AdminClientSettings") {
     it("should provide withBootstrapServers") {
       assert {
@@ -86,40 +89,26 @@ final class AdminClientSettingsSpec extends BaseSpec {
 
     it("should provide withRetries") {
       assert {
-        settings
-          .withRetries(10)
-          .properties(AdminClientConfig.RETRIES_CONFIG)
-          .contains("10")
+        settings.withRetries(10).properties(AdminClientConfig.RETRIES_CONFIG).contains("10")
       }
     }
 
     it("should provide withProperty") {
       assert {
-        settings
-          .withProperty("a", "b")
-          .properties("a")
-          .contains("b")
+        settings.withProperty("a", "b").properties("a").contains("b")
       }
     }
 
     it("should provide withProperties") {
       assert {
-        settings
-          .withProperties("a" -> "b")
-          .properties("a")
-          .contains("b") &&
-        settings
-          .withProperties(Map("a" -> "b"))
-          .properties("a")
-          .contains("b")
+        settings.withProperties("a" -> "b").properties("a").contains("b") &&
+        settings.withProperties(Map("a" -> "b")).properties("a").contains("b")
       }
     }
 
     it("should provide withCloseTimeout") {
       assert {
-        settings
-          .withCloseTimeout(10.seconds)
-          .closeTimeout == 10.seconds
+        settings.withCloseTimeout(10.seconds).closeTimeout == 10.seconds
       }
     }
 
@@ -133,4 +122,5 @@ final class AdminClientSettingsSpec extends BaseSpec {
 
   def settings =
     AdminClientSettings("test")
+
 }

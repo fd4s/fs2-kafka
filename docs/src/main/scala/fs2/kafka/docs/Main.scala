@@ -1,11 +1,11 @@
 package fs2.kafka.docs
 
-import fs2.kafka.build.info._
+import fs2.kafka.build.info.*
 import java.nio.file.{FileSystems, Path}
 
 object Main {
   def sourceDirectoryPath(rest: String*): Path =
-    FileSystems.getDefault.getPath(sourceDirectory.getAbsolutePath, rest: _*)
+    FileSystems.getDefault.getPath(sourceDirectory.getAbsolutePath, rest *)
 
   def minorVersion(version: String): String = version.split('.') match {
     case Array(major, minor, _) => s"$major.$minor"

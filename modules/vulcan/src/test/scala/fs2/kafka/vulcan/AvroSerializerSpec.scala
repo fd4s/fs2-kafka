@@ -6,17 +6,19 @@
 
 package fs2.kafka.vulcan
 
-import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import cats.effect.IO
 import fs2.kafka.Headers
+
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
 import vulcan.Codec
 
 final class AvroSerializerSpec extends AnyFunSpec {
+
   describe("AvroSerializer") {
     it("can create a serializer") {
-      val forKey = AvroSerializer[Int].forKey(avroSettings)
+      val forKey   = AvroSerializer[Int].forKey(avroSettings)
       val forValue = AvroSerializer[Int].forValue(avroSettings)
 
       assert(forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
@@ -24,7 +26,7 @@ final class AvroSerializerSpec extends AnyFunSpec {
     }
 
     it("auto-registers union schemas") {
-      (avroSerializer[Either[Int, Boolean]]
+      avroSerializer[Either[Int, Boolean]]
         .forValue(avroSettings)
         .use(
           _.serialize(
@@ -32,7 +34,7 @@ final class AvroSerializerSpec extends AnyFunSpec {
             Headers.empty,
             Right(true)
           )
-        ))
+        )
         .unsafeRunSync()
       assert(
         schemaRegistryClient
@@ -45,7 +47,7 @@ final class AvroSerializerSpec extends AnyFunSpec {
       val codec: Codec[BigDecimal] =
         Codec.decimal(-1, -1)
 
-      val forKey = avroSerializer(codec).forKey(avroSettings)
+      val forKey   = avroSerializer(codec).forKey(avroSettings)
       val forValue = avroSerializer(codec).forKey(avroSettings)
 
       assert(forKey.use(IO.pure).attempt.unsafeRunSync().isRight)
@@ -54,7 +56,7 @@ final class AvroSerializerSpec extends AnyFunSpec {
 
     it("toString") {
       assert {
-        avroSerializer[Int].toString() startsWith "AvroSerializer$"
+        avroSerializer[Int].toString().startsWith("AvroSerializer$")
       }
     }
   }
@@ -72,4 +74,5 @@ final class AvroSerializerSpec extends AnyFunSpec {
 
   val avroSettings: AvroSettings[IO] =
     AvroSettings(schemaRegistryClientSettings)
+
 }

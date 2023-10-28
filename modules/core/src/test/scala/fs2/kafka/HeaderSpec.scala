@@ -6,7 +6,7 @@
 
 package fs2.kafka
 
-import cats.syntax.show._
+import cats.syntax.show.*
 
 final class HeaderSpec extends BaseSpec {
   describe("Header") {
@@ -29,7 +29,7 @@ final class HeaderSpec extends BaseSpec {
 
     it("should return the value with value") {
       val value = Array[Byte]()
-      assert(Header("key", value).value == value)
+      assert(Header("key", value).value.sameElements(value))
     }
 
     it("should deserialize with as") {

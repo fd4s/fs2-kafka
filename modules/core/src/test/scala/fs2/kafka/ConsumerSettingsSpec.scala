@@ -6,16 +6,18 @@
 
 package fs2.kafka
 
-import cats.effect.IO
+import scala.concurrent.duration.*
+import scala.concurrent.ExecutionContext
+
 import cats.effect.kernel.Resource
 import cats.effect.unsafe.implicits.global
-import cats.syntax.all._
+import cats.effect.IO
+import cats.syntax.all.*
+
 import org.apache.kafka.clients.consumer.ConsumerConfig
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-
 final class ConsumerSettingsSpec extends BaseSpec {
+
   describe("ConsumerSettings") {
     it("should be able to set a custom blocking context") {
       assert {
@@ -81,17 +83,14 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
     it("should provide withGroupId") {
       assert {
-        settings.properties.get(ConsumerConfig.GROUP_ID_CONFIG).isEmpty &&
-        settings
-          .withGroupId("group")
-          .properties(ConsumerConfig.GROUP_ID_CONFIG)
-          .contains("group")
+        !settings.properties.contains(ConsumerConfig.GROUP_ID_CONFIG) &&
+        settings.withGroupId("group").properties(ConsumerConfig.GROUP_ID_CONFIG).contains("group")
       }
     }
 
     it("should provide withGroupInstanceId") {
       assert {
-        settings.properties.get(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG).isEmpty &&
+        !settings.properties.contains(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG) &&
         settings
           .withGroupInstanceId("group-instance-id")
           .properties(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG)
@@ -203,41 +202,31 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
     it("should provide withCloseTimeout") {
       assert {
-        settings
-          .withCloseTimeout(50.millis)
-          .closeTimeout == 50.millis
+        settings.withCloseTimeout(50.millis).closeTimeout == 50.millis
       }
     }
 
     it("should provide withCommitTimeout") {
       assert {
-        settings
-          .withCommitTimeout(50.millis)
-          .commitTimeout == 50.millis
+        settings.withCommitTimeout(50.millis).commitTimeout == 50.millis
       }
     }
 
     it("should provide withPollInterval") {
       assert {
-        settings
-          .withPollInterval(50.millis)
-          .pollInterval == 50.millis
+        settings.withPollInterval(50.millis).pollInterval == 50.millis
       }
     }
 
     it("should provide withPollTimeout") {
       assert {
-        settings
-          .withPollTimeout(50.millis)
-          .pollTimeout == 50.millis
+        settings.withPollTimeout(50.millis).pollTimeout == 50.millis
       }
     }
 
     it("should provide withCommitRecovery") {
       assert {
-        settings
-          .withCommitRecovery(CommitRecovery.Default)
-          .commitRecovery == CommitRecovery.Default
+        settings.withCommitRecovery(CommitRecovery.Default).commitRecovery == CommitRecovery.Default
       }
     }
 
@@ -246,34 +235,26 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
       assert {
         settings.recordMetadata(record) == "" &&
-        settings
-          .withRecordMetadata(_ => "ok")
-          .recordMetadata(record) == "ok"
+        settings.withRecordMetadata(_ => "ok").recordMetadata(record) == "ok"
       }
     }
 
     it("should provide withMaxPrefetchBatches") {
       assert {
-        settings
-          .withMaxPrefetchBatches(3)
-          .maxPrefetchBatches == 3
+        settings.withMaxPrefetchBatches(3).maxPrefetchBatches == 3
       }
 
       assert {
-        settings
-          .withMaxPrefetchBatches(2)
-          .maxPrefetchBatches == 2
+        settings.withMaxPrefetchBatches(2).maxPrefetchBatches == 2
       }
 
       assert {
-        settings
-          .withMaxPrefetchBatches(1)
-          .maxPrefetchBatches == 2
+        settings.withMaxPrefetchBatches(1).maxPrefetchBatches == 2
       }
     }
 
     it("should be able to create with and without deserializer creation effects") {
-      val deserializer = Deserializer[IO, String]
+      val deserializer         = Deserializer[IO, String]
       val deserializerResource = Resource.pure[IO, Deserializer[IO, String]](deserializer)
 
       ConsumerSettings(deserializer, deserializer)
@@ -284,17 +265,18 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
     it("should be able to implicitly create with and without deserializer creation effects") {
       val deserializerInstance =
-        Deserializer[IO, String]
-          .map(identity)
+        Deserializer[IO, String].map(identity)
 
       implicit val deserializer: Resource[IO, Deserializer[IO, String]] =
         Resource.pure(deserializerInstance)
 
       ConsumerSettings[IO, Int, Int]
-      ConsumerSettings[IO, String, Int].keyDeserializer
+      ConsumerSettings[IO, String, Int]
+        .keyDeserializer
         .use(IO.pure)
         .unsafeRunSync() shouldBe deserializerInstance
-      ConsumerSettings[IO, Int, String].valueDeserializer
+      ConsumerSettings[IO, Int, String]
+        .valueDeserializer
         .use(IO.pure)
         .unsafeRunSync() shouldBe deserializerInstance
       ConsumerSettings[IO, String, String]
@@ -302,7 +284,8 @@ final class ConsumerSettingsSpec extends BaseSpec {
 
     it("should have a Show instance and matching toString") {
       assert {
-        settings.show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default)" &&
+        settings
+          .show == "ConsumerSettings(closeTimeout = 20 seconds, commitTimeout = 15 seconds, pollInterval = 50 milliseconds, pollTimeout = 50 milliseconds, commitRecovery = Default)" &&
         settings.show == settings.toString
       }
     }
@@ -313,4 +296,5 @@ final class ConsumerSettingsSpec extends BaseSpec {
       keyDeserializer = Deserializer[IO, String],
       valueDeserializer = Deserializer[IO, String]
     )
+
 }
