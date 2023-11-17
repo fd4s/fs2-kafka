@@ -24,7 +24,7 @@ val scala213 = "2.13.12"
 
 val scala3 = "3.3.1"
 
-ThisBuild / tlBaseVersion := "3.2"
+ThisBuild / tlBaseVersion := "3.3"
 
 ThisBuild / tlCiReleaseBranches := Seq("series/3.x")
 
@@ -275,7 +275,14 @@ ThisBuild / mimaBinaryIssueFilters ++= {
   import com.typesafe.tools.mima.core.*
   Seq(
     ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
-    ProblemFilters.exclude[MissingClassProblem]("kafka.utils.VerifiableProperties")
+    ProblemFilters.exclude[MissingClassProblem]("kafka.utils.VerifiableProperties"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.AdminClientSettings.apply"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.TransactionalProducerRecords.apply"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.createAvroSerializer"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withCreateAvroSerializer")
   )
 }
 
