@@ -778,7 +778,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                    .evalMap { consumer =>
                      consumer
                        .assignmentStream
-                       .concurrently(consumer.records)
                        .evalMap(as => queue.offer(Some(as)))
                        .compile
                        .drain
@@ -837,7 +836,6 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                    .evalMap { consumer =>
                      consumer
                        .assignmentStream
-                       .concurrently(consumer.records)
                        .evalMap(as => queue.offer(Some(as)))
                        .compile
                        .drain
