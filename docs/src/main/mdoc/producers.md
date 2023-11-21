@@ -8,10 +8,11 @@ Producers support publishing of records. Producers make use of the [Java Kafka p
 The following imports are assumed throughout this page.
 
 ```scala mdoc:silent
+import scala.concurrent.duration._
+
 import cats.effect._
 import cats.syntax.all._
 import fs2.kafka._
-import scala.concurrent.duration._
 ```
 
 ## Serializers
@@ -33,9 +34,8 @@ For more involved types, we need to resort to custom serializers.
 `Serializer[F[_], A]` describes a function `A => F[Array[Byte]]`, while also having access to the topic name and record [`Headers`][headers]. There are many [functions][serializer$] available for creating custom serializers, with the most basic one being `instance`, which simply creates a serializer from a provided function.
 
 ```scala mdoc:silent
-Serializer.instance[IO, String] {
-  (topic, headers, s) =>
-    IO.pure(s.getBytes("UTF-8"))
+Serializer.instance[IO, String] { (topic, headers, s) =>
+  IO.pure(s.getBytes("UTF-8"))
 }
 ```
 
@@ -87,14 +87,16 @@ Serializer.delegate[IO, String] {
 If the serializer performs _side effects_, follow with `suspend` to capture them properly.
 
 ```scala mdoc:silent
-Serializer.delegate[IO, String] {
-   new KafkaSerializer[String] {
-    def serialize(topic: String, value: String): Array[Byte] = {
-      println(s"serializing record on topic $topic")
-      value.getBytes("UTF-8")
+Serializer
+  .delegate[IO, String] {
+    new KafkaSerializer[String] {
+      def serialize(topic: String, value: String): Array[Byte] = {
+        println(s"serializing record on topic $topic")
+        value.getBytes("UTF-8")
+      }
     }
   }
-}.suspend
+  .suspend
 ```
 
 Note that `close` and `configure` won't be called for the delegates.
@@ -105,8 +107,7 @@ In order to create a [`KafkaProducer`][kafkaproducer], we first need to create [
 
 ```scala mdoc:silent
 val producerSettings =
-  ProducerSettings[IO, String, String]
-    .withBootstrapServers("localhost:9092")
+  ProducerSettings[IO, String, String].withBootstrapServers("localhost:9092")
 ```
 
 We can also specify the serializers explicitly when necessary.
@@ -138,8 +139,10 @@ Once [`ProducerSettings`][producersettings] is defined, use `KafkaProducer.strea
 
 ```scala mdoc:silent
 object ProducerExample extends IOApp.Simple {
+
   val run: IO[Unit] =
     KafkaProducer.stream(producerSettings).compile.drain
+
 }
 ```
 
@@ -159,14 +162,16 @@ val consumerSettings =
     .withGroupId("group")
 
 object ProduceExample extends IOApp {
+
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaConsumer.stream(consumerSettings)
+      KafkaConsumer
+        .stream(consumerSettings)
         .subscribeTo("topic")
         .records
         .map { committable =>
-          val key = committable.record.key
-          val value = committable.record.value
+          val key    = committable.record.key
+          val value  = committable.record.value
           val record = ProducerRecord("topic", key, value)
           ProducerRecords.one(record)
         }
@@ -174,6 +179,7 @@ object ProduceExample extends IOApp {
 
     stream.compile.drain.as(ExitCode.Success)
   }
+
 }
 ```
 
@@ -185,18 +191,21 @@ If we're producing in multiple places in our stream, we can create the `KafkaPro
 
 ```scala mdoc:silent
 object PartitionedProduceExample extends IOApp {
+
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream(producerSettings)
+      KafkaProducer
+        .stream(producerSettings)
         .flatMap { producer =>
-          KafkaConsumer.stream(consumerSettings)
+          KafkaConsumer
+            .stream(consumerSettings)
             .subscribeTo("topic")
             .partitionedRecords
             .map { partition =>
               partition
                 .map { committable =>
-                  val key = committable.record.key
-                  val value = committable.record.value
+                  val key    = committable.record.key
+                  val value  = committable.record.value
                   val record = ProducerRecord("topic", key, value)
                   ProducerRecords.one(record)
                 }
@@ -207,6 +216,7 @@ object PartitionedProduceExample extends IOApp {
 
     stream.compile.drain.as(ExitCode.Success)
   }
+
 }
 ```
 
@@ -214,16 +224,19 @@ If we need more control of how records are produced, we can use `KafkaProducer#p
 
 ```scala mdoc:silent
 object KafkaProducerProduceExample extends IOApp {
+
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream(producerSettings)
+      KafkaProducer
+        .stream(producerSettings)
         .flatMap { producer =>
-          KafkaConsumer.stream(consumerSettings)
+          KafkaConsumer
+            .stream(consumerSettings)
             .subscribeTo("topic")
             .records
             .map { committable =>
-              val key = committable.record.key
-              val value = committable.record.value
+              val key    = committable.record.key
+              val value  = committable.record.value
               val record = ProducerRecord("topic", key, value)
               ProducerRecords.one(record)
             }
@@ -232,9 +245,9 @@ object KafkaProducerProduceExample extends IOApp {
             .evalMap(_.sequence)
         }
 
-
     stream.compile.drain.as(ExitCode.Success)
   }
+
 }
 ```
 
@@ -244,16 +257,19 @@ Sometimes there is a need to wait for individual `ProducerRecords` to send. In t
 
 ```scala mdoc:silent
 object KafkaProducerProduceFlattenExample extends IOApp {
+
   def run(args: List[String]): IO[ExitCode] = {
     val stream =
-      KafkaProducer.stream(producerSettings)
+      KafkaProducer
+        .stream(producerSettings)
         .flatMap { producer =>
-          KafkaConsumer.stream(consumerSettings)
+          KafkaConsumer
+            .stream(consumerSettings)
             .subscribeTo("topic")
             .records
             .map { committable =>
-              val key = committable.record.key
-              val value = committable.record.value
+              val key    = committable.record.key
+              val value  = committable.record.value
               val record = ProducerRecord("topic", key, value)
               ProducerRecords.one(record)
             }
@@ -262,9 +278,9 @@ object KafkaProducerProduceFlattenExample extends IOApp {
             }
         }
 
-
     stream.compile.drain.as(ExitCode.Success)
   }
+
 }
 ```
 

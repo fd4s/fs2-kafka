@@ -21,12 +21,11 @@ def createKafkaProducerUsingPem[F[_]: Sync, K, V](
   accessKey: String,
   accessCertificate: String
 )(implicit keySer: Serializer[F, K], valSer: Serializer[F, V]): ProducerSettings[F, K, V] =
-  ProducerSettings[F, K, V]
-    .withCredentials(
-      KafkaCredentialStore.fromPemStrings(
-        caCertificate,
-        accessKey,
-        accessCertificate
-      )
+  ProducerSettings[F, K, V].withCredentials(
+    KafkaCredentialStore.fromPemStrings(
+      caCertificate,
+      accessKey,
+      accessCertificate
     )
+  )
 ```

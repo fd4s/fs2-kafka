@@ -20,6 +20,7 @@ We start by defining the type we want to serialize or deserialize, and create a 
 
 ```scala mdoc:reset-object
 import cats.syntax.all._
+
 import vulcan.Codec
 
 final case class Person(name: String, age: Option[Int])
@@ -53,7 +54,7 @@ We can then create a `Serializer` and `Deserializer` instance for `Person`.
 
 ```scala mdoc:silent
 import cats.effect.Resource
-import fs2.kafka.{ValueSerializer, ValueDeserializer}
+import fs2.kafka.{ValueDeserializer, ValueSerializer}
 import fs2.kafka.vulcan.{avroDeserializer, avroSerializer}
 
 implicit val personSerializer: Resource[IO, ValueSerializer[IO, Person]] =
@@ -75,8 +76,7 @@ val consumerSettings =
     .withGroupId("group")
 
 val producerSettings =
-  ProducerSettings[IO, String, Person]
-    .withBootstrapServers("localhost:9092")
+  ProducerSettings[IO, String, Person].withBootstrapServers("localhost:9092")
 ```
 
 If we prefer, we can instead specify the `Serializer`s and `Deserializer`s explicitly.
@@ -88,8 +88,8 @@ ConsumerSettings(
   keyDeserializer = Deserializer[IO, String],
   valueDeserializer = personDeserializer
 ).withAutoOffsetReset(AutoOffsetReset.Earliest)
- .withBootstrapServers("localhost:9092")
- .withGroupId("group")
+  .withBootstrapServers("localhost:9092")
+  .withGroupId("group")
 
 ProducerSettings(
   keySerializer = Serializer[IO, String],
@@ -134,14 +134,14 @@ avroSettingsSharedClient.map { avroSettings =>
       keyDeserializer = Deserializer[IO, String],
       valueDeserializer = personDeserializer
     ).withAutoOffsetReset(AutoOffsetReset.Earliest)
-    .withBootstrapServers("localhost:9092")
-    .withGroupId("group")
+      .withBootstrapServers("localhost:9092")
+      .withGroupId("group")
 
- val producerSettings =
-  ProducerSettings(
-    keySerializer = Serializer[IO, String],
-    valueSerializer = personSerializer
-  ).withBootstrapServers("localhost:9092")
+  val producerSettings =
+    ProducerSettings(
+      keySerializer = Serializer[IO, String],
+      valueSerializer = personSerializer
+    ).withBootstrapServers("localhost:9092")
 
   (consumerSettings, producerSettings)
 }
@@ -156,20 +156,27 @@ A usage example:
 
 ```scala mdoc:reset
 import cats.effect.unsafe.implicits.global
-import fs2.kafka.vulcan.SchemaRegistryClientSettings
-import org.apache.avro.SchemaCompatibility.SchemaCompatibilityType
 import fs2.kafka.vulcan.testkit.SchemaSuite
+import fs2.kafka.vulcan.SchemaRegistryClientSettings
+
+import org.apache.avro.SchemaCompatibility.SchemaCompatibilityType
 import vulcan.Codec
 
 class MySpec extends SchemaSuite {
-  val checker = compatibilityChecker(SchemaRegistryClientSettings("https://some-schema-registry:1234"))
+
+  val checker = compatibilityChecker(
+    SchemaRegistryClientSettings("https://some-schema-registry:1234")
+  )
 
   override def munitFixtures = List(checker)
 
   test("my codec is compatible") {
     val myCodec: Codec[String] = ???
 
-    val compatibility = checker().assertReaderCompatibility(myCodec, "my-schema-subject").unsafeRunSync()
+    val compatibility = checker()
+      .assertReaderCompatibility(myCodec, "my-schema-subject")
+      .unsafeRunSync()
   }
+
 }
 ```
