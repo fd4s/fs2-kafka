@@ -63,6 +63,7 @@ import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartitio
   */
 sealed abstract class KafkaConsumer[F[_], K, V]
     extends KafkaConsume[F, K, V]
+    with KafkaConsumeChunk[F, K, V]
     with KafkaAssignment[F]
     with KafkaOffsetsV2[F]
     with KafkaSubscription[F]
