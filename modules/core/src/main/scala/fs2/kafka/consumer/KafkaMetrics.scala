@@ -6,13 +6,15 @@
 
 package fs2.kafka.consumer
 
-import org.apache.kafka.common.{MetricName, Metric}
+import org.apache.kafka.common.{Metric, MetricName}
 
 trait KafkaMetrics[F[_]] {
+
   /**
     * Returns consumer metrics.
     *
-    * @see org.apache.kafka.clients.consumer.KafkaConsumer#metrics
+    * @see
+    *   org.apache.kafka.clients.consumer.KafkaConsumer#metrics
     */
   def metrics: F[Map[MetricName, Metric]]
 }

@@ -6,15 +6,17 @@
 
 package fs2.kafka
 
-import cats._
-import cats.effect.IO
-import cats.effect.testkit.TestInstances
-import cats.tests._
-import org.scalacheck._
-
 import scala.util.Try
 
+import cats.*
+import cats.effect.testkit.TestInstances
+import cats.effect.IO
+import cats.tests.*
+
+import org.scalacheck.*
+
 trait BaseCatsSpec extends CatsSuite with BaseGenerators with TestInstances {
+
   implicit def deserializerEq[A](implicit A: Eq[IO[A]]): Eq[Deserializer[IO, A]] =
     Eq.instance { (d1, d2) =>
       Try {
@@ -35,8 +37,8 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators with TestInstances {
       !ba1.zip(ba2).exists { case (b1, b2) => b1 != b2 }
     }
 
-  implicit def serializerEq[A](
-    implicit A: Arbitrary[A],
+  implicit def serializerEq[A](implicit
+    A: Arbitrary[A],
     E: Eq[IO[Array[Byte]]]
   ): Eq[Serializer[IO, A]] =
     Eq.instance { (s1, s2) =>
@@ -55,7 +57,7 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators with TestInstances {
         forAll { (a: A) =>
           val r1 = s1.serialize(a)
           val r2 = s2.serialize(a)
-          r1 should contain theSameElementsInOrderAs (r2)
+          (r1 should contain).theSameElementsInOrderAs(r2)
         }
       }.isSuccess
     }
@@ -73,4 +75,5 @@ trait BaseCatsSpec extends CatsSuite with BaseGenerators with TestInstances {
 
   implicit val headerDeserializerUnitArbitrary: Arbitrary[HeaderDeserializer[Unit]] =
     Arbitrary(Gen.const(HeaderDeserializer.unit))
+
 }

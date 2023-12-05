@@ -7,21 +7,22 @@
 package fs2.kafka.vulcan
 
 /**
-  * The available options for [[SchemaRegistryClientSettings#withAuth]].
+  * The available options for [[SchemaRegistryClientSettings#withAuth]].<br><br>
   *
   * Available options include:<br>
-  * - [[Auth.Basic]] to authenticate with username and password,<br>
-  * - [[Auth.Bearer]] to authenticate with an authentication token,<br>
-  * - [[Auth.None]] to not provide any authentication details.
+  *   - [[Auth.Basic]] to authenticate with username and password,<br>
+  *   - [[Auth.Bearer]] to authenticate with an authentication token,<br>
+  *   - [[Auth.None]] to not provide any authentication details.
   */
 sealed abstract class Auth
 
 object Auth {
-  private[vulcan] final case class BasicAuth(username: String, password: String) extends Auth {
+
+  final private[vulcan] case class BasicAuth(username: String, password: String) extends Auth {
     override def toString: String = s"Basic($username)"
   }
 
-  private[vulcan] final case class BearerAuth(token: String) extends Auth {
+  final private[vulcan] case class BearerAuth(token: String) extends Auth {
     override def toString: String = "Bearer"
   }
 
@@ -46,4 +47,5 @@ object Auth {
     */
   val None: Auth =
     NoAuth
+
 }

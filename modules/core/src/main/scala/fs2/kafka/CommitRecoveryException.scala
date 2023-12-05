@@ -6,19 +6,19 @@
 
 package fs2.kafka
 
-import cats.instances.list._
-import cats.syntax.show._
-import fs2.kafka.instances._
-import fs2.kafka.internal.syntax._
+import cats.instances.list.*
+import cats.syntax.show.*
+import fs2.kafka.instances.*
+import fs2.kafka.internal.syntax.*
+
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{KafkaException, TopicPartition}
 
 /**
-  * [[CommitRecoveryException]] indicates that offset commit recovery was
-  * attempted `attempts` times for `offsets`, but that it wasn't able to
-  * complete successfully. The last encountered exception is provided as
-  * `lastException`.<br>
-  * <br>
+  * [[CommitRecoveryException]] indicates that offset commit recovery was attempted `attempts` times
+  * for `offsets`, but that it wasn't able to complete successfully. The last encountered exception
+  * is provided as `lastException`.<br><br>
+  *
   * Use [[CommitRecoveryException#apply]] to create a new instance.
   */
 sealed abstract class CommitRecoveryException(
@@ -26,26 +26,28 @@ sealed abstract class CommitRecoveryException(
   lastException: Throwable,
   offsets: Map[TopicPartition, OffsetAndMetadata]
 ) extends KafkaException({
-      offsets.toList.sorted.mkStringAppend {
-        case (append, (tp, oam)) =>
+      offsets
+        .toList
+        .sorted
+        .mkStringAppend { case (append, (tp, oam)) =>
           append(tp.show)
           append(" -> ")
           append(oam.show)
-      }(
-        start =
-          s"offset commit is still failing after $attempts attempts${if (offsets.nonEmpty) " for offsets: "
-          else ""}",
-        sep = ", ",
-        end = s"; last exception was: $lastException"
-      )
+        }(
+          start =
+            s"offset commit is still failing after $attempts attempts${if (offsets.nonEmpty) " for offsets: "
+              else ""}",
+          sep = ", ",
+          end = s"; last exception was: $lastException"
+        )
     })
 
 object CommitRecoveryException {
+
   /**
-    * Creates a new [[CommitRecoveryException]] indicating that offset
-    * commit recovery was attempted `attempts` times for `offsets` but
-    * that it wasn't able to complete successfully. The last exception
-    * encountered was `lastException`.
+    * Creates a new [[CommitRecoveryException]] indicating that offset commit recovery was attempted
+    * `attempts` times for `offsets` but that it wasn't able to complete successfully. The last
+    * exception encountered was `lastException`.
     */
   def apply(
     attempts: Int,
@@ -53,7 +55,10 @@ object CommitRecoveryException {
     offsets: Map[TopicPartition, OffsetAndMetadata]
   ): CommitRecoveryException =
     new CommitRecoveryException(attempts, lastException, offsets) {
+
       override def toString: String =
         s"fs2.kafka.CommitRecoveryException: $getMessage"
+
     }
+
 }

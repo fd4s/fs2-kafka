@@ -6,24 +6,27 @@
 
 package fs2.kafka.internal
 
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.CancellationException
+
+import cats.effect.std.CountDownLatch
 import cats.effect.unsafe.implicits.global
 import cats.effect.IO
-import fs2.kafka._
+import fs2.kafka.*
+import fs2.kafka.internal.syntax.*
 import fs2.kafka.BaseSpec
-import fs2.kafka.internal.syntax._
-import org.apache.kafka.common.KafkaFuture
 
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.internals.KafkaFutureImpl
-
-import java.util.concurrent.CancellationException
+import org.apache.kafka.common.KafkaFuture
 
 final class SyntaxSpec extends BaseSpec {
+
   describe("Map#filterKeysStrictValuesList") {
     it("should be the same as toList.collect") {
       forAll { (m: Map[Int, Int], p: Int => Boolean) =>
         assert {
-          m.filterKeysStrictValuesList(p) == m.toList.collect { case (k, v) if (p(k)) => v }
+          m.filterKeysStrictValuesList(p) == m.toList.collect { case (k, v) if p(k) => v }
         }
       }
     }
@@ -47,35 +50,42 @@ final class SyntaxSpec extends BaseSpec {
       assert {
         val headers = kafkaHeaders.asScala
         headers.toChain.size == 1 &&
-        headers("key").map(_.value.size) == Some(0)
+        headers("key").map(_.value.length).contains(0)
       }
     }
   }
 
   describe("KafkaFuture.cancelable") {
     it("should cancel future when fiber is cancelled") {
-      @volatile var isFutureCancelled = false
-
       val test =
         for {
-          gate <- IO.deferred[Unit]
-          futureIO: IO[KafkaFuture[Unit]] = gate.complete(()) >> IO {
-            // We need to return the original future after calling `whenComplete`, because the future returned by
-            // `whenComplete` doesn't propagate cancellation back to the original future.
-            val future = new KafkaFutureImpl[Unit]
-            future.whenComplete {
-              case (_, _: CancellationException) => isFutureCancelled = true
-              case _                             => ()
-            }
-            future
-          }
+          latch             <- CountDownLatch[IO](1)
+          isFutureStarted   <- IO(new AtomicBoolean)
+          isFutureCancelled <- IO(new AtomicBoolean)
+          futureIO: IO[KafkaFuture[Unit]] = IO {
+                                              isFutureStarted.set(true)
+                                              // We need to return the original future after calling `whenComplete`, because the future returned by
+                                              // `whenComplete` doesn't propagate cancellation back to the original future.
+                                              val future = new KafkaFutureImpl[Unit]
+                                              future.whenComplete {
+                                                case (_, _: CancellationException) =>
+                                                  latch
+                                                    .release
+                                                    .as(isFutureCancelled.set(true))
+                                                    .unsafeRunSync()
+                                                case _ => ()
+                                              }
+                                              future
+                                            }
           fiber <- futureIO.cancelable_.start
-          _ <- gate.get // wait for future to be created before canceling it
-          _ <- IO(assert(!isFutureCancelled))
-          _ <- fiber.cancel
-          _ <- IO(assert(isFutureCancelled))
+          _     <- IO.cede.whileM_(IO(!isFutureStarted.get))
+          _     <- IO(assert(!isFutureCancelled.get))
+          _     <- fiber.cancel
+          _     <- latch.await
+          _     <- IO(assert(isFutureCancelled.get))
         } yield ()
       test.unsafeRunSync()
     }
   }
+
 }

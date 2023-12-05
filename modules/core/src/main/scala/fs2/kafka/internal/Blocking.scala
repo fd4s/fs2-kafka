@@ -6,17 +6,19 @@
 
 package fs2.kafka.internal
 
-import cats.effect.{Async, Resource, Sync}
-
 import java.util.concurrent.Executors
+
 import scala.concurrent.ExecutionContext
-import cats.effect.syntax.async._
+
+import cats.effect.{Async, Resource, Sync}
+import cats.effect.syntax.async.*
 
 private[kafka] trait Blocking[F[_]] {
   def apply[A](a: => A): F[A]
 }
 
 private[kafka] object Blocking {
+
   def fromSync[F[_]: Sync]: Blocking[F] = new Blocking[F] {
     override def apply[A](a: => A): F[A] = Sync[F].blocking(a)
   }
@@ -30,15 +32,14 @@ private[kafka] object Blocking {
     Resource
       .make(
         F.delay(
-          Executors.newSingleThreadExecutor(
-            (runnable: Runnable) => {
-              val thread = new Thread(runnable)
-              thread.setName(s"$name-${thread.getId}")
-              thread.setDaemon(true)
-              thread
-            }
-          )
+          Executors.newSingleThreadExecutor { (runnable: Runnable) =>
+            val thread = new Thread(runnable)
+            thread.setName(s"$name-${thread.getId}")
+            thread.setDaemon(true)
+            thread
+          }
         )
       )(ex => F.delay(ex.shutdown()))
       .map(ex => fromExecutionContext(ExecutionContext.fromExecutor(ex)))
+
 }

@@ -6,41 +6,47 @@
 
 package fs2.kafka.internal
 
-import cats.effect.std.Semaphore
 import cats.effect.{Async, MonadCancelThrow, Resource}
-import cats.implicits._
-import fs2.kafka.internal.syntax._
-import fs2.kafka.producer.MkProducer
+import cats.effect.std.Semaphore
+import cats.implicits.*
 import fs2.kafka.{KafkaByteProducer, TransactionalProducerSettings}
+import fs2.kafka.internal.syntax.*
+import fs2.kafka.producer.MkProducer
 
-private[kafka] sealed abstract class WithTransactionalProducer[F[_]] {
+sealed abstract private[kafka] class WithTransactionalProducer[F[_]] {
+
   def apply[A](f: (KafkaByteProducer, Blocking[F], ExclusiveAccess[F, A]) => F[A]): F[A]
 
   def exclusiveAccess[A](f: (KafkaByteProducer, Blocking[F]) => F[A]): F[A] = apply {
     case (producer, blocking, exclusive) => exclusive(f(producer, blocking))
   }
 
-  def blocking[A](f: KafkaByteProducer => A): F[A] = apply {
-    case (producer, blocking, _) => blocking(f(producer))
+  def blocking[A](f: KafkaByteProducer => A): F[A] = apply { case (producer, blocking, _) =>
+    blocking(f(producer))
   }
+
 }
 
 private[kafka] object WithTransactionalProducer {
+
   def apply[F[_], K, V](
     mk: MkProducer[F],
     settings: TransactionalProducerSettings[F, K, V]
-  )(
-    implicit F: Async[F]
+  )(implicit
+    F: Async[F]
   ): Resource[F, WithTransactionalProducer[F]] =
     Resource[F, WithTransactionalProducer[F]] {
-      (mk(settings.producerSettings), Semaphore(1)).tupled.flatMap {
-        case (producer, semaphore) =>
-          val blocking = settings.producerSettings.customBlockingContext
+      (mk(settings.producerSettings), Semaphore(1))
+        .tupled
+        .flatMap { case (producer, semaphore) =>
+          val blocking = settings
+            .producerSettings
+            .customBlockingContext
             .fold(Blocking.fromSync[F])(Blocking.fromExecutionContext)
 
           val withProducer = create(producer, blocking, semaphore)
 
-          val initTransactions = withProducer.blocking { _.initTransactions() }
+          val initTransactions = withProducer.blocking(_.initTransactions())
 
           /*
           Deliberately does not use the exclusive access functionality to close the producer. The close method on
@@ -58,7 +64,7 @@ private[kafka] object WithTransactionalProducer {
           }
 
           initTransactions.as((withProducer, close))
-      }
+        }
     }
 
   private def create[F[_]: MonadCancelThrow](
@@ -66,9 +72,12 @@ private[kafka] object WithTransactionalProducer {
     _blocking: Blocking[F],
     transactionSemaphore: Semaphore[F]
   ): WithTransactionalProducer[F] = new WithTransactionalProducer[F] {
+
     override def apply[A](
       f: (KafkaByteProducer, Blocking[F], ExclusiveAccess[F, A]) => F[A]
     ): F[A] =
       f(producer, _blocking, transactionSemaphore.permit.surround)
+
   }
+
 }

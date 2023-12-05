@@ -9,11 +9,13 @@ package fs2.kafka.vulcan
 import cats.effect.{IO, Resource}
 import cats.effect.unsafe.implicits.global
 import fs2.kafka.{Headers, KeyDeserializer, ValueDeserializer}
+
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient
 import org.scalatest.funspec.AnyFunSpec
 import vulcan.Codec
 
 final class AvroDeserializerSpec extends AnyFunSpec {
+
   describe("AvroDeserializer") {
     it("can create a deserializer") {
       val forKey: Resource[IO, KeyDeserializer[IO, Int]] =
@@ -47,7 +49,7 @@ final class AvroDeserializerSpec extends AnyFunSpec {
 
     it("toString") {
       assert {
-        avroDeserializer[Int].toString() startsWith "AvroDeserializer$"
+        avroDeserializer[Int].toString().startsWith("AvroDeserializer$")
       }
     }
   }
@@ -65,4 +67,5 @@ final class AvroDeserializerSpec extends AnyFunSpec {
 
   val avroSettings: AvroSettings[IO] =
     AvroSettings(schemaRegistryClientSettings)
+
 }

@@ -7,9 +7,10 @@
 package fs2.kafka
 
 import cats.data.Chain
-import fs2.kafka.internal.converters.collection._
+import fs2.kafka.internal.converters.collection.*
 
 final class HeadersSpec extends BaseSpec {
+
   describe("Headers#empty") {
     it("should have toString as Headers()") {
       assert(Headers.empty.toString == "Headers()")
@@ -109,7 +110,7 @@ final class HeadersSpec extends BaseSpec {
   }
 
   describe("Headers#nonEmpty.asJava") {
-    val header = Header("key", Array[Byte]())
+    val header  = Header("key", Array[Byte]())
     val headers = Headers(header).asJava
 
     it("add(header) throws IllegalStateException") {
@@ -131,8 +132,8 @@ final class HeadersSpec extends BaseSpec {
     }
 
     it("lastHeader returns last header") {
-      val first = Header("key", Array[Byte](0))
-      val second = Header("key", Array[Byte](1))
+      val first    = Header("key", Array[Byte](0))
+      val second   = Header("key", Array[Byte](1))
       val multiple = Headers(first, second)
 
       multiple.asJava.lastHeader("key") shouldBe second
@@ -187,7 +188,7 @@ final class HeadersSpec extends BaseSpec {
           Header("key", Array[Byte](2))
         )
 
-      assert(headers("key").map(_.value.head) == Some(1.toByte))
+      assert(headers("key").map(_.value.head).contains(1.toByte))
     }
 
     it("should return true for existing key") {
@@ -274,4 +275,5 @@ final class HeadersSpec extends BaseSpec {
       assert(Headers.fromIterable(headers).toChain == Chain.fromSeq(headers))
     }
   }
+
 }

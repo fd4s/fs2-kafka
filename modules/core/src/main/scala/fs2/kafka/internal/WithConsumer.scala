@@ -7,16 +7,17 @@
 package fs2.kafka.internal
 
 import cats.effect.{Async, Resource}
-import cats.syntax.all._
-import fs2.kafka.consumer.MkConsumer
+import cats.syntax.all.*
 import fs2.kafka.{ConsumerSettings, KafkaByteConsumer}
-import fs2.kafka.internal.syntax._
+import fs2.kafka.consumer.MkConsumer
+import fs2.kafka.internal.syntax.*
 
-private[kafka] sealed abstract class WithConsumer[F[_]] {
+sealed abstract private[kafka] class WithConsumer[F[_]] {
   def blocking[A](f: KafkaByteConsumer => A): F[A]
 }
 
 private[kafka] object WithConsumer {
+
   def apply[F[_]: Async, K, V](
     mk: MkConsumer[F],
     settings: ConsumerSettings[F, K, V]
@@ -34,7 +35,8 @@ private[kafka] object WithConsumer {
               b(f(consumer))
           }
         }
-      }(_.blocking { _.close(settings.closeTimeout.toJava) })
+      }(_.blocking(_.close(settings.closeTimeout.toJava)))
     }
   }
+
 }

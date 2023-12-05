@@ -6,25 +6,26 @@
 
 package fs2.kafka
 
-import cats.effect._
-import cats.syntax.all._
-import fs2._
-import fs2.kafka.internal._
+import scala.annotation.nowarn
+
+import cats.effect.*
+import cats.syntax.all.*
+import fs2.*
+import fs2.kafka.internal.*
+import fs2.kafka.internal.converters.collection.*
 import fs2.kafka.producer.MkProducer
+
+import org.apache.kafka.common.Metric
+import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.PartitionInfo
 
-import scala.annotation.nowarn
-import fs2.kafka.internal.converters.collection._
-import org.apache.kafka.common.MetricName
-import org.apache.kafka.common.Metric
-
 /**
-  * [[KafkaProducerConnection]] represents a connection to a Kafka broker
-  * that can be used to create [[KafkaProducer]] instances. All [[KafkaProducer]]
-  * instances created from an given [[KafkaProducerConnection]] share a single
-  * underlying connection.
+  * [[KafkaProducerConnection]] represents a connection to a Kafka broker that can be used to create
+  * [[KafkaProducer]] instances. All [[KafkaProducer]] instances created from an given
+  * [[KafkaProducerConnection]] share a single underlying connection.
   */
 abstract class KafkaProducerConnection[F[_]] {
+
   def produce[K: KeySerializer[F, *], V: ValueSerializer[F, *]](
     records: ProducerRecords[K, V]
   ): F[F[ProducerResult[K, V]]]
@@ -32,7 +33,7 @@ abstract class KafkaProducerConnection[F[_]] {
   def metrics: F[Map[MetricName, Metric]]
 
   /**
-    * Creates a new [[KafkaProducer]]  using the provided serializers.
+    * Creates a new [[KafkaProducer]] using the provided serializers.
     *
     * {{{
     * KafkaProducerConnection.stream[F].using(settings).map(_.withSerializers(keySerializer, valueSerializer))
@@ -44,8 +45,8 @@ abstract class KafkaProducerConnection[F[_]] {
   ): KafkaProducer.PartitionsFor[F, K, V]
 
   /**
-    * Creates a new [[KafkaProducer]] in the `F` context,
-    * using serializers from the specified [[ProducerSettings]].
+    * Creates a new [[KafkaProducer]] in the `F` context, using serializers from the specified
+    * [[ProducerSettings]].
     *
     * {{{
     * KafkaProducerConnection.stream[F].using(settings).evalMap(_.withSerializersFrom(settings))
@@ -58,60 +59,62 @@ abstract class KafkaProducerConnection[F[_]] {
   def partitionsFor(
     topic: String
   ): F[List[PartitionInfo]]
+
 }
 
 object KafkaProducerConnection {
+
   /**
-    * Creates a new [[KafkaProducerConnection]] in the `Stream` context,
-    * using the specified [[ProducerSettings]].
+    * Creates a new [[KafkaProducerConnection]] in the `Stream` context, using the specified
+    * [[ProducerSettings]].
     *
     * {{{
     * KafkaProducerConnection.stream[F](settings)
     * }}}
     */
   def stream[F[_]](
-    settings: ProducerSettings[F, _, _]
-  )(
-    implicit F: Async[F],
+    settings: ProducerSettings[F, ?, ?]
+  )(implicit
+    F: Async[F],
     mk: MkProducer[F]
   ): Stream[F, KafkaProducerConnection[F]] = streamIn(settings)(F, F, mk)
 
   /**
-    * Like [[stream]], but allows use of different effect types for
-    * the allocating `Stream` and the allocated `KafkaProducerConnection`.
+    * Like [[stream]], but allows use of different effect types for the allocating `Stream` and the
+    * allocated `KafkaProducerConnection`.
     */
   def streamIn[F[_], G[_]](
-    settings: ProducerSettings[G, _, _]
-  )(
-    implicit F: Async[F],
+    settings: ProducerSettings[G, ?, ?]
+  )(implicit
+    F: Async[F],
     G: Async[G],
     mk: MkProducer[F]
   ): Stream[F, KafkaProducerConnection[G]] = Stream.resource(resourceIn(settings)(F, G, mk))
 
   /**
-    * Creates a new [[KafkaProducerConnection]] in the `Resource` context,
-    * using the specified [[ProducerSettings]].
+    * Creates a new [[KafkaProducerConnection]] in the `Resource` context, using the specified
+    * [[ProducerSettings]].
     *
     * {{{
     * KafkaProducerConnection.resource[F](settings)
     * }}}
     */
   def resource[F[_]](
-    settings: ProducerSettings[F, _, _]
-  )(
-    implicit F: Async[F],
+    settings: ProducerSettings[F, ?, ?]
+  )(implicit
+    F: Async[F],
     mk: MkProducer[F]
   ): Resource[F, KafkaProducerConnection[F]] =
     resourceIn(settings)(F, F, mk)
 
   /**
-    * Like [[resource]], but allows use of different effect types for
-    * the allocating `Resource` and the allocated `KafkaProducerConnection`.
+    * Like [[resource]], but allows use of different effect types for the allocating `Resource` and
+    * the allocated `KafkaProducerConnection`.
     */
   def resourceIn[F[_], G[_]](
-    settings: ProducerSettings[G, _, _]
-  )(
-    implicit F: Async[F],
+    settings: ProducerSettings[G, ?, ?]
+  )(implicit
+    F: Async[F],
     G: Async[G],
     mk: MkProducer[F]
   ): Resource[F, KafkaProducerConnection[G]] =
@@ -119,8 +122,8 @@ object KafkaProducerConnection {
       new KafkaProducerConnection[G] {
         override def produce[K, V](
           records: ProducerRecords[K, V]
-        )(
-          implicit keySerializer: KeySerializer[G, K],
+        )(implicit
+          keySerializer: KeySerializer[G, K],
           valueSerializer: ValueSerializer[G, V]
         ): G[G[ProducerResult[K, V]]] =
           KafkaProducer.produce[G, K, V](
@@ -131,7 +134,7 @@ object KafkaProducerConnection {
           )
 
         override def metrics: G[Map[MetricName, Metric]] =
-          withProducer.blocking { _.metrics().asScala.toMap }
+          withProducer.blocking(_.metrics().asScala.toMap)
         override def withSerializers[K, V](
           keySerializer: KeySerializer[G, K],
           valueSerializer: ValueSerializer[G, V]
@@ -144,7 +147,7 @@ object KafkaProducerConnection {
           (settings.keySerializer, settings.valueSerializer).mapN(withSerializers)
 
         override def partitionsFor(topic: String): G[List[PartitionInfo]] =
-          withProducer.blocking { _.partitionsFor(topic).asScala.toList }
+          withProducer.blocking(_.partitionsFor(topic).asScala.toList)
       }
     }
 
@@ -156,7 +159,9 @@ object KafkaProducerConnection {
   @nowarn("msg=never used")
   implicit private def mkAmbig1[F[_]]: MkProducer[F] =
     throw new AssertionError("should not be used")
+
   @nowarn("msg=never used")
   implicit private def mkAmbig2[F[_]]: MkProducer[F] =
     throw new AssertionError("should not be used")
+
 }

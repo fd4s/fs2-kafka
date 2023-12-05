@@ -6,42 +6,42 @@
 
 package fs2.kafka
 
-import cats.effect.Sync
-import fs2.kafka.internal.converters.collection._
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.UUID
-import scala.util.Failure
-import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}
-import org.apache.kafka.clients.admin.AdminClientConfig
-import org.apache.kafka.clients.consumer.{KafkaConsumer => KConsumer}
-import org.apache.kafka.clients.producer.{
-  ProducerConfig,
-  KafkaProducer => KProducer,
-  ProducerRecord => KProducerRecord
-}
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
-
-import scala.concurrent.duration._
-import org.apache.kafka.clients.admin.NewTopic
-
-import scala.util.Try
-import org.apache.kafka.clients.admin.AdminClient
-import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
-import org.apache.kafka.common.{KafkaException, TopicPartition}
 
 import scala.collection.mutable.ListBuffer
-import java.util.concurrent.TimeoutException
-import org.apache.kafka.common.serialization.StringSerializer
+import scala.concurrent.duration.*
+import scala.util.Failure
+import scala.util.Try
 
-import java.util.concurrent.TimeUnit
+import cats.effect.Sync
+import fs2.kafka.internal.converters.collection.*
+
+import com.dimafeng.testcontainers.{ForAllTestContainer, KafkaContainer}
+import org.apache.kafka.clients.admin.AdminClient
+import org.apache.kafka.clients.admin.AdminClientConfig
+import org.apache.kafka.clients.admin.NewTopic
+import org.apache.kafka.clients.consumer.{ConsumerConfig, OffsetAndMetadata}
+import org.apache.kafka.clients.consumer.KafkaConsumer as KConsumer
+import org.apache.kafka.clients.producer.{
+  KafkaProducer as KProducer,
+  ProducerConfig,
+  ProducerRecord as KProducerRecord
+}
+import org.apache.kafka.common.{KafkaException, TopicPartition}
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.StringSerializer
 import org.scalatest.Args
 import org.testcontainers.utility.DockerImageName
 
 abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
-  final val adminClientCloseTimeout: FiniteDuration = 2.seconds
+
+  final val adminClientCloseTimeout: FiniteDuration    = 2.seconds
   final val transactionTimeoutInterval: FiniteDuration = 1.second
 
-  final val consumerPollingTimeout: FiniteDuration = 1.second
+  final val consumerPollingTimeout: FiniteDuration     = 1.second
   protected val producerPublishTimeout: FiniteDuration = 10.seconds
 
   override def runTest(testName: String, args: Args) = super.runTest(testName, args)
@@ -51,20 +51,19 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
   private lazy val imageName = "confluentinc/cp-kafka"
 
   override val container: KafkaContainer =
-    new KafkaContainer(DockerImageName.parse(s"$imageName:$imageVersion"))
-      .configure { container =>
-        container
-          .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
-          .withEnv(
-            "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
-            transactionTimeoutInterval.toMillis.toString
-          )
-          .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
-          .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
-          .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
+    new KafkaContainer(DockerImageName.parse(s"$imageName:$imageVersion")).configure { container =>
+      container
+        .withEnv("KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1")
+        .withEnv(
+          "KAFKA_TRANSACTION_ABORT_TIMED_OUT_TRANSACTION_CLEANUP_INTERVAL_MS",
+          transactionTimeoutInterval.toMillis.toString
+        )
+        .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
+        .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
+        .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
 
-        ()
-      }
+      ()
+    }
 
   implicit final val stringSerializer: KafkaSerializer[String] = new StringSerializer
 
@@ -80,10 +79,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
       .configs(topicConfig.asJava)
 
     withAdminClient { adminClient =>
-      adminClient
-        .createTopics(Seq(newTopic).asJava)
-        .all
-        .get(2, TimeUnit.SECONDS)
+      adminClient.createTopics(Seq(newTopic).asJava).all.get(2, TimeUnit.SECONDS)
     }.map(_ => ())
   }
 
@@ -92,9 +88,9 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
   ): Try[T] = {
     val adminClient = AdminClient.create(
       Map[String, Object](
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers,
-        AdminClientConfig.CLIENT_ID_CONFIG -> "test-kafka-admin-client",
-        AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG -> "10000",
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG       -> container.bootstrapServers,
+        AdminClientConfig.CLIENT_ID_CONFIG               -> "test-kafka-admin-client",
+        AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG      -> "10000",
         AdminClientConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG -> "10000"
       ).asJava
     )
@@ -110,9 +106,9 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
   final def defaultConsumerProperties: Map[String, String] =
     Map(
-      ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers,
-      ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
-      ConsumerConfig.GROUP_ID_CONFIG -> "test-group-id",
+      ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG  -> container.bootstrapServers,
+      ConsumerConfig.AUTO_OFFSET_RESET_CONFIG  -> "earliest",
+      ConsumerConfig.GROUP_ID_CONFIG           -> "test-group-id",
       ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false"
     )
 
@@ -135,6 +131,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
   final class WithKafkaConsumer(
     nativeSettings: Map[String, AnyRef]
   ) {
+
     def apply[A](f: KConsumer[Array[Byte], Array[Byte]] => A): A = {
       val consumer: KConsumer[Array[Byte], Array[Byte]] =
         new KConsumer[Array[Byte], Array[Byte]](
@@ -146,6 +143,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
       try f(consumer)
       finally consumer.close()
     }
+
   }
 
   private[this] def nextTopicName(): String =
@@ -154,8 +152,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
   def consumeFirstKeyedMessageFrom[K, V](
     topic: String,
     customProperties: Map[String, Object] = Map.empty
-  )(
-    implicit
+  )(implicit
     keyDeserializer: KafkaDeserializer[K],
     valueDeserializer: KafkaDeserializer[V]
   ): (K, V) =
@@ -168,8 +165,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     topic: String,
     number: Int,
     customProperties: Map[String, Object] = Map.empty
-  )(
-    implicit
+  )(implicit
     keyDeserializer: KafkaDeserializer[K],
     valueDeserializer: KafkaDeserializer[V]
   ): List[(K, V)] =
@@ -188,8 +184,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     timeout: Duration = 10.seconds,
     resetTimeoutOnEachMessage: Boolean = true,
     customProperties: Map[String, Object] = Map.empty
-  )(
-    implicit
+  )(implicit
     keyDeserializer: KafkaDeserializer[K],
     valueDeserializer: KafkaDeserializer[V]
   ): Map[String, List[(K, V)]] = {
@@ -204,7 +199,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
     val messages = Try {
       val messagesBuffers = topics.map(_ -> ListBuffer.empty[(K, V)]).toMap
-      var messagesRead = 0
+      var messagesRead    = 0
       consumer.subscribe(topics.asJava)
       topics.foreach(consumer.partitionsFor)
 
@@ -232,16 +227,14 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     }
 
     consumer.close()
-    messages.recover {
-      case ex: KafkaException => throw new Exception("Kafka unavailable", ex)
-    }.get
+    messages.recover { case ex: KafkaException => throw new Exception("Kafka unavailable", ex) }.get
   }
 
   private def defaultProducerConfig =
     Map[String, String](
       ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> container.bootstrapServers,
-      ProducerConfig.MAX_BLOCK_MS_CONFIG -> 10000.toString,
-      ProducerConfig.RETRY_BACKOFF_MS_CONFIG -> 1000.toString
+      ProducerConfig.MAX_BLOCK_MS_CONFIG      -> 10000.toString,
+      ProducerConfig.RETRY_BACKOFF_MS_CONFIG  -> 1000.toString
     )
 
   def publishToKafka[T](
@@ -274,8 +267,8 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     }
   }
 
-  def publishToKafka[K, T](topic: String, messages: Seq[(K, T)])(
-    implicit keySerializer: KafkaSerializer[K],
+  def publishToKafka[K, T](topic: String, messages: Seq[(K, T)])(implicit
+    keySerializer: KafkaSerializer[K],
     serializer: KafkaSerializer[T]
   ): Unit = {
     val producer =
@@ -288,7 +281,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
     val tupleToRecord =
       (new KProducerRecord(topic, _: K, _: T)).tupled
 
-    val futureSend = tupleToRecord andThen producer.send
+    val futureSend = tupleToRecord.andThen(producer.send)
 
     val futures = messages.map(futureSend)
 
@@ -298,8 +291,9 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
 
     producer.close()
 
-    val _ = records.collectFirst {
-      case Failure(ex) => throw new Exception("Kafka unavialable", ex)
+    val _ = records.collectFirst { case Failure(ex) =>
+      throw new Exception("Kafka unavailable", ex)
     }
   }
+
 }

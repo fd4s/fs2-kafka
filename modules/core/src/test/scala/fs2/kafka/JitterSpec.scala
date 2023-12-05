@@ -6,10 +6,11 @@
 
 package fs2.kafka
 
-import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import cats.effect.IO
 
 final class JitterSpec extends BaseSpec {
+
   describe("Jitter#default") {
     it("should always apply jitter on values") {
       val jitter: Jitter[IO] = Jitter.default[IO].unsafeRunSync()
@@ -37,4 +38,5 @@ final class JitterSpec extends BaseSpec {
       }
     }
   }
+
 }

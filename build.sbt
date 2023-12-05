@@ -1,26 +1,34 @@
-val catsEffectVersion = "3.4.9"
+val catsEffectVersion = "3.5.2"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "7.3.3"
+val confluentVersion = "7.5.1"
 
-val fs2Version = "3.6.1"
+val fs2Version = "3.9.2"
 
-val kafkaVersion = "3.4.0"
+val kafkaVersion = "3.6.0"
 
-val testcontainersScalaVersion = "0.40.15"
+val testcontainersScalaVersion = "0.41.0"
+
+val disciplineVersion = "2.2.0"
+
+val logbackVersion = "1.3.11"
 
 val vulcanVersion = "1.9.0"
 
 val munitVersion = "0.7.29"
 
-val scala212 = "2.12.17"
+val scala212 = "2.12.18"
 
-val scala213 = "2.13.10"
+val scala213 = "2.13.12"
 
-val scala3 = "3.2.2"
+val scala3 = "3.3.1"
 
-ThisBuild / tlBaseVersion := "3.0"
+ThisBuild / tlBaseVersion := "3.3"
+
+ThisBuild / tlCiReleaseBranches := Seq("series/3.x")
+
+ThisBuild / tlSonatypeUseLegacyHost := true
 
 lazy val `fs2-kafka` = project
   .in(file("."))
@@ -29,7 +37,7 @@ lazy val `fs2-kafka` = project
     mimaReportBinaryIssues := {},
     scalaSettings,
     noPublishSettings,
-    console := (core / Compile / console).value,
+    console        := (core / Compile / console).value,
     Test / console := (core / Test / console).value
   )
   .enablePlugins(TypelevelMimaPlugin)
@@ -39,11 +47,11 @@ lazy val core = project
   .in(file("modules/core"))
   .settings(
     moduleName := "fs2-kafka",
-    name := moduleName.value,
+    name       := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
-        "co.fs2" %% "fs2-core" % fs2Version,
-        "org.typelevel" %% "cats-effect" % catsEffectVersion,
+        "co.fs2"          %% "fs2-core"      % fs2Version,
+        "org.typelevel"   %% "cats-effect"   % catsEffectVersion,
         "org.apache.kafka" % "kafka-clients" % kafkaVersion
       )
     ),
@@ -56,11 +64,11 @@ lazy val vulcan = project
   .in(file("modules/vulcan"))
   .settings(
     moduleName := "fs2-kafka-vulcan",
-    name := moduleName.value,
+    name       := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
-        "com.github.fd4s" %% "vulcan" % vulcanVersion,
-        "io.confluent" % "kafka-avro-serializer" % confluentVersion
+        "com.github.fd4s" %% "vulcan"                % vulcanVersion,
+        "io.confluent"     % "kafka-avro-serializer" % confluentVersion
       )
     ),
     publishSettings,
@@ -73,7 +81,7 @@ lazy val `vulcan-testkit-munit` = project
   .in(file("modules/vulcan-testkit-munit"))
   .settings(
     moduleName := "fs2-kafka-vulcan-testkit-munit",
-    name := moduleName.value,
+    name       := moduleName.value,
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
         "org.scalameta" %% "munit" % munitVersion
@@ -90,7 +98,7 @@ lazy val docs = project
   .in(file("docs"))
   .settings(
     moduleName := "fs2-kafka-docs",
-    name := moduleName.value,
+    name       := moduleName.value,
     dependencySettings,
     noPublishSettings,
     scalaSettings,
@@ -101,22 +109,21 @@ lazy val docs = project
   .enablePlugins(BuildInfoPlugin, DocusaurusPlugin, MdocPlugin, ScalaUnidocPlugin)
 
 lazy val dependencySettings = Seq(
-  resolvers += "confluent" at "https://packages.confluent.io/maven/",
+  resolvers += "confluent".at("https://packages.confluent.io/maven/"),
   libraryDependencies ++= Seq(
-    "com.dimafeng" %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
-    "com.dimafeng" %% "testcontainers-scala-kafka" % testcontainersScalaVersion,
-    "org.typelevel" %% "discipline-scalatest" % "2.2.0",
-    "org.typelevel" %% "cats-effect-laws" % catsEffectVersion,
-    "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion,
-    "ch.qos.logback" % "logback-classic" % "1.3.7"
+    "com.dimafeng"  %% "testcontainers-scala-scalatest" % testcontainersScalaVersion,
+    "com.dimafeng"  %% "testcontainers-scala-kafka"     % testcontainersScalaVersion,
+    "org.typelevel" %% "discipline-scalatest"           % disciplineVersion,
+    "org.typelevel" %% "cats-effect-laws"               % catsEffectVersion,
+    "org.typelevel" %% "cats-effect-testkit"            % catsEffectVersion,
+    "ch.qos.logback" % "logback-classic"                % logbackVersion
   ).map(_ % Test),
   libraryDependencies ++= {
     if (scalaVersion.value.startsWith("3")) Nil
     else
       Seq(
         compilerPlugin(
-          ("org.typelevel" %% "kind-projector" % "0.13.2")
-            .cross(CrossVersion.full)
+          ("org.typelevel" %% "kind-projector" % "0.13.2").cross(CrossVersion.full)
         )
       )
   },
@@ -135,11 +142,12 @@ lazy val dependencySettings = Seq(
 )
 
 lazy val mdocSettings = Seq(
-  mdoc := (Compile / run).evaluated,
-  scalacOptions --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
-  crossScalaVersions := Seq(scala213),
+  mdoc                                       := (Compile / run).evaluated,
+  scalacOptions                             --= Seq("-Xfatal-warnings", "-Ywarn-unused"),
+  crossScalaVersions                         := Seq(scala213),
   ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(core, vulcan),
-  ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory).value / "website" / "static" / "api",
+  ScalaUnidoc / unidoc / target := (LocalRootProject / baseDirectory)
+    .value / "website" / "static" / "api",
   cleanFiles += (ScalaUnidoc / unidoc / target).value,
   docusaurusCreateSite := docusaurusCreateSite
     .dependsOn(Compile / unidoc)
@@ -162,35 +170,35 @@ lazy val mdocSettings = Seq(
 
 lazy val buildInfoSettings = Seq(
   buildInfoPackage := "fs2.kafka.build",
-  buildInfoObject := "info",
+  buildInfoObject  := "info",
   buildInfoKeys := Seq[BuildInfoKey](
     scalaVersion,
     scalacOptions,
     sourceDirectory,
     ThisBuild / latestVersion,
-    BuildInfoKey.map(ThisBuild / version) {
-      case (_, v) => "latestSnapshotVersion" -> v
+    BuildInfoKey.map(ThisBuild / version) { case (_, v) =>
+      "latestSnapshotVersion" -> v
     },
-    BuildInfoKey.map(core / moduleName) {
-      case (k, v) => "core" ++ k.capitalize -> v
+    BuildInfoKey.map(core / moduleName) { case (k, v) =>
+      "core" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(core / crossScalaVersions) {
-      case (k, v) => "core" ++ k.capitalize -> v
+    BuildInfoKey.map(core / crossScalaVersions) { case (k, v) =>
+      "core" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(vulcan / moduleName) {
-      case (k, v) => "vulcan" ++ k.capitalize -> v
+    BuildInfoKey.map(vulcan / moduleName) { case (k, v) =>
+      "vulcan" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(vulcan / crossScalaVersions) {
-      case (k, v) => "vulcan" ++ k.capitalize -> v
+    BuildInfoKey.map(vulcan / crossScalaVersions) { case (k, v) =>
+      "vulcan" ++ k.capitalize -> v
     },
-    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) {
-      case (k, v) => "vulcanTestkitMunit" ++ k.capitalize -> v
+    BuildInfoKey.map(`vulcan-testkit-munit` / moduleName) { case (k, v) =>
+      "vulcanTestkitMunit" ++ k.capitalize -> v
     },
     LocalRootProject / organization,
     core / crossScalaVersions,
-    BuildInfoKey("fs2Version" -> fs2Version),
-    BuildInfoKey("kafkaVersion" -> kafkaVersion),
-    BuildInfoKey("vulcanVersion" -> vulcanVersion),
+    BuildInfoKey("fs2Version"       -> fs2Version),
+    BuildInfoKey("kafkaVersion"     -> kafkaVersion),
+    BuildInfoKey("vulcanVersion"    -> vulcanVersion),
     BuildInfoKey("confluentVersion" -> confluentVersion)
   )
 )
@@ -210,16 +218,13 @@ ThisBuild / githubWorkflowArtifactUpload := false
 
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
 
-ThisBuild / githubWorkflowPublishTargetBranches :=
-  Seq(RefPredicate.StartsWith(Ref.Tag("v")))
-
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
     List("tlRelease", "docs/docusaurusPublishGhpages"),
     env = Map(
-      "GIT_DEPLOY_KEY" -> "${{ secrets.GIT_DEPLOY_KEY }}",
-      "PGP_PASSPHRASE" -> "${{ secrets.PGP_PASSPHRASE }}",
-      "PGP_SECRET" -> "${{ secrets.PGP_SECRET }}",
+      "GIT_DEPLOY_KEY"    -> "${{ secrets.GIT_DEPLOY_KEY }}",
+      "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
+      "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
       "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
       "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
     )
@@ -229,16 +234,19 @@ ThisBuild / githubWorkflowPublish := Seq(
 lazy val publishSettings =
   metadataSettings ++ Seq(
     Test / publishArtifact := false,
-    pomIncludeRepository := (_ => false),
-    homepage := Some(url("https://fd4s.github.io/fs2-kafka")),
-    licenses := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
-    startYear := Some(2018),
+    pomIncludeRepository   := (_ => false),
+    homepage               := Some(url("https://fd4s.github.io/fs2-kafka")),
+    licenses               := List("Apache-2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
+    startYear              := Some(2018),
     headerLicense := Some(
-      de.heikoseeberger.sbtheader.License.ALv2(
-        s"${startYear.value.get}-${java.time.Year.now}",
-        "OVO Energy Limited",
-        HeaderLicenseStyle.SpdxSyntax
-      )
+      de.heikoseeberger
+        .sbtheader
+        .License
+        .ALv2(
+          s"${startYear.value.get}-${java.time.Year.now}",
+          "OVO Energy Limited",
+          HeaderLicenseStyle.SpdxSyntax
+        )
     ),
     headerSources / excludeFilter := HiddenFileFilter,
     developers := List(
@@ -264,28 +272,40 @@ lazy val publishSettings =
   )
 
 ThisBuild / mimaBinaryIssueFilters ++= {
-  import com.typesafe.tools.mima.core._
-  // format: off
-    Seq(
-      ProblemFilters.exclude[Problem]("fs2.kafka.internal.*")
-    )
-    // format: on
+  import com.typesafe.tools.mima.core.*
+  Seq(
+    ProblemFilters.exclude[Problem]("fs2.kafka.internal.*"),
+    ProblemFilters.exclude[MissingClassProblem]("kafka.utils.VerifiableProperties"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.AdminClientSettings.apply"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.TransactionalProducerRecords.apply"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.createAvroSerializer"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withCreateAvroSerializer")
+  )
 }
 
 lazy val noMimaSettings = Seq(mimaPreviousArtifacts := Set())
 
 lazy val noPublishSettings =
   publishSettings ++ Seq(
-    publish / skip := true,
+    publish / skip  := true,
     publishArtifact := false
   )
 
-ThisBuild / scalaVersion := scala213
+ThisBuild / scalaVersion       := scala213
 ThisBuild / crossScalaVersions := Seq(scala212, scala213, scala3)
 
 lazy val scalaSettings = Seq(
-  Compile / doc / scalacOptions += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007 but also suppresses genunine problems
+  Compile / doc / scalacOptions      += "-nowarn", // workaround for https://github.com/scala/bug/issues/12007 but also suppresses genunine problems
   Compile / console / scalacOptions --= Seq("-Xlint", "-Ywarn-unused"),
+  Compile / compile / scalacOptions --= {
+    if (tlIsScala3.value) Seq("-Wvalue-discard", "-Wunused:privates") else Seq.empty
+  },
+  Compile / compile / scalacOptions ++= {
+    if (tlIsScala3.value) Seq.empty else Seq("-Xsource:3")
+  },
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   Compile / unmanagedSourceDirectories ++=
     Seq(
@@ -299,9 +319,9 @@ lazy val scalaSettings = Seq(
 )
 
 lazy val testSettings = Seq(
-  Test / logBuffered := false,
+  Test / logBuffered       := false,
   Test / parallelExecution := false,
-  Test / testOptions += Tests.Argument("-oDF")
+  Test / testOptions       += Tests.Argument("-oDF")
 )
 
 def minorVersion(version: String): String = {
@@ -311,9 +331,11 @@ def minorVersion(version: String): String = {
 }
 
 val latestVersion = settingKey[String]("Latest stable released version")
-ThisBuild / latestVersion := tlLatestVersion.value.getOrElse(
-  throw new IllegalStateException("No tagged version found")
-)
+ThisBuild / latestVersion := tlLatestVersion
+  .value
+  .getOrElse(
+    throw new IllegalStateException("No tagged version found")
+  )
 
 val updateSiteVariables = taskKey[Unit]("Update site variables")
 ThisBuild / updateSiteVariables := {
@@ -322,9 +344,9 @@ ThisBuild / updateSiteVariables := {
 
   val variables =
     Map[String, String](
-      "organization" -> (LocalRootProject / organization).value,
+      "organization"   -> (LocalRootProject / organization).value,
       "coreModuleName" -> (core / moduleName).value,
-      "latestVersion" -> latestVersion.value,
+      "latestVersion"  -> latestVersion.value,
       "scalaPublishVersions" -> {
         val minorVersions = (core / crossScalaVersions).value.map(minorVersion)
         if (minorVersions.size <= 2) minorVersions.mkString(" and ")
@@ -336,7 +358,8 @@ ThisBuild / updateSiteVariables := {
     "// Generated by sbt. Do not edit directly."
 
   val fileContents =
-    variables.toList
+    variables
+      .toList
       .sortBy { case (key, _) => key }
       .map { case (key, value) => s"  $key: '$value'" }
       .mkString(s"$fileHeader\nmodule.exports = {\n", ",\n", "\n};\n")

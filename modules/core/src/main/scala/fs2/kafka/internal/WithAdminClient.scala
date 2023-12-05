@@ -7,18 +7,20 @@
 package fs2.kafka.internal
 
 import cats.effect.{Async, Resource, Sync}
-import cats.syntax.all._
-import fs2.kafka.AdminClientSettings
+import cats.syntax.all.*
 import fs2.kafka.admin.MkAdminClient
-import fs2.kafka.internal.syntax._
+import fs2.kafka.internal.syntax.*
+import fs2.kafka.AdminClientSettings
+
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.common.KafkaFuture
 
-private[kafka] sealed abstract class WithAdminClient[F[_]] {
+sealed abstract private[kafka] class WithAdminClient[F[_]] {
   def apply[A](f: AdminClient => KafkaFuture[A]): F[A]
 }
 
 private[kafka] object WithAdminClient {
+
   def apply[F[_], G[_]](
     mk: MkAdminClient[F],
     settings: AdminClientSettings
@@ -37,4 +39,5 @@ private[kafka] object WithAdminClient {
         (withAdminClient, close)
       }
     }
+
 }

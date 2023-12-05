@@ -1,21 +1,20 @@
 package fs2.kafka.docs
 
-import fs2.kafka.build.info._
+import fs2.kafka.build.info.*
 import java.nio.file.{FileSystems, Path}
-import scala.collection.Seq
 
 object Main {
   def sourceDirectoryPath(rest: String*): Path =
-    FileSystems.getDefault.getPath(sourceDirectory.getAbsolutePath, rest: _*)
+    FileSystems.getDefault.getPath(sourceDirectory.getAbsolutePath, rest *)
 
-  def minorVersion(version: String): String = {
-    val Array(major, minor, _) = version.split('.')
-    s"$major.$minor"
+  def minorVersion(version: String): String = version.split('.') match {
+    case Array(major, minor, _) => s"$major.$minor"
+    case _                      => throw new IllegalArgumentException(s"Invalid major/minor: $version")
   }
 
-  def majorVersion(version: String): String = {
-    val Array(major, _, _) = version.split('.')
-    major
+  def majorVersion(version: String): String = version.split('.') match {
+    case Array(major, _, _) => major
+    case _                  => throw new IllegalArgumentException(s"Invalid major: $version")
   }
 
   def minorVersionsString(versions: Seq[String]): String = {

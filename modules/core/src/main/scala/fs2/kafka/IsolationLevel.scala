@@ -7,15 +7,16 @@
 package fs2.kafka
 
 /**
-  * The available options for [[ConsumerSettings#withIsolationLevel]].<br>
-  * <br>
+  * The available options for [[ConsumerSettings#withIsolationLevel]].<br><br>
+  *
   * Available options include:<br>
-  * - [[IsolationLevel#ReadCommitted]] to only read committed records,<br>
-  * - [[IsolationLevel#ReadUncommitted]] to also read uncommitted records.
+  *   - [[IsolationLevel#ReadCommitted]] to only read committed records,<br>
+  *   - [[IsolationLevel#ReadUncommitted]] to also read uncommitted records.
   */
 sealed abstract class IsolationLevel
 
 object IsolationLevel {
+
   private[kafka] case object ReadCommittedIsolationLevel extends IsolationLevel {
     override def toString: String = "ReadCommitted"
   }
@@ -33,4 +34,5 @@ object IsolationLevel {
     * Option to read both committed and uncommitted records.
     */
   val ReadUncommitted: IsolationLevel = ReadUncommittedIsolationLevel
+
 }
