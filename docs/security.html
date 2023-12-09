@@ -12,13 +12,12 @@ any of the <code>*Settings</code> classes by using the <code>withProperties(kafk
   accessKey: <span class="hljs-type">String</span>,
   accessCertificate: <span class="hljs-type">String</span>
 )(<span class="hljs-keyword">implicit</span> keySer: <span class="hljs-type">Serializer</span>[<span class="hljs-type">F</span>, <span class="hljs-type">K</span>], valSer: <span class="hljs-type">Serializer</span>[<span class="hljs-type">F</span>, <span class="hljs-type">V</span>]): <span class="hljs-type">ProducerSettings</span>[<span class="hljs-type">F</span>, <span class="hljs-type">K</span>, <span class="hljs-type">V</span>] =
-  <span class="hljs-type">ProducerSettings</span>[<span class="hljs-type">F</span>, <span class="hljs-type">K</span>, <span class="hljs-type">V</span>]
-    .withCredentials(
-      <span class="hljs-type">KafkaCredentialStore</span>.fromPemStrings(
-        caCertificate,
-        accessKey,
-        accessCertificate
-      )
+  <span class="hljs-type">ProducerSettings</span>[<span class="hljs-type">F</span>, <span class="hljs-type">K</span>, <span class="hljs-type">V</span>].withCredentials(
+    <span class="hljs-type">KafkaCredentialStore</span>.fromPemStrings(
+      caCertificate,
+      accessKey,
+      accessCertificate
     )
+  )
 </code></pre>
 </span></div></article></div><div class="docs-prevnext"></div></div></div><nav class="onPageNav"><ul class="toc-headings"><li><a href="#security-certificates-trust-stores-and-passwords">Security: certificates, trust stores, and passwords</a></li></ul></nav></div><footer class="nav-footer" id="footer"><hr class="separator"/><section class="copyright">Copyright © 2018-2023 OVO Energy Limited.<br/>Icon by <a href="https://www.flaticon.com/authors/franco-averta" rel="noopener">Franco Averta</a>. <a href="https://creativecommons.org/licenses/by/3.0" rel="noopener">CC BY 3.0</a>.</section></footer></div></body></html>

@@ -59,8 +59,8 @@
 <p>The following imports are assumed throughout this page.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect._
 <span class="hljs-keyword">import</span> cats.syntax.all._
-<span class="hljs-keyword">import</span> fs2.<span class="hljs-type">Stream</span>
 <span class="hljs-keyword">import</span> fs2.kafka._
+<span class="hljs-keyword">import</span> fs2.<span class="hljs-type">Stream</span>
 </code></pre>
 <h2><a class="anchor" aria-hidden="true" id="settings"></a><a href="#settings" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Settings</h2>
 <p><a href="/fs2-kafka/api/fs2/kafka/AdminClientSettings.html"><code>AdminClientSettings</code></a> is provided to avoid having to deal with <code>String</code> key-value settings.</p>
@@ -91,19 +91,19 @@
   kafkaAdminClientResource[<span class="hljs-type">F</span>](<span class="hljs-string">"localhost:9092"</span>).use { client =&gt;
     <span class="hljs-keyword">for</span> {
       topicNames &lt;- client.listTopics.names
-      _ &lt;- client.describeTopics(topicNames.toList)
-      _ &lt;- client.createTopic(<span class="hljs-keyword">new</span> <span class="hljs-type">NewTopic</span>(<span class="hljs-string">"new-topic"</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1.</span>toShort))
-      _ &lt;- client.createTopics(<span class="hljs-keyword">new</span> <span class="hljs-type">NewTopic</span>(<span class="hljs-string">"newer-topic"</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1.</span>toShort) :: <span class="hljs-type">Nil</span>)
-      _ &lt;- client.createPartitions(<span class="hljs-type">Map</span>(<span class="hljs-string">"new-topic"</span> -&gt; <span class="hljs-type">NewPartitions</span>.increaseTo(<span class="hljs-number">4</span>)))
-      _ &lt;- client.deleteTopic(<span class="hljs-string">"new-topic"</span>)
-      _ &lt;- client.deleteTopics(<span class="hljs-string">"newer-topic"</span> :: <span class="hljs-type">Nil</span>)
+      _          &lt;- client.describeTopics(topicNames.toList)
+      _          &lt;- client.createTopic(<span class="hljs-keyword">new</span> <span class="hljs-type">NewTopic</span>(<span class="hljs-string">"new-topic"</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1.</span>toShort))
+      _          &lt;- client.createTopics(<span class="hljs-keyword">new</span> <span class="hljs-type">NewTopic</span>(<span class="hljs-string">"newer-topic"</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1.</span>toShort) :: <span class="hljs-type">Nil</span>)
+      _          &lt;- client.createPartitions(<span class="hljs-type">Map</span>(<span class="hljs-string">"new-topic"</span> -&gt; <span class="hljs-type">NewPartitions</span>.increaseTo(<span class="hljs-number">4</span>)))
+      _          &lt;- client.deleteTopic(<span class="hljs-string">"new-topic"</span>)
+      _          &lt;- client.deleteTopics(<span class="hljs-string">"newer-topic"</span> :: <span class="hljs-type">Nil</span>)
     } <span class="hljs-keyword">yield</span> ()
   }
 </code></pre>
 <h2><a class="anchor" aria-hidden="true" id="configurations"></a><a href="#configurations" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Configurations</h2>
 <p>We can edit the configuration of different resources, like topics and nodes.</p>
-<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> org.apache.kafka.common.config.<span class="hljs-type">ConfigResource</span>
-<span class="hljs-keyword">import</span> org.apache.kafka.clients.admin.{<span class="hljs-type">AlterConfigOp</span>, <span class="hljs-type">ConfigEntry</span>}
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> org.apache.kafka.clients.admin.{<span class="hljs-type">AlterConfigOp</span>, <span class="hljs-type">ConfigEntry</span>}
+<span class="hljs-keyword">import</span> org.apache.kafka.common.config.<span class="hljs-type">ConfigResource</span>
 
 <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">configOperations</span></span>[<span class="hljs-type">F</span>[_]: <span class="hljs-type">Async</span>]: <span class="hljs-type">F</span>[<span class="hljs-type">Unit</span>] =
   kafkaAdminClientResource[<span class="hljs-type">F</span>](<span class="hljs-string">"localhost:9092"</span>).use { client =&gt;
@@ -112,13 +112,15 @@
     <span class="hljs-keyword">for</span> {
       _ &lt;- client.describeConfigs(topic :: <span class="hljs-type">Nil</span>)
       _ &lt;- client.alterConfigs {
-        <span class="hljs-type">Map</span>(topic -&gt; <span class="hljs-type">List</span>(
-          <span class="hljs-keyword">new</span> <span class="hljs-type">AlterConfigOp</span>(
-            <span class="hljs-keyword">new</span> <span class="hljs-type">ConfigEntry</span>(<span class="hljs-string">"cleanup.policy"</span>, <span class="hljs-string">"delete"</span>),
-            <span class="hljs-type">AlterConfigOp</span>.<span class="hljs-type">OpType</span>.<span class="hljs-type">SET</span>
-          )
-        ))
-      }
+             <span class="hljs-type">Map</span>(
+               topic -&gt; <span class="hljs-type">List</span>(
+                 <span class="hljs-keyword">new</span> <span class="hljs-type">AlterConfigOp</span>(
+                   <span class="hljs-keyword">new</span> <span class="hljs-type">ConfigEntry</span>(<span class="hljs-string">"cleanup.policy"</span>, <span class="hljs-string">"delete"</span>),
+                   <span class="hljs-type">AlterConfigOp</span>.<span class="hljs-type">OpType</span>.<span class="hljs-type">SET</span>
+                 )
+               )
+             )
+           }
     } <span class="hljs-keyword">yield</span> ()
   }
 </code></pre>
@@ -135,23 +137,17 @@
   kafkaAdminClientResource[<span class="hljs-type">F</span>](<span class="hljs-string">"localhost:9092"</span>).use { client =&gt;
     <span class="hljs-keyword">for</span> {
       consumerGroupIds &lt;- client.listConsumerGroups.groupIds
-      _ &lt;- client.describeConsumerGroups(consumerGroupIds)
+      _                &lt;- client.describeConsumerGroups(consumerGroupIds)
       _ &lt;- consumerGroupIds.parTraverse { groupId =&gt;
-        client
-          .listConsumerGroupOffsets(groupId)
-          .partitionsToOffsetAndMetadata
-      }
+             client.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata
+           }
     } <span class="hljs-keyword">yield</span> ()
   }
 </code></pre>
 <h2><a class="anchor" aria-hidden="true" id="acls"></a><a href="#acls" aria-hidden="true" class="hash-link"><svg class="hash-link-icon" aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>ACLs</h2>
 <p>There are ACL management functions to describe, create and delete ACL entries.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> org.apache.kafka.common.acl._
-<span class="hljs-keyword">import</span> org.apache.kafka.common.resource.{
-  <span class="hljs-type">PatternType</span>,
-  <span class="hljs-type">ResourcePattern</span>,
-  <span class="hljs-type">ResourceType</span>
-}
+<span class="hljs-keyword">import</span> org.apache.kafka.common.resource.{<span class="hljs-type">PatternType</span>, <span class="hljs-type">ResourcePattern</span>, <span class="hljs-type">ResourceType</span>}
 
 <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">aclOperations</span></span>[<span class="hljs-type">F</span>[_]: <span class="hljs-type">Async</span>]: <span class="hljs-type">F</span>[<span class="hljs-type">Unit</span>] =
   kafkaAdminClientResource[<span class="hljs-type">F</span>](<span class="hljs-string">"localhost:9092"</span>).use { client =&gt;
@@ -159,14 +155,14 @@
       describedAcls &lt;- client.describeAcls(<span class="hljs-type">AclBindingFilter</span>.<span class="hljs-type">ANY</span>)
 
       aclEntry = <span class="hljs-keyword">new</span> <span class="hljs-type">AccessControlEntry</span>(
-        <span class="hljs-string">"User:ANONYMOUS"</span>,
-        <span class="hljs-string">"*"</span>,
-        <span class="hljs-type">AclOperation</span>.<span class="hljs-type">DESCRIBE</span>,
-        <span class="hljs-type">AclPermissionType</span>.<span class="hljs-type">ALLOW</span>
-      )
+                   <span class="hljs-string">"User:ANONYMOUS"</span>,
+                   <span class="hljs-string">"*"</span>,
+                   <span class="hljs-type">AclOperation</span>.<span class="hljs-type">DESCRIBE</span>,
+                   <span class="hljs-type">AclPermissionType</span>.<span class="hljs-type">ALLOW</span>
+                 )
       pattern = <span class="hljs-keyword">new</span> <span class="hljs-type">ResourcePattern</span>(<span class="hljs-type">ResourceType</span>.<span class="hljs-type">TOPIC</span>, <span class="hljs-string">"topic1"</span>, <span class="hljs-type">PatternType</span>.<span class="hljs-type">LITERAL</span>)
-      acl = <span class="hljs-keyword">new</span> <span class="hljs-type">AclBinding</span>(pattern, aclEntry)
-      _ &lt;- client.createAcls(<span class="hljs-type">List</span>(acl))
+      acl     = <span class="hljs-keyword">new</span> <span class="hljs-type">AclBinding</span>(pattern, aclEntry)
+      _      &lt;- client.createAcls(<span class="hljs-type">List</span>(acl))
 
       _ &lt;- client.deleteAcls(<span class="hljs-type">List</span>(<span class="hljs-type">AclBindingFilter</span>.<span class="hljs-type">ANY</span>))
     } <span class="hljs-keyword">yield</span> ()
