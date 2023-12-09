@@ -1,11 +1,13 @@
 package fs2.kafka.docs
 
-import fs2.kafka.build.info.*
 import java.nio.file.{FileSystems, Path}
 
+import fs2.kafka.build.info.*
+
 object Main {
+
   def sourceDirectoryPath(rest: String*): Path =
-    FileSystems.getDefault.getPath(sourceDirectory.getAbsolutePath, rest *)
+    FileSystems.getDefault.getPath(sourceDirectory.getAbsolutePath, rest*)
 
   def minorVersion(version: String): String = version.split('.') match {
     case Array(major, minor, _) => s"$major.$minor"
@@ -25,30 +27,30 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val scalaMinorVersion = minorVersion(scalaVersion)
-    val kafkaDocsVersion = minorVersion(kafkaVersion).filter(_ != '.')
+    val kafkaDocsVersion  = minorVersion(kafkaVersion).filter(_ != '.')
 
     val settings = mdoc
       .MainSettings()
       .withSiteVariables {
         Map(
-          "ORGANIZATION" -> organization,
-          "CORE_MODULE_NAME" -> coreModuleName,
-          "CORE_CROSS_SCALA_VERSIONS" -> minorVersionsString(coreCrossScalaVersions),
-          "VULCAN_MODULE_NAME" -> vulcanModuleName,
-          "VULCAN_CROSS_SCALA_VERSIONS" -> minorVersionsString(vulcanCrossScalaVersions),
+          "ORGANIZATION"                     -> organization,
+          "CORE_MODULE_NAME"                 -> coreModuleName,
+          "CORE_CROSS_SCALA_VERSIONS"        -> minorVersionsString(coreCrossScalaVersions),
+          "VULCAN_MODULE_NAME"               -> vulcanModuleName,
+          "VULCAN_CROSS_SCALA_VERSIONS"      -> minorVersionsString(vulcanCrossScalaVersions),
           "VULCAN_TESTKIT_MUNIT_MODULE_NAME" -> vulcanTestkitMunitModuleName,
-          "LATEST_VERSION" -> latestVersion,
-          "LATEST_SNAPSHOT_VERSION" -> latestSnapshotVersion,
-          "LATEST_MAJOR_VERSION" -> majorVersion(latestVersion),
-          "DOCS_SCALA_MINOR_VERSION" -> scalaMinorVersion,
-          "FS2_VERSION" -> fs2Version,
-          "KAFKA_VERSION" -> kafkaVersion,
-          "VULCAN_VERSION" -> vulcanVersion,
-          "CONFLUENT_VERSION" -> confluentVersion,
-          "KAFKA_DOCS_VERSION" -> kafkaDocsVersion,
-          "SCALA_PUBLISH_VERSIONS" -> minorVersionsString(crossScalaVersions),
-          "API_BASE_URL" -> s"/fs2-kafka/api/fs2/kafka",
-          "KAFKA_API_BASE_URL" -> s"https://kafka.apache.org/$kafkaDocsVersion/javadoc"
+          "LATEST_VERSION"                   -> latestVersion,
+          "LATEST_SNAPSHOT_VERSION"          -> latestSnapshotVersion,
+          "LATEST_MAJOR_VERSION"             -> majorVersion(latestVersion),
+          "DOCS_SCALA_MINOR_VERSION"         -> scalaMinorVersion,
+          "FS2_VERSION"                      -> fs2Version,
+          "KAFKA_VERSION"                    -> kafkaVersion,
+          "VULCAN_VERSION"                   -> vulcanVersion,
+          "CONFLUENT_VERSION"                -> confluentVersion,
+          "KAFKA_DOCS_VERSION"               -> kafkaDocsVersion,
+          "SCALA_PUBLISH_VERSIONS"           -> minorVersionsString(crossScalaVersions),
+          "API_BASE_URL"                     -> s"/fs2-kafka/api/fs2/kafka",
+          "KAFKA_API_BASE_URL"               -> s"https://kafka.apache.org/$kafkaDocsVersion/javadoc"
         )
       }
       .withScalacOptions(scalacOptions.mkString(" "))
@@ -58,4 +60,5 @@ object Main {
     val exitCode = mdoc.Main.process(settings)
     if (exitCode != 0) sys.exit(exitCode)
   }
+
 }

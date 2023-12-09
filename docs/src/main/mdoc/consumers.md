@@ -8,10 +8,11 @@ Consumers support subscribing to topics, record streaming and deserialization, a
 The following imports are assumed throughout this page.
 
 ```scala mdoc:silent
+import scala.concurrent.duration._
+
 import cats.effect._
 import cats.syntax.all._
 import fs2.kafka._
-import scala.concurrent.duration._
 ```
 
 ## Deserializers
@@ -33,9 +34,8 @@ For more involved types, we need to resort to custom deserializers.
 `Deserializer[F[_], A]` describes a function `Array[Byte] => F[A]`, while also having access to the topic name and record [`Headers`][headers]. There are many [functions][deserializer$] available for creating custom deserializers, with the most basic one being `instance`, which simply creates a deserializer from a provided function.
 
 ```scala mdoc:silent
-Deserializer.instance {
-  (topic, headers, bytes) =>
-    IO.pure(bytes.dropWhile(_ == 0))
+Deserializer.instance { (topic, headers, bytes) =>
+  IO.pure(bytes.dropWhile(_ == 0))
 }
 ```
 
@@ -87,14 +87,16 @@ Deserializer.delegate[IO, String] {
 If the deserializer performs _side effects_, follow with `suspend` to capture them properly.
 
 ```scala mdoc:silent
-Deserializer.delegate[IO, String] {
-   new KafkaDeserializer[String] {
-    def deserialize(topic: String, data: Array[Byte]): String = {
-      println(s"deserializing record on topic $topic")
-      new String(data)
+Deserializer
+  .delegate[IO, String] {
+    new KafkaDeserializer[String] {
+      def deserialize(topic: String, data: Array[Byte]): String = {
+        println(s"deserializing record on topic $topic")
+        new String(data)
+      }
     }
   }
-}.suspend
+  .suspend
 ```
 
 Note that `close` and `configure` won't be called for the delegates.
@@ -118,8 +120,8 @@ ConsumerSettings(
   keyDeserializer = Deserializer[IO, String],
   valueDeserializer = Deserializer[IO, String]
 ).withAutoOffsetReset(AutoOffsetReset.Earliest)
- .withBootstrapServers("localhost:9092")
- .withGroupId("group")
+  .withBootstrapServers("localhost:9092")
+  .withGroupId("group")
 ```
 
 [`ConsumerSettings`][consumersettings] provides functions for configuring both the Java Kafka consumer and options specific to the library. If functions for configuring certain properties of the Java Kafka consumer is missing, we can instead use `withProperty` or `withProperties` together with constants from [`ConsumerConfig`][consumerconfig]. Available properties for the Java Kafka consumer are described in the [documentation](http://kafka.apache.org/documentation/#consumerconfigs).
@@ -158,8 +160,10 @@ Once [`ConsumerSettings`][consumersettings] is defined, use `KafkaConsumer.strea
 
 ```scala mdoc:silent
 object ConsumerExample extends IOApp.Simple {
+
   val run: IO[Unit] =
     KafkaConsumer.stream(consumerSettings).compile.drain
+
 }
 ```
 
@@ -173,10 +177,10 @@ We can use `subscribe` with a non-empty collection of topics, or `subscribeTo` f
 
 ```scala mdoc:silent
 object ConsumerSubscribeExample extends IOApp.Simple {
+
   val run: IO[Unit] =
-    KafkaConsumer.stream(consumerSettings)
-      .subscribeTo("topic")
-      .compile.drain
+    KafkaConsumer.stream(consumerSettings).subscribeTo("topic").compile.drain
+
 }
 ```
 
@@ -188,11 +192,10 @@ Once subscribed to at least one topic, we can use `stream` for a `Stream` of [`C
 
 ```scala mdoc:silent
 object ConsumerStreamExample extends IOApp.Simple {
+
   val run: IO[Unit] =
-    KafkaConsumer.stream(consumerSettings)
-      .subscribeTo("topic")
-      .records
-      .compile.drain
+    KafkaConsumer.stream(consumerSettings).subscribeTo("topic").records.compile.drain
+
 }
 ```
 
@@ -202,24 +205,26 @@ When using `stream`, records on all assigned partitions end up in the same `Stre
 
 ```scala mdoc:silent
 object ConsumerPartitionedStreamExample extends IOApp.Simple {
+
   val run: IO[Unit] = {
     def processRecord(record: ConsumerRecord[String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
     val stream =
-      KafkaConsumer.stream(consumerSettings)
+      KafkaConsumer
+        .stream(consumerSettings)
         .subscribeTo("topic")
         .partitionedRecords
         .map { partitionStream =>
-          partitionStream
-            .evalMap { committable =>
-              processRecord(committable.record)
-            }
+          partitionStream.evalMap { committable =>
+            processRecord(committable.record)
+          }
         }
         .parJoinUnbounded
 
     stream.compile.drain
   }
+
 }
 ```
 
@@ -243,12 +248,14 @@ When processing of records is independent of each other, as is the case with `pr
 
 ```scala mdoc:silent
 object ConsumerMapAsyncExample extends IOApp.Simple {
+
   val run: IO[Unit] = {
     def processRecord(record: ConsumerRecord[String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
     val stream =
-      KafkaConsumer.stream(consumerSettings)
+      KafkaConsumer
+        .stream(consumerSettings)
         .subscribeTo("topic")
         .records
         .mapAsync(25) { committable =>
@@ -257,6 +264,7 @@ object ConsumerMapAsyncExample extends IOApp.Simple {
 
     stream.compile.drain
   }
+
 }
 ```
 
@@ -270,22 +278,24 @@ We should keep the [`CommittableOffset`][committableoffset] in our `Stream` once
 
 ```scala mdoc:silent
 object ConsumerCommitBatchExample extends IOApp.Simple {
+
   val run: IO[Unit] = {
     def processRecord(record: ConsumerRecord[String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
     val stream =
-      KafkaConsumer.stream(consumerSettings)
+      KafkaConsumer
+        .stream(consumerSettings)
         .subscribeTo("topic")
         .records
         .mapAsync(25) { committable =>
-          processRecord(committable.record)
-            .as(committable.offset)
+          processRecord(committable.record).as(committable.offset)
         }
         .through(commitBatchWithin(500, 15.seconds))
 
     stream.compile.drain
   }
+
 }
 ```
 
@@ -303,18 +313,25 @@ With the fs2-kafka you could gracefully shutdown a `KafkaConsumer`. Consider thi
 
 ```scala mdoc:silent
 object NoGracefulShutdownExample extends IOApp.Simple {
+
   val run: IO[Unit] = {
     def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
     def run(consumer: KafkaConsumer[IO, String, String]): IO[Unit] = {
-      consumer.subscribeTo("topic") >> consumer.stream.evalMap { msg =>
-        processRecord(msg).as(msg.offset)
-      }.through(commitBatchWithin(100, 15.seconds)).compile.drain
+      consumer.subscribeTo("topic") >> consumer
+        .stream
+        .evalMap { msg =>
+          processRecord(msg).as(msg.offset)
+        }
+        .through(commitBatchWithin(100, 15.seconds))
+        .compile
+        .drain
     }
 
     KafkaConsumer.resource(consumerSettings).use(run)
   }
+
 }
 ```
 
@@ -333,46 +350,66 @@ We could combine `stopConsuming` with the custom resource handling and implement
 import cats.effect.{Deferred, Ref}
 
 object WithGracefulShutdownExampleCE2 extends IOApp.Simple {
+
   val run: IO[Unit] = {
     def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
     def run(consumer: KafkaConsumer[IO, String, String]): IO[Unit] = {
-      consumer.subscribeTo("topic") >> consumer.stream.evalMap { msg =>
-        processRecord(msg).as(msg.offset)
-      }.through(commitBatchWithin(100, 15.seconds)).compile.drain
+      consumer.subscribeTo("topic") >> consumer
+        .stream
+        .evalMap { msg =>
+          processRecord(msg).as(msg.offset)
+        }
+        .through(commitBatchWithin(100, 15.seconds))
+        .compile
+        .drain
     }
 
     def handleError(e: Throwable): IO[Unit] = IO(println(e.toString))
 
     for {
-      stoppedDeferred <- Deferred[IO, Either[Throwable, Unit]] // [1]
-      gracefulShutdownStartedRef <- Ref[IO].of(false) // [2]
-      _ <- KafkaConsumer.resource(consumerSettings)
-        .allocated.bracketCase { case (consumer, _) => // [3]
-          run(consumer).attempt.flatMap { result: Either[Throwable, Unit] => // [4]
-            gracefulShutdownStartedRef.get.flatMap {
-              case true => stoppedDeferred.complete(result) // [5]
-              case false => IO.pure(result).rethrow // [6]
-            }
-          }.uncancelable // [7]
-        } { case ((consumer, closeConsumer), exitCase) => // [8]
-          (exitCase match {
-            case Outcome.Errored(e) => handleError(e) // [9]
-            case _ => for {
-              _ <- gracefulShutdownStartedRef.set(true) // [10]
-              _ <- consumer.stopConsuming // [11]
-              stopResult <- stoppedDeferred.get // [12]
-                .timeoutTo(10.seconds, IO.pure(Left(new RuntimeException("Graceful shutdown timed out")))) // [13]
-              _ <- stopResult match { // [14]
-                case Right(()) => IO.unit
-                case Left(e) => handleError(e)
-              }
-            } yield ()
-          }).guarantee(closeConsumer) // [15]
-        }
+      stoppedDeferred            <- Deferred[IO, Either[Throwable, Unit]] // [1]
+      gracefulShutdownStartedRef <- Ref[IO].of(false)                     // [2]
+      _ <- KafkaConsumer
+             .resource(consumerSettings)
+             .allocated
+             .bracketCase { case (consumer, _) => // [3]
+               run(consumer)
+                 .attempt
+                 .flatMap { result: Either[Throwable, Unit] => // [4]
+                   gracefulShutdownStartedRef
+                     .get
+                     .flatMap {
+                       case true  => stoppedDeferred.complete(result) // [5]
+                       case false => IO.pure(result).rethrow          // [6]
+                     }
+                 }
+                 .uncancelable // [7]
+             } { case ((consumer, closeConsumer), exitCase) => // [8]
+               (exitCase match {
+                 case Outcome.Errored(e) => handleError(e) // [9]
+                 case _ =>
+                   for {
+                     _ <- gracefulShutdownStartedRef.set(true) // [10]
+                     _ <- consumer.stopConsuming               // [11]
+                     stopResult <-
+                       stoppedDeferred
+                         .get // [12]
+                         .timeoutTo(
+                           10.seconds,
+                           IO.pure(Left(new RuntimeException("Graceful shutdown timed out")))
+                         ) // [13]
+                     _ <- stopResult match { // [14]
+                            case Right(()) => IO.unit
+                            case Left(e)   => handleError(e)
+                          }
+                   } yield ()
+               }).guarantee(closeConsumer) // [15]
+             }
     } yield ()
   }
+
 }
 ```
 
@@ -396,42 +433,57 @@ For cats-effect 3 the example above will not work as in cats-effect 2, because i
 
 ```scala mdoc:silent
 object WithGracefulShutdownExampleCE3 extends IOApp.Simple {
+
   val run: IO[Unit] = {
     def processRecord(record: CommittableConsumerRecord[IO, String, String]): IO[Unit] =
       IO(println(s"Processing record: $record"))
 
     def run(consumer: KafkaConsumer[IO, String, String]): IO[Unit] = {
-      consumer.subscribeTo("topic") >> consumer.stream.evalMap { msg =>
-        processRecord(msg).as(msg.offset)
-      }.through(commitBatchWithin(100, 15.seconds)).compile.drain
+      consumer.subscribeTo("topic") >> consumer
+        .stream
+        .evalMap { msg =>
+          processRecord(msg).as(msg.offset)
+        }
+        .through(commitBatchWithin(100, 15.seconds))
+        .compile
+        .drain
     }
 
-    KafkaConsumer.resource(consumerSettings).use { consumer => // [1]
-      IO.uncancelable { poll => // [2]
-        for {
-          runFiber <- run(consumer).start // [3]
-          _ <- poll(runFiber.join).onCancel { // [4]
-            for {
-              _ <- IO(println("Starting graceful shutdown"))
-              _ <- consumer.stopConsuming // [5]
-              shutdownOutcome <- runFiber.join.timeoutTo[Outcome[IO, Throwable, Unit]]( // [6]
-                20.seconds,
-                IO.pure(Outcome.Errored(new RuntimeException("Graceful shutdown timed out")))
-              )
-              _ <- shutdownOutcome match { // [7]
-                case Outcome.Succeeded(_) =>
-                  IO(println("Succeeded in graceful shutdown"))
-                case Outcome.Canceled() =>
-                  IO(println("Canceled in graceful shutdown")) >> runFiber.cancel
-                case Outcome.Errored(e) =>
-                  IO(println("Failed to shutdown gracefully")) >> runFiber.cancel >> IO.raiseError(e)
-              }
-            } yield ()
-          }
-        } yield ()
+    KafkaConsumer
+      .resource(consumerSettings)
+      .use { consumer =>          // [1]
+        IO.uncancelable { poll => // [2]
+          for {
+            runFiber <- run(consumer).start // [3]
+            _ <- poll(runFiber.join).onCancel { // [4]
+                   for {
+                     _ <- IO(println("Starting graceful shutdown"))
+                     _ <- consumer.stopConsuming // [5]
+                     shutdownOutcome <-
+                       runFiber
+                         .join
+                         .timeoutTo[Outcome[IO, Throwable, Unit]]( // [6]
+                           20.seconds,
+                           IO.pure(
+                             Outcome.Errored(new RuntimeException("Graceful shutdown timed out"))
+                           )
+                         )
+                     _ <- shutdownOutcome match { // [7]
+                            case Outcome.Succeeded(_) =>
+                              IO(println("Succeeded in graceful shutdown"))
+                            case Outcome.Canceled() =>
+                              IO(println("Canceled in graceful shutdown")) >> runFiber.cancel
+                            case Outcome.Errored(e) =>
+                              IO(println("Failed to shutdown gracefully")) >> runFiber.cancel >> IO
+                                .raiseError(e)
+                          }
+                   } yield ()
+                 }
+          } yield ()
+        }
       }
-    }
   }
+
 }
 ```
 

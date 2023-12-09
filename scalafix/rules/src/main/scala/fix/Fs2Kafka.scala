@@ -1,9 +1,11 @@
 package fix
 
-import scalafix.v1._
 import scala.meta._
 
+import scalafix.v1._
+
 class Fs2Kafka extends SemanticRule("Fs2Kafka") {
+
   override def fix(implicit doc: SemanticDocument): Patch =
     reorderPassthroughParams
 
@@ -32,38 +34,42 @@ class Fs2Kafka extends SemanticRule("Fs2Kafka") {
     val TransactionalProducerRecords_one_M =
       SymbolMatcher.normalized("fs2/kafka/TransactionalProducerRecords.one.")
 
-    doc.tree.collect {
-      // ProducerRecords[K, V, P] -> ProducerRecords[K, V]
-      case term @ Type.Apply(ProducerRecords_M(fun), List(k, v, p)) =>
-        Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
-      // ProducerRecords[F, K, V, P] -> ProducerRecords[F, K, V]
-      case term @ Term.ApplyType(ProducerRecords_M(fun), List(f, k, v, p)) =>
-        Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
-      // ProducerRecords.one[K, V, P] -> ProducerRecords.one[K, V]
-      case term @ Term.ApplyType(ProducerRecords_one_M(fun), List(k, v, p)) =>
-        Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
-      // ProducerResult[K, V, P] -> ProducerResult[K, V]
-      case term @ Type.Apply(ProducerResult_M(fun), List(k, v, p)) =>
-        Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
-      case term @ Term.ApplyType(ProducerResult_M(fun), List(k, v, p)) =>
-        Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
-      // TransactionalProducerResult[F, K, V, P] -> TransactionalProducerResult[F, K, V]
-      case term @ Type.Apply(
-            TransactionalProducerRecords_M(fun),
-            List(f, k, v, p)
-          ) =>
-        Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
-      case term @ Term.ApplyType(
-            TransactionalProducerRecords_M(fun),
-            List(f, k, v, p)
-          ) =>
-        Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
-      // TransactionalProducerRecords.one[F, K, V, P] -> TransactionalProducerRecords.one[F, K, V]
-      case term @ Term.ApplyType(
-            TransactionalProducerRecords_one_M(fun),
-            List(f, k, v, p)
-          ) =>
-        Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
-    }.asPatch
+    doc
+      .tree
+      .collect {
+        // ProducerRecords[K, V, P] -> ProducerRecords[K, V]
+        case term @ Type.Apply(ProducerRecords_M(fun), List(k, v, p)) =>
+          Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
+        // ProducerRecords[F, K, V, P] -> ProducerRecords[F, K, V]
+        case term @ Term.ApplyType(ProducerRecords_M(fun), List(f, k, v, p)) =>
+          Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
+        // ProducerRecords.one[K, V, P] -> ProducerRecords.one[K, V]
+        case term @ Term.ApplyType(ProducerRecords_one_M(fun), List(k, v, p)) =>
+          Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
+        // ProducerResult[K, V, P] -> ProducerResult[K, V]
+        case term @ Type.Apply(ProducerResult_M(fun), List(k, v, p)) =>
+          Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
+        case term @ Term.ApplyType(ProducerResult_M(fun), List(k, v, p)) =>
+          Patch.replaceTree(term, s"${fun.syntax}[$p, $k, $v]")
+        // TransactionalProducerResult[F, K, V, P] -> TransactionalProducerResult[F, K, V]
+        case term @ Type.Apply(
+              TransactionalProducerRecords_M(fun),
+              List(f, k, v, p)
+            ) =>
+          Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
+        case term @ Term.ApplyType(
+              TransactionalProducerRecords_M(fun),
+              List(f, k, v, p)
+            ) =>
+          Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
+        // TransactionalProducerRecords.one[F, K, V, P] -> TransactionalProducerRecords.one[F, K, V]
+        case term @ Term.ApplyType(
+              TransactionalProducerRecords_one_M(fun),
+              List(f, k, v, p)
+            ) =>
+          Patch.replaceTree(term, s"${fun.syntax}[$f, $p, $k, $v]")
+      }
+      .asPatch
   }
+
 }
