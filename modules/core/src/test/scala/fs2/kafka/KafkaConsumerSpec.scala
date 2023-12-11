@@ -16,6 +16,7 @@ import cats.effect.unsafe.implicits.global
 import cats.effect.Ref
 import cats.syntax.all.*
 import fs2.concurrent.SignallingRef
+import fs2.kafka.consumer.KafkaConsumeChunk.CommitNow
 import fs2.kafka.internal.converters.collection.*
 import fs2.Stream
 
@@ -1170,6 +1171,43 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           .compile
           .drain
           .unsafeRunSync()
+      }
+    }
+  }
+
+  describe("KafkaConsumer#consumeChunk") {
+    it("should process the messages and commit the offsets") {
+      withTopic { topic =>
+        val produced = (0 until 5).map(n => s"key-$n" -> s"value-$n")
+        publishToKafka(topic, produced)
+
+        val consumed = for {
+          ref <- Ref.of[IO, Vector[(String, String)]](Vector.empty)
+          _ <- KafkaConsumer
+                 .stream(consumerSettings[IO])
+                 .evalTap(_.assign(topic))
+                 .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+                 .evalMap(
+                   _.consumeChunk(chunk =>
+                     chunk
+                       .traverse(record => ref.getAndUpdate(_.appended(record.key -> record.value)))
+                       .as(CommitNow)
+                   )
+                 ).interruptAfter(10.seconds).compile.drain
+          res <- ref.get
+        } yield res
+
+        val res = consumed.unsafeRunSync()
+
+        (res should contain).theSameElementsInOrderAs(produced)
+
+        val topicPartition = new TopicPartition(topic, 0)
+
+        val actuallyCommitted = withKafkaConsumer(defaultConsumerProperties) { consumer =>
+          consumer.committed(Set(topicPartition).asJava).asScala.toMap
+        }.view.mapValues(_.offset()).toMap
+
+        actuallyCommitted shouldBe Map(topicPartition -> 5L)
       }
     }
   }
