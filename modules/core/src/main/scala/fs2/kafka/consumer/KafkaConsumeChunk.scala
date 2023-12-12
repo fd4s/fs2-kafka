@@ -35,7 +35,7 @@ trait KafkaConsumeChunk[F[_], K, V] extends KafkaConsume[F, K, V] {
     * `F[CommitNow]`. [[CommitNow]] is isomorphic to `Unit`, but helps in transporting the intention
     * that processing of a `Chunk` is done and offsets should be committed.<br><br>
     *
-    * The returned value is `F[Nothing]`, because it's a never-ending process that doesn't
+    * The returned value has the type `F[Nothing]`, because it's a never-ending process that doesn't
     * terminate, and therefore doesn't return a result.
     *
     * @note
