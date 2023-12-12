@@ -10,17 +10,12 @@ Following is an example showing how to:
 - use `commitBatchWithin` to commit consumed offsets in batches.
 
 ```scala mdoc
-import scala.concurrent.duration._
-
 import cats.effect.{IO, IOApp}
 import fs2.kafka._
+import fs2.kafka.consumer.KafkaConsumeChunk.CommitNow
 
 object Main extends IOApp.Simple {
-
   val run: IO[Unit] = {
-    def processRecord(record: ConsumerRecord[String, String]): IO[(String, String)] =
-      IO.pure(record.key -> record.value)
-
     val consumerSettings =
       ConsumerSettings[IO, String, String]
         .withAutoOffsetReset(AutoOffsetReset.Earliest)
@@ -28,34 +23,23 @@ object Main extends IOApp.Simple {
         .withGroupId("group")
 
     val producerSettings =
-      ProducerSettings[IO, String, String].withBootstrapServers("localhost:9092")
+      ProducerSettings[IO, String, String]
+        .withBootstrapServers("localhost:9092")
+
+    def processRecords(producer: KafkaProducer[IO, String, String])(records: Chunk[ConsumerRecord[String, String]]): IO[CommitNow] = {
+      val producerRecords = records.map(consumerRecord => ProducerRecord("topic", consumerRecord.key, consumerRecord.value))
+      producer.produce(producerRecords).flatten.as(CommitNow)
+    }
 
     val stream =
-      KafkaConsumer
-        .stream(consumerSettings)
-        .subscribeTo("topic")
-        .records
-        .mapAsync(25) { committable =>
-          processRecord(committable.record).map { case (key, value) =>
-            val record = ProducerRecord("topic", key, value)
-            committable.offset -> ProducerRecords.one(record)
-          }
-        }
-        .through { offsetsAndProducerRecords =>
-          KafkaProducer
-            .stream(producerSettings)
-            .flatMap { producer =>
-              offsetsAndProducerRecords
-                .evalMap { case (offset, producerRecord) =>
-                  producer.produce(producerRecord).map(_.as(offset))
-                }
-                .parEvalMap(Int.MaxValue)(identity)
-            }
-        }
-        .through(commitBatchWithin(500, 15.seconds))
+      KafkaProducer.stream(producerSettings).flatMap { producer =>
+        KafkaConsumer
+          .stream(consumerSettings)
+          .subscribeTo("topic")
+          .consumeChunk(chunk => processRecords(producer)(chunk))
+      }
 
     stream.compile.drain
   }
-
 }
 ```
