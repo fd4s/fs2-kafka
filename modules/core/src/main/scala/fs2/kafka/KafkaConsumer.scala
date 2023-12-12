@@ -21,6 +21,7 @@ import cats.effect.std.*
 import cats.syntax.all.*
 import fs2.{Chunk, Stream}
 import fs2.kafka.consumer.*
+import fs2.kafka.consumer.KafkaConsumeChunk.CommitNow
 import fs2.kafka.instances.*
 import fs2.kafka.internal.*
 import fs2.kafka.internal.converters.collection.*
@@ -817,6 +818,14 @@ object KafkaConsumer {
       */
     def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
       self.flatMap(_.partitionedRecords)
+
+    /**
+      * Consume from all assigned partitions concurrently, processing the messages in `Chunk`s. See
+      * [[KafkaConsumeChunk#consumeChunk]]
+      */
+    def consumeChunk(processor: Chunk[ConsumerRecord[K, V]] => F[CommitNow])(implicit
+      F: Concurrent[F]
+    ): F[Nothing] = self.evalMap(_.consumeChunk(processor)).compile.onlyOrError
 
   }
 
