@@ -12,16 +12,17 @@ import fs2.kafka.ConsumerRecord
 trait KafkaConsumeChunk[F[_], K, V] extends KafkaConsume[F, K, V] {
 
   /**
-    * Consume from all assigned partitions concurrently, processing the messages in `Chunk`s. For
+    * Consume from all assigned partitions concurrently, processing the records in `Chunk`s. For
     * each `Chunk`, the provided `processor` is called, after that has finished the offsets for all
-    * messages in the chunks are committed.<br><br>
+    * messages in the chunk are committed.<br><br>
     *
-    * This method is intended to be used in cases where messages have to be processed before offsets
-    * are committed. By relying on the methods like [[partitionedStream]], [[records]], and similar,
-    * you have to correctly implement not only your processing logic but also the correct mechanism
-    * for committing offsets. This can be tricky to do in a correct and efficient way
+    * This method is intended to be used in cases that require at-least-once-delivery, where
+    * messages have to be processed before offsets are committed. By relying on the methods like
+    * [[partitionedStream]], [[records]], and similar, you have to correctly implement not only your
+    * processing logic but also the correct mechanism for committing offsets. This can be tricky to
+    * do in a correct and efficient way.<br><br>
     *
-    * This approach has several benefits:<br>
+    * Working with `Chunk`s of records has several benefits:<br>
     *   - As a user, you don't have to care about committing offsets correctly. You can focus on
     *     implementing your business logic<br>
     *   - It's very straightforward to batch several messages from a `Chunk` together, e.g. for
@@ -33,7 +34,8 @@ trait KafkaConsumeChunk[F[_], K, V] extends KafkaConsume[F, K, V] {
     *
     * The `processor` is a function that takes a `Chunk[ConsumerRecord[K, V]]` and returns a
     * `F[CommitNow]`. [[CommitNow]] is isomorphic to `Unit`, but helps in transporting the intention
-    * that processing of a `Chunk` is done and offsets should be committed.<br><br>
+    * that processing of a `Chunk` is done, offsets should be committed, and no important processing
+    * should be done afterwards.<br><br>
     *
     * The returned value has the type `F[Nothing]`, because it's a never-ending process that doesn't
     * terminate, and therefore doesn't return a result.
