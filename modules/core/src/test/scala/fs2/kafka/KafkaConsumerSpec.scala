@@ -24,8 +24,8 @@ import org.apache.kafka.clients.consumer.{
   CooperativeStickyAssignor,
   NoOffsetForPartitionException
 }
+import org.apache.kafka.common.{PartitionInfo, TopicPartition}
 import org.apache.kafka.common.errors.TimeoutException
-import org.apache.kafka.common.TopicPartition
 import org.scalatest.Assertion
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
@@ -394,6 +394,28 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
               endTimeout <- consumer.endOffsets(topicPartitions, timeout)
               _ <- IO(
                      assert(end == endTimeout && end == Map(topicPartition -> produced.size.toLong))
+                   )
+            } yield ()
+          }
+          .evalTap { consumer =>
+            for {
+              earliest        <- consumer.offsetsForTimes(Map(topicPartition -> 0L))
+              earliestTimeout <- consumer.offsetsForTimes(Map(topicPartition -> 0L), timeout)
+              _ <- IO(
+                     assert(earliest == earliestTimeout && earliest(topicPartition).offset() == 0L)
+                   )
+              earliestTimestampPlus1 = earliest(topicPartition).timestamp() + 1L
+              afterEarliest <-
+                consumer.offsetsForTimes(Map(topicPartition -> earliestTimestampPlus1))
+              afterEarliestTimeout <-
+                consumer.offsetsForTimes(Map(topicPartition -> earliestTimestampPlus1), timeout)
+              topicPartitionAferEarliest = afterEarliest(topicPartition)
+              _ <- IO(
+                     assert(
+                       afterEarliest == afterEarliestTimeout && topicPartitionAferEarliest
+                         .offset() > 0L && topicPartitionAferEarliest
+                         .timestamp() >= earliestTimestampPlus1
+                     )
                    )
             } yield ()
           }
@@ -1099,6 +1121,33 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           info.take(1).compile.lastOrError.unsafeRunSync()
 
         assert(res.nonEmpty)
+      }
+    }
+  }
+
+  describe("KafkaConsumer#listTopics") {
+    it("should return topics") {
+      withTopic { topic =>
+        val timeout = 10.seconds
+
+        KafkaConsumer
+          .stream(consumerSettings[IO])
+          .evalTap { consumer =>
+            for {
+              _                  <- IO(createCustomTopic(topic, partitions = 2))
+              topicsAfter        <- consumer.listTopics
+              topicsAfterTimeout <- consumer.listTopics(timeout)
+              _ <-
+                IO(
+                  assert(
+                    topicsAfter.keySet == topicsAfterTimeout.keySet && topicsAfter(topic).size == 2
+                  )
+                )
+            } yield ()
+          }
+          .compile
+          .drain
+          .unsafeRunSync()
       }
     }
   }
