@@ -637,12 +637,12 @@ object KafkaConsumer {
 
       override def listTopics: F[Map[String, List[PartitionInfo]]] =
         withConsumer.blocking {
-          _.listTopics().toMap.view.mapValues(_.toList).toMap
+          _.listTopics().toMap.map { case (k, v) => (k, v.toList) }
         }
 
       override def listTopics(timeout: FiniteDuration): F[Map[String, List[PartitionInfo]]] =
         withConsumer.blocking {
-          _.listTopics(timeout.toJava).toMap.view.mapValues(_.toList).toMap
+          _.listTopics(timeout.toJava).toMap.map { case (k, v) => (k, v.toList) }
         }
 
       override def metrics: F[Map[MetricName, Metric]] =
