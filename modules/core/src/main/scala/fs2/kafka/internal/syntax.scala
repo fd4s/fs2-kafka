@@ -197,6 +197,18 @@ private[kafka] object syntax {
       result
     }
 
+    def toMapNoNullValues: Map[K, V] = {
+      var result = Map.empty[K, V]
+      val it     = map.entrySet.iterator()
+      while (it.hasNext) {
+        val e = it.next()
+        if (e.getValue != null) {
+          result = result.updated(e.getKey, e.getValue)
+        }
+      }
+      result
+    }
+
   }
 
   implicit final class KafkaFutureSyntax[F[_], A](

@@ -443,6 +443,26 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
+    it("should filter empty partition for offsets by times") {
+      withTopic { topic =>
+        createCustomTopic(topic)
+
+        val emptyPartition = new TopicPartition(topic, 0)
+        val timeout        = 10.seconds
+
+        KafkaConsumer
+          .resource(consumerSettings[IO])
+          .use { consumer =>
+            for {
+              empty        <- consumer.offsetsForTimes(Map(emptyPartition -> 0L))
+              emptyTimeout <- consumer.offsetsForTimes(Map(emptyPartition -> 0L), timeout)
+              _            <- IO(assert(empty == Map() && emptyTimeout == Map()))
+            } yield ()
+          }
+          .unsafeRunSync()
+      }
+    }
+
     def seekTest(numRecords: Long, readOffset: Long, partition: Option[Int] = None)(
       topic: String
     ) = {
