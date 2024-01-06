@@ -24,8 +24,8 @@ import org.apache.kafka.clients.consumer.{
   CooperativeStickyAssignor,
   NoOffsetForPartitionException
 }
-import org.apache.kafka.common.{PartitionInfo, TopicPartition}
 import org.apache.kafka.common.errors.TimeoutException
+import org.apache.kafka.common.TopicPartition
 import org.scalatest.Assertion
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
