@@ -620,7 +620,8 @@ object KafkaConsumer {
           _.offsetsForTimes(
               timestampsToSearch.asJava.asInstanceOf[util.Map[TopicPartition, java.lang.Long]]
             )
-            .toMap
+            // Filter empty/missing partition null values for more idiomatic scala
+            .toMapNoNullValues
         }
 
       override def offsetsForTimes(
@@ -632,7 +633,8 @@ object KafkaConsumer {
               timestampsToSearch.asJava.asInstanceOf[util.Map[TopicPartition, java.lang.Long]],
               timeout.toJava
             )
-            .toMap
+            // Filter empty/missing partition null values for more idiomatic scala
+            .toMapNoNullValues
         }
 
       override def listTopics: F[Map[String, List[PartitionInfo]]] =

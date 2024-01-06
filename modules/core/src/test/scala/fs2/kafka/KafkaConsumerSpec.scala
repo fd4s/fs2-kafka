@@ -24,8 +24,8 @@ import org.apache.kafka.clients.consumer.{
   CooperativeStickyAssignor,
   NoOffsetForPartitionException
 }
-import org.apache.kafka.common.{PartitionInfo, TopicPartition}
 import org.apache.kafka.common.errors.TimeoutException
+import org.apache.kafka.common.TopicPartition
 import org.scalatest.Assertion
 
 final class KafkaConsumerSpec extends BaseKafkaSpec {
@@ -439,6 +439,26 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           }
           .compile
           .drain
+          .unsafeRunSync()
+      }
+    }
+
+    it("should filter empty partition for offsets by times") {
+      withTopic { topic =>
+        createCustomTopic(topic)
+
+        val emptyPartition = new TopicPartition(topic, 0)
+        val timeout        = 10.seconds
+
+        KafkaConsumer
+          .resource(consumerSettings[IO])
+          .use { consumer =>
+            for {
+              empty        <- consumer.offsetsForTimes(Map(emptyPartition -> 0L))
+              emptyTimeout <- consumer.offsetsForTimes(Map(emptyPartition -> 0L), timeout)
+              _            <- IO(assert(empty == Map() && emptyTimeout == Map()))
+            } yield ()
+          }
           .unsafeRunSync()
       }
     }
