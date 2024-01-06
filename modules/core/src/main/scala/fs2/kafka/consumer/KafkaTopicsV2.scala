@@ -8,7 +8,8 @@ import org.apache.kafka.common.{PartitionInfo, TopicPartition}
 trait KafkaTopicsV2[F[_]] extends KafkaTopics[F] {
 
   /**
-    * List topics.<br><br>
+    * Get metadata about partitions for all topics that the user is authorized to view. This method
+    * will issue a remote call to the server.<br><br>
     *
     * Timeout is determined by `default.api.timeout.ms`, which is set using
     * [[ConsumerSettings#withDefaultApiTimeout]].
@@ -16,7 +17,8 @@ trait KafkaTopicsV2[F[_]] extends KafkaTopics[F] {
   def listTopics: F[Map[String, List[PartitionInfo]]]
 
   /**
-    * List topics.
+    * Get metadata about partitions for all topics that the user is authorized to view. This method
+    * will issue a remote call to the server.<br><br>
     */
   def listTopics(timeout: FiniteDuration): F[Map[String, List[PartitionInfo]]]
 
