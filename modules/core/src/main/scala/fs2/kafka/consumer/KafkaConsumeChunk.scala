@@ -55,13 +55,13 @@ trait KafkaConsumeChunk[F[_], K, V] extends KafkaConsume[F, K, V] {
     processor: Chunk[ConsumerRecord[K, V]] => F[CommitNow]
   )(implicit F: Concurrent[F]): F[Nothing] = partitionedStream
     .map(
-      _.chunks.evalMap(consumeChunk(processor))
+      _.chunks.evalMap(consume(processor))
     )
     .parJoinUnbounded
     .compile
     .drain >> F.never
 
-  private def consumeChunk(processor: Chunk[ConsumerRecord[K, V]] => F[CommitNow])(
+  private def consume(processor: Chunk[ConsumerRecord[K, V]] => F[CommitNow])(
     chunk: Chunk[CommittableConsumerRecord[F, K, V]]
   )(implicit F: Monad[F]): F[Unit] = {
     val (offsets, records) = chunk.foldLeft(
