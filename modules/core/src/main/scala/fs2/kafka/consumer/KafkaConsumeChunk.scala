@@ -64,9 +64,10 @@ trait KafkaConsumeChunk[F[_], K, V] extends KafkaConsume[F, K, V] {
   private def consume(processor: Chunk[ConsumerRecord[K, V]] => F[CommitNow])(
     chunk: Chunk[CommittableConsumerRecord[F, K, V]]
   )(implicit F: Monad[F]): F[Unit] = {
-    val (offsets, records) = chunk.foldLeft(
-      (CommittableOffsetBatch.empty, Chunk.empty[ConsumerRecord[K, V]])
-    )((acc, record) => (acc._1.updated(record.offset), acc._2 ++ Chunk(record.record)))
+    val (offsets, records) = chunk
+      .mapAccumulate(CommittableOffsetBatch.empty)((offsetBatch, committableRecord) =>
+        (offsetBatch.updated(committableRecord.offset), committableRecord.record)
+      )
 
     processor(records) >> offsets.commit
   }
