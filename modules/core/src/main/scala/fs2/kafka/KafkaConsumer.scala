@@ -615,26 +615,26 @@ object KafkaConsumer {
 
       override def offsetsForTimes(
         timestampsToSearch: Map[TopicPartition, Long]
-      ): F[Map[TopicPartition, OffsetAndTimestamp]] =
+      ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
         withConsumer.blocking {
           _.offsetsForTimes(
               timestampsToSearch.asJava.asInstanceOf[util.Map[TopicPartition, java.lang.Long]]
             )
-            // Filter empty/missing partition null values for more idiomatic scala
-            .toMapNoNullValues
+            // Convert empty/missing partition null values to None for more idiomatic scala
+            .toMapOptionValues
         }
 
       override def offsetsForTimes(
         timestampsToSearch: Map[TopicPartition, Long],
         timeout: FiniteDuration
-      ): F[Map[TopicPartition, OffsetAndTimestamp]] =
+      ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
         withConsumer.blocking {
           _.offsetsForTimes(
               timestampsToSearch.asJava.asInstanceOf[util.Map[TopicPartition, java.lang.Long]],
               timeout.toJava
             )
-            // Filter empty/missing partition null values for more idiomatic scala
-            .toMapNoNullValues
+            // Convert empty/missing partition null values to None for more idiomatic scala
+            .toMapOptionValues
         }
 
       override def listTopics: F[Map[String, List[PartitionInfo]]] =

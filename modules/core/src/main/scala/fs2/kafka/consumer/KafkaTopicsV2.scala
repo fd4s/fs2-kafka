@@ -41,7 +41,7 @@ trait KafkaTopicsV2[F[_]] extends KafkaTopics[F] {
     */
   def offsetsForTimes(
     timestampsToSearch: Map[TopicPartition, Long]
-  ): F[Map[TopicPartition, OffsetAndTimestamp]]
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]]
 
   /**
     * Look up the offsets for the given partitions by timestamp. The returned offset for each
@@ -54,6 +54,6 @@ trait KafkaTopicsV2[F[_]] extends KafkaTopics[F] {
   def offsetsForTimes(
     timestampsToSearch: Map[TopicPartition, Long],
     timeout: FiniteDuration
-  ): F[Map[TopicPartition, OffsetAndTimestamp]]
+  ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]]
 
 }

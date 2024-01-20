@@ -401,19 +401,20 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             for {
               earliest        <- consumer.offsetsForTimes(Map(topicPartition -> 0L))
               earliestTimeout <- consumer.offsetsForTimes(Map(topicPartition -> 0L), timeout)
-              _ <- IO(
-                     assert(earliest == earliestTimeout && earliest(topicPartition).offset() == 0L)
-                   )
-              earliestTimestampPlus1 = earliest(topicPartition).timestamp() + 1L
+              _ <-
+                IO(
+                  assert(earliest == earliestTimeout && earliest(topicPartition).get.offset() == 0L)
+                )
+              earliestTimestampPlus1 = earliest(topicPartition).get.timestamp() + 1L
               afterEarliest <-
                 consumer.offsetsForTimes(Map(topicPartition -> earliestTimestampPlus1))
               afterEarliestTimeout <-
                 consumer.offsetsForTimes(Map(topicPartition -> earliestTimestampPlus1), timeout)
-              topicPartitionAferEarliest = afterEarliest(topicPartition)
+              topicPartitionAfterEarliest = afterEarliest(topicPartition).get
               _ <- IO(
                      assert(
-                       afterEarliest == afterEarliestTimeout && topicPartitionAferEarliest
-                         .offset() > 0L && topicPartitionAferEarliest
+                       afterEarliest == afterEarliestTimeout && topicPartitionAfterEarliest
+                         .offset() > 0L && topicPartitionAfterEarliest
                          .timestamp() >= earliestTimestampPlus1
                      )
                    )
@@ -443,7 +444,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
       }
     }
 
-    it("should filter empty partition for offsets by times") {
+    it("should return empty partition for offsets by times as None") {
       withTopic { topic =>
         createCustomTopic(topic)
 
@@ -456,7 +457,8 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
             for {
               empty        <- consumer.offsetsForTimes(Map(emptyPartition -> 0L))
               emptyTimeout <- consumer.offsetsForTimes(Map(emptyPartition -> 0L), timeout)
-              _            <- IO(assert(empty == Map() && emptyTimeout == Map()))
+              expected      = Map(emptyPartition -> None)
+              _            <- IO(assert(empty == expected && emptyTimeout == expected))
             } yield ()
           }
           .unsafeRunSync()
