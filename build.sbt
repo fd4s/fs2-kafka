@@ -2,11 +2,11 @@ val catsEffectVersion = "3.5.2"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "7.5.2"
+val confluentVersion = "7.5.3"
 
 val fs2Version = "3.9.3"
 
-val kafkaVersion = "3.6.0"
+val kafkaVersion = "3.6.1"
 
 val testcontainersScalaVersion = "0.41.0"
 
@@ -14,7 +14,7 @@ val disciplineVersion = "2.2.0"
 
 val logbackVersion = "1.3.14"
 
-val vulcanVersion = "1.9.0"
+val vulcanVersion = "1.10.1"
 
 val munitVersion = "0.7.29"
 
