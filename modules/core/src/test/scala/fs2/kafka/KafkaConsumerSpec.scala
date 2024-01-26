@@ -399,6 +399,29 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           }
           .evalTap { consumer =>
             for {
+              earliest        <- consumer.offsetsForTimes(Map(topicPartition -> 0L))
+              earliestTimeout <- consumer.offsetsForTimes(Map(topicPartition -> 0L), timeout)
+              _ <-
+                IO(
+                  assert(earliest == earliestTimeout && earliest(topicPartition).get.offset() == 0L)
+                )
+              earliestTimestampPlus1 = earliest(topicPartition).get.timestamp() + 1L
+              afterEarliest <-
+                consumer.offsetsForTimes(Map(topicPartition -> earliestTimestampPlus1))
+              afterEarliestTimeout <-
+                consumer.offsetsForTimes(Map(topicPartition -> earliestTimestampPlus1), timeout)
+              topicPartitionAfterEarliest = afterEarliest(topicPartition).get
+              _ <- IO(
+                     assert(
+                       afterEarliest == afterEarliestTimeout && topicPartitionAfterEarliest
+                         .offset() > 0L && topicPartitionAfterEarliest
+                         .timestamp() >= earliestTimestampPlus1
+                     )
+                   )
+            } yield ()
+          }
+          .evalTap { consumer =>
+            for {
               assigned <- consumer.assignment
               _        <- IO(assert(assigned.nonEmpty))
               _        <- consumer.seekToBeginning(assigned)
@@ -417,6 +440,27 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           }
           .compile
           .drain
+          .unsafeRunSync()
+      }
+    }
+
+    it("should return empty partition for offsets by times as None") {
+      withTopic { topic =>
+        createCustomTopic(topic)
+
+        val emptyPartition = new TopicPartition(topic, 0)
+        val timeout        = 10.seconds
+
+        KafkaConsumer
+          .resource(consumerSettings[IO])
+          .use { consumer =>
+            for {
+              empty        <- consumer.offsetsForTimes(Map(emptyPartition -> 0L))
+              emptyTimeout <- consumer.offsetsForTimes(Map(emptyPartition -> 0L), timeout)
+              expected      = Map(emptyPartition -> None)
+              _            <- IO(assert(empty == expected && emptyTimeout == expected))
+            } yield ()
+          }
           .unsafeRunSync()
       }
     }
@@ -1099,6 +1143,33 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           info.take(1).compile.lastOrError.unsafeRunSync()
 
         assert(res.nonEmpty)
+      }
+    }
+  }
+
+  describe("KafkaConsumer#listTopics") {
+    it("should return topics") {
+      withTopic { topic =>
+        val timeout = 10.seconds
+
+        KafkaConsumer
+          .stream(consumerSettings[IO])
+          .evalTap { consumer =>
+            for {
+              _                  <- IO(createCustomTopic(topic, partitions = 2))
+              topicsAfter        <- consumer.listTopics
+              topicsAfterTimeout <- consumer.listTopics(timeout)
+              _ <-
+                IO(
+                  assert(
+                    topicsAfter.keySet == topicsAfterTimeout.keySet && topicsAfter(topic).size == 2
+                  )
+                )
+            } yield ()
+          }
+          .compile
+          .drain
+          .unsafeRunSync()
       }
     }
   }

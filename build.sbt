@@ -281,8 +281,12 @@ ThisBuild / mimaBinaryIssueFilters ++= {
       .exclude[DirectMissingMethodProblem]("fs2.kafka.TransactionalProducerRecords.apply"),
     ProblemFilters
       .exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.createAvroSerializer"),
+    ProblemFilters.exclude[DirectMissingMethodProblem](
+      "fs2.kafka.vulcan.AvroSettings.withCreateAvroSerializer"
+    ),
     ProblemFilters
-      .exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withCreateAvroSerializer")
+      .exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.offsetsForTimes"),
+    ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.listTopics")
   )
 }
 

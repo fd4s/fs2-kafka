@@ -197,6 +197,16 @@ private[kafka] object syntax {
       result
     }
 
+    def toMapOptionValues: Map[K, Option[V]] = {
+      var result = Map.empty[K, Option[V]]
+      val it     = map.entrySet.iterator()
+      while (it.hasNext) {
+        val e = it.next()
+        result = result.updated(e.getKey, Option(e.getValue))
+      }
+      result
+    }
+
   }
 
   implicit final class KafkaFutureSyntax[F[_], A](

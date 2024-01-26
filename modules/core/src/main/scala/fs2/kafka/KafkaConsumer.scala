@@ -28,7 +28,7 @@ import fs2.kafka.internal.syntax.*
 import fs2.kafka.internal.KafkaConsumerActor.*
 import fs2.kafka.internal.LogEntry.{RevokedPreviousFetch, StoredFetch}
 
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer.{OffsetAndMetadata, OffsetAndTimestamp}
 import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
 
 /**
@@ -66,7 +66,7 @@ sealed abstract class KafkaConsumer[F[_], K, V]
     with KafkaAssignment[F]
     with KafkaOffsetsV2[F]
     with KafkaSubscription[F]
-    with KafkaTopics[F]
+    with KafkaTopicsV2[F]
     with KafkaCommit[F]
     with KafkaMetrics[F]
     with KafkaConsumerLifecycle[F]
@@ -611,6 +611,40 @@ object KafkaConsumer {
           _.endOffsets(partitions.asJava, timeout.toJava)
             .asInstanceOf[util.Map[TopicPartition, Long]]
             .toMap
+        }
+
+      override def offsetsForTimes(
+        timestampsToSearch: Map[TopicPartition, Long]
+      ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+        withConsumer.blocking {
+          _.offsetsForTimes(
+              timestampsToSearch.asJava.asInstanceOf[util.Map[TopicPartition, java.lang.Long]]
+            )
+            // Convert empty/missing partition null values to None for more idiomatic scala
+            .toMapOptionValues
+        }
+
+      override def offsetsForTimes(
+        timestampsToSearch: Map[TopicPartition, Long],
+        timeout: FiniteDuration
+      ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+        withConsumer.blocking {
+          _.offsetsForTimes(
+              timestampsToSearch.asJava.asInstanceOf[util.Map[TopicPartition, java.lang.Long]],
+              timeout.toJava
+            )
+            // Convert empty/missing partition null values to None for more idiomatic scala
+            .toMapOptionValues
+        }
+
+      override def listTopics: F[Map[String, List[PartitionInfo]]] =
+        withConsumer.blocking {
+          _.listTopics().toMap.map { case (k, v) => (k, v.toList) }
+        }
+
+      override def listTopics(timeout: FiniteDuration): F[Map[String, List[PartitionInfo]]] =
+        withConsumer.blocking {
+          _.listTopics(timeout.toJava).toMap.map { case (k, v) => (k, v.toList) }
         }
 
       override def metrics: F[Map[MetricName, Metric]] =
