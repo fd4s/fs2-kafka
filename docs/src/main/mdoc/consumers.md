@@ -12,6 +12,7 @@ import scala.concurrent.duration._
 
 import cats.effect._
 import cats.syntax.all._
+import fs2._
 import fs2.kafka._
 import fs2.kafka.consumer.KafkaConsumeChunk.CommitNow
 ```
