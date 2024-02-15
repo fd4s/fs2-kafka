@@ -33,7 +33,7 @@ object Main extends IOApp.Simple {
     }
 
     val stream =
-      KafkaProducer.stream(producerSettings).flatMap { producer =>
+      KafkaProducer.stream(producerSettings).evalMap { producer =>
         KafkaConsumer
           .stream(consumerSettings)
           .subscribeTo("topic")
