@@ -65,7 +65,8 @@ trait KafkaConsumeChunk[F[_], K, V] extends KafkaConsume[F, K, V] {
     )
     .parJoinUnbounded
     .compile
-    .drain >> F.never
+    .drain
+    .flatMap[Nothing](_ => F.never)
 
   private def consume(processor: Chunk[ConsumerRecord[K, V]] => F[CommitNow])(
     chunk: Chunk[CommittableConsumerRecord[F, K, V]]
