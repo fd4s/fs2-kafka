@@ -1190,7 +1190,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
                  .evalMap(
                    _.consumeChunk(chunk =>
                      chunk
-                       .traverse(record => ref.getAndUpdate(_.appended(record.key -> record.value)))
+                       .traverse(record => ref.getAndUpdate(_ :+ (record.key -> record.value)))
                        .as(CommitNow)
                    )
                  ).interruptAfter(10.seconds).compile.drain
@@ -1205,7 +1205,7 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
 
         val actuallyCommitted = withKafkaConsumer(defaultConsumerProperties) { consumer =>
           consumer.committed(Set(topicPartition).asJava).asScala.toMap
-        }.view.mapValues(_.offset()).toMap
+        }.map { case (k, v) => k -> v.offset() }.toMap
 
         actuallyCommitted shouldBe Map(topicPartition -> 5L)
       }
