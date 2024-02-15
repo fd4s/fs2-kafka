@@ -11,6 +11,7 @@ Following is an example showing how to:
 
 ```scala mdoc
 import cats.effect.{IO, IOApp}
+import fs2._
 import fs2.kafka._
 import fs2.kafka.consumer.KafkaConsumeChunk.CommitNow
 
