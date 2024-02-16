@@ -60,17 +60,13 @@
 <li>use <code>produce</code> to produce newly created records to Kafka,</li>
 <li>use <code>commitBatchWithin</code> to commit consumed offsets in batches.</li>
 </ul>
-<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> scala.concurrent.duration._
-
-<span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">IO</span>, <span class="hljs-type">IOApp</span>}
+<pre><code class="hljs css language-scala"><span class="hljs-keyword">import</span> cats.effect.{<span class="hljs-type">IO</span>, <span class="hljs-type">IOApp</span>}
+<span class="hljs-keyword">import</span> fs2._
 <span class="hljs-keyword">import</span> fs2.kafka._
+<span class="hljs-keyword">import</span> fs2.kafka.consumer.<span class="hljs-type">KafkaConsumeChunk</span>.<span class="hljs-type">CommitNow</span>
 
 <span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">Main</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
-
   <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
-    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecord</span></span>(record: <span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]): <span class="hljs-type">IO</span>[(<span class="hljs-type">String</span>, <span class="hljs-type">String</span>)] =
-      <span class="hljs-type">IO</span>.pure(record.key -&gt; record.value)
-
     <span class="hljs-keyword">val</span> consumerSettings =
       <span class="hljs-type">ConsumerSettings</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]
         .withAutoOffsetReset(<span class="hljs-type">AutoOffsetReset</span>.<span class="hljs-type">Earliest</span>)
@@ -78,35 +74,24 @@
         .withGroupId(<span class="hljs-string">"group"</span>)
 
     <span class="hljs-keyword">val</span> producerSettings =
-      <span class="hljs-type">ProducerSettings</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>].withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
+      <span class="hljs-type">ProducerSettings</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>]
+        .withBootstrapServers(<span class="hljs-string">"localhost:9092"</span>)
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecords</span></span>(producer: <span class="hljs-type">KafkaProducer</span>[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>, <span class="hljs-type">String</span>])(records: <span class="hljs-type">Chunk</span>[<span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]]): <span class="hljs-type">IO</span>[<span class="hljs-type">CommitNow</span>] = {
+      <span class="hljs-keyword">val</span> producerRecords = records.map(consumerRecord =&gt; <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, consumerRecord.key, consumerRecord.value))
+      producer.produce(producerRecords).flatten.as(<span class="hljs-type">CommitNow</span>)
+    }
 
     <span class="hljs-keyword">val</span> stream =
-      <span class="hljs-type">KafkaConsumer</span>
-        .stream(consumerSettings)
-        .subscribeTo(<span class="hljs-string">"topic"</span>)
-        .records
-        .mapAsync(<span class="hljs-number">25</span>) { committable =&gt;
-          processRecord(committable.record).map { <span class="hljs-keyword">case</span> (key, value) =&gt;
-            <span class="hljs-keyword">val</span> record = <span class="hljs-type">ProducerRecord</span>(<span class="hljs-string">"topic"</span>, key, value)
-            committable.offset -&gt; <span class="hljs-type">ProducerRecords</span>.one(record)
-          }
-        }
-        .through { offsetsAndProducerRecords =&gt;
-          <span class="hljs-type">KafkaProducer</span>
-            .stream(producerSettings)
-            .flatMap { producer =&gt;
-              offsetsAndProducerRecords
-                .evalMap { <span class="hljs-keyword">case</span> (offset, producerRecord) =&gt;
-                  producer.produce(producerRecord).map(_.as(offset))
-                }
-                .parEvalMap(<span class="hljs-type">Int</span>.<span class="hljs-type">MaxValue</span>)(identity)
-            }
-        }
-        .through(commitBatchWithin(<span class="hljs-number">500</span>, <span class="hljs-number">15.</span>seconds))
+      <span class="hljs-type">KafkaProducer</span>.stream(producerSettings).evalMap { producer =&gt;
+        <span class="hljs-type">KafkaConsumer</span>
+          .stream(consumerSettings)
+          .subscribeTo(<span class="hljs-string">"topic"</span>)
+          .consumeChunk(chunk =&gt; processRecords(producer)(chunk))
+      }
 
     stream.compile.drain
   }
-
 }
 </code></pre>
 </span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="/fs2-kafka/docs/overview"><span class="arrow-prev">← </span><span>Overview</span></a><a class="docs-next button" href="/fs2-kafka/docs/consumers"><span>Consumers</span><span class="arrow-next"> →</span></a></div></div></div><nav class="onPageNav"></nav></div><footer class="nav-footer" id="footer"><hr class="separator"/><section class="copyright">Copyright © 2018-2024 OVO Energy Limited.<br/>Icon by <a href="https://www.flaticon.com/authors/franco-averta" rel="noopener">Franco Averta</a>. <a href="https://creativecommons.org/licenses/by/3.0" rel="noopener">CC BY 3.0</a>.</section></footer></div></body></html>
