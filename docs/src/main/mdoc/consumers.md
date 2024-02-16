@@ -12,7 +12,9 @@ import scala.concurrent.duration._
 
 import cats.effect._
 import cats.syntax.all._
+import fs2._
 import fs2.kafka._
+import fs2.kafka.consumer.KafkaConsumeChunk.CommitNow
 ```
 
 ## Deserializers
@@ -271,6 +273,46 @@ object ConsumerMapAsyncExample extends IOApp.Simple {
 ## Offset Commits
 
 Offsets commits are managed manually, which is important for ensuring at-least-once delivery. This means that, by [default](#default-settings), automatic offset commits are disabled. If you're sure you don't need at-least-once delivery, you can re-enable automatic offset commits using `withEnableAutoCommit` on [`ConsumerSettings`][consumersettings], and then ignore the [`CommittableOffset`][committableoffset] part of [`CommittableConsumerRecord`][committableconsumerrecord], keeping only the [`ConsumerRecord`][consumerrecord].
+
+### Working on `Chunk`
+
+Use cases that require at-least-once delivery make it necessary to commit the offset of messages only after the message has been successfully processed. Implementing this correctly can be challenging, especially when the business logic requires advanced data manipulation with concurrency, batching, filtering and the like:
+
+- When consuming multiple messages from the same partition concurrently, a consumer might lose messages if the commits happen out of order and a message that is not the last one on its partition can't be processed and has to be retried.
+- When filtering messages, it's important to still commit the offset of the filtered message because if this message is the latest one on its partition, it will get re-sent infinitely.
+- For performance reasons, it makes sense to batch the offsets when committing them.
+
+The recommended pattern for these use cases is by working on the `Chunk`s of records that are part of the `Stream`. The library supports that with the `consumeChunk` method:
+
+```scala mdoc:silent
+object ConsumerChunkExample extends IOApp.Simple {
+  val run: IO[Unit] = {
+    def processRecords(records: Chunk[ConsumerRecord[String, String]]): IO[CommitNow] =
+      records.traverse(record => IO.println(s"Processing record: $record")).as(CommitNow)
+
+    KafkaConsumer.stream(consumerSettings)
+      .subscribeTo("topic")
+      .consumeChunk(processRecords)
+  }
+}
+```
+
+Note that this method uses `partitionedStream`, which means that all the partitions assigned to the consumer will be processed concurrently.
+
+As a user, you don't have to care about the offset commits, all you have to do is implement a function that processes all records in the `Chunk`, and return a `IO[CommitNow]`. After this action finished, the offsets for all messages in the `Chunk` will be committed. `CommitNow` is basically the same as `Unit`, but helps in making it clear when the processing of messages has been finished and it's time to commit.
+
+This brings several benefits:
+
+- **Correctness:** You can focus on implementing your business logic, without having to worry about offset commits or propagating the correct offsets through your code. Offsets are committed correctly afterwards.
+- **Performance:** Typical performance improvements are bulk-writes to a database, or using concurrency to speed things up. These patterns can be used liberally when working on the records in a `Chunk`, without having to sacrifice correctness.
+- **Flexibility:** Besides using batching and concurrency, you might want to filter out messages, or process them in a different order than they appear on the partitions. As long as you work on a single `Chunk` and make sure that the processing is finished when you return `CommitNow`, you can do all that.
+- A concrete example that makes use of these ideas is to group all the messages in the `Chunk` by key and then only process the last message for each key (basically doing what Kafka's log compaction does). In many occasions, it's also possible to process the messages for different keys concurrently, which drastically increases the available concurrency.
+
+If the chunk size doesn't fit your needs, the first way to start tuning is the `max.poll.records` config property of your consumer.
+
+### Committing manually
+
+If `consumeChunk` doesn't work for you, you can always commit your offsets manually.
 
 Offset commits are usually done in batches for performance reasons. We normally don't need to commit every offset, but only the last processed offset. There is a trade-off in how much reprocessing we have to do when we restart versus the performance implication of committing more frequently. Depending on our situation, we'll then choose an appropriate frequency for offset commits.
 
