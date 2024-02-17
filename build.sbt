@@ -207,19 +207,22 @@ lazy val metadataSettings = Seq(
   organization := "com.github.fd4s"
 )
 
+val OldGuardJava = JavaSpec.temurin("8")
+val LTSJava      = JavaSpec.temurin("21")
+
 ThisBuild / githubWorkflowTargetBranches := Seq("series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
-  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '2.13'"))
+  WorkflowStep.Sbt(
+    List("docs/run"),
+    cond = Some(s"matrix.scala == '2.13' && matrix.java == '${LTSJava.render}'")
+  )
 )
 
 ThisBuild / githubWorkflowArtifactUpload := false
 
-ThisBuild / githubWorkflowJavaVersions := Seq(
-  JavaSpec.temurin("21"),
-  JavaSpec.temurin("8")
-)
+ThisBuild / githubWorkflowJavaVersions := Seq(LTSJava, OldGuardJava)
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(

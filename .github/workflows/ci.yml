@@ -74,7 +74,7 @@ jobs:
 
       - run: sbt '++ ${{ matrix.scala }}' ci
 
-      - if: matrix.scala == '2.13'
+      - if: matrix.scala == '2.13' && matrix.java == 'temurin@21'
         run: sbt '++ ${{ matrix.scala }}' docs/run
 
   publish:
