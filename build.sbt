@@ -211,7 +211,7 @@ ThisBuild / githubWorkflowTargetBranches := Seq("series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
-  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
+  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '2.13'"))
 )
 
 ThisBuild / githubWorkflowArtifactUpload := false

@@ -74,7 +74,7 @@ jobs:
 
       - run: sbt '++ ${{ matrix.scala }}' ci
 
-      - if: matrix.scala == '2.13.12'
+      - if: matrix.scala == '2.13'
         run: sbt '++ ${{ matrix.scala }}' docs/run
 
   publish:
