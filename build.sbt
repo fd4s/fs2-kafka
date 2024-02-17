@@ -216,7 +216,10 @@ ThisBuild / githubWorkflowBuild := Seq(
 
 ThisBuild / githubWorkflowArtifactUpload := false
 
-ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
+ThisBuild / githubWorkflowJavaVersions := Seq(
+  JavaSpec.temurin("21"),
+  JavaSpec.temurin("8")
+)
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
