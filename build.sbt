@@ -250,24 +250,12 @@ lazy val publishSettings =
     ),
     headerSources / excludeFilter := HiddenFileFilter,
     developers := List(
-      Developer(
-        id = "vlovgr",
-        name = "Viktor Lövgren",
-        email = "github@vlovgr.se",
-        url = url("https://vlovgr.se")
-      ),
-      Developer(
-        id = "bplommer",
-        name = "Ben Plommer",
-        email = "@bplommer", // actually a twitter handle but whatever ¯\_(ツ)_/¯
-        url = url("https://github.com/bplommer")
-      ),
-      Developer(
-        id = "LMNet",
-        name = "Yuriy Badalyantc",
-        email = "lmnet89@gmail.com",
-        url = url("https://github.com/LMnet")
-      )
+      tlGitHubDev("vlovgr", "Viktor Lövgren")
+        .withEmail("github@vlovgr.se")
+        .withUrl(url("https://vlovgr.se")),
+      tlGitHubDev("bplommer", "Ben Plommer"),
+      tlGitHubDev("LMNet", "Yuriy Badalyantc").withEmail("lmnet89@gmail.com"),
+      tlGitHubDev("aartigao", "Alan Artigao").withEmail("alanartigao@gmail.com")
     )
   )
 
