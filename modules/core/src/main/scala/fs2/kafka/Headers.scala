@@ -106,6 +106,7 @@ object Headers {
         toChain.iterator.toArray
 
       new KafkaHeaders {
+
         override def add(header: KafkaHeader): KafkaHeaders =
           throw new IllegalStateException("Headers#asJava is immutable")
 
@@ -128,6 +129,7 @@ object Headers {
 
         override def iterator(): java.util.Iterator[KafkaHeader] =
           array.iterator.asJava
+
       }
     }
 

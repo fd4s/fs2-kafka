@@ -31,8 +31,10 @@ private[kafka] object WithConsumer {
       Resource.make {
         mk(settings).map { consumer =>
           new WithConsumer[F] {
+
             override def blocking[A](f: KafkaByteConsumer => A): F[A] =
               b(f(consumer))
+
           }
         }
       }(_.blocking(_.close(settings.closeTimeout.toJava)))

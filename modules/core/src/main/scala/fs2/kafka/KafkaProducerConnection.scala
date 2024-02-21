@@ -120,6 +120,7 @@ object KafkaProducerConnection {
   ): Resource[F, KafkaProducerConnection[G]] =
     WithProducer(mk, settings).map { withProducer =>
       new KafkaProducerConnection[G] {
+
         override def produce[K, V](
           records: ProducerRecords[K, V]
         )(implicit
@@ -135,6 +136,7 @@ object KafkaProducerConnection {
 
         override def metrics: G[Map[MetricName, Metric]] =
           withProducer.blocking(_.metrics().asScala.toMap)
+
         override def withSerializers[K, V](
           keySerializer: KeySerializer[G, K],
           valueSerializer: ValueSerializer[G, V]
@@ -148,6 +150,7 @@ object KafkaProducerConnection {
 
         override def partitionsFor(topic: String): G[List[PartitionInfo]] =
           withProducer.blocking(_.partitionsFor(topic).asScala.toList)
+
       }
     }
 

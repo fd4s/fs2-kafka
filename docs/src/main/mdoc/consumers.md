@@ -80,8 +80,10 @@ If we have a Java Kafka deserializer, use `delegate` to create a `Deserializer`.
 ```scala mdoc:silent
 Deserializer.delegate[IO, String] {
   new KafkaDeserializer[String] {
+
     def deserialize(topic: String, data: Array[Byte]): String =
       new String(data)
+
   }
 }
 ```
@@ -92,10 +94,12 @@ If the deserializer performs _side effects_, follow with `suspend` to capture th
 Deserializer
   .delegate[IO, String] {
     new KafkaDeserializer[String] {
+
       def deserialize(topic: String, data: Array[Byte]): String = {
         println(s"deserializing record on topic $topic")
         new String(data)
       }
+
     }
   }
   .suspend
@@ -286,14 +290,14 @@ The recommended pattern for these use cases is by working on the `Chunk`s of rec
 
 ```scala mdoc:silent
 object ConsumerChunkExample extends IOApp.Simple {
+
   val run: IO[Unit] = {
     def processRecords(records: Chunk[ConsumerRecord[String, String]]): IO[CommitNow] =
       records.traverse(record => IO.println(s"Processing record: $record")).as(CommitNow)
 
-    KafkaConsumer.stream(consumerSettings)
-      .subscribeTo("topic")
-      .consumeChunk(processRecords)
+    KafkaConsumer.stream(consumerSettings).subscribeTo("topic").consumeChunk(processRecords)
   }
+
 }
 ```
 

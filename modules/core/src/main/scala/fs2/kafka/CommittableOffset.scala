@@ -91,6 +91,7 @@ object CommittableOffset {
     val _commit            = commit
 
     new CommittableOffset[F] {
+
       override val topicPartition: TopicPartition =
         _topicPartition
 
@@ -119,6 +120,7 @@ object CommittableOffset {
           case None =>
             show"CommittableOffset($topicPartition -> $offsetAndMetadata)"
         }
+
     }
   }
 

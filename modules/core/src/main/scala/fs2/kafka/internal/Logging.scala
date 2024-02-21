@@ -24,6 +24,7 @@ private[kafka] object Logging {
     F.delay(LoggerFactory.getLogger(name))
       .map { logger =>
         new Logging[F] {
+
           override def log(entry: LogEntry): F[Unit] =
             F.delay {
               entry.level match {
@@ -41,6 +42,7 @@ private[kafka] object Logging {
                     logger.debug(entry.message)
               }
             }
+
         }
       }
 

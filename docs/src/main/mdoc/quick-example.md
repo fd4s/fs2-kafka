@@ -16,6 +16,7 @@ import fs2.kafka._
 import fs2.kafka.consumer.KafkaConsumeChunk.CommitNow
 
 object Main extends IOApp.Simple {
+
   val run: IO[Unit] = {
     val consumerSettings =
       ConsumerSettings[IO, String, String]
@@ -24,23 +25,28 @@ object Main extends IOApp.Simple {
         .withGroupId("group")
 
     val producerSettings =
-      ProducerSettings[IO, String, String]
-        .withBootstrapServers("localhost:9092")
+      ProducerSettings[IO, String, String].withBootstrapServers("localhost:9092")
 
-    def processRecords(producer: KafkaProducer[IO, String, String])(records: Chunk[ConsumerRecord[String, String]]): IO[CommitNow] = {
-      val producerRecords = records.map(consumerRecord => ProducerRecord("topic", consumerRecord.key, consumerRecord.value))
+    def processRecords(
+      producer: KafkaProducer[IO, String, String]
+    )(records: Chunk[ConsumerRecord[String, String]]): IO[CommitNow] = {
+      val producerRecords = records
+        .map(consumerRecord => ProducerRecord("topic", consumerRecord.key, consumerRecord.value))
       producer.produce(producerRecords).flatten.as(CommitNow)
     }
 
     val stream =
-      KafkaProducer.stream(producerSettings).evalMap { producer =>
-        KafkaConsumer
-          .stream(consumerSettings)
-          .subscribeTo("topic")
-          .consumeChunk(chunk => processRecords(producer)(chunk))
-      }
+      KafkaProducer
+        .stream(producerSettings)
+        .evalMap { producer =>
+          KafkaConsumer
+            .stream(consumerSettings)
+            .subscribeTo("topic")
+            .consumeChunk(chunk => processRecords(producer)(chunk))
+        }
 
     stream.compile.drain
   }
+
 }
 ```

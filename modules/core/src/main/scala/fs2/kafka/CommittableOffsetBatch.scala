@@ -99,6 +99,7 @@ object CommittableOffsetBatch {
     val _commit                  = commit
 
     new CommittableOffsetBatch[F] {
+
       override def updated(that: CommittableOffset[F]): CommittableOffsetBatch[F] =
         CommittableOffsetBatch(
           _offsets.updated(that.topicPartition, that.offsetAndMetadata),
@@ -131,6 +132,7 @@ object CommittableOffsetBatch {
 
       override def toString: String =
         Show[CommittableOffsetBatch[F]].show(this)
+
     }
   }
 

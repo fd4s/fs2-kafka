@@ -36,8 +36,10 @@ object Jitter {
     F.delay(new java.util.Random())
       .map { random =>
         new Jitter[F] {
+
           override def withJitter(n: Double): F[Double] =
             F.delay(random.nextDouble()).map(_ * n)
+
         }
       }
 

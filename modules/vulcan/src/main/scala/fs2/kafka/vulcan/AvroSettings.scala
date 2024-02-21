@@ -244,6 +244,7 @@ object AvroSettings {
               case None => new KafkaAvroSerializer(schemaRegistryClient)
               case Some(schema) =>
                 new KafkaAvroSerializer(schemaRegistryClient) {
+
                   // Overrides the default auto-registration behaviour, which attempts to guess the
                   // writer schema based on the encoded representation used by the Java Avro SDK.
                   // This works for types such as Records, which contain a reference to the exact schema
@@ -252,6 +253,7 @@ object AvroSettings {
                   // being produced) or logical types such as timestamp-millis (where the logical
                   // type is lost).
                   val parsedSchema = new AvroSchema(schema.toString)
+
                   override def serialize(topic: String, record: AnyRef): Array[Byte] = {
                     if (record == null) {
                       return null
@@ -262,6 +264,7 @@ object AvroSettings {
                       parsedSchema
                     )
                   }
+
                 }
             }
             serializer.configure(withDefaults(properties), isKey)
