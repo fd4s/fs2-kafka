@@ -106,8 +106,10 @@
 <p>If we have a Java Kafka deserializer, use <code>delegate</code> to create a <code>Deserializer</code>.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-type">Deserializer</span>.delegate[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>] {
   <span class="hljs-keyword">new</span> <span class="hljs-type">KafkaDeserializer</span>[<span class="hljs-type">String</span>] {
+
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">deserialize</span></span>(topic: <span class="hljs-type">String</span>, data: <span class="hljs-type">Array</span>[<span class="hljs-type">Byte</span>]): <span class="hljs-type">String</span> =
       <span class="hljs-keyword">new</span> <span class="hljs-type">String</span>(data)
+
   }
 }
 </code></pre>
@@ -115,10 +117,12 @@
 <pre><code class="hljs css language-scala"><span class="hljs-type">Deserializer</span>
   .delegate[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>] {
     <span class="hljs-keyword">new</span> <span class="hljs-type">KafkaDeserializer</span>[<span class="hljs-type">String</span>] {
+
       <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">deserialize</span></span>(topic: <span class="hljs-type">String</span>, data: <span class="hljs-type">Array</span>[<span class="hljs-type">Byte</span>]): <span class="hljs-type">String</span> = {
         println(<span class="hljs-string">s"deserializing record on topic <span class="hljs-subst">$topic</span>"</span>)
         <span class="hljs-keyword">new</span> <span class="hljs-type">String</span>(data)
       }
+
     }
   }
   .suspend
@@ -254,14 +258,14 @@
 </ul>
 <p>The recommended pattern for these use cases is by working on the <code>Chunk</code>s of records that are part of the <code>Stream</code>. The library supports that with the <code>consumeChunk</code> method:</p>
 <pre><code class="hljs css language-scala"><span class="hljs-class"><span class="hljs-keyword">object</span> <span class="hljs-title">ConsumerChunkExample</span> <span class="hljs-keyword">extends</span> <span class="hljs-title">IOApp</span>.<span class="hljs-title">Simple</span> </span>{
+
   <span class="hljs-keyword">val</span> run: <span class="hljs-type">IO</span>[<span class="hljs-type">Unit</span>] = {
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">processRecords</span></span>(records: <span class="hljs-type">Chunk</span>[<span class="hljs-type">ConsumerRecord</span>[<span class="hljs-type">String</span>, <span class="hljs-type">String</span>]]): <span class="hljs-type">IO</span>[<span class="hljs-type">CommitNow</span>] =
       records.traverse(record =&gt; <span class="hljs-type">IO</span>.println(<span class="hljs-string">s"Processing record: <span class="hljs-subst">$record</span>"</span>)).as(<span class="hljs-type">CommitNow</span>)
 
-    <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings)
-      .subscribeTo(<span class="hljs-string">"topic"</span>)
-      .consumeChunk(processRecords)
+    <span class="hljs-type">KafkaConsumer</span>.stream(consumerSettings).subscribeTo(<span class="hljs-string">"topic"</span>).consumeChunk(processRecords)
   }
+
 }
 </code></pre>
 <p>Note that this method uses <code>partitionedStream</code>, which means that all the partitions assigned to the consumer will be processed concurrently.</p>

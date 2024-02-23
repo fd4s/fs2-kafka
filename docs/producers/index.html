@@ -104,8 +104,10 @@
 <p>If we have a Java Kafka serializer, use <code>delegate</code> to create a <code>Serializer</code>.</p>
 <pre><code class="hljs css language-scala"><span class="hljs-type">Serializer</span>.delegate[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>] {
   <span class="hljs-keyword">new</span> <span class="hljs-type">KafkaSerializer</span>[<span class="hljs-type">String</span>] {
+
     <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">serialize</span></span>(topic: <span class="hljs-type">String</span>, value: <span class="hljs-type">String</span>): <span class="hljs-type">Array</span>[<span class="hljs-type">Byte</span>] =
       value.getBytes(<span class="hljs-string">"UTF-8"</span>)
+
   }
 }
 </code></pre>
@@ -113,10 +115,12 @@
 <pre><code class="hljs css language-scala"><span class="hljs-type">Serializer</span>
   .delegate[<span class="hljs-type">IO</span>, <span class="hljs-type">String</span>] {
     <span class="hljs-keyword">new</span> <span class="hljs-type">KafkaSerializer</span>[<span class="hljs-type">String</span>] {
+
       <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">serialize</span></span>(topic: <span class="hljs-type">String</span>, value: <span class="hljs-type">String</span>): <span class="hljs-type">Array</span>[<span class="hljs-type">Byte</span>] = {
         println(<span class="hljs-string">s"serializing record on topic <span class="hljs-subst">$topic</span>"</span>)
         value.getBytes(<span class="hljs-string">"UTF-8"</span>)
       }
+
     }
   }
   .suspend
