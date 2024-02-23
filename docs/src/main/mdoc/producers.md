@@ -78,8 +78,10 @@ If we have a Java Kafka serializer, use `delegate` to create a `Serializer`.
 ```scala mdoc:silent
 Serializer.delegate[IO, String] {
   new KafkaSerializer[String] {
+
     def serialize(topic: String, value: String): Array[Byte] =
       value.getBytes("UTF-8")
+
   }
 }
 ```
@@ -90,10 +92,12 @@ If the serializer performs _side effects_, follow with `suspend` to capture them
 Serializer
   .delegate[IO, String] {
     new KafkaSerializer[String] {
+
       def serialize(topic: String, value: String): Array[Byte] = {
         println(s"serializing record on topic $topic")
         value.getBytes("UTF-8")
       }
+
     }
   }
   .suspend

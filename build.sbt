@@ -129,6 +129,7 @@ lazy val dependencySettings = Seq(
   },
   pomPostProcess := { (node: xml.Node) =>
     new xml.transform.RuleTransformer(new xml.transform.RewriteRule {
+
       def scopedDependency(e: xml.Elem): Boolean =
         e.label == "dependency" && e.child.exists(_.label == "scope")
 
@@ -137,6 +138,7 @@ lazy val dependencySettings = Seq(
           case e: xml.Elem if scopedDependency(e) => Nil
           case _                                  => Seq(node)
         }
+
     }).transform(node).head
   }
 )

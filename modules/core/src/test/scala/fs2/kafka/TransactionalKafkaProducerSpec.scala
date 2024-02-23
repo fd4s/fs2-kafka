@@ -155,6 +155,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       createCustomTopic(topic, partitions = 3)
       val commitState = new AtomicBoolean(false)
       implicit val mk: MkProducer[IO] = new MkProducer[IO] {
+
         def apply[G[_]](settings: ProducerSettings[G, ?, ?]): IO[KafkaByteProducer] =
           IO.delay {
             new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
@@ -162,6 +163,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
               new ByteArraySerializer,
               new ByteArraySerializer
             ) {
+
               override def sendOffsetsToTransaction(
                 offsets: util.Map[TopicPartition, OffsetAndMetadata],
                 consumerGroupMetadata: ConsumerGroupMetadata
@@ -169,8 +171,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 commitState.set(true)
                 super.sendOffsetsToTransaction(offsets, consumerGroupMetadata)
               }
+
             }
           }
+
       }
       for {
         producer <- TransactionalKafkaProducer.stream(
@@ -328,6 +332,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       val error = new RuntimeException("BOOM")
 
       implicit val mk: MkProducer[IO] = new MkProducer[IO] {
+
         def apply[G[_]](settings: ProducerSettings[G, ?, ?]): IO[KafkaByteProducer] =
           IO.delay {
             new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
@@ -335,6 +340,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
               new ByteArraySerializer,
               new ByteArraySerializer
             ) {
+
               override def sendOffsetsToTransaction(
                 offsets: util.Map[TopicPartition, OffsetAndMetadata],
                 groupMetadata: ConsumerGroupMetadata
@@ -344,8 +350,10 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
                 } else {
                   super.sendOffsetsToTransaction(offsets, groupMetadata)
                 }
+
             }
           }
+
       }
 
       val produced =
@@ -423,18 +431,22 @@ class TransactionalKafkaProducerTimeoutSpec extends BaseKafkaSpec with EitherVal
       val toProduce = (0 to 100).toList.map(n => s"key-$n" -> s"value-$n")
 
       implicit val mkProducer: MkProducer[IO] = new MkProducer[IO] {
+
         def apply[G[_]](settings: ProducerSettings[G, ?, ?]): IO[KafkaByteProducer] = IO.delay {
           new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
             (settings.properties: Map[String, AnyRef]).asJava,
             new ByteArraySerializer,
             new ByteArraySerializer
           ) {
+
             override def commitTransaction(): Unit = {
               Thread.sleep(2 * transactionTimeoutInterval.toMillis)
               super.commitTransaction()
             }
+
           }
         }
+
       }
 
       val produced =
