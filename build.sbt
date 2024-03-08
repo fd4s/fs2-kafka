@@ -18,7 +18,7 @@ val vulcanVersion = "1.10.1"
 
 val munitVersion = "0.7.29"
 
-val scala212 = "2.12.18"
+val scala212 = "2.12.19"
 
 val scala213 = "2.13.12"
 
