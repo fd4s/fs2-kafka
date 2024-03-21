@@ -18,13 +18,13 @@ val vulcanVersion = "1.10.1"
 
 val munitVersion = "0.7.29"
 
-val scala212 = "2.12.18"
+val scala212 = "2.12.19"
 
-val scala213 = "2.13.12"
+val scala213 = "2.13.13"
 
-val scala3 = "3.3.1"
+val scala3 = "3.3.3"
 
-ThisBuild / tlBaseVersion := "3.3"
+ThisBuild / tlBaseVersion := "3.4"
 
 ThisBuild / tlCiReleaseBranches := Seq("series/3.x")
 
