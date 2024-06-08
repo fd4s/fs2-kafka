@@ -10,7 +10,7 @@ val kafkaVersion = "3.7.0"
 
 val testcontainersScalaVersion = "0.41.3"
 
-val disciplineVersion = "2.2.0"
+val disciplineVersion = "2.3.0"
 
 val logbackVersion = "1.3.14"
 
