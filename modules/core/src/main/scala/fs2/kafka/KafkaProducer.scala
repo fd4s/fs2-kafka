@@ -175,16 +175,35 @@ object KafkaProducer {
     records: ProducerRecords[K, V]
   ): F[F[ProducerResult[K, V]]] =
     withProducer { (producer, blocking) =>
-      records
-        .traverse(produceRecord(keySerializer, valueSerializer, producer, blocking))
-        .map(_.sequence)
+      Async[F]
+        .delay(Promise[Throwable]())
+        .flatMap { produceRecordError =>
+          Async[F]
+            .race(
+              Async[F]
+                .fromFutureCancelable(Async[F].delay(produceRecordError.future, Async[F].unit)),
+              records
+                .traverse(
+                  produceRecord(
+                    keySerializer,
+                    valueSerializer,
+                    producer,
+                    blocking,
+                    produceRecordError
+                  )
+                )
+                .map(_.sequence)
+            )
+            .rethrow
+        }
     }
 
   private[kafka] def produceRecord[F[_], K, V](
     keySerializer: KeySerializer[F, K],
     valueSerializer: ValueSerializer[F, V],
     producer: KafkaByteProducer,
-    blocking: Blocking[F]
+    blocking: Blocking[F],
+    produceRecordError: Promise[Throwable]
   )(implicit
     F: Async[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
@@ -196,9 +215,11 @@ object KafkaProducer {
               producer.send(
                 javaRecord,
                 { (metadata, exception) =>
-                  if (exception == null)
-                    promise.success((record, metadata))
-                  else promise.failure(exception)
+                  if (exception == null) { promise.success((record, metadata)) }
+                  else {
+                    promise.failure(exception)
+                    produceRecordError.failure(exception)
+                  }
                 }
               )
             }.map(javaFuture =>

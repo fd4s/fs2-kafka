@@ -61,6 +61,7 @@ abstract class BaseKafkaSpec extends BaseAsyncSpec with ForAllTestContainer {
         .withEnv("KAFKA_TRANSACTION_STATE_LOG_MIN_ISR", "1")
         .withEnv("KAFKA_AUTHORIZER_CLASS_NAME", "kafka.security.authorizer.AclAuthorizer")
         .withEnv("KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND", "true")
+        .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false")
 
       ()
     }

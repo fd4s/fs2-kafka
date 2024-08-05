@@ -7,6 +7,7 @@
 package fs2.kafka
 
 import scala.annotation.nowarn
+import scala.concurrent.Promise
 
 import cats.effect.{Async, Outcome, Resource}
 import cats.effect.syntax.all.*
@@ -140,20 +141,30 @@ object TransactionalKafkaProducer {
           sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
           withProducer.exclusiveAccess { (producer, blocking) =>
-            blocking(producer.beginTransaction()).bracketCase { _ =>
-              val produce = records
-                .traverse(
-                  KafkaProducer.produceRecord(keySerializer, valueSerializer, producer, blocking)
-                )
-                .flatMap(_.sequence)
+            Async[F]
+              .delay(Promise[Throwable]())
+              .flatMap { produceRecordError =>
+                blocking(producer.beginTransaction()).bracketCase { _ =>
+                  val produce = records
+                    .traverse(
+                      KafkaProducer.produceRecord(
+                        keySerializer,
+                        valueSerializer,
+                        producer,
+                        blocking,
+                        produceRecordError
+                      )
+                    )
+                    .flatMap(_.sequence)
 
-              sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
-            } {
-              case (_, Outcome.Succeeded(_)) =>
-                blocking(producer.commitTransaction())
-              case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                blocking(producer.abortTransaction())
-            }
+                  sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
+                } {
+                  case (_, Outcome.Succeeded(_)) =>
+                    blocking(producer.commitTransaction())
+                  case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
+                    blocking(producer.abortTransaction())
+                }
+              }
           }
 
         override def metrics: F[Map[MetricName, Metric]] =

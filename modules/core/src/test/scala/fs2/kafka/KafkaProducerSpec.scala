@@ -6,10 +6,15 @@
 
 package fs2.kafka
 
+import java.util.UUID
+
 import cats.effect.unsafe.implicits.global
 import cats.effect.IO
 import cats.syntax.all.*
 import fs2.{Chunk, Stream}
+
+import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.errors.TimeoutException
 
 final class KafkaProducerSpec extends BaseKafkaSpec {
 
@@ -257,6 +262,24 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
 
       consumed should contain theSameElementsAs toProduce
     }
+  }
+
+  it("should fail fast to produce records with multiple") {
+    val nonExistentTopic = s"non-existent-topic-${UUID.randomUUID()}"
+    val toProduce        = (0 until 1000).map(n => s"key-$n" -> s"value->$n").toList
+    val settings         = producerSettings[IO].withProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, "1000")
+
+    val error = intercept[TimeoutException] {
+      (for {
+        producer <- KafkaProducer.stream(settings)
+        records = ProducerRecords(toProduce.map { case (key, value) =>
+                    ProducerRecord(nonExistentTopic, key, value)
+                  })
+        result <- Stream.eval(producer.produce(records).flatten)
+      } yield result).compile.lastOrError.unsafeRunSync()
+    }
+
+    error.getMessage shouldBe s"Topic $nonExistentTopic not present in metadata after 1000 ms."
   }
 
   it("should get metrics") {
