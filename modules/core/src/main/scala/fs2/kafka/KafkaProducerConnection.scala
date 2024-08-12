@@ -131,7 +131,8 @@ object KafkaProducerConnection {
             withProducer,
             keySerializer,
             valueSerializer,
-            records
+            records,
+            settings.failFastProduce
           )
 
         override def metrics: G[Map[MetricName, Metric]] =

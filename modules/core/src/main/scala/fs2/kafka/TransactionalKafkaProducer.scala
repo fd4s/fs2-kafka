@@ -141,30 +141,35 @@ object TransactionalKafkaProducer {
           sendOffsets: Option[(KafkaByteProducer, Blocking[F]) => F[Unit]]
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
           withProducer.exclusiveAccess { (producer, blocking) =>
-            Async[F]
-              .delay(Promise[Throwable]())
-              .flatMap { produceRecordError =>
-                blocking(producer.beginTransaction()).bracketCase { _ =>
-                  val produce = records
-                    .traverse(
-                      KafkaProducer.produceRecord(
-                        keySerializer,
-                        valueSerializer,
-                        producer,
-                        blocking,
-                        produceRecordError
-                      )
+            blocking(producer.beginTransaction()).bracketCase { _ =>
+              def produceRecords(produceRecordError: Option[Promise[Throwable]]) =
+                records
+                  .traverse(
+                    KafkaProducer.produceRecord(
+                      keySerializer,
+                      valueSerializer,
+                      producer,
+                      blocking,
+                      produceRecordError
                     )
-                    .flatMap(_.sequence)
+                  )
+                  .flatMap(_.sequence)
 
-                  sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
-                } {
-                  case (_, Outcome.Succeeded(_)) =>
-                    blocking(producer.commitTransaction())
-                  case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
-                    blocking(producer.abortTransaction())
-                }
-              }
+              val produce =
+                if (settings.producerSettings.failFastProduce)
+                  Async[F]
+                    .delay(Promise[Throwable]())
+                    .flatMap(produceRecordError => produceRecords(produceRecordError.some))
+                else
+                  produceRecords(None)
+
+              sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
+            } {
+              case (_, Outcome.Succeeded(_)) =>
+                blocking(producer.commitTransaction())
+              case (_, Outcome.Canceled() | Outcome.Errored(_)) =>
+                blocking(producer.abortTransaction())
+            }
           }
 
         override def metrics: F[Map[MetricName, Metric]] =

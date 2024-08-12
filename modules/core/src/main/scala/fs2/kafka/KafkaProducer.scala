@@ -172,30 +172,30 @@ object KafkaProducer {
     withProducer: WithProducer[F],
     keySerializer: KeySerializer[F, K],
     valueSerializer: ValueSerializer[F, V],
-    records: ProducerRecords[K, V]
+    records: ProducerRecords[K, V],
+    failFastProduce: Boolean
   ): F[F[ProducerResult[K, V]]] =
     withProducer { (producer, blocking) =>
-      Async[F]
-        .delay(Promise[Throwable]())
-        .flatMap { produceRecordError =>
-          Async[F]
-            .race(
-              Async[F]
-                .fromFutureCancelable(Async[F].delay(produceRecordError.future, Async[F].unit)),
-              records
-                .traverse(
-                  produceRecord(
-                    keySerializer,
-                    valueSerializer,
-                    producer,
-                    blocking,
-                    produceRecordError
-                  )
-                )
-                .map(_.sequence)
-            )
-            .rethrow
-        }
+      def produceRecords(produceRecordError: Option[Promise[Throwable]]) =
+        records
+          .traverse(
+            produceRecord(keySerializer, valueSerializer, producer, blocking, produceRecordError)
+          )
+          .map(_.sequence)
+
+      if (failFastProduce)
+        Async[F]
+          .delay(Promise[Throwable]())
+          .flatMap { produceRecordError =>
+            Async[F]
+              .race(
+                Async[F]
+                  .fromFutureCancelable(Async[F].delay(produceRecordError.future, Async[F].unit)),
+                produceRecords(produceRecordError.some)
+              )
+              .rethrow
+          }
+      else produceRecords(None)
     }
 
   private[kafka] def produceRecord[F[_], K, V](
@@ -203,7 +203,7 @@ object KafkaProducer {
     valueSerializer: ValueSerializer[F, V],
     producer: KafkaByteProducer,
     blocking: Blocking[F],
-    produceRecordError: Promise[Throwable]
+    produceRecordError: Option[Promise[Throwable]]
   )(implicit
     F: Async[F]
   ): ProducerRecord[K, V] => F[F[(ProducerRecord[K, V], RecordMetadata)]] =
@@ -218,7 +218,7 @@ object KafkaProducer {
                   if (exception == null) { promise.success((record, metadata)) }
                   else {
                     promise.failure(exception)
-                    produceRecordError.failure(exception)
+                    produceRecordError.foreach(_.failure(exception))
                   }
                 }
               )

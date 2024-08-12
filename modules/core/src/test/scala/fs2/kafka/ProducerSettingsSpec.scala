@@ -168,8 +168,16 @@ final class ProducerSettingsSpec extends BaseSpec {
         )
       }
     }
+
+    it("should provide failFastProduce default value") {
+      assert(settings.failFastProduce == false)
+    }
+
+    it("should be able to set failFastProduce") {
+      assert(settings.withFailFastProduce(true).failFastProduce == true)
+    }
   }
 
-  val settings = ProducerSettings[IO, String, String]
+  private val settings = ProducerSettings[IO, String, String]
 
 }
