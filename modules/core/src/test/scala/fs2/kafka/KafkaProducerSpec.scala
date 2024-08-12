@@ -265,23 +265,25 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
   }
 
   it("should fail fast to produce records with multiple") {
-    val nonExistentTopic = s"non-existent-topic-${UUID.randomUUID()}"
-    val toProduce        = (0 until 1000).map(n => s"key-$n" -> s"value->$n").toList
-    val settings = producerSettings[IO]
-      .withProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, "500")
-      .withFailFastProduce(true)
+    withTopic { topic =>
+      val nonExistentTopic = s"non-existent-$topic"
+      val toProduce        = (0 until 1000).map(n => s"key-$n" -> s"value->$n").toList
+      val settings = producerSettings[IO]
+        .withProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, "500")
+        .withFailFastProduce(true)
 
-    val error = intercept[TimeoutException] {
-      (for {
-        producer <- KafkaProducer.stream(settings)
-        records = ProducerRecords(toProduce.map { case (key, value) =>
-                    ProducerRecord(nonExistentTopic, key, value)
-                  })
-        result <- Stream.eval(producer.produce(records).flatten)
-      } yield result).compile.lastOrError.unsafeRunSync()
+      val error = intercept[TimeoutException] {
+        (for {
+          producer <- KafkaProducer.stream(settings)
+          records = ProducerRecords(toProduce.map { case (key, value) =>
+                      ProducerRecord(nonExistentTopic, key, value)
+                    })
+          result <- Stream.eval(producer.produce(records).flatten)
+        } yield result).compile.lastOrError.unsafeRunSync()
+      }
+
+      error.getMessage shouldBe s"Topic $nonExistentTopic not present in metadata after 500 ms."
     }
-
-    error.getMessage shouldBe s"Topic $nonExistentTopic not present in metadata after 500 ms."
   }
 
   it("should get metrics") {
