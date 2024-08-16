@@ -68,7 +68,8 @@ lazy val vulcan = project
     dependencySettings ++ Seq(
       libraryDependencies ++= Seq(
         "com.github.fd4s" %% "vulcan"                % vulcanVersion,
-        "io.confluent"     % "kafka-avro-serializer" % confluentVersion
+        "io.confluent"     % "kafka-avro-serializer" % confluentVersion exclude("org.apache.kafka", "kafka-clients"),
+        "org.apache.kafka" % "kafka-clients"         % kafkaVersion
       )
     ),
     publishSettings,
