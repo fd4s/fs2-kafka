@@ -242,7 +242,7 @@ object ProducerSettings {
     override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
     override val closeTimeout: FiniteDuration,
-    override val failFastProduce: Boolean = false
+    override val failFastProduce: Boolean
   ) extends ProducerSettings[F, K, V] {
 
     override def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings[F, K, V] =
@@ -335,7 +335,8 @@ object ProducerSettings {
       properties = Map(
         ProducerConfig.RETRIES_CONFIG -> "0"
       ),
-      closeTimeout = 60.seconds
+      closeTimeout = 60.seconds,
+      failFastProduce = false
     )
 
   def apply[F[_], K, V](
