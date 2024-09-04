@@ -6,7 +6,9 @@
 
 package fs2.kafka
 
+import java.nio.charset.StandardCharsets
 import java.util
+import java.util.concurrent.{CompletableFuture, Future}
 import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.concurrent.duration.*
@@ -19,6 +21,8 @@ import fs2.kafka.internal.converters.collection.*
 import fs2.kafka.producer.MkProducer
 
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerGroupMetadata, OffsetAndMetadata}
+import org.apache.kafka.clients.producer
+import org.apache.kafka.clients.producer.{Callback, ProducerConfig, RecordMetadata}
 import org.apache.kafka.common.errors.ProducerFencedException
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.TopicPartition
@@ -398,6 +402,91 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
       }
 
       consumedOrError.isLeft shouldBe true
+    }
+  }
+
+  it("should fail fast to produce records with multiple") {
+    val (key0, value0)     = "key-0" -> "value-0"
+    val (key1, value1)     = "key-1" -> "value-1"
+    val (key2, value2)     = "key-2" -> "value-2"
+    var transactionAborted = false
+    val expectedErrorOnSecondRecord = new RuntimeException("~Failed to produce second record~") 
+
+    withTopic { topic =>
+      createCustomTopic(topic)
+
+      implicit val mk: MkProducer[IO] = new MkProducer[IO] {
+
+        def apply[G[_]](settings: ProducerSettings[G, ?, ?]): IO[KafkaByteProducer] =
+          IO.delay {
+            new org.apache.kafka.clients.producer.KafkaProducer[Array[Byte], Array[Byte]](
+              (settings.properties: Map[String, AnyRef]).asJava,
+              new ByteArraySerializer,
+              new ByteArraySerializer
+            ) {
+              override def send(
+                record: producer.ProducerRecord[Array[Byte], Array[Byte]],
+                callback: Callback
+              ): Future[RecordMetadata] = {
+                val key = new String(record.key(), StandardCharsets.UTF_8)
+                val futureResult = CompletableFuture
+                  .completedFuture(new RecordMetadata(new TopicPartition(topic, 0), 0, 0, 0, 0, 0))
+
+                key match {
+                  case `key0` => futureResult
+
+                  case `key1` =>
+                    callback.onCompletion(null, expectedErrorOnSecondRecord)
+                    Thread.sleep(500) // ensure the callback completes and the fail-fast mechanism is triggered
+                    futureResult.completeExceptionally(expectedErrorOnSecondRecord)
+                    futureResult
+
+                  case key =>
+                    fail(s"Unexpected key: $key, the producer should not produce any record after key $key1.")
+                }
+              }
+
+              override def abortTransaction(): Unit = {
+                transactionAborted = true
+                super.abortTransaction()
+              }
+            }
+          }
+
+      }
+
+      val producerRecords = List(
+        ProducerRecord(topic, key0, value0),
+        ProducerRecord(topic, key1, value1),
+        ProducerRecord(topic, key2, value2)
+      )
+      val committableOffset = CommittableOffset[IO](
+        new TopicPartition("topic-consumer", 0),
+        new OffsetAndMetadata(0),
+        Some("consumer-group"),
+        _ => IO.raiseError(new RuntimeException("Commit should not be called")).void
+      )
+      val committable = CommittableProducerRecords(producerRecords, committableOffset)
+
+      val settings = TransactionalProducerSettings(
+        transactionalId = s"fail-fast-$topic",
+        producerSettings = producerSettings[IO]
+          .withRetries(Int.MaxValue)
+          .withProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, "10000")
+          .withFailFastProduce(true)
+      )
+
+      val result = intercept[RuntimeException] {
+        TransactionalKafkaProducer
+          .stream(settings)
+          .evalMap(_.produce(Chunk.singleton(committable)))
+          .compile
+          .lastOrError
+          .unsafeRunSync()
+      }
+
+      result shouldBe expectedErrorOnSecondRecord
+      assert(transactionAborted, "The transaction should be aborted")
     }
   }
 
