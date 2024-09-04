@@ -406,11 +406,11 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
   }
 
   it("should fail fast to produce records with multiple") {
-    val (key0, value0)     = "key-0" -> "value-0"
-    val (key1, value1)     = "key-1" -> "value-1"
-    val (key2, value2)     = "key-2" -> "value-2"
-    var transactionAborted = false
-    val expectedErrorOnSecondRecord = new RuntimeException("~Failed to produce second record~") 
+    val (key0, value0)              = "key-0" -> "value-0"
+    val (key1, value1)              = "key-1" -> "value-1"
+    val (key2, value2)              = "key-2" -> "value-2"
+    var transactionAborted          = false
+    val expectedErrorOnSecondRecord = new RuntimeException("~Failed to produce second record~")
 
     withTopic { topic =>
       createCustomTopic(topic)

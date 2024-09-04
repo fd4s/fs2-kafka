@@ -6,8 +6,6 @@
 
 package fs2.kafka
 
-import java.util.UUID
-
 import cats.effect.unsafe.implicits.global
 import cats.effect.IO
 import cats.syntax.all.*
