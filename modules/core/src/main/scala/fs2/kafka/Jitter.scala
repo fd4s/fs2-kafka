@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -36,8 +36,10 @@ object Jitter {
     F.delay(new java.util.Random())
       .map { random =>
         new Jitter[F] {
+
           override def withJitter(n: Double): F[Double] =
             F.delay(random.nextDouble()).map(_ * n)
+
         }
       }
 

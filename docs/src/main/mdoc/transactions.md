@@ -25,14 +25,16 @@ Kafka transactions are supported through a [`TransactionalKafkaProducer`][transa
 Following is an example where transactions are used to consume, process, produce, and commit.
 
 ```scala mdoc
-import cats.effect.{IO, IOApp}
-import fs2.Stream
-import fs2.kafka._
-import org.apache.kafka.common.TopicPartition
-
 import scala.concurrent.duration._
 
+import cats.effect.{IO, IOApp}
+import fs2.kafka._
+import fs2.Stream
+
+import org.apache.kafka.common.TopicPartition
+
 object Main extends IOApp.Simple {
+
   val run: IO[Unit] = {
     def processRecord(record: ConsumerRecord[String, String]): IO[(String, String)] =
       IO.pure(record.key -> record.value)
@@ -58,17 +60,16 @@ object Main extends IOApp.Simple {
       .subscribeTo("topic")
       .flatMap(_.partitionsMapStream)
       .map(
-        _.map {
-          case (partition, stream) =>
-            TransactionalKafkaProducer.stream(producerSettings(partition)).flatMap { producer =>
+        _.map { case (partition, stream) =>
+          TransactionalKafkaProducer
+            .stream(producerSettings(partition))
+            .flatMap { producer =>
               stream
                 .mapAsync(25) { committable =>
-                  processRecord(committable.record)
-                    .map {
-                      case (key, value) =>
-                        val record = ProducerRecord("topic", key, value)
-                        CommittableProducerRecords.one(record, committable.offset)
-                    }
+                  processRecord(committable.record).map { case (key, value) =>
+                    val record = ProducerRecord("topic", key, value)
+                    CommittableProducerRecords.one(record, committable.offset)
+                  }
                 }
                 .groupWithin(500, 15.seconds)
                 .evalMap(producer.produce)
@@ -81,8 +82,8 @@ object Main extends IOApp.Simple {
       .compile
       .drain
   }
-}
 
+}
 ```
 
 [transactionalkafkaproducer]: @API_BASE_URL@/TransactionalKafkaProducer.html

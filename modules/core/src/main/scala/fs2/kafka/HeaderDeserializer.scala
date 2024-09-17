@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -193,8 +193,8 @@ object HeaderDeserializer {
         HeaderDeserializer.instance { bytes =>
           @tailrec def go(deserializer: HeaderDeserializer[Either[A, B]]): B =
             deserializer.deserialize(bytes) match {
-              case Right(b) => b
-              case Left(a)  => go(f(a))
+              case Right(_b) => _b
+              case Left(_a)  => go(f(_a))
             }
 
           go(f(a))

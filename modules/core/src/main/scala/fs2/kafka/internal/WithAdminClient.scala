@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -29,8 +29,10 @@ private[kafka] object WithAdminClient {
       mk(settings).map { adminClient =>
         val withAdminClient =
           new WithAdminClient[G] {
+
             override def apply[A](f: AdminClient => KafkaFuture[A]): G[A] =
               G.delay(f(adminClient)).cancelable_
+
           }
 
         val close =

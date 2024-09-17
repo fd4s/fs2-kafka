@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -91,6 +91,7 @@ object CommittableOffset {
     val _commit            = commit
 
     new CommittableOffset[F] {
+
       override val topicPartition: TopicPartition =
         _topicPartition
 
@@ -119,6 +120,7 @@ object CommittableOffset {
           case None =>
             show"CommittableOffset($topicPartition -> $offsetAndMetadata)"
         }
+
     }
   }
 

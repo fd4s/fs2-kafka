@@ -1,30 +1,30 @@
-val catsEffectVersion = "3.5.2"
+val catsEffectVersion = "3.5.4"
 
 val catsVersion = "2.6.1"
 
-val confluentVersion = "7.5.1"
+val confluentVersion = "7.7.0"
 
-val fs2Version = "3.9.2"
+val fs2Version = "3.11.0"
 
-val kafkaVersion = "3.6.0"
+val kafkaVersion = "3.8.0"
 
-val testcontainersScalaVersion = "0.41.0"
+val testcontainersScalaVersion = "0.41.4"
 
-val disciplineVersion = "2.2.0"
+val disciplineVersion = "2.3.0"
 
-val logbackVersion = "1.3.11"
+val logbackVersion = "1.3.14"
 
-val vulcanVersion = "1.9.0"
+val vulcanVersion = "1.11.0"
 
 val munitVersion = "0.7.29"
 
-val scala212 = "2.12.18"
+val scala212 = "2.12.19"
 
-val scala213 = "2.13.12"
+val scala213 = "2.13.14"
 
-val scala3 = "3.3.1"
+val scala3 = "3.3.3"
 
-ThisBuild / tlBaseVersion := "3.3"
+ThisBuild / tlBaseVersion := "3.5"
 
 ThisBuild / tlCiReleaseBranches := Seq("series/3.x")
 
@@ -123,12 +123,13 @@ lazy val dependencySettings = Seq(
     else
       Seq(
         compilerPlugin(
-          ("org.typelevel" %% "kind-projector" % "0.13.2").cross(CrossVersion.full)
+          ("org.typelevel" %% "kind-projector" % "0.13.3").cross(CrossVersion.full)
         )
       )
   },
   pomPostProcess := { (node: xml.Node) =>
     new xml.transform.RuleTransformer(new xml.transform.RewriteRule {
+
       def scopedDependency(e: xml.Elem): Boolean =
         e.label == "dependency" && e.child.exists(_.label == "scope")
 
@@ -137,6 +138,7 @@ lazy val dependencySettings = Seq(
           case e: xml.Elem if scopedDependency(e) => Nil
           case _                                  => Seq(node)
         }
+
     }).transform(node).head
   }
 )
@@ -207,16 +209,22 @@ lazy val metadataSettings = Seq(
   organization := "com.github.fd4s"
 )
 
+val OldGuardJava = JavaSpec.temurin("8")
+val LTSJava      = JavaSpec.temurin("21")
+
 ThisBuild / githubWorkflowTargetBranches := Seq("series/*")
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("ci")),
-  WorkflowStep.Sbt(List("docs/run"), cond = Some(s"matrix.scala == '$scala213'"))
+  WorkflowStep.Sbt(
+    List("docs/run"),
+    cond = Some(s"matrix.scala == '2.13' && matrix.java == '${LTSJava.render}'")
+  )
 )
 
 ThisBuild / githubWorkflowArtifactUpload := false
 
-ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("17"))
+ThisBuild / githubWorkflowJavaVersions := Seq(LTSJava, OldGuardJava)
 
 ThisBuild / githubWorkflowPublish := Seq(
   WorkflowStep.Sbt(
@@ -250,24 +258,12 @@ lazy val publishSettings =
     ),
     headerSources / excludeFilter := HiddenFileFilter,
     developers := List(
-      Developer(
-        id = "vlovgr",
-        name = "Viktor Lövgren",
-        email = "github@vlovgr.se",
-        url = url("https://vlovgr.se")
-      ),
-      Developer(
-        id = "bplommer",
-        name = "Ben Plommer",
-        email = "@bplommer", // actually a twitter handle but whatever ¯\_(ツ)_/¯
-        url = url("https://github.com/bplommer")
-      ),
-      Developer(
-        id = "LMNet",
-        name = "Yuriy Badalyantc",
-        email = "lmnet89@gmail.com",
-        url = url("https://github.com/LMnet")
-      )
+      tlGitHubDev("vlovgr", "Viktor Lövgren")
+        .withEmail("github@vlovgr.se")
+        .withUrl(url("https://vlovgr.se")),
+      tlGitHubDev("bplommer", "Ben Plommer"),
+      tlGitHubDev("LMNet", "Yuriy Badalyantc").withEmail("lmnet89@gmail.com"),
+      tlGitHubDev("aartigao", "Alan Artigao").withEmail("alanartigao@gmail.com")
     )
   )
 
@@ -281,8 +277,12 @@ ThisBuild / mimaBinaryIssueFilters ++= {
       .exclude[DirectMissingMethodProblem]("fs2.kafka.TransactionalProducerRecords.apply"),
     ProblemFilters
       .exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.createAvroSerializer"),
+    ProblemFilters.exclude[DirectMissingMethodProblem](
+      "fs2.kafka.vulcan.AvroSettings.withCreateAvroSerializer"
+    ),
     ProblemFilters
-      .exclude[DirectMissingMethodProblem]("fs2.kafka.vulcan.AvroSettings.withCreateAvroSerializer")
+      .exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.offsetsForTimes"),
+    ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.listTopics")
   )
 }
 

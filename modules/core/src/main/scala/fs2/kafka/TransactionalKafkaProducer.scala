@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -98,6 +98,7 @@ object TransactionalKafkaProducer {
       WithTransactionalProducer(mk, settings)
     ).mapN { (keySerializer, valueSerializer, withProducer) =>
       new TransactionalKafkaProducer.WithoutOffsets[F, K, V] {
+
         override def produce(
           records: TransactionalProducerRecords[F, K, V]
         ): F[ProducerResult[K, V]] =
@@ -160,6 +161,7 @@ object TransactionalKafkaProducer {
 
         override def toString: String =
           "TransactionalKafkaProducer$" + System.identityHashCode(this)
+
       }
     }
 

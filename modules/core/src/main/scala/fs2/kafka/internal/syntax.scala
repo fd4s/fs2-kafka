@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -193,6 +193,16 @@ private[kafka] object syntax {
       while (it.hasNext) {
         val e = it.next()
         result = result.updated(e.getKey, e.getValue)
+      }
+      result
+    }
+
+    def toMapOptionValues: Map[K, Option[V]] = {
+      var result = Map.empty[K, Option[V]]
+      val it     = map.entrySet.iterator()
+      while (it.hasNext) {
+        val e = it.next()
+        result = result.updated(e.getKey, Option(e.getValue))
       }
       result
     }

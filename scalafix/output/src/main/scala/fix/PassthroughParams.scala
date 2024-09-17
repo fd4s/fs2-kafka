@@ -1,19 +1,19 @@
 package fix
 
-import fs2.kafka._
-import cats.syntax.all._
-import fs2.Chunk
 import cats.effect.IO
+import cats.syntax.all._
+import fs2.kafka._
+import fs2.Chunk
 
 class PassthroughParams {
+
   val records: ProducerRecords[Int, String, String] =
     ProducerRecords.one[Int, String, String](
       ProducerRecord("topic", "key", "value"),
       42
     )
 
-  fs2.kafka.ProducerRecords
-    .one[Int, String, String](ProducerRecord("topic", "key", "value"), 42)
+  fs2.kafka.ProducerRecords.one[Int, String, String](ProducerRecord("topic", "key", "value"), 42)
 
   ProducerRecords[List, Int, String, String](
     List(
@@ -35,4 +35,5 @@ class PassthroughParams {
     TransactionalProducerRecords[IO, Int, String, String](Chunk.empty, 42)
 
   TransactionalProducerRecords.one[IO, Int, String, String](???, 42)
+
 }

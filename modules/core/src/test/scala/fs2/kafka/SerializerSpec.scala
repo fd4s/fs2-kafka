@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -72,10 +72,13 @@ final class SerializerSpec extends BaseCatsSpec {
       Serializer
         .delegate[IO, Int](
           new KafkaSerializer[Int] {
+
             override def close(): Unit                                                    = ()
             override def configure(props: java.util.Map[String, ?], isKey: Boolean): Unit = ()
+
             override def serialize(topic: String, int: Int): Array[Byte] =
               throw new RuntimeException
+
           }
         )
         .suspend
@@ -111,10 +114,13 @@ final class SerializerSpec extends BaseCatsSpec {
       Serializer
         .delegate[IO, Int](
           new KafkaSerializer[Int] {
+
             override def close(): Unit                                                    = ()
             override def configure(props: java.util.Map[String, ?], isKey: Boolean): Unit = ()
+
             override def serialize(topic: String, int: Int): Array[Byte] =
               throw new RuntimeException
+
           }
         )
         .suspend

@@ -4,20 +4,20 @@ rule = Fs2Kafka
 
 package fix
 
-import fs2.kafka._
-import cats.syntax.all._
-import fs2.Chunk
 import cats.effect.IO
+import cats.syntax.all._
+import fs2.kafka._
+import fs2.Chunk
 
 class PassthroughParams {
+
   val records: ProducerRecords[String, String, Int] =
     ProducerRecords.one[String, String, Int](
       ProducerRecord("topic", "key", "value"),
       42
     )
 
-  fs2.kafka.ProducerRecords
-    .one[String, String, Int](ProducerRecord("topic", "key", "value"), 42)
+  fs2.kafka.ProducerRecords.one[String, String, Int](ProducerRecord("topic", "key", "value"), 42)
 
   ProducerRecords[List, String, String, Int](
     List(
@@ -39,4 +39,5 @@ class PassthroughParams {
     TransactionalProducerRecords[IO, String, String, Int](Chunk.empty, 42)
 
   TransactionalProducerRecords.one[IO, String, String, Int](???, 42)
+
 }

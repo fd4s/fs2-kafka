@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,6 +21,7 @@ import cats.effect.std.*
 import cats.syntax.all.*
 import fs2.{Chunk, Stream}
 import fs2.kafka.consumer.*
+import fs2.kafka.consumer.KafkaConsumeChunk.CommitNow
 import fs2.kafka.instances.*
 import fs2.kafka.internal.*
 import fs2.kafka.internal.converters.collection.*
@@ -28,7 +29,7 @@ import fs2.kafka.internal.syntax.*
 import fs2.kafka.internal.KafkaConsumerActor.*
 import fs2.kafka.internal.LogEntry.{RevokedPreviousFetch, StoredFetch}
 
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer.{OffsetAndMetadata, OffsetAndTimestamp}
 import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartition}
 
 /**
@@ -63,10 +64,11 @@ import org.apache.kafka.common.{Metric, MetricName, PartitionInfo, TopicPartitio
   */
 sealed abstract class KafkaConsumer[F[_], K, V]
     extends KafkaConsume[F, K, V]
+    with KafkaConsumeChunk[F, K, V]
     with KafkaAssignment[F]
     with KafkaOffsetsV2[F]
     with KafkaSubscription[F]
-    with KafkaTopics[F]
+    with KafkaTopicsV2[F]
     with KafkaCommit[F]
     with KafkaMetrics[F]
     with KafkaConsumerLifecycle[F]
@@ -168,7 +170,7 @@ object KafkaConsumer {
             stopReqs <- Deferred[F, Unit]
           } yield Stream
             .eval {
-              def fetchPartition: F[Unit] = F
+              val fetchPartition: F[Unit] = F
                 .deferred[PartitionResult]
                 .flatMap { deferred =>
                   val callback: PartitionResult => F[Unit] =
@@ -200,19 +202,15 @@ object KafkaConsumer {
 
                     assigned.ifM(storeFetch, completeRevoked)
                   } >> deferred.get
-                  F.race(shutdown, fetch)
-                    .flatMap {
-                      case Left(()) =>
-                        stopReqs.complete(()).void
 
-                      case Right((chunk, reason)) =>
-                        val enqueueChunk = chunks.offer(Some(chunk)).unlessA(chunk.isEmpty)
+                  fetch.flatMap { case (chunk, reason) =>
+                    val enqueueChunk = chunks.offer(Some(chunk)).unlessA(chunk.isEmpty)
 
-                        val completeRevoked =
-                          stopReqs.complete(()).void.whenA(reason.topicPartitionRevoked)
+                    val completeRevoked =
+                      stopReqs.complete(()).void.whenA(reason.topicPartitionRevoked)
 
-                        enqueueChunk >> completeRevoked
-                    }
+                    enqueueChunk >> completeRevoked
+                  }
                 }
 
               Stream
@@ -613,6 +611,40 @@ object KafkaConsumer {
             .toMap
         }
 
+      override def offsetsForTimes(
+        timestampsToSearch: Map[TopicPartition, Long]
+      ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+        withConsumer.blocking {
+          _.offsetsForTimes(
+              timestampsToSearch.asJava.asInstanceOf[util.Map[TopicPartition, java.lang.Long]]
+            )
+            // Convert empty/missing partition null values to None for more idiomatic scala
+            .toMapOptionValues
+        }
+
+      override def offsetsForTimes(
+        timestampsToSearch: Map[TopicPartition, Long],
+        timeout: FiniteDuration
+      ): F[Map[TopicPartition, Option[OffsetAndTimestamp]]] =
+        withConsumer.blocking {
+          _.offsetsForTimes(
+              timestampsToSearch.asJava.asInstanceOf[util.Map[TopicPartition, java.lang.Long]],
+              timeout.toJava
+            )
+            // Convert empty/missing partition null values to None for more idiomatic scala
+            .toMapOptionValues
+        }
+
+      override def listTopics: F[Map[String, List[PartitionInfo]]] =
+        withConsumer.blocking {
+          _.listTopics().toMap.map { case (k, v) => (k, v.toList) }
+        }
+
+      override def listTopics(timeout: FiniteDuration): F[Map[String, List[PartitionInfo]]] =
+        withConsumer.blocking {
+          _.listTopics(timeout.toJava).toMap.map { case (k, v) => (k, v.toList) }
+        }
+
       override def metrics: F[Map[MetricName, Metric]] =
         withConsumer.blocking(_.metrics().asScala.toMap)
 
@@ -782,6 +814,14 @@ object KafkaConsumer {
       */
     def partitionedStream: Stream[F, Stream[F, CommittableConsumerRecord[F, K, V]]] =
       self.flatMap(_.partitionedRecords)
+
+    /**
+      * Consume from all assigned partitions concurrently, processing the messages in `Chunk`s. See
+      * [[KafkaConsumeChunk#consumeChunk]]
+      */
+    def consumeChunk(processor: Chunk[ConsumerRecord[K, V]] => F[CommitNow])(implicit
+      F: Concurrent[F]
+    ): F[Nothing] = self.evalMap(_.consumeChunk(processor)).compile.onlyOrError
 
   }
 

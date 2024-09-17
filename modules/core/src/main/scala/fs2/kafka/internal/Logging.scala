@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -24,6 +24,7 @@ private[kafka] object Logging {
     F.delay(LoggerFactory.getLogger(name))
       .map { logger =>
         new Logging[F] {
+
           override def log(entry: LogEntry): F[Unit] =
             F.delay {
               entry.level match {
@@ -41,6 +42,7 @@ private[kafka] object Logging {
                     logger.debug(entry.message)
               }
             }
+
         }
       }
 

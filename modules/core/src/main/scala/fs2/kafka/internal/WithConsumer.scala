@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -31,8 +31,10 @@ private[kafka] object WithConsumer {
       Resource.make {
         mk(settings).map { consumer =>
           new WithConsumer[F] {
+
             override def blocking[A](f: KafkaByteConsumer => A): F[A] =
               b(f(consumer))
+
           }
         }
       }(_.blocking(_.close(settings.closeTimeout.toJava)))

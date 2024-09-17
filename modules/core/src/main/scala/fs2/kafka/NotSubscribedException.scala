@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,10 +10,11 @@ import org.apache.kafka.common.KafkaException
 
 /**
   * [[NotSubscribedException]] indicates that a `Stream` was started in [[KafkaConsumer]] even
-  * though the consumer had not been subscribed to any topics before starting.
+  * though the consumer had not been subscribed to any topics or assigned any partitions before
+  * starting.
   */
 sealed abstract class NotSubscribedException
-    extends KafkaException("consumer is not subscribed to any topics")
+    extends KafkaException("consumer is not subscribed to any topics or assigned any partitions")
 
 private[kafka] object NotSubscribedException {
 

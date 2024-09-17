@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -86,12 +86,13 @@ final class KafkaAdminClientSpec extends BaseKafkaSpec {
                                                     .map((groupId, _))
                                                 }
               _ <- IO(assert(consumerGroupOffsetsPartitions.size == 1))
-              _ <- IO {
-                     adminClient
-                       .listConsumerGroupOffsets(consumerGroupId)
-                       .forPartitions(List(new TopicPartition("topic", 0)))
-                       .toString shouldBe "ListConsumerGroupOffsetsForPartitions(groupId = test-group-id, partitions = List(topic-0))"
-                   }
+              _ <-
+                IO {
+                  adminClient
+                    .listConsumerGroupOffsets(consumerGroupId)
+                    .forPartitions(List(new TopicPartition("topic", 0)))
+                    .toString shouldBe "ListConsumerGroupOffsetsForPartitions(groupId = test-group-id, partitions = List(topic-0))"
+                }
               partition0    = new TopicPartition(topic, 0)
               updatedOffset = new OffsetAndMetadata(0)
               _ <- adminClient

@@ -11,8 +11,8 @@ The following imports are assumed throughout this page.
 ```scala mdoc:silent
 import cats.effect._
 import cats.syntax.all._
-import fs2.Stream
 import fs2.kafka._
+import fs2.Stream
 ```
 
 ## Settings
@@ -58,12 +58,12 @@ def topicOperations[F[_]: Async]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
     for {
       topicNames <- client.listTopics.names
-      _ <- client.describeTopics(topicNames.toList)
-      _ <- client.createTopic(new NewTopic("new-topic", 1, 1.toShort))
-      _ <- client.createTopics(new NewTopic("newer-topic", 1, 1.toShort) :: Nil)
-      _ <- client.createPartitions(Map("new-topic" -> NewPartitions.increaseTo(4)))
-      _ <- client.deleteTopic("new-topic")
-      _ <- client.deleteTopics("newer-topic" :: Nil)
+      _          <- client.describeTopics(topicNames.toList)
+      _          <- client.createTopic(new NewTopic("new-topic", 1, 1.toShort))
+      _          <- client.createTopics(new NewTopic("newer-topic", 1, 1.toShort) :: Nil)
+      _          <- client.createPartitions(Map("new-topic" -> NewPartitions.increaseTo(4)))
+      _          <- client.deleteTopic("new-topic")
+      _          <- client.deleteTopics("newer-topic" :: Nil)
     } yield ()
   }
 ```
@@ -73,8 +73,8 @@ def topicOperations[F[_]: Async]: F[Unit] =
 We can edit the configuration of different resources, like topics and nodes.
 
 ```scala mdoc:silent
-import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.clients.admin.{AlterConfigOp, ConfigEntry}
+import org.apache.kafka.common.config.ConfigResource
 
 def configOperations[F[_]: Async]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
@@ -83,13 +83,15 @@ def configOperations[F[_]: Async]: F[Unit] =
     for {
       _ <- client.describeConfigs(topic :: Nil)
       _ <- client.alterConfigs {
-        Map(topic -> List(
-          new AlterConfigOp(
-            new ConfigEntry("cleanup.policy", "delete"),
-            AlterConfigOp.OpType.SET
-          )
-        ))
-      }
+             Map(
+               topic -> List(
+                 new AlterConfigOp(
+                   new ConfigEntry("cleanup.policy", "delete"),
+                   AlterConfigOp.OpType.SET
+                 )
+               )
+             )
+           }
     } yield ()
   }
 ```
@@ -114,12 +116,10 @@ def consumerGroupOperations[F[_]: Async: cats.Parallel]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
     for {
       consumerGroupIds <- client.listConsumerGroups.groupIds
-      _ <- client.describeConsumerGroups(consumerGroupIds)
+      _                <- client.describeConsumerGroups(consumerGroupIds)
       _ <- consumerGroupIds.parTraverse { groupId =>
-        client
-          .listConsumerGroupOffsets(groupId)
-          .partitionsToOffsetAndMetadata
-      }
+             client.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata
+           }
     } yield ()
   }
 ```
@@ -130,11 +130,7 @@ There are ACL management functions to describe, create and delete ACL entries.
 
 ```scala mdoc:silent
 import org.apache.kafka.common.acl._
-import org.apache.kafka.common.resource.{
-  PatternType,
-  ResourcePattern,
-  ResourceType
-}
+import org.apache.kafka.common.resource.{PatternType, ResourcePattern, ResourceType}
 
 def aclOperations[F[_]: Async]: F[Unit] =
   kafkaAdminClientResource[F]("localhost:9092").use { client =>
@@ -142,14 +138,14 @@ def aclOperations[F[_]: Async]: F[Unit] =
       describedAcls <- client.describeAcls(AclBindingFilter.ANY)
 
       aclEntry = new AccessControlEntry(
-        "User:ANONYMOUS",
-        "*",
-        AclOperation.DESCRIBE,
-        AclPermissionType.ALLOW
-      )
+                   "User:ANONYMOUS",
+                   "*",
+                   AclOperation.DESCRIBE,
+                   AclPermissionType.ALLOW
+                 )
       pattern = new ResourcePattern(ResourceType.TOPIC, "topic1", PatternType.LITERAL)
-      acl = new AclBinding(pattern, aclEntry)
-      _ <- client.createAcls(List(acl))
+      acl     = new AclBinding(pattern, aclEntry)
+      _      <- client.createAcls(List(acl))
 
       _ <- client.deleteAcls(List(AclBindingFilter.ANY))
     } yield ()

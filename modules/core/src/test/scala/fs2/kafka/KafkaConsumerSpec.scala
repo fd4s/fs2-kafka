@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -16,6 +16,7 @@ import cats.effect.unsafe.implicits.global
 import cats.effect.Ref
 import cats.syntax.all.*
 import fs2.concurrent.SignallingRef
+import fs2.kafka.consumer.KafkaConsumeChunk.CommitNow
 import fs2.kafka.internal.converters.collection.*
 import fs2.Stream
 
@@ -399,6 +400,29 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           }
           .evalTap { consumer =>
             for {
+              earliest        <- consumer.offsetsForTimes(Map(topicPartition -> 0L))
+              earliestTimeout <- consumer.offsetsForTimes(Map(topicPartition -> 0L), timeout)
+              _ <-
+                IO(
+                  assert(earliest == earliestTimeout && earliest(topicPartition).get.offset() == 0L)
+                )
+              earliestTimestampPlus1 = earliest(topicPartition).get.timestamp() + 1L
+              afterEarliest <-
+                consumer.offsetsForTimes(Map(topicPartition -> earliestTimestampPlus1))
+              afterEarliestTimeout <-
+                consumer.offsetsForTimes(Map(topicPartition -> earliestTimestampPlus1), timeout)
+              topicPartitionAfterEarliest = afterEarliest(topicPartition).get
+              _ <- IO(
+                     assert(
+                       afterEarliest == afterEarliestTimeout && topicPartitionAfterEarliest
+                         .offset() > 0L && topicPartitionAfterEarliest
+                         .timestamp() >= earliestTimestampPlus1
+                     )
+                   )
+            } yield ()
+          }
+          .evalTap { consumer =>
+            for {
               assigned <- consumer.assignment
               _        <- IO(assert(assigned.nonEmpty))
               _        <- consumer.seekToBeginning(assigned)
@@ -417,6 +441,27 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           }
           .compile
           .drain
+          .unsafeRunSync()
+      }
+    }
+
+    it("should return empty partition for offsets by times as None") {
+      withTopic { topic =>
+        createCustomTopic(topic)
+
+        val emptyPartition = new TopicPartition(topic, 0)
+        val timeout        = 10.seconds
+
+        KafkaConsumer
+          .resource(consumerSettings[IO])
+          .use { consumer =>
+            for {
+              empty        <- consumer.offsetsForTimes(Map(emptyPartition -> 0L))
+              emptyTimeout <- consumer.offsetsForTimes(Map(emptyPartition -> 0L), timeout)
+              expected      = Map(emptyPartition -> None)
+              _            <- IO(assert(empty == expected && emptyTimeout == expected))
+            } yield ()
+          }
           .unsafeRunSync()
       }
     }
@@ -1099,6 +1144,70 @@ final class KafkaConsumerSpec extends BaseKafkaSpec {
           info.take(1).compile.lastOrError.unsafeRunSync()
 
         assert(res.nonEmpty)
+      }
+    }
+  }
+
+  describe("KafkaConsumer#listTopics") {
+    it("should return topics") {
+      withTopic { topic =>
+        val timeout = 10.seconds
+
+        KafkaConsumer
+          .stream(consumerSettings[IO])
+          .evalTap { consumer =>
+            for {
+              _                  <- IO(createCustomTopic(topic, partitions = 2))
+              topicsAfter        <- consumer.listTopics
+              topicsAfterTimeout <- consumer.listTopics(timeout)
+              _ <-
+                IO(
+                  assert(
+                    topicsAfter.keySet == topicsAfterTimeout.keySet && topicsAfter(topic).size == 2
+                  )
+                )
+            } yield ()
+          }
+          .compile
+          .drain
+          .unsafeRunSync()
+      }
+    }
+  }
+
+  describe("KafkaConsumer#consumeChunk") {
+    it("should process the messages and commit the offsets") {
+      withTopic { topic =>
+        val produced = (0 until 5).map(n => s"key-$n" -> s"value-$n")
+        publishToKafka(topic, produced)
+
+        val consumed = for {
+          ref <- Ref.of[IO, Vector[(String, String)]](Vector.empty)
+          _ <- KafkaConsumer
+                 .stream(consumerSettings[IO])
+                 .evalTap(_.assign(topic))
+                 .evalMap(IO.sleep(3.seconds).as(_)) // sleep a bit to trigger potential race condition with _.stream
+                 .evalMap(
+                   _.consumeChunk(chunk =>
+                     chunk
+                       .traverse(record => ref.getAndUpdate(_ :+ (record.key -> record.value)))
+                       .as(CommitNow)
+                   )
+                 ).interruptAfter(10.seconds).compile.drain
+          res <- ref.get
+        } yield res
+
+        val res = consumed.unsafeRunSync()
+
+        (res should contain).theSameElementsInOrderAs(produced)
+
+        val topicPartition = new TopicPartition(topic, 0)
+
+        val actuallyCommitted = withKafkaConsumer(defaultConsumerProperties) { consumer =>
+          consumer.committed(Set(topicPartition).asJava).asScala.toMap
+        }.map { case (k, v) => k -> v.offset() }.toMap
+
+        actuallyCommitted shouldBe Map(topicPartition -> 5L)
       }
     }
   }

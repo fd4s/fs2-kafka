@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -104,6 +104,12 @@ sealed abstract class AvroSettings[F[_]] {
     writerSchema: Option[Schema]
   ): F[(KafkaAvroSerializer, SchemaRegistryClient)]
 
+  @deprecated("use the overload that takes an optional writer schema", "2.5.0-M3")
+  final def createAvroSerializer(
+    isKey: Boolean
+  ): F[(KafkaAvroSerializer, SchemaRegistryClient)] =
+    createAvroSerializer(isKey, writerSchema = None)
+
   /**
     * Creates a new [[AvroSettings]] instance with the specified function for creating
     * `KafkaAvroDeserializer`s from settings. The arguments are [[schemaRegistryClient]], `isKey`,
@@ -125,6 +131,16 @@ sealed abstract class AvroSettings[F[_]] {
     createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Option[Schema], Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
     // format: on
   ): AvroSettings[F]
+
+  @deprecated("use the overload that has an `Option[Schema]` argument", "2.5.0-M3")
+  final def withCreateAvroSerializer(
+    // format: off
+    createAvroSerializerWith: (F[SchemaRegistryClient], Boolean, Map[String, String]) => F[(KafkaAvroSerializer, SchemaRegistryClient)]
+    // format: on
+  ): AvroSettings[F] =
+    withCreateAvroSerializer((client, isKey, _, properties) =>
+      createAvroSerializerWith(client, isKey, properties)
+    )
 
   /**
     * Creates a new [[AvroSettings]] instance with the specified function for registering schemas
@@ -228,6 +244,7 @@ object AvroSettings {
               case None => new KafkaAvroSerializer(schemaRegistryClient)
               case Some(schema) =>
                 new KafkaAvroSerializer(schemaRegistryClient) {
+
                   // Overrides the default auto-registration behaviour, which attempts to guess the
                   // writer schema based on the encoded representation used by the Java Avro SDK.
                   // This works for types such as Records, which contain a reference to the exact schema
@@ -236,6 +253,7 @@ object AvroSettings {
                   // being produced) or logical types such as timestamp-millis (where the logical
                   // type is lost).
                   val parsedSchema = new AvroSchema(schema.toString)
+
                   override def serialize(topic: String, record: AnyRef): Array[Byte] = {
                     if (record == null) {
                       return null
@@ -246,6 +264,7 @@ object AvroSettings {
                       parsedSchema
                     )
                   }
+
                 }
             }
             serializer.configure(withDefaults(properties), isKey)

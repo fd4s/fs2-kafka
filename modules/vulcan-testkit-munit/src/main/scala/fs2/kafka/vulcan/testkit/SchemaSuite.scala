@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 OVO Energy Limited
+ * Copyright 2018-2024 OVO Energy Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -78,6 +78,7 @@ trait SchemaSuite extends FunSuite {
       .createSchemaRegistryClient
       .map { client =>
         new AssertableCompatibilityChecker[IO] {
+
           private def registrySchema(subject: String): IO[Schema] =
             for {
               metadata <- IO.delay(client.getLatestSchemaMetadata(subject))
@@ -139,6 +140,7 @@ trait SchemaSuite extends FunSuite {
                 )
               }
             }
+
         }
       }
 
