@@ -163,7 +163,7 @@ object TransactionalKafkaProducer {
                       Async[F]
                         .race(
                           Async[F].fromFutureCancelable(
-                            Async[F].delay(produceRecordError.future, Async[F].unit)
+                            Async[F].delay((produceRecordError.future, Async[F].unit))
                           ),
                           produceRecords(produceRecordError.some)
                         )
