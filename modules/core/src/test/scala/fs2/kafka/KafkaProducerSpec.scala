@@ -11,6 +11,9 @@ import cats.effect.IO
 import cats.syntax.all.*
 import fs2.{Chunk, Stream}
 
+import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.errors.TimeoutException
+
 final class KafkaProducerSpec extends BaseKafkaSpec {
 
   describe("creating producers") {
@@ -256,6 +259,28 @@ final class KafkaProducerSpec extends BaseKafkaSpec {
         consumeNumberKeyedMessagesFrom[String, String](topic, toProduce.size)
 
       consumed should contain theSameElementsAs toProduce
+    }
+  }
+
+  it("should fail fast to produce records with multiple") {
+    withTopic { topic =>
+      val nonExistentTopic = s"non-existent-$topic"
+      val toProduce        = (0 until 1000).map(n => s"key-$n" -> s"value->$n").toList
+      val settings = producerSettings[IO]
+        .withProperty(ProducerConfig.MAX_BLOCK_MS_CONFIG, "500")
+        .withFailFastProduce(true)
+
+      val error = intercept[TimeoutException] {
+        (for {
+          producer <- KafkaProducer.stream(settings)
+          records = ProducerRecords(toProduce.map { case (key, value) =>
+                      ProducerRecord(nonExistentTopic, key, value)
+                    })
+          result <- Stream.eval(producer.produce(records).flatten)
+        } yield result).compile.lastOrError.unsafeRunSync()
+      }
+
+      error.getMessage shouldBe s"Topic $nonExistentTopic not present in metadata after 500 ms."
     }
   }
 

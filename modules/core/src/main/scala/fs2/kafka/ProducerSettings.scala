@@ -215,6 +215,23 @@ sealed abstract class ProducerSettings[F[_], K, V] {
     */
   def withCredentials(credentialsStore: KafkaCredentialStore): ProducerSettings[F, K, V]
 
+  /**
+    * Controls whether [[fs2.kafka.KafkaProducer.produce]] fails immediately if any
+    * [[org.apache.kafka.clients.producer.KafkaProducer.send]] callback resolves with error.
+    *
+    * When set to `true`, the `produce` method will fail fast, returning an error as soon as any
+    * record in the [[ProducerRecords]] fails to be sent.
+    *
+    * The default value is `false`, meaning the `produce` method will not fail fast and will
+    * continue processing other records even if some callbacks fail.
+    */
+  def failFastProduce: Boolean
+
+  /**
+    * Creates a new [[ProducerSettings]] with the specified [[failFastProduce]].
+    */
+  def withFailFastProduce(failFastProduce: Boolean): ProducerSettings[F, K, V]
+
 }
 
 object ProducerSettings {
@@ -224,7 +241,8 @@ object ProducerSettings {
     override val valueSerializer: Resource[F, ValueSerializer[F, V]],
     override val customBlockingContext: Option[ExecutionContext],
     override val properties: Map[String, String],
-    override val closeTimeout: FiniteDuration
+    override val closeTimeout: FiniteDuration,
+    override val failFastProduce: Boolean
   ) extends ProducerSettings[F, K, V] {
 
     override def withCustomBlockingContext(ec: ExecutionContext): ProducerSettings[F, K, V] =
@@ -301,6 +319,9 @@ object ProducerSettings {
     ): ProducerSettings[F, K1, V1] =
       copy(keySerializer = keySerializer, valueSerializer = valueSerializer)
 
+    override def withFailFastProduce(failFastProduce: Boolean): ProducerSettings[F, K, V] =
+      copy(failFastProduce = failFastProduce)
+
   }
 
   private[this] def create[F[_], K, V](
@@ -314,7 +335,8 @@ object ProducerSettings {
       properties = Map(
         ProducerConfig.RETRIES_CONFIG -> "0"
       ),
-      closeTimeout = 60.seconds
+      closeTimeout = 60.seconds,
+      failFastProduce = false
     )
 
   def apply[F[_], K, V](

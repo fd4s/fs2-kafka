@@ -7,6 +7,7 @@
 package fs2.kafka
 
 import scala.annotation.nowarn
+import scala.concurrent.Promise
 
 import cats.effect.{Async, Outcome, Resource}
 import cats.effect.syntax.all.*
@@ -141,11 +142,35 @@ object TransactionalKafkaProducer {
         ): F[Chunk[(ProducerRecord[K, V], RecordMetadata)]] =
           withProducer.exclusiveAccess { (producer, blocking) =>
             blocking(producer.beginTransaction()).bracketCase { _ =>
-              val produce = records
-                .traverse(
-                  KafkaProducer.produceRecord(keySerializer, valueSerializer, producer, blocking)
-                )
-                .flatMap(_.sequence)
+              def produceRecords(produceRecordError: Option[Promise[Throwable]]) =
+                records
+                  .traverse(
+                    KafkaProducer.produceRecord(
+                      keySerializer,
+                      valueSerializer,
+                      producer,
+                      blocking,
+                      produceRecordError
+                    )
+                  )
+                  .flatMap(_.sequence)
+
+              val produce =
+                if (settings.producerSettings.failFastProduce)
+                  Async[F]
+                    .delay(Promise[Throwable]())
+                    .flatMap { produceRecordError =>
+                      Async[F]
+                        .race(
+                          Async[F].fromFutureCancelable(
+                            Async[F].delay(produceRecordError.future, Async[F].unit)
+                          ),
+                          produceRecords(produceRecordError.some)
+                        )
+                        .rethrow
+                    }
+                else
+                  produceRecords(None)
 
               sendOffsets.fold(produce)(f => produce.flatTap(_ => f(producer, blocking)))
             } {
