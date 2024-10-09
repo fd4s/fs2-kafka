@@ -282,7 +282,18 @@ ThisBuild / mimaBinaryIssueFilters ++= {
     ),
     ProblemFilters
       .exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.offsetsForTimes"),
-    ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.listTopics")
+    ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.listTopics"),
+    ProblemFilters
+      .exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.failFastProduce"),
+    ProblemFilters
+      .exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withFailFastProduce"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.copy"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.this"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.apply"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.produceRecord")
   )
 }
 
