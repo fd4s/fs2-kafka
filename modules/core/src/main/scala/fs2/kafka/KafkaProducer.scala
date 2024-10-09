@@ -190,7 +190,7 @@ object KafkaProducer {
             Async[F]
               .race(
                 Async[F]
-                  .fromFutureCancelable(Async[F].delay(produceRecordError.future, Async[F].unit)),
+                  .fromFutureCancelable(Async[F].delay((produceRecordError.future, Async[F].unit))),
                 produceRecords(produceRecordError.some)
               )
               .rethrow

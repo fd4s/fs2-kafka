@@ -21,7 +21,6 @@ import fs2.kafka.internal.converters.collection.*
 import fs2.kafka.producer.MkProducer
 
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerGroupMetadata, OffsetAndMetadata}
-import org.apache.kafka.clients.producer
 import org.apache.kafka.clients.producer.{Callback, ProducerConfig, RecordMetadata}
 import org.apache.kafka.common.errors.ProducerFencedException
 import org.apache.kafka.common.serialization.ByteArraySerializer
@@ -425,7 +424,7 @@ class TransactionalKafkaProducerSpec extends BaseKafkaSpec with EitherValues {
               new ByteArraySerializer
             ) {
               override def send(
-                record: producer.ProducerRecord[Array[Byte], Array[Byte]],
+                record: org.apache.kafka.clients.producer.ProducerRecord[Array[Byte], Array[Byte]],
                 callback: Callback
               ): Future[RecordMetadata] = {
                 val key = new String(record.key(), StandardCharsets.UTF_8)

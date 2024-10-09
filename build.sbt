@@ -24,7 +24,7 @@ val scala213 = "2.13.15"
 
 val scala3 = "3.3.4"
 
-ThisBuild / tlBaseVersion := "3.5"
+ThisBuild / tlBaseVersion := "3.6"
 
 ThisBuild / tlCiReleaseBranches := Seq("series/3.x")
 
@@ -282,7 +282,18 @@ ThisBuild / mimaBinaryIssueFilters ++= {
     ),
     ProblemFilters
       .exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.offsetsForTimes"),
-    ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.listTopics")
+    ProblemFilters.exclude[InheritedNewAbstractMethodProblem]("fs2.kafka.KafkaConsumer.listTopics"),
+    ProblemFilters
+      .exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.failFastProduce"),
+    ProblemFilters
+      .exclude[ReversedMissingMethodProblem]("fs2.kafka.ProducerSettings.withFailFastProduce"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.copy"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.this"),
+    ProblemFilters
+      .exclude[DirectMissingMethodProblem]("fs2.kafka.ProducerSettings#ProducerSettingsImpl.apply"),
+    ProblemFilters.exclude[DirectMissingMethodProblem]("fs2.kafka.KafkaProducer.produceRecord")
   )
 }
 
