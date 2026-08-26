@@ -1,5 +1,5 @@
 val avroVersion                = "1.12.1"
-val catsEffectVersion          = "3.7.0"
+val catsEffectVersion          = "3.7.1"
 val catsVersion                = "2.13.0"
 val confluentVersion           = "8.2.1"
 val disciplineVersion          = "2.3.0"
